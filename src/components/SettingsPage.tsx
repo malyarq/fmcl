@@ -19,8 +19,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
         hideLauncher, setHideLauncher,
         accentColor, setAccentColor,
         showConsole, setShowConsole,
-        javaPath, setJavaPath,
-        installOptifine, setInstallOptifine
+        language, setLanguage, t,
+        theme, setTheme,
+        javaPath, setJavaPath
     } = useSettings();
 
     // Helper to get dynamic classes based on accent
@@ -47,44 +48,44 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
     };
 
     return (
-        <div className="absolute inset-0 z-40 bg-zinc-900/95 backdrop-blur-sm flex items-center justify-center p-8">
-            <div className="bg-zinc-800 border border-zinc-700 w-full max-w-2xl rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-full">
+        <div className="absolute inset-0 z-40 bg-zinc-200/95 dark:bg-zinc-900/95 backdrop-blur-sm flex items-center justify-center p-8">
+            <div className="bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 w-full max-w-2xl rounded-lg shadow-2xl overflow-hidden flex flex-col max-h-full">
 
                 {/* Header */}
-                <div className="p-6 border-b border-zinc-700 flex justify-between items-center bg-zinc-800/50">
-                    <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-                        <span className={getAccentStyle().className || ''} style={getAccentStyle().style}>⚙️</span> Launcher Settings
+                <div className="p-6 border-b border-zinc-200 dark:border-zinc-700 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/50">
+                    <h2 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight flex items-center gap-2">
+                        <span className={getAccentStyle().className || ''} style={getAccentStyle().style}>⚙️</span> {t('settings.title')}
                     </h2>
                     <button
                         onClick={onClose}
-                        className="text-zinc-500 hover:text-white transition-colors"
+                        className="text-zinc-500 hover:text-zinc-900 dark:hover:text-white transition-colors"
                     >
                         ✕
                     </button>
                 </div>
 
                 {/* Content */}
-                <div className="p-6 overflow-y-auto custom-scrollbar space-y-8">
+                <div className="p-6 overflow-y-auto custom-scrollbar space-y-8 text-zinc-900 dark:text-zinc-100">
 
                     {/* Appearance Section */}
                     <section>
-                        <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-4">Appearance</h3>
+                        <h3 className="text-sm font-bold text-zinc-500 dark:text-zinc-500 uppercase tracking-wider mb-4">{t('settings.appearance')}</h3>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-zinc-400 text-xs mb-3">Accent Color</label>
+                                <label className="block text-zinc-500 dark:text-zinc-400 text-xs mb-3">{t('settings.accent')}</label>
                                 <div className="flex gap-4 items-center">
                                     {COLORS.map((c) => (
                                         <button
                                             key={c.id}
                                             onClick={() => setAccentColor(c.id as any)}
-                                            className={`w-8 h-8 rounded-full transition-all duration-300 ${c.class} ${c.hover} ${accentColor === c.id ? `ring-2 ring-offset-2 ring-offset-zinc-800 ${c.ring} scale-110` : 'opacity-70 hover:opacity-100'}`}
+                                            className={`w-8 h-8 rounded-full transition-all duration-300 ${c.class} ${c.hover} ${accentColor === c.id ? `ring-2 ring-offset-2 ring-offset-zinc-200 dark:ring-offset-zinc-800 ${c.ring} scale-110` : 'opacity-70 hover:opacity-100'}`}
                                             title={c.id.charAt(0).toUpperCase() + c.id.slice(1)}
                                         />
                                     ))}
 
                                     {/* Custom Color Picker */}
                                     <div className="relative group ml-2 flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-full overflow-hidden relative ring-2 ring-zinc-700 group-hover:ring-zinc-500 transition-all">
+                                        <div className="w-8 h-8 rounded-full overflow-hidden relative ring-2 ring-zinc-300 dark:ring-zinc-700 group-hover:ring-zinc-500 transition-all">
                                             <input
                                                 type="color"
                                                 value={!isPreset(accentColor) ? accentColor : '#10b981'}
@@ -100,8 +101,47 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                                 </div>
                             </div>
 
-                            <div className="flex items-center justify-between p-3 bg-zinc-900/50 rounded border border-zinc-700/50">
-                                <span className="text-zinc-300 text-sm">Show Developer Console</span>
+                            {/* Language Selector */}
+                            <div>
+                                <label className="block text-zinc-500 dark:text-zinc-400 text-xs mb-3">{t('settings.language')}</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setLanguage('en')}
+                                        className={`px-3 py-1.5 rounded text-xs font-bold uppercase transition-colors border ${language === 'en' ? 'bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white border-zinc-400 dark:border-zinc-500 shadow-md' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
+                                    >
+                                        English
+                                    </button>
+                                    <button
+                                        onClick={() => setLanguage('ru')}
+                                        className={`px-3 py-1.5 rounded text-xs font-bold uppercase transition-colors border ${language === 'ru' ? 'bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white border-zinc-400 dark:border-zinc-500 shadow-md' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
+                                    >
+                                        Русский
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Theme Selector */}
+                            <div>
+                                <label className="block text-zinc-500 dark:text-zinc-400 text-xs mb-3">{t('settings.theme')}</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setTheme('dark')}
+                                        className={`px-3 py-1.5 rounded text-xs font-bold uppercase transition-colors border ${theme === 'dark' ? 'bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white border-zinc-400 dark:border-zinc-500 shadow-md' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
+                                    >
+                                        {t('settings.theme_dark')}
+                                    </button>
+                                    <button
+                                        onClick={() => setTheme('light')}
+                                        className={`px-3 py-1.5 rounded text-xs font-bold uppercase transition-colors border ${theme === 'light' ? 'bg-zinc-200 dark:bg-zinc-700 text-black dark:text-white border-zinc-400 dark:border-zinc-500 shadow-md' : 'bg-zinc-100 dark:bg-zinc-900 text-zinc-500 border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700'}`}
+                                    >
+                                        {t('settings.theme_light')}
+                                    </button>
+                                </div>
+                            </div>
+
+
+                            <div className="flex items-center justify-between p-3 bg-zinc-100 dark:bg-zinc-900/50 rounded border border-zinc-200 dark:border-zinc-700/50">
+                                <span className="text-zinc-700 dark:text-zinc-300 text-sm">{t('settings.console')}</span>
                                 <input
                                     type="checkbox"
                                     checked={showConsole}
@@ -115,12 +155,12 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
 
                     {/* Java & Performance Section */}
                     <section>
-                        <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-4">Java & Performance</h3>
+                        <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider mb-4">{t('settings.java')}</h3>
                         <div className="space-y-6">
                             {/* RAM Slider */}
                             <div>
                                 <div className="flex justify-between mb-2">
-                                    <label className="text-zinc-400 text-xs">Allocated Memory (RAM)</label>
+                                    <label className="text-zinc-500 dark:text-zinc-400 text-xs">{t('settings.ram')}</label>
                                     <span className={`text-xs font-bold ${getAccentStyle().className || ''}`} style={getAccentStyle().style}>{ram} GB</span>
                                 </div>
                                 <input
@@ -130,10 +170,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                                     step="0.5"
                                     value={ram}
                                     onChange={(e) => setRam(parseFloat(e.target.value))}
-                                    className={`w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer ${isPreset(accentColor) ? `accent-${accentColor}-500` : ''}`}
+                                    className={`w-full h-2 bg-zinc-200 dark:bg-zinc-700 rounded-lg appearance-none cursor-pointer ${isPreset(accentColor) ? `accent-${accentColor}-500` : ''}`}
                                     style={!isPreset(accentColor) ? { accentColor: accentColor } : {}}
                                 />
-                                <div className="flex justify-between text-[10px] text-zinc-600 mt-1">
+                                <div className="flex justify-between text-[10px] text-zinc-500 dark:text-zinc-600 mt-1">
                                     <span>1 GB (Low)</span>
                                     <span>8 GB (Recommended)</span>
                                     <span>16 GB (Extreme)</span>
@@ -141,10 +181,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                             </div>
 
                             {/* Performance Mode */}
-                            <div className="flex items-center justify-between p-3 bg-zinc-900/50 rounded border border-zinc-700/50">
+                            <div className="flex items-center justify-between p-3 bg-zinc-100 dark:bg-zinc-900/50 rounded border border-zinc-200 dark:border-zinc-700/50">
                                 <div>
-                                    <p className="text-zinc-300 text-sm font-medium">Performance Mode</p>
-                                    <p className="text-zinc-500 text-xs">Hide launcher window while playing to save resources.</p>
+                                    <p className="text-zinc-700 dark:text-zinc-300 text-sm font-medium">{t('settings.performance')}</p>
+                                    <p className="text-zinc-500 text-xs">{t('settings.performance_desc')}</p>
                                 </div>
                                 <input
                                     type="checkbox"
@@ -155,47 +195,36 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                                 />
                             </div>
 
-                            {/* OptiFine Toggle */}
-                            <div className="flex items-center justify-between p-3 bg-zinc-900/50 rounded border border-zinc-700/50">
-                                <div>
-                                    <p className="text-zinc-300 text-sm font-medium flex items-center gap-2">
-                                        Auto-Install OptiFine
-                                        <span className={`text-[10px] px-1 py-0.5 rounded border ${isPreset(accentColor) ? 'bg-zinc-800 text-zinc-400 border-zinc-700' : 'bg-transparent border-current'}`} style={!isPreset(accentColor) ? { color: accentColor, borderColor: accentColor } : {}}>BETA</span>
-                                    </p>
-                                    <p className="text-zinc-500 text-xs">Automatically download and install OptiFine for supported versions.</p>
-                                    <p className="text-[10px] text-zinc-600 mt-0.5 italic">Requires Forge enabled.</p>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    checked={installOptifine}
-                                    onChange={(e) => setInstallOptifine(e.target.checked)}
-                                    className="w-5 h-5 rounded cursor-pointer accent-current"
-                                    style={!isPreset(accentColor) ? { accentColor: accentColor } : {}}
-                                />
-                            </div>
+
 
                             {/* Java Path Override */}
                             <div>
-                                <label className="block text-zinc-400 text-xs mb-2">Custom Java Path (Optional)</label>
-                                <input
-                                    type="text"
-                                    value={javaPath}
-                                    onChange={(e) => setJavaPath(e.target.value)}
-                                    placeholder="Auto-detected (Default)"
-                                    className="w-full bg-zinc-900 border border-zinc-700 rounded p-2 text-sm text-zinc-300 focus:outline-none focus:border-zinc-500 transition-colors"
-                                />
-                                <p className="text-[10px] text-zinc-600 mt-1">Leave empty to let the launcher manage Java versions automatically.</p>
+                                <label className="block text-zinc-500 dark:text-zinc-400 text-xs mb-2">{t('settings.java_path')}</label>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={javaPath}
+                                        onChange={(e) => setJavaPath(e.target.value)}
+                                        placeholder={!javaPath ? "Default (Bundled Java 8)" : ""}
+                                        className="flex-1 bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded px-3 py-2 text-xs text-zinc-800 dark:text-zinc-300 focus:outline-none focus:border-zinc-500 font-mono"
+                                    />
+                                    <button
+                                        // Placeholder for browse logic 
+                                        className="hidden"
+                                    ></button>
+                                </div>
+                                <p className="text-[10px] text-zinc-500 dark:text-zinc-600 mt-1">{t('settings.java_path_desc')}</p>
                             </div>
                         </div>
                     </section>
                 </div>
 
-                <div className="p-6 border-t border-zinc-700 bg-zinc-800/50 flex justify-end">
+                <div className="p-6 border-t border-zinc-200 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800/50 flex justify-end">
                     <button
                         onClick={onClose}
-                        className={`px-6 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded text-sm font-medium transition-colors`}
+                        className={`px-6 py-2 bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 text-zinc-900 dark:text-white rounded text-sm font-medium transition-colors`}
                     >
-                        Done
+                        {t('settings.done')}
                     </button>
                 </div>
             </div>

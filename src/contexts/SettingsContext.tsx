@@ -1,7 +1,11 @@
 import React, { createContext, useContext, useState } from 'react';
 
+import en from '../locales/en.json';
+import ru from '../locales/ru.json';
+
 // Allow generic string for hex colors, but we can keep the union for documentation or presets if needed
 type AccentColor = string;
+type Language = 'en' | 'ru';
 
 interface SettingsState {
     ram: number;
@@ -14,13 +18,18 @@ interface SettingsState {
     setAccentColor: (val: AccentColor) => void;
     showConsole: boolean;
     setShowConsole: (val: boolean) => void;
-    installOptifine: boolean;
-    setInstallOptifine: (val: boolean) => void;
+    language: Language;
+    setLanguage: (val: Language) => void;
+    theme: 'dark' | 'light';
+    setTheme: (val: 'dark' | 'light') => void;
+    t: (key: string) => string;
     getAccentStyles: (type: 'bg' | 'text' | 'border' | 'ring' | 'hover') => { className?: string; style?: React.CSSProperties };
     getAccentClass: (tailwindClasses: string) => string;
 }
 
 const SettingsContext = createContext<SettingsState | undefined>(undefined);
+
+const translations: Record<Language, any> = { en, ru };
 
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     // Load from localStorage or defaults
@@ -29,7 +38,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [hideLauncher, setHideLauncherState] = useState(() => localStorage.getItem('settings_hideLauncher') === 'true');
     const [accentColor, setAccentColorState] = useState<AccentColor>(() => localStorage.getItem('settings_accentColor') || 'emerald');
     const [showConsole, setShowConsoleState] = useState(() => localStorage.getItem('settings_showConsole') !== 'false');
-    const [installOptifine, setInstallOptifineState] = useState(() => localStorage.getItem('settings_installOptifine') === 'true');
+    const [language, setLanguageState] = useState<Language>(() => (localStorage.getItem('settings_language') as Language) || 'en');
+    const [theme, setThemeState] = useState<'dark' | 'light'>(() => (localStorage.getItem('settings_theme') as 'dark' | 'light') || 'dark');
 
     // Persist changes
     const setRam = (val: number) => { setRamState(val); localStorage.setItem('settings_ram', val.toString()); };
@@ -37,7 +47,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const setHideLauncher = (val: boolean) => { setHideLauncherState(val); localStorage.setItem('settings_hideLauncher', val.toString()); };
     const setAccentColor = (val: AccentColor) => { setAccentColorState(val); localStorage.setItem('settings_accentColor', val); };
     const setShowConsole = (val: boolean) => { setShowConsoleState(val); localStorage.setItem('settings_showConsole', val.toString()); };
-    const setInstallOptifine = (val: boolean) => { setInstallOptifineState(val); localStorage.setItem('settings_installOptifine', val.toString()); };
+    const setLanguage = (val: Language) => { setLanguageState(val); localStorage.setItem('settings_language', val); };
+    const setTheme = (val: 'dark' | 'light') => { setThemeState(val); localStorage.setItem('settings_theme', val); };
+
+    // Translation helper
+    const t = (key: string): string => {
+        return translations[language][key] || key;
+    };
 
     // Helper: Is this a preset tailwind color?
     const isPreset = (color: string) => ['emerald', 'blue', 'purple', 'orange', 'rose'].includes(color);
@@ -114,7 +130,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             hideLauncher, setHideLauncher,
             accentColor, setAccentColor,
             showConsole, setShowConsole,
-            installOptifine, setInstallOptifine,
+            language, setLanguage,
+            theme, setTheme,
+            t,
             getAccentStyles,
             getAccentClass
         }}>

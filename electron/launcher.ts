@@ -10,7 +10,6 @@ import crypto from 'crypto';
 // removed downloadFile
 // ...
 
-import { OptiFineManager } from './optifine';
 import { NetworkManager } from './network';
 
 const FORGE_PROMOTIONS_URL = 'https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json';
@@ -18,13 +17,11 @@ const FORGE_PROMOTIONS_URL = 'https://files.minecraftforge.net/net/minecraftforg
 export class LauncherManager {
     private launcher: Client;
     private javaManager: JavaManager;
-    private optifineManager: OptiFineManager;
     public networkManager: NetworkManager;
 
     constructor() {
         this.launcher = new Client();
         this.javaManager = new JavaManager();
-        this.optifineManager = new OptiFineManager();
         this.networkManager = new NetworkManager();
     }
 
@@ -88,10 +85,13 @@ export class LauncherManager {
         // Offline Mode / Cache Check
         if (fs.existsSync(dest)) {
             const stats = fs.statSync(dest);
-            // Basic validity check (> 10KB)
-            if (stats.size > 10 * 1024) {
+            // Basic validity check (> 3MB for Forge Universal)
+            if (stats.size > 3 * 1024 * 1024) {
                 onLog(`Forge found locally (${(stats.size / 1024 / 1024).toFixed(2)} MB). Skipping download.`);
                 return;
+            } else {
+                onLog(`Forge file corrupted or too small (${(stats.size / 1024).toFixed(2)} KB). Redownloading...`);
+                try { fs.unlinkSync(dest); } catch (e) { }
             }
         }
 
@@ -161,7 +161,6 @@ export class LauncherManager {
         ram: number;
         gamePath?: string;
         hideLauncher?: boolean;
-        installOptifine?: boolean;
     }, onLog: (data: string) => void, onProgress: (data: any) => void, onClose: (code: number) => void, onGameStart?: () => void) {
 
         const rootPath = options.gamePath || path.join(app.getPath('userData'), 'minecraft_data');
@@ -213,21 +212,8 @@ export class LauncherManager {
                 throw e;
             }
             forgePath = forgeFile;
+            forgePath = forgeFile;
             onLog(`Forge configured: ${forgePath}`);
-
-            // 3.1 OptiFine (Only if Forge is active, usually)
-            if (options.installOptifine) {
-                try {
-                    await this.optifineManager.ensureInstalled(versionNumber, (msg) => onLog(msg));
-                } catch (e) {
-                    onLog(`[OptiFine Error] ${e}`);
-                }
-            } else {
-                // Cleanup if disabled
-                this.optifineManager.remove(versionNumber, (msg) => onLog(msg));
-            }
-        } else if (options.installOptifine) {
-            onLog('[Warn] OptiFine is enabled but Forge is OFF. OptiFine needs Forge (in this launcher) to be auto-loaded as a mod.');
         }
 
         // Mod downloading logic removed by request.
@@ -247,15 +233,47 @@ export class LauncherManager {
         // (e.g. if Launcher is installed in E:\Игры\...)
         const destInjectorPath = path.join(rootPath, 'authlib-injector.jar');
 
+        // Ensure mods folder exists
+        const modsPath = path.join(rootPath, 'mods');
+        try { fs.mkdirSync(modsPath, { recursive: true }); } catch (e) { }
+
         try {
             if (fs.existsSync(sourceInjectorPath)) {
                 onLog(`[Auth] Copying injector to safe path: ${destInjectorPath}`);
+                if (fs.existsSync(destInjectorPath)) {
+                    // Try to remove it first to ensure clean state, but ignore if locked
+                    try { fs.unlinkSync(destInjectorPath); } catch (e) { }
+                }
                 fs.copyFileSync(sourceInjectorPath, destInjectorPath);
             } else {
-                onLog(`[Auth Error] Injector jar not found at: ${sourceInjectorPath}`);
+                onLog(`[Auth Warning] Injector not found in resources. Downloading fallback...`);
+                // Inline fetch since we are inside a method
+                const url = 'https://github.com/yushijinhun/authlib-injector/releases/download/v1.2.5/authlib-injector-1.2.5.jar';
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Fetch failed: ${response.statusText}`);
+                const buffer = Buffer.from(await response.arrayBuffer());
+                // Try to write, ignore if locked (EBUSY) assuming it's already there and valid
+                try {
+                    fs.writeFileSync(destInjectorPath, buffer);
+                    onLog(`[Auth] Downloaded injector to: ${destInjectorPath}`);
+                } catch (e: any) {
+                    if (e.code === 'EBUSY' || e.code === 'EPERM') {
+                        onLog(`[Auth Info] Injector file locked (already running?), skipping write.`);
+                    } else {
+                        throw e;
+                    }
+                }
             }
-        } catch (e) {
-            onLog(`[Auth Error] Failed to copy injector: ${e}`);
+        } catch (e: any) {
+            if (e.code === 'EBUSY' || e.code === 'EPERM') {
+                onLog(`[Auth Info] Injector file locked, skipping copy/write.`);
+            } else {
+                onLog(`[Auth Error] Failed to prepare injector: ${e}`);
+                // Fallback: try to use dest if it exists (maybe old download)
+                if (!fs.existsSync(destInjectorPath)) {
+                    onLog("[Auth Critical] Injector missing. Game launch might fail.");
+                }
+            }
         }
 
         const proxyNuke = `-javaagent:${destInjectorPath}=http://127.0.0.1:25530`;
@@ -290,11 +308,11 @@ export class LauncherManager {
                 detached: false,
             }
         };
-        onLog(`[Launcher] Launching with options: ${JSON.stringify(opts, null, 2)}`);
-
         if (forgePath) {
             opts.forge = forgePath;
         }
+
+        onLog(`[Launcher] Launching with options: ${JSON.stringify(opts, null, 2)}`);
 
         console.log('Starting launch process within:', rootPath);
         onLog(`Preparing to launch version ${options.version}...`);

@@ -70,6 +70,9 @@
     ],
     "asarUnpack": [
       "**/*.node"
+    ],
+    "extraResources": [
+      "authlib-injector.jar"
     ]
   }
 }
