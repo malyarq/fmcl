@@ -241,8 +241,24 @@ export class LauncherManager {
         // This bypasses the HTTPS enforcement and allows us to approve any session.
         // In prod, jar is in resources/authlib-injector.jar. In dev, it's in root.
         const injectorBase = app.isPackaged ? process.resourcesPath : app.getAppPath();
-        const injectorPath = path.join(injectorBase, 'authlib-injector.jar');
-        const proxyNuke = `-javaagent:${injectorPath}=http://127.0.0.1:25530`;
+        const sourceInjectorPath = path.join(injectorBase, 'authlib-injector.jar');
+
+        // FIX: Copy to rootPath (Minecraft Data) to avoid encoding issues with Cyrillic paths 
+        // (e.g. if Launcher is installed in E:\Игры\...)
+        const destInjectorPath = path.join(rootPath, 'authlib-injector.jar');
+
+        try {
+            if (fs.existsSync(sourceInjectorPath)) {
+                onLog(`[Auth] Copying injector to safe path: ${destInjectorPath}`);
+                fs.copyFileSync(sourceInjectorPath, destInjectorPath);
+            } else {
+                onLog(`[Auth Error] Injector jar not found at: ${sourceInjectorPath}`);
+            }
+        } catch (e) {
+            onLog(`[Auth Error] Failed to copy injector: ${e}`);
+        }
+
+        const proxyNuke = `-javaagent:${destInjectorPath}=http://127.0.0.1:25530`;
 
         process.env.JAVA_TOOL_OPTIONS = proxyNuke;
 
