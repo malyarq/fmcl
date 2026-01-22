@@ -1,115 +1,18 @@
-import { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } from 'electron'
-import http from 'http'
-import crypto from 'crypto'
+import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
 // import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import { AuthServer } from './auth/server'
 
 // ... (imports)
 
 // ...
 
 // Auth Mock Server for Authlib Injector
-// Acts as a "Permissive Yggdrasil"
-// Generate RSA Keypair for signing (required by authlib-injector)
-const { publicKey } = crypto.generateKeyPairSync('rsa', {
-  modulusLength: 2048,
-  publicKeyEncoding: {
-    type: 'spki',
-    format: 'pem'
-  },
-  privateKeyEncoding: {
-    type: 'pkcs8',
-    format: 'pem'
-  }
-});
-
-const authServer = http.createServer((req, res) => {
-  // Authlib Injector might send Host header, so we just use 127.0.0.1:25530 as base
-  const url = new URL(req.url || '', `http://127.0.0.1:25530`);
-  console.log('[AuthMock] Request:', req.method, url.pathname);
-
-  // X-Authlib-Injector-Yggdrasil-Server: ...
-  if (req.headers['x-authlib-injector-yggdrasil-server']) {
-    res.setHeader('X-Authlib-Injector-Yggdrasil-Server', req.headers['x-authlib-injector-yggdrasil-server']);
-  }
-
-  // 1. Root / Metadata (Authlib Injector check)
-  // GET / (or /api/yggdrasil/...)
-  if (url.pathname === '/' || url.pathname === '/authserver/' || url.pathname === '/api/yggdrasil') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      meta: {
-        serverName: "OfflineMock",
-        implementationName: "OfflineMock",
-        implementationVersion: "1.0.0"
-      },
-      skinDomains: ["localhost"],
-      signaturePublickey: publicKey // Serve the generated PEM key
-    }));
-    return;
-  }
-
-  // 2. Session Join (Client -> Mojang)
-  // POST /sessionserver/session/minecraft/join
-  if (req.method === 'POST' && url.pathname.includes('/join')) {
-    res.writeHead(204);
-    res.end();
-    return;
-  }
-
-  // 3. Session HasJoined (Server -> Mojang)
-  // GET /sessionserver/session/minecraft/hasJoined
-  if (req.method === 'GET' && url.pathname.includes('/hasJoined')) {
-    const username = url.searchParams.get('username') || 'Unknown';
-    const md5 = crypto.createHash('md5');
-    md5.update(`OfflinePlayer:${username}`);
-    const buffer = md5.digest();
-    buffer[6] = (buffer[6] & 0x0f) | 0x30;
-    buffer[8] = (buffer[8] & 0x3f) | 0x80;
-    const uuid = buffer.toString('hex');
-
-    const responseCtx = {
-      id: uuid,
-      name: username,
-      properties: []
-    };
-
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(responseCtx));
-    return;
-  }
-
-  // 4. Batch Profile Lookup (Name -> UUID)
-  // POST /api/profiles/minecraft
-  if (req.method === 'POST' && url.pathname.includes('/profiles/minecraft')) {
-    // Read body to get names?
-    // For now just return empty or fake.
-    // Actually Client sends names, expects UUIDs.
-    // We can just return empty array if we don't care about skins in lobby.
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end('[]');
-    return;
-  }
-
-  // Default
-  res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end('{}');
-});
-
-authServer.on('error', (e: any) => {
-  if (e.code === 'EADDRINUSE') {
-    console.log('[AuthMock] Port 25530 busy. Assuming another instance is providing Auth.');
-  } else {
-    console.error('[AuthMock] Server Error:', e);
-  }
-});
-
-authServer.listen(25530, '127.0.0.1', () => {
-  console.log('[AuthMock] Permissive Yggdrasil running on 127.0.0.1:25530');
-});
+const authServer = new AuthServer(25530);
+authServer.start();
 import { LauncherManager } from './launcher'
-import { Updater } from './updater'
+// import { Updater } from './updater'
 import { SelfUpdater } from './self_updater'
 
 // const require = createRequire(import.meta.url)
@@ -207,19 +110,13 @@ app.whenReady().then(() => {
 
   // Tray Implementation
   const iconPath = path.join(process.env.VITE_PUBLIC, 'tray-icon.png');
-  // In production, we might need a .ico or proper sizing, but .svg/png works for now
   const tray = new Tray((nativeImage.createFromPath(iconPath)).resize({ width: 32, height: 32 }));
 
   const contextMenu = Menu.buildFromTemplate([
     { label: 'FriendLauncher', enabled: false },
     { type: 'separator' },
     { label: 'Show Window', click: () => win?.show() },
-    {
-      label: 'Quit', click: () => {
-        // Force quit
-        app.quit();
-      }
-    }
+    { label: 'Quit', click: () => app.quit() }
   ]);
 
   tray.setToolTip('FriendLauncher');
@@ -234,95 +131,26 @@ app.whenReady().then(() => {
     }
   });
 
-  let launcherManager: LauncherManager | null = null;
+  // --- Managers Initialization ---
+  let launcherManager: LauncherManager;
   try {
-    console.log('[Main] Initializing LauncherManager...');
+    console.log('[Main] Initializing Managers...');
     launcherManager = new LauncherManager();
     console.log('[Main] LauncherManager init success');
   } catch (e) {
     console.error('[Main] CRITICAL ERROR initializing LauncherManager:', e);
+    // Continue running to show UI error if possible, but launcher won't work
+    return;
   }
 
-  // Auth Mock Server to force Offline Mode gracefully
-  // Connection Refused -> AuthenticationUnavailableException -> "Maintenance" (Kick)
-  // 403 Forbidden -> InvalidCredentialsException -> "Offline" (Allow)
-  // Auth Mock Server & Proxy removed as they are ineffective for 1.12.2 Authlib.
-  // The correct solution is to use a Mod (Lan Server Properties) to disable Online Mode.
+  // Initialize updater
+  // const updater = new Updater(path.join(app.getPath('userData'), 'minecraft_data'));
 
-  // Initialize updater with fixed path for now (or dynamic based on modpack)
-  const updater = new Updater(path.join(app.getPath('userData'), 'minecraft_data'));
-
-  ipcMain.handle('launcher:launch', async (event, options) => {
-    if (!launcherManager) return;
-
-    const shouldHide = options.hideLauncher;
-    // Removed immediate hide logic here to prevent hiding on error
-
-    try {
-      await launcherManager.launchGame(
-        options,
-        (log) => event.sender.send('launcher:log', log),
-        (progress) => event.sender.send('launcher:progress', progress),
-        (code) => {
-          event.sender.send('launcher:close', code);
-          // Always restore window when game closes
-          if (shouldHide && win) {
-            win.show();
-            win.focus();
-          }
-        },
-        () => {
-          // Game Successfully Started
-          if (shouldHide && win) {
-            win.hide();
-          }
-        }
-      );
-      return { success: true }
-    } catch (error) {
-      // If launch fails, ensure window is back (though it shouldn't have hidden yet)
-      if (shouldHide && win) win.show();
-      console.error(error)
-      throw error
-    }
-  })
-
-  ipcMain.handle('updater:sync', async (_event, manifestUrl) => {
-    if (!win) return
-    try {
-      await updater.sync(manifestUrl, (status, progress) => {
-        win?.webContents.send('updater:progress', { status, progress })
-      })
-      return { success: true }
-    } catch (error) {
-      console.error(error)
-      throw error
-    }
-  })
-
-  // Network (P2P) Handlers
-  ipcMain.handle('network:host', async (_event, port) => {
-    if (!launcherManager) throw new Error('Launcher Manager failed to initialize.');
-    return await launcherManager.networkManager.host(port, (msg) => _event.sender.send('launcher:log', msg));
-  });
-
-  ipcMain.handle('network:join', async (_event, code) => {
-    if (!launcherManager) throw new Error('Launcher Manager failed to initialize.');
-    return await launcherManager.networkManager.join(code, (msg) => _event.sender.send('launcher:log', msg));
-  });
-
-  ipcMain.handle('network:stop', async (_event) => {
-    if (!launcherManager) return;
-    return await launcherManager.networkManager.stop((msg) => _event.sender.send('launcher:log', msg));
-  });
-
-  // Window Controls
-  ipcMain.handle('window:minimize', () => {
-    console.log('[Main] Minimizing window requested');
-    win?.minimize();
-  });
-
-  ipcMain.handle('window:close', () => {
-    win?.close();
-  });
+  // --- Register IPC Handlers ---
+  if (win && launcherManager) {
+    import('./ipc/ipcManager').then(({ IPCManager }) => {
+      IPCManager.register(win!, launcherManager, launcherManager.networkManager);
+      console.log('[Main] IPC Handlers Registered');
+    });
+  }
 })

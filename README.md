@@ -1,48 +1,128 @@
-# Friend Launcher (FMCL)
+# FriendLauncher 🎮
 
-Access your friend's world easily! A custom Minecraft launcher built with Electron, React, and Hyperswarm.
+![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Version](https://img.shields.io/badge/version-0.0.3-green.svg)
 
-## Features
+[English](#english) | [Русский](#russian)
 
-- **P2P Multiplayer**: Connect to your friend's LAN world over the internet using a sleek, pirate-bay style P2P tunnel. No port forwarding required!
-- **Offline Mode Support**: Includes built-in support for **Authlib Injector** and an internal Permissive Mock Authentication Server. This allows standard "Open to LAN" games (which are natively Online Mode) to work seamlessly with offline/cracked clients.
-- **Auto-Updates**: Automatically checks for updates from this repository's releases and updates itself.
-- **Modern UI**: Dark-themed, responsive interface built with React and Tailwind CSS.
+---
 
-## How it Works
+<a name="english"></a>
+# English 🇺🇸
 
-1. **Host**: Launches the game, opens a world to LAN. The launcher creates a P2P tunnel (Hyperswarm) securely routing traffic to the LAN port.
-2. **Join**: Enters the P2P connection code. The launcher connects to the host via the P2P swarm and creates a local tunnel. The player joins `localhost:randomPort`.
-3. **Authentication**: The launcher uses `authlib-injector.jar` (downloaded automatically) to hijack the game's authentication calls. It redirects them to an internal "Mock Yggdrasil" server inside the Electron app. This server approves all sessions, bypassing Mojang's online checks.
+**FriendLauncher** is a modern, lightweight, and collaborative Minecraft Launcher allowing you to play "LAN" worlds with friends over the internet seamlessly. No need for port forwarding, static IPs, or external VPN tools like Hamachi.
 
-## Development
+## ✨ Key Features
+
+- **🌐 Easy P2P Multiplayer (FriendTunnel)**:
+  - Built-in tunneling system using **Hyperswarm**.
+  - Host a world, generate a code, and friends can join as if they were on your local Wi-Fi.
+  - Bypass NAT and firewall restrictions automatically.
+- **🔓 Offline/Cracked Support**:
+  - Full support for offline accounts ("Pirate" mode).
+  - Uses an internal mock authentication server via **authlib-injector** to fully emulate a valid session.
+- **🛠 Modding Ready**:
+  - Auto-detection and installation of **Forge**.
+  - Smart version management (Legacy - Modern versions).
+- **⚡ Modern Tech Stack**:
+  - Built on **Electron** + **React** for a performant and beautiful UI.
+  - **Vite** powered build system.
+
+## 🚀 How It Works
+
+### The P2P Networking
+FriendLauncher removes the headache of setting up servers. It treats the internet like a LAN room.
+1. **Host**: When you click "Host" in the launcher, it joins a distributed P2P network (DHT) with a unique topic (Room Code). It proxies your local Minecraft LAN port (e.g., 54321) through this P2P stream.
+2. **Join**: Your friend enters the Room Code. Their launcher finds your computer in the swarm, creates a local server on their machine, and tunnels the traffic to you.
+3. **Playing**: To Minecraft, it looks like a local connection (`localhost:random_port`), but the data travels securely peer-to-peer over the internet.
+
+## 📦 Installation & Development
 
 ### Prerequisites
-- Node.js (v18+)
-- npm
+- [Node.js](https://nodejs.org/) (v16 or higher)
+- [Java](https://www.java.com/) (Java 8 for older versions, Java 17 for 1.18+)
 
 ### Setup
-```bash
-git clone https://github.com/malyarq/fmcl.git
-cd fmcl
-npm install
-```
 
-### Run Locally
 ```bash
+# 1. Clone the repository
+git clone https://github.com/your-username/friend-launcher.git
+
+# 2. Install dependencies
+npm install
+
+# 3. Start Development Mode
+# This runs the Vite renderer and Electron main process concurrently
 npm run dev
 ```
 
-### Build for Release
+### Building for Production
+
+To create a standalone `.exe` installer:
+
 ```bash
 npm run build
 ```
-The executable will be in the `release` (or `dist`) folder.
+The output will be in the `release/` folder.
 
-## Troubleshooting
+## ⚠️ Disclaimer
+This project includes tools (`authlib-injector`) to bypass official Minecraft authentication. It is intended for educational purposes and for players who cannot access official services. Please support Mojang/Microsoft by purchasing the game if you can.
 
-- **"Invalid Session"**: Ensure `authlib-injector.jar` is present in the launcher root. The launcher should download it automatically.
-- **Connection Issues**: P2P requires a reasonably open NAT. Symmetric NATs might have trouble connecting.
+---
 
-## License
-MIT
+<a name="russian"></a>
+# Русский 🇷🇺
+
+**FriendLauncher** — это современный, легкий лаунчер для Minecraft, созданный с одной главной целью: играть с друзьями по сети так же просто, как в одной комнате. Забудьте об открытии портов, белых IP и Hamachi.
+
+## ✨ Основные Возможности
+
+- **🌐 Простой P2P Мультиплеер**:
+  - Встроенная система туннелирования на базе **Hyperswarm**.
+  - Создайте мир, скиньте другу **Код Комнаты**, и он подключится к вам через интернет, как по локальной сети.
+  - Работает через любые NAT и брандмауэры.
+- **🔓 Свободный Режим (Offline/Pirate)**:
+  - Полная поддержка оффлайн-аккаунтов.
+  - Использует **authlib-injector** и встроенный эмулятор сервера авторизации для корректной работы скинов и сетевой игры.
+- **🛠 Поддержка Модов**:
+  - Автоматическая установка **Forge** одним кликом.
+  - Поддержка старых и новых версий игры.
+- **⚡ Современный Стек**:
+  - Интерфейс на **React** + **TailwindCSS**.
+  - Быстрое и отзывчивое приложение на **Electron**.
+
+## 🚀 Как это работает?
+
+### Магия Сети (P2P)
+FriendLauncher превращает интернет в локальную сеть.
+1. **Хост**: Когда вы создаете лобби в лаунчере, он регистрируется в децентрализованной сети (DHT) с уникальным кодом. Весь трафик с вашего LAN-порта Minecraft передается через зашифрованный P2P канал.
+2. **Игрок**: Друг вводит код. Его лаунчер находит ваш ПК в сети, поднимает локальный сервер-мост и пересылает данные.
+3. **Игра**: Minecraft "думает", что вы играете по локалке, подключаясь к `localhost`, хотя вы можете быть в разных городах.
+
+## 📦 Установка и Разработка
+
+### Требования
+- [Node.js](https://nodejs.org/) (v16 и выше)
+- [Java](https://www.java.com/) (Java 8 для старых версий, Java 17 для 1.18+)
+
+### Запуск проекта
+
+```bash
+# 1. Установите зависимости
+npm install
+
+# 2. Запуск в режиме разработки
+# Запускает и интерфейс (Vite), и ядро (Electron)
+npm run dev
+```
+
+### Сборка (Build)
+
+Для создания установочного файла `.exe`:
+
+```bash
+npm run build
+```
+Готовый файл появится в папке `release/`.
+
+## ⚠️ Отказ от ответственности
+Проект содержит инструменты для обхода официальной авторизации (`authlib-injector`). Это сделано для удобства и образовательных целей. Если у вас есть возможность, пожалуйста, поддержите разработчиков игры (Mojang/Microsoft), купив лицензионную версию.
