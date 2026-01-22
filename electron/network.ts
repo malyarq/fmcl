@@ -1,179 +1,11 @@
-// @ts-ignore
 import Hyperswarm from 'hyperswarm';
-// @ts-ignore
 import b4a from 'b4a';
-// @ts-ignore
 import pump from 'pump';
-
 import crypto from 'crypto';
 import net from 'net';
-import { EventEmitter } from 'events';
-import { Duplex } from 'stream';
+import { Muxer, MuxerStream } from './network/muxer';
 
-// Simple Muxer to handle multiple TCP streams over one P2P connection
-// Header: [Length (2 bytes BE)][SessionID (2 bytes BE)][Type (1 byte)]
-// Type: 0 = DATA, 1 = OPEN, 2 = CLOSE
-const HEADER_SIZE = 5;
-const CMD_DATA = 0;
 const CMD_OPEN = 1;
-const CMD_CLOSE = 2;
-
-class MuxerStream extends Duplex {
-    private muxer: Muxer;
-    public sessionId: number;
-
-    constructor(muxer: Muxer, sessionId: number) {
-        super();
-        this.muxer = muxer;
-        this.sessionId = sessionId;
-    }
-
-    _write(chunk: Buffer, _encoding: string, callback: (err?: Error) => void) {
-        try {
-            this.muxer.send(this.sessionId, CMD_DATA, chunk);
-            callback();
-        } catch (err: any) {
-            callback(err);
-        }
-    }
-
-    _read(_size: number) {
-        // Data is pushed via pushData called by Muxer
-    }
-
-    _destroy(err: Error | null, callback: (err: Error | null) => void) {
-        if (!err) {
-            this.muxer.send(this.sessionId, CMD_CLOSE);
-        }
-        this.muxer.removeStream(this.sessionId);
-        callback(err);
-    }
-
-    public pushData(data: Buffer) {
-        this.push(data);
-    }
-}
-
-class Muxer extends EventEmitter {
-    private conn: any;
-    private buffer: Buffer;
-    private processing: boolean = false;
-    private streams: Map<number, MuxerStream> = new Map();
-
-    constructor(conn: any) {
-        super();
-        this.conn = conn;
-        this.buffer = b4a.alloc(0);
-
-        // Handle incoming raw P2P data
-        conn.on('data', (chunk: Buffer) => {
-            this.buffer = b4a.concat([this.buffer, chunk]);
-            this.process();
-        });
-
-        conn.on('close', () => {
-            this.emit('close');
-            // Destroy all streams
-            for (const stream of this.streams.values()) {
-                stream.destroy();
-            }
-            this.streams.clear();
-        });
-
-        conn.on('error', (err: any) => {
-            this.emit('error', err);
-            for (const stream of this.streams.values()) {
-                stream.destroy(err);
-            }
-            this.streams.clear();
-        });
-    }
-
-    private process() {
-        if (this.processing) return;
-        this.processing = true;
-
-        while (this.buffer.length >= HEADER_SIZE) {
-            // Read length (first 2 bytes)
-            const length = this.buffer.readUInt16BE(0);
-
-            // Check if we have the full packet
-            if (this.buffer.length < length) {
-                break; // Wait for more data
-            }
-
-            // Extract packet
-            const packet = this.buffer.subarray(0, length);
-            this.buffer = this.buffer.subarray(length);
-
-            // Parse Header
-            const sessionId = packet.readUInt16BE(2);
-            const type = packet.readUInt8(4);
-            const data = packet.subarray(HEADER_SIZE);
-
-            // Handle Packet
-            if (type === CMD_DATA) {
-                const stream = this.streams.get(sessionId);
-                if (stream) {
-                    stream.pushData(data);
-                }
-            } else if (type === CMD_OPEN) {
-                if (this.streams.has(sessionId)) {
-                    // Stream already exists? Reset?
-                    const stream = this.streams.get(sessionId)!;
-                    stream.destroy();
-                }
-                const stream = new MuxerStream(this, sessionId);
-                this.streams.set(sessionId, stream);
-                this.emit('stream', stream);
-            } else if (type === CMD_CLOSE) {
-                const stream = this.streams.get(sessionId);
-                if (stream) {
-                    stream.destroy(); // Will remove from map
-                }
-            }
-        }
-
-        this.processing = false;
-    }
-
-    public send(sessionId: number, type: number, data?: Buffer) {
-        const payloadLength = data ? data.length : 0;
-        const totalLength = HEADER_SIZE + payloadLength;
-
-        // Safety check for max packet size (uint16 = 65535)
-        if (totalLength > 65535) {
-            if (data && data.length > 60000) {
-                const chunk1 = data.subarray(0, 60000);
-                const chunk2 = data.subarray(60000);
-                this.send(sessionId, type, chunk1);
-                this.send(sessionId, type, chunk2);
-                return;
-            }
-        }
-
-        const header = b4a.alloc(HEADER_SIZE);
-        header.writeUInt16BE(totalLength, 0);
-        header.writeUInt16BE(sessionId, 2);
-        header.writeUInt8(type, 4);
-
-        if (data) {
-            this.conn.write(b4a.concat([header, data]));
-        } else {
-            this.conn.write(header);
-        }
-    }
-
-    public createStream(sessionId: number): MuxerStream {
-        const stream = new MuxerStream(this, sessionId);
-        this.streams.set(sessionId, stream);
-        return stream;
-    }
-
-    public removeStream(sessionId: number) {
-        this.streams.delete(sessionId);
-    }
-}
 
 export class NetworkManager {
     private swarm: any;
@@ -186,13 +18,21 @@ export class NetworkManager {
         this.swarm = new Hyperswarm();
     }
 
-    // HOSTING
+    /**
+     * Start Hosting a LAN world.
+     * @param lanPort The port Minecraft is listening on (e.g., 25565 or random).
+     * @param onLog Logger callback.
+     * @returns The generated Room Code.
+     */
     public async host(lanPort: number, onLog: (msg: string) => void): Promise<string> {
         await this.stop(onLog);
         this._lanPort = lanPort;
 
         const topicBuffer = crypto.randomBytes(32);
         const topicHex = b4a.toString(topicBuffer, 'hex');
+
+        // Clean up any existing connection listeners
+        this.swarm.removeAllListeners('connection');
 
         // Host acts as Server
         const discoveryKey = this.swarm.join(topicBuffer, { server: true, client: false });
@@ -214,13 +54,12 @@ export class NetworkManager {
                 pump(stream, socket, stream, (err: any) => {
                     if (err) {
                         // onLog(`[Network] Stream ${stream.sessionId} closed with error: ${err.message}`);
-                    } else {
-                        // onLog(`[Network] Stream ${stream.sessionId} finished.`);
                     }
+                    socket.destroy();
                 });
             });
 
-            muxer.on('close', () => {
+            muxer.once('close', () => {
                 onLog('[Network] Peer disconnected.');
             });
         });
@@ -230,7 +69,12 @@ export class NetworkManager {
         return topicHex;
     }
 
-    // JOINING
+    /**
+     * Join a hosted Room Code.
+     * @param code The Room Code from host.
+     * @param onLog Logger callback.
+     * @returns The local port to connect Minecraft to (localhost:PORT).
+     */
     public async join(code: string, onLog: (msg: string) => void): Promise<number> {
         await this.stop(onLog);
 
@@ -239,20 +83,36 @@ export class NetworkManager {
         await discoveryKey.flushed();
 
         const server = net.createServer(async (socket) => {
-            // 1. Get Peer Connection
-            let conn = this.swarm.connections.values().next().value;
-
-            // Retry logic
-            if (!conn) {
-                for (let i = 0; i < 10; i++) {
-                    await new Promise(r => setTimeout(r, 500));
-                    conn = this.swarm.connections.values().next().value;
-                    if (conn) break;
+            // 1. Wait for Peer Connection with timeout using event-based approach
+            const connectionPromise = new Promise<any>((resolve, reject) => {
+                // Check if already connected
+                const existingConn = this.swarm.connections.values().next().value;
+                if (existingConn) {
+                    resolve(existingConn);
+                    return;
                 }
-            }
 
-            if (!conn) {
-                onLog('[Network] No peers found. Is Host online?');
+                // Wait for new connection event
+                const onConnection = (conn: any) => {
+                    this.swarm.off('connection', onConnection);
+                    clearTimeout(timeout);
+                    resolve(conn);
+                };
+
+                this.swarm.on('connection', onConnection);
+
+                // Set timeout
+                const timeout = setTimeout(() => {
+                    this.swarm.off('connection', onConnection);
+                    reject(new Error('Connection timeout: No peer found after 5 seconds'));
+                }, 5000);
+            });
+
+            let conn;
+            try {
+                conn = await connectionPromise;
+            } catch (err: any) {
+                onLog(`[Network] ${err.message}. Is Host online?`);
                 socket.end();
                 return;
             }
@@ -269,11 +129,7 @@ export class NetworkManager {
             const sessionId = Math.floor(Math.random() * 60000); // Random ID
             const stream = muxer.createStream(sessionId);
 
-            // Initiate connection by sending Open command (stream creation does not auto-send open yet in my impl? 
-            // wait, MuxerStream doesn't send OPEN in constructor.
-            // But we need to tell Host to expect this.
-            // My new Muxer logic: CMD_OPEN creates stream on receiver.
-            // So we MUST send OPEN.
+            // Initiate connection by sending Open command
             muxer.send(sessionId, CMD_OPEN);
 
             // 4. Pump it

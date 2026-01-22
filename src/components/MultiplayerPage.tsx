@@ -1,184 +1,211 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
+import { Modal } from './ui/Modal';
+import { Button } from './ui/Button';
+import { Input } from './ui/Input';
+import { cn } from '../utils/cn';
 
-const MultiplayerPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
-    const { getAccentStyles, getAccentClass } = useSettings();
-    const [mode, setMode] = useState<'host' | 'join'>('host');
-    const [port, setPort] = useState('25565'); // Default Minecraft LAN port
-    const [roomCode, setRoomCode] = useState('');
-    const [joinCode, setJoinCode] = useState('');
-    const [mappedPort, setMappedPort] = useState<number | null>(null);
+interface MultiplayerPageProps {
+    onBack: () => void;
+}
+
+const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
+    const { t, getAccentStyles } = useSettings();
+    const [mode, setMode] = useState<'host' | 'join'>(() => (localStorage.getItem('mp_mode') as 'host' | 'join') || 'host');
+    const [port, setPort] = useState(() => localStorage.getItem('mp_host_port') || '25565');
+    const [roomCode, setRoomCode] = useState(() => localStorage.getItem('mp_room_code') || '');
+    const [joinCode, setJoinCode] = useState(() => localStorage.getItem('mp_join_code') || '');
+    const [mappedPort, setMappedPort] = useState<number | null>(() => {
+        const stored = localStorage.getItem('mp_mapped_port');
+        return stored ? parseInt(stored) : null;
+    });
     const [status, setStatus] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => { localStorage.setItem('mp_mode', mode); }, [mode]);
+    useEffect(() => { localStorage.setItem('mp_host_port', port); }, [port]);
+    useEffect(() => { localStorage.setItem('mp_join_code', joinCode); }, [joinCode]);
+    useEffect(() => { localStorage.setItem('mp_room_code', roomCode); }, [roomCode]);
+    useEffect(() => {
+        if (mappedPort) localStorage.setItem('mp_mapped_port', mappedPort.toString());
+        else localStorage.removeItem('mp_mapped_port');
+    }, [mappedPort]);
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        setStatus('Copied to clipboard!');
+        setStatus(t('general.copied'));
         setTimeout(() => setStatus(''), 2000);
     };
 
     const handleHost = async () => {
-        if (!window.networkAPI) {
-            setStatus('Error: Network API not loaded. Restart Launcher.');
+        if (!(window as any).networkAPI) {
+            setStatus('Error: Network API not loaded.');
             return;
         }
-        setStatus('Publishing room...');
+        setIsLoading(true);
+        setStatus(t('multiplayer.publishing'));
         try {
-            const code = await window.networkAPI.host(parseInt(port) || 25565);
+            const code = await (window as any).networkAPI.host(parseInt(port) || 25565);
             setRoomCode(code);
-            setStatus('Room created! Share code with friend.');
+            setStatus(t('multiplayer.room_active'));
         } catch (e: any) {
             setStatus(`Error: ${e.message}`);
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const handleJoin = async () => {
-        if (!window.networkAPI) {
-            setStatus('Error: Network API not loaded. Restart Launcher.');
+        if (!(window as any).networkAPI) {
+            setStatus('Error: Network API not loaded.');
             return;
         }
-        setStatus('Joining room...');
+        setIsLoading(true);
+        setStatus(t('multiplayer.joining'));
         try {
-            const localPort = await window.networkAPI.join(joinCode);
+            const localPort = await (window as any).networkAPI.join(joinCode);
             setMappedPort(localPort);
-            setStatus(`Connected! Join connection at localhost:${localPort}`);
+            setStatus(`${t('multiplayer.tunnel_established')} localhost:${localPort}`);
         } catch (e: any) {
             setStatus(`Error: ${e.message}`);
+        } finally {
+            setIsLoading(false);
         }
     };
 
     const handleStop = async () => {
-        await window.networkAPI.stop();
+        await (window as any).networkAPI.stop();
         setRoomCode('');
         setMappedPort(null);
-        setStatus('Session stopped.');
+        setStatus(t('multiplayer.session_stopped'));
     };
 
-    const buttonStyle = `w-full py-2 rounded-lg font-bold transition-transform active:scale-95 ${getAccentClass('bg-XXX-600 hover:bg-XXX-500')} text-white`;
-
     return (
-        <div className="flex flex-col h-full text-white/90">
-            {/* Header */}
-            <div className="flex items-center gap-4 mb-6">
-                <button
-                    onClick={onBack}
-                    className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                >
-                    ←
-                </button>
-                <h2 className="text-2xl font-bold">Multiplayer (Built-in Tunnel)</h2>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex bg-black/40 p-1 rounded-xl mb-6">
-                <button
-                    onClick={() => setMode('host')}
-                    className={`flex-1 py-2 rounded-lg font-medium transition-all ${mode === 'host' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
-                        }`}
-                >
-                    Host Game
-                </button>
-                <button
-                    onClick={() => setMode('join')}
-                    className={`flex-1 py-2 rounded-lg font-medium transition-all ${mode === 'join' ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white'
-                        }`}
-                >
-                    Join Game
-                </button>
-            </div>
-
-            {/* Content */}
-            <div className="bg-black/40 backdrop-blur-md rounded-2xl border border-white/10 p-6 flex-1 flex flex-col items-center justify-center">
-
-                {mode === 'host' ? (
-                    <div className="w-full max-w-sm space-y-4">
-                        <p className="text-sm text-white/60 text-center mb-4">
-                            1. Open your world to LAN in Minecraft.<br />
-                            2. Enter the port below (usually printed in chat).
-                        </p>
-
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-1">LAN Port</label>
-                            <input
-                                type="text"
-                                value={port}
-                                onChange={(e) => setPort(e.target.value)}
-                                className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-white/30 text-center text-xl font-mono"
-                                placeholder="e.g. 25565"
-                            />
-                        </div>
-
-                        {!roomCode && (
-                            <button onClick={handleHost} className={buttonStyle} style={getAccentStyles('bg')?.style}>
-                                Create Room
-                            </button>
-                        )}
-
-                        {roomCode && (
-                            <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-4 text-center">
-                                <p className="text-green-300 font-bold mb-2">Room Active!</p>
-                                <div
-                                    onClick={() => copyToClipboard(roomCode)}
-                                    className="bg-black/50 p-2 rounded cursor-pointer hover:bg-black/60 transition-colors font-mono text-xs break-all"
-                                >
-                                    {roomCode}
-                                </div>
-                                <p className="text-xs text-green-400 mt-2">Click code to copy</p>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="w-full max-w-sm space-y-4">
-                        <p className="text-sm text-white/60 text-center mb-4">
-                            Paste the Room Code from your friend to connect.
-                        </p>
-
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-white/50 mb-1">Room Code</label>
-                            <input
-                                type="text"
-                                value={joinCode}
-                                onChange={(e) => setJoinCode(e.target.value)}
-                                className="w-full bg-black/50 border border-white/10 rounded-lg px-4 py-3 focus:outline-none focus:border-white/30 font-mono text-xs"
-                                placeholder="Paste long code here..."
-                            />
-                        </div>
-
-                        {!mappedPort && (
-                            <button onClick={handleJoin} className={buttonStyle} style={getAccentStyles('bg')?.style}>
-                                Join Room
-                            </button>
-                        )}
-
-                        {mappedPort && (
-                            <div className="bg-blue-500/20 border border-blue-500/30 rounded-xl p-4 text-center">
-                                <p className="text-blue-300 font-bold mb-2">Tunnel Established!</p>
-                                <p className="text-sm text-white/80">
-                                    Direct Connect in Minecraft to:
-                                </p>
-                                <p className="text-xl font-mono font-bold text-white mt-2 select-all">
-                                    localhost:{mappedPort}
-                                </p>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* Status / Stop */}
-                <div className="mt-6 w-full text-center space-y-4">
-                    {status && <p className="text-amber-400 text-sm animate-pulse">{status}</p>}
-
-                    {(roomCode || mappedPort) && (
+        <Modal
+            isOpen={true}
+            onClose={onBack}
+            title={t('multiplayer.title')}
+            className="max-w-md"
+        >
+            <div className="flex flex-col gap-6">
+                {/* Mode Switcher */}
+                <div className="flex bg-zinc-100 dark:bg-zinc-900/50 p-1 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                    {['host', 'join'].map((m) => (
                         <button
-                            onClick={handleStop}
-                            className="text-red-400 hover:text-red-300 text-sm underline"
+                            key={m}
+                            onClick={() => setMode(m as any)}
+                            className={cn(
+                                "flex-1 py-2 text-sm font-bold uppercase rounded-md transition-all",
+                                mode === m
+                                    ? cn("shadow-md text-white", getAccentStyles('bg').className)
+                                    : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                            )}
+                            style={mode === m ? getAccentStyles('bg').style : undefined}
                         >
-                            Stop Session
+                            {t(`multiplayer.${m}`)}
                         </button>
+                    ))}
+                </div>
+
+                {/* Content Area */}
+                <div className="min-h-[250px] flex flex-col justify-center">
+                    {mode === 'host' ? (
+                        <div className="space-y-4">
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400 text-center px-4 whitespace-pre-line">
+                                {t('multiplayer.host_desc')}
+                            </p>
+
+                            {!roomCode ? (
+                                <>
+                                    <Input
+                                        label={t('multiplayer.lan_port')}
+                                        value={port}
+                                        onChange={(e) => setPort(e.target.value)}
+                                        placeholder="25565"
+                                        className="text-center font-mono"
+                                    />
+                                    <Button onClick={handleHost} isLoading={isLoading} className="w-full">
+                                        {t('multiplayer.create_room')}
+                                    </Button>
+                                </>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div
+                                        onClick={() => copyToClipboard(roomCode)}
+                                        className={cn(
+                                            "border rounded-xl p-4 text-center cursor-pointer hover:brightness-95 dark:hover:brightness-110 transition-all group",
+                                            getAccentStyles('soft-bg').className,
+                                            getAccentStyles('soft-border').className
+                                        )}
+                                        style={{
+                                            ...getAccentStyles('soft-bg').style,
+                                            ...getAccentStyles('soft-border').style
+                                        }}
+                                    >
+                                        <p className={cn("font-bold mb-2 uppercase text-xs tracking-wider", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.room_active')}</p>
+                                        <p className="font-mono text-sm break-all text-zinc-900 dark:text-zinc-100 group-hover:scale-105 transition-transform">{roomCode}</p>
+                                        <p className={cn("text-[10px] mt-2 opacity-70", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.click_copy')}</p>
+                                    </div>
+                                    <Button variant="danger" onClick={handleStop} className="w-full">
+                                        {t('multiplayer.stop')}
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <p className="text-sm text-zinc-600 dark:text-zinc-400 text-center px-4">
+                                {t('multiplayer.join_desc')}
+                            </p>
+
+                            {!mappedPort ? (
+                                <>
+                                    <Input
+                                        label={t('multiplayer.room_code')}
+                                        value={joinCode}
+                                        onChange={(e) => setJoinCode(e.target.value)}
+                                        placeholder={t('multiplayer.code_placeholder')}
+                                        className="font-mono text-center text-xs"
+                                    />
+                                    <Button onClick={handleJoin} isLoading={isLoading} className="w-full">
+                                        {t('multiplayer.join_room')}
+                                    </Button>
+                                </>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className={cn(
+                                        "border rounded-xl p-4 text-center",
+                                        getAccentStyles('soft-bg').className,
+                                        getAccentStyles('soft-border').className
+                                    )}
+                                        style={{
+                                            ...getAccentStyles('soft-bg').style,
+                                            ...getAccentStyles('soft-border').style
+                                        }}
+                                    >
+                                        <p className={cn("font-bold mb-2 uppercase text-xs tracking-wider", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.tunnel_established')}</p>
+                                        <p className="text-xl font-mono font-bold text-zinc-900 dark:text-white select-all">
+                                            localhost:{mappedPort}
+                                        </p>
+                                        <p className={cn("text-xs mt-2 opacity-70", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.direct_connect')}</p>
+                                    </div>
+                                    <Button variant="danger" onClick={handleStop} className="w-full">
+                                        {t('multiplayer.stop')}
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
 
+                {/* Status Message */}
+                {status && (
+                    <div className="text-center">
+                        <p className="text-amber-500 text-xs font-medium animate-pulse">{status}</p>
+                    </div>
+                )}
             </div>
-        </div>
+        </Modal>
     );
 };
 
