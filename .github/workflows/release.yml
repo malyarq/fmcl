@@ -56,6 +56,7 @@ jobs:
 
       - name: Get version from tag
         id: get_version
+        shell: bash
         run: |
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             VERSION="${{ github.event.inputs.version }}"

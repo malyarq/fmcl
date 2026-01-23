@@ -261,7 +261,7 @@ export class JavaManager {
                     onProgress(`Found Java runtime using target: ${tryTarget}`);
                     break;
                 } catch (e) {
-                    lastError = e;
+                    lastError = e instanceof Error ? e : new Error(String(e));
                     continue;
                 }
             }

@@ -41,7 +41,6 @@ export class Updater {
         if (!response.ok) throw new Error(`Failed to download ${url}: ${response.statusText}`);
 
         const fileStream = fs.createWriteStream(destPath);
-        // @ts-expect-error - response.body is a ReadableStream which is compatible with Readable.fromWeb
         if (!response.body) throw new Error('No body');
         // @ts-expect-error - response.body is a ReadableStream which is compatible with Readable.fromWeb
         await pipeline(Readable.fromWeb(response.body), fileStream);

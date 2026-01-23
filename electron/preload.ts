@@ -46,8 +46,8 @@ interface LaunchOptions {
 }
 
 interface ProgressInfo {
-  percent: number;
-  transferred: number;
+  type: string;
+  task: number;
   total: number;
 }
 

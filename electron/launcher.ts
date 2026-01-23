@@ -17,7 +17,7 @@ import { getOfflineUUID, offline } from '@xmcl/user';
 import { createRequire } from 'node:module';
 import { JavaManager } from './java';
 import { NetworkManager } from './network';
-import { Agent, interceptors } from 'undici';
+import { Agent, interceptors, type Dispatcher } from 'undici';
 import { DefaultRangePolicy } from '@xmcl/file-transfer';
 import os from 'node:os';
 import crypto from 'node:crypto';
@@ -74,7 +74,7 @@ export class LauncherManager {
         this.networkManager = new NetworkManager();
     }
 
-    private createDispatcher(maxSockets: number, retryCount = 5, maxRedirections = 5): unknown {
+    private createDispatcher(maxSockets: number, retryCount = 5, maxRedirections = 5): Dispatcher {
         return new Agent({
             connections: maxSockets,
             connectTimeout: DEFAULT_CONNECT_TIMEOUT,
@@ -146,9 +146,11 @@ export class LauncherManager {
     }
 
     private recordBadHosts(err: unknown, onLog: (data: string) => void) {
-        const errors = Array.isArray(err?.errors) ? err.errors : [err];
+        const errObj = err && typeof err === 'object' ? err as { errors?: unknown[]; url?: string } : null;
+        const errors = Array.isArray(errObj?.errors) ? errObj.errors : [err];
         for (const item of errors) {
-            const url = item?.url;
+            const itemObj = item && typeof item === 'object' ? item as { url?: string } : null;
+            const url = itemObj?.url;
             if (typeof url !== 'string') continue;
             const origin = this.getOrigin(url);
             if (!this.badDownloadHosts.has(origin)) {
@@ -173,9 +175,9 @@ export class LauncherManager {
                 const { throwOnError: _ignored, maxRedirections: _drop, ...rest } = opts;
                 const headers = rest.headers;
                 if (headers && typeof headers === 'object' && !Array.isArray(headers)) {
-                    const normalized = { ...headers };
-                    const hasUserAgent = Object.keys(normalized).some((key) => key.toLowerCase() === 'user-agent');
-                    if (!hasUserAgent) normalized['user-agent'] = DEFAULT_USER_AGENT;
+                const normalized: Record<string, string> = { ...headers as Record<string, string> };
+                const hasUserAgent = Object.keys(normalized).some((key) => key.toLowerCase() === 'user-agent');
+                if (!hasUserAgent) normalized['user-agent'] = DEFAULT_USER_AGENT;
                     return { ...rest, headers: normalized };
                 }
                 if (!headers) {
@@ -636,14 +638,14 @@ export class LauncherManager {
             return value;
         };
         for (const lib of libraries) {
-            if (lib?.url) lib.url = patchValue(lib.url);
+            if (lib?.url) lib.url = patchValue(lib.url) as string | undefined;
             const artifact = lib?.downloads?.artifact;
-            if (artifact?.url) artifact.url = patchValue(artifact.url);
+            if (artifact?.url) artifact.url = patchValue(artifact.url) as string | undefined;
             const classifiers = lib?.downloads?.classifiers;
             if (classifiers && typeof classifiers === 'object') {
                 for (const key of Object.keys(classifiers)) {
                     const entry = classifiers[key];
-                    if (entry?.url) entry.url = patchValue(entry.url);
+                    if (entry?.url) entry.url = patchValue(entry.url) as string | undefined;
                 }
             }
         }
@@ -663,10 +665,11 @@ export class LauncherManager {
 
     private formatTaskError(err: unknown): string[] {
         if (!err) return ['Unknown error'];
-        if (err && typeof err === 'object' && 'errors' in err && Array.isArray(err.errors)) {
-            return err.errors.map((e: unknown, index: number) => {
+        const errObj = err && typeof err === 'object' ? err as { errors?: unknown[] } : null;
+        if (errObj && 'errors' in errObj && Array.isArray(errObj.errors)) {
+            return errObj.errors.map((e: unknown, index: number) => {
                 const message = e instanceof Error ? e.message : String(e);
-                return `(${index + 1}/${err.errors.length}) ${message}`;
+                return `(${index + 1}/${errObj.errors!.length}) ${message}`;
             });
         }
         if (err instanceof Error && err.cause) {
@@ -755,11 +758,11 @@ export class LauncherManager {
         if (fs.existsSync(versionJson)) return;
         const list = await this.fetchVersionList(provider) as { versions: VersionEntry[] };
         const versionMeta = list.versions.find((v: VersionEntry) => v.id === versionId);
-        if (!versionMeta) {
+        if (!versionMeta || !versionMeta.url) {
             throw new Error(`Minecraft version ${versionId} not found in official version list.`);
         }
 
-        const task = installMinecraftTask(versionMeta, rootPath, downloadOptions);
+        const task = installMinecraftTask(versionMeta as { id: string; url: string }, rootPath, downloadOptions);
         await this.runTaskWithProgress(task, onProgress, onLog, `Installing Minecraft ${versionId}...`);
     }
 
@@ -930,7 +933,8 @@ export class LauncherManager {
             return supported;
         } catch (e: unknown) {
             const elapsed = Date.now() - startTime;
-            console.error(`[OptiFine] Failed to get supported versions after ${elapsed}ms:`, e?.message || e);
+            const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+            console.error(`[OptiFine] Failed to get supported versions after ${elapsed}ms:`, errorMsg || e);
             return [];
         }
     }
@@ -1005,7 +1009,8 @@ export class LauncherManager {
             return supportedVersions;
         } catch (e: unknown) {
             const elapsed = Date.now() - startTime;
-            console.error(`[NeoForge] Failed to get supported versions after ${elapsed}ms:`, e?.message || e);
+            const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+            console.error(`[NeoForge] Failed to get supported versions after ${elapsed}ms:`, errorMsg || e);
             return [];
         }
     }
@@ -1062,7 +1067,8 @@ export class LauncherManager {
                         gameVersions = await response.json();
                     }
                 } catch (e: unknown) {
-                    throw new Error(`Failed to fetch Fabric game versions: ${e?.message ?? e}`);
+                    const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+                    throw new Error(`Failed to fetch Fabric game versions: ${errorMsg ?? e}`);
                 }
             }
 
@@ -1090,7 +1096,8 @@ export class LauncherManager {
                         loaderVersions = await response.json();
                     }
                 } catch (e: unknown) {
-                    throw new Error(`Failed to fetch Fabric loader versions: ${e?.message ?? e}`);
+                    const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+                    throw new Error(`Failed to fetch Fabric loader versions: ${errorMsg ?? e}`);
                 }
             }
 
@@ -1106,7 +1113,8 @@ export class LauncherManager {
             onLog(`[Fabric] Selected loader version: ${selected.version}${selected.stable ? ' (stable)' : ''}`);
             return selected.version;
         } catch (e: unknown) {
-            onLog(`[Fabric] Failed to get loader version: ${e?.message ?? e}`);
+            const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+            onLog(`[Fabric] Failed to get loader version: ${errorMsg ?? e}`);
             return null;
         }
     }
@@ -1153,7 +1161,8 @@ export class LauncherManager {
             onLog(`[NeoForge] No versions found for Minecraft ${mcVersion}`);
             return null;
         } catch (e: unknown) {
-            onLog(`[NeoForge] Failed to fetch version: ${e?.message ?? e}`);
+            const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+            onLog(`[NeoForge] Failed to fetch version: ${errorMsg ?? e}`);
             return null;
         }
     }
@@ -1187,7 +1196,8 @@ export class LauncherManager {
             onLog(`[OptiFine] Found version: ${latest.type}_${latest.patch}`);
             return { type: latest.type, patch: latest.patch };
         } catch (e: unknown) {
-            onLog(`[OptiFine] Failed to fetch version list: ${e?.message ?? e}`);
+            const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+            onLog(`[OptiFine] Failed to fetch version list: ${errorMsg ?? e}`);
             return null;
         }
     }
@@ -1334,7 +1344,8 @@ export class LauncherManager {
                             onLog(`[Java] Custom Java is version ${actualVersion}, but Java 21 is required. Falling back to installer.`);
                         }
                     } catch (e: unknown) {
-                        onLog(`[Java] Could not verify custom Java version: ${e?.message || e}. Falling back to installer.`);
+                        const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+                        onLog(`[Java] Could not verify custom Java version: ${errorMsg || e}. Falling back to installer.`);
                     }
                 } else {
                     javaPath = customJava;
@@ -1384,7 +1395,8 @@ export class LauncherManager {
                 onLog(`[Fabric] Loader версия: ${fabricLoaderVersion}`);
                 onProgress({ type: 'Fabric', task: 100, total: 100 });
             } catch (err: unknown) {
-                onLog(`[Fabric] ✗ Ошибка установки: ${err?.message ?? err}`);
+                const errorMsg = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : String(err);
+                onLog(`[Fabric] ✗ Ошибка установки: ${errorMsg ?? err}`);
                 throw err;
             }
         } else if (isForge) {
@@ -1396,7 +1408,8 @@ export class LauncherManager {
                 const forgeType = 'type' in forgeVersion ? forgeVersion.type : 'custom';
                 onLog(`Installing Forge ${mcVersion}-${forgeVersion.version} (${forgeType})...`);
             } catch (e: unknown) {
-                onLog(`[Forge] Version list failed: ${e?.message ?? e}.`);
+                const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+                onLog(`[Forge] Version list failed: ${errorMsg ?? e}.`);
                 forgeVersion = await this.getForgeVersionFromPromotions(mcVersion, onLog);
                 onLog(`Installing Forge ${mcVersion}-${forgeVersion.version} (promotions)...`);
             }
@@ -1432,7 +1445,7 @@ export class LauncherManager {
                 onLog(`[Forge] Версия ID: ${launchVersion}`);
                 onLog(`[Forge] Forge версия: ${forgeVersion.version}`);
             } catch (err: unknown) {
-                const errorMsg = err?.message ?? String(err);
+                const errorMsg = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : String(err);
                 onLog(`[Forge] Library download failed: ${errorMsg}`);
                 onLog('[Forge] Attempting mcp_config fallback recovery...');
                 try {
@@ -1445,7 +1458,8 @@ export class LauncherManager {
                         throw err;
                     }
                 } catch (recoveryError: unknown) {
-                    onLog(`[Forge] Recovery attempt failed: ${recoveryError?.message ?? recoveryError}`);
+                    const errorMsg = recoveryError && typeof recoveryError === 'object' && 'message' in recoveryError ? String((recoveryError as { message: unknown }).message) : String(recoveryError);
+                    onLog(`[Forge] Recovery attempt failed: ${errorMsg ?? recoveryError}`);
                     throw err; // Бросаем оригинальную ошибку
                 }
             }
@@ -1605,9 +1619,10 @@ export class LauncherManager {
                     onLog(`[NeoForge] Installer completed successfully`);
                 } catch (e: unknown) {
                     // Log detailed error information
-                    const errorMsg = e?.message || String(e);
-                    const errorCode = e?.code;
-                    const errorSignal = e?.signal;
+                    const eObj = e && typeof e === 'object' ? e as { message?: unknown; code?: unknown; signal?: unknown; stderr?: string } : null;
+                    const errorMsg = eObj?.message ? String(eObj.message) : String(e);
+                    const errorCode = eObj?.code;
+                    const errorSignal = eObj?.signal;
                     
                     onLog(`[NeoForge] Installer execution failed:`);
                     onLog(`[NeoForge]   Error: ${errorMsg}`);
@@ -1615,8 +1630,8 @@ export class LauncherManager {
                     if (errorSignal) onLog(`[NeoForge]   Signal: ${errorSignal}`);
                     
                     // Try to get stderr if available
-                    if (e?.stderr) {
-                        const stderrLines = e.stderr.split('\n').filter((l: string) => l.trim());
+                    if (eObj?.stderr) {
+                        const stderrLines = eObj.stderr.split('\n').filter((l: string) => l.trim());
                         if (stderrLines.length > 0) {
                             onLog(`[NeoForge]   Stderr: ${stderrLines.slice(0, 10).join(' | ')}`);
                         }
@@ -1748,7 +1763,8 @@ export class LauncherManager {
                             });
                             onLog(`[NeoForge] Spawn installer attempt completed`);
                         } catch (spawnError: unknown) {
-                            onLog(`[NeoForge] Spawn fallback failed: ${spawnError?.message || spawnError}`);
+                            const errorMsg = spawnError && typeof spawnError === 'object' && 'message' in spawnError ? String((spawnError as { message: unknown }).message) : String(spawnError);
+                            onLog(`[NeoForge] Spawn fallback failed: ${errorMsg || spawnError}`);
                             onLog(`[NeoForge] Continuing with extracted files (some processing may be incomplete)...`);
                             // Don't throw - continue with what we have
                         }
@@ -1772,7 +1788,8 @@ export class LauncherManager {
                 onLog(`[NeoForge] NeoForge версия: ${neoForgeVersion}`);
                 onProgress({ type: 'NeoForge', task: 100, total: 100 });
             } catch (err: unknown) {
-                onLog(`[NeoForge] Installation failed: ${err?.message ?? err}`);
+                const errorMsg = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : String(err);
+                onLog(`[NeoForge] Installation failed: ${errorMsg ?? err}`);
                 throw err;
             }
         }
@@ -1786,7 +1803,8 @@ export class LauncherManager {
             try {
                 await this.installOptiFineAsMod(rootPath, mcVersion, downloadProvider, maxSockets, onLog, onProgress);
             } catch (e: unknown) {
-                onLog(`[OptiFine] Installation failed: ${e?.message ?? e}. Continuing without OptiFine...`);
+                const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+                onLog(`[OptiFine] Installation failed: ${errorMsg ?? e}. Continuing without OptiFine...`);
             }
         }
 
@@ -1823,7 +1841,8 @@ export class LauncherManager {
                     await DownloadManager.downloadSingle(candidates, destInjectorPath, { maxSockets, validateZip: true });
                     onLog(`[Auth] Downloaded injector to: ${destInjectorPath}`);
                 } catch (e: unknown) {
-                    if ((e.code === 'EBUSY' || e.code === 'EPERM') && fs.existsSync(destInjectorPath)) {
+                    const eObj = e && typeof e === 'object' ? e as { code?: string } : null;
+                    if ((eObj?.code === 'EBUSY' || eObj?.code === 'EPERM') && fs.existsSync(destInjectorPath)) {
                         onLog(`[Auth Info] Injector file locked (already running?), reusing existing.`);
                     } else {
                         throw e;
@@ -1925,7 +1944,8 @@ export class LauncherManager {
                     onLog(`[VERSIONS] NeoForge версии найдены: ${neoForgeVersions.join(', ')}`);
                 }
             } catch (e: unknown) {
-                onLog(`[VERSIONS] Ошибка при проверке версий: ${e?.message || e}`);
+                const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+            onLog(`[VERSIONS] Ошибка при проверке версий: ${errorMsg || e}`);
             }
         }
 
@@ -1997,13 +2017,14 @@ export class LauncherManager {
                 onLog(`[MODS] Первые 10 модов: ${modFiles.slice(0, 10).join(', ')}...`);
             }
         } catch (e: unknown) {
-            onLog(`[MODS] Ошибка при проверке модов: ${e?.message || e}`);
+            const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
+            onLog(`[MODS] Ошибка при проверке модов: ${errorMsg || e}`);
         }
     }
 
     private buildInstallerOptions(
         provider: DownloadProvider,
-        dispatcher: unknown,
+        dispatcher: Dispatcher,
         rangePolicy: DefaultRangePolicy,
         concurrency: number
     ) {
@@ -2055,12 +2076,19 @@ export class LauncherManager {
         };
         const assetsHost = filterBadHosts(provider.injectURLWithCandidates('https://resources.download.minecraft.net'));
         return {
-            dispatcher,
+            // Type conflict between undici versions - @xmcl/file-transfer uses different undici types
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            dispatcher: dispatcher as any,
             rangePolicy,
             headers,
             assetsHost,
             assetsIndexUrl: (version: VersionEntry) => provider.injectURLWithCandidates(version.assetIndex?.url ?? ''),
-            json: (version: VersionEntry) => provider.injectURLWithCandidates(version.url ?? ''),
+            // Type mismatch: VersionEntry vs MinecraftVersionBaseInfo - both are compatible at runtime
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            json: (version: any) => {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return provider.injectURLWithCandidates((version as VersionEntry).url ?? '') as any;
+            },
             client: (version: VersionEntry) => {
                 const url = version.downloads?.client?.url;
                 return url ? provider.injectURLWithCandidates(url) : [];

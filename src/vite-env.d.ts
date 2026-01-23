@@ -22,7 +22,7 @@ interface Window {
         getOptiFineSupportedVersions: () => Promise<string[]>;
         getNeoForgeSupportedVersions: (providerId?: 'mojang' | 'bmcl' | 'auto') => Promise<string[]>;
         onLog: (callback: (log: string) => void) => () => void;
-        onProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => () => void;
+        onProgress: (callback: (progress: { type: string; task: number; total: number }) => void) => () => void;
         onClose: (callback: (code: number) => void) => () => void;
     }
     updater: {

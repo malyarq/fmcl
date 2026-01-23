@@ -358,61 +358,67 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                                 />
                             </div>
 
-                            {/* Update Check Section */}
-                            <div className="p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-100 dark:border-zinc-800">
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between mb-2">
-                                        {status === 'checking' && (
-                                            <span className="text-xs text-zinc-500">{t('updater.checking')}</span>
-                                        )}
-                                        {status === 'available' && updateInfo && (
-                                            <span className="text-xs text-zinc-600 dark:text-zinc-400">
-                                                {t('updater.available')}: {updateInfo.version}
-                                            </span>
-                                        )}
-                                        {status === 'up-to-date' && (
-                                            <span className="text-xs text-zinc-500">{t('updater.up_to_date')}</span>
-                                        )}
-                                        {status === 'error' && (
-                                            <span className="text-xs text-red-600 dark:text-red-400">{t('updater.error')}</span>
-                                        )}
+                            {/* Update Check and Cache Reset Section */}
+                            <div className="flex gap-3 items-stretch">
+                                <div className="flex-1 p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-100 dark:border-zinc-800 flex flex-col">
+                                    {(status === 'checking' || status === 'available' || status === 'up-to-date' || status === 'error') && (
+                                        <div className="flex items-center justify-between mb-2">
+                                            {status === 'checking' && (
+                                                <span className="text-xs text-zinc-500">{t('updater.checking')}</span>
+                                            )}
+                                            {status === 'available' && updateInfo && (
+                                                <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                                                    {t('updater.available')}: {updateInfo.version}
+                                                </span>
+                                            )}
+                                            {status === 'up-to-date' && (
+                                                <span className="text-xs text-zinc-500">{t('updater.up_to_date')}</span>
+                                            )}
+                                            {status === 'error' && (
+                                                <span className="text-xs text-red-600 dark:text-red-400">{t('updater.error')}</span>
+                                            )}
+                                        </div>
+                                    )}
+                                    <div className="mt-auto">
+                                        <Button
+                                            onClick={async () => {
+                                                setShowUpdateModal(false);
+                                                await checkForUpdates();
+                                            }}
+                                            disabled={status === 'checking' || status === 'downloading'}
+                                            variant="secondary"
+                                            className="w-full bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600"
+                                        >
+                                            {status === 'checking' ? t('updater.checking') : t('updater.check')}
+                                        </Button>
                                     </div>
-                                    <Button
-                                        onClick={async () => {
-                                            setShowUpdateModal(false);
-                                            await checkForUpdates();
-                                        }}
-                                        disabled={status === 'checking' || status === 'downloading'}
-                                        variant="secondary"
-                                        className="w-full bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600"
-                                    >
-                                        {status === 'checking' ? t('updater.checking') : t('updater.check')}
-                                    </Button>
                                 </div>
-                            </div>
 
-                            <div className="p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-100 dark:border-zinc-800">
-                                <Button
-                                    onClick={async () => {
-                                        if (window.confirm(t('settings.clear_cache_confirm'))) {
-                                            try {
-                                                const result = await window.cache.clear();
-                                                if (result.success) {
-                                                    await window.cache.reload();
-                                                } else {
-                                                    alert('Failed to clear cache: ' + (result.error || 'Unknown error'));
+                                <div className="flex-1 p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-100 dark:border-zinc-800 flex flex-col">
+                                    <div className="mt-auto">
+                                        <Button
+                                            onClick={async () => {
+                                                if (window.confirm(t('settings.clear_cache_confirm'))) {
+                                                    try {
+                                                        const result = await window.cache.clear();
+                                                        if (result.success) {
+                                                            await window.cache.reload();
+                                                        } else {
+                                                            alert('Failed to clear cache: ' + (result.error || 'Unknown error'));
+                                                        }
+                                                    } catch (error) {
+                                                        const errorMessage = error instanceof Error ? error.message : String(error);
+                                                        alert('Error clearing cache: ' + errorMessage);
+                                                    }
                                                 }
-                                            } catch (error) {
-                                                const errorMessage = error instanceof Error ? error.message : String(error);
-                                                alert('Error clearing cache: ' + errorMessage);
-                                            }
-                                        }
-                                    }}
-                                    variant="secondary"
-                                    className="w-full bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600"
-                                >
-                                    {t('settings.clear_cache')}
-                                </Button>
+                                            }}
+                                            variant="secondary"
+                                            className="w-full bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600"
+                                        >
+                                            {t('settings.clear_cache')}
+                                        </Button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}

@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { app } from 'electron';
 import AdmZip from 'adm-zip';
-import { Agent, interceptors } from 'undici';
+import { Agent, interceptors, type Dispatcher } from 'undici';
 import { DefaultRangePolicy, download, type ChecksumValidatorOptions } from '@xmcl/file-transfer';
 import { reportMirrorFailure, reportMirrorSuccess } from './mirrors';
 
@@ -22,7 +22,7 @@ type DownloadSingleOptions = {
     rangeThresholdBytes?: number;
     rangeConcurrency?: number;
     validateZip?: boolean;
-    dispatcher?: unknown;
+    dispatcher?: Dispatcher;
 };
 
 const CACHE_FILENAME = 'download-cache.json';
@@ -82,9 +82,9 @@ class ETagCache {
     }
 }
 
-const dispatcherCache = new Map<string, unknown>();
+const dispatcherCache = new Map<string, Dispatcher>();
 
-const getDispatcher = (maxSockets = 64, retryCount = 5, maxRedirections = 5): unknown => {
+const getDispatcher = (maxSockets = 64, retryCount = 5, maxRedirections = 5): Dispatcher => {
     // Используем комбинацию параметров для кеширования, чтобы разные retryCount создавали разные dispatcher'ы
     const key = `${maxSockets}-${retryCount}`;
     const cached = dispatcherCache.get(key);
@@ -159,7 +159,7 @@ const readResponseSnippet = async (res: Response, limitBytes: number) => {
     return Buffer.concat(chunks).toString('utf8');
 };
 
-const probeHtmlChallenge = async (url: string, headers: Record<string, string>, dispatcher: unknown) => {
+const probeHtmlChallenge = async (url: string, headers: Record<string, string>, dispatcher: Dispatcher) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
     try {
@@ -347,7 +347,9 @@ export class DownloadManager {
                         headers,
                         expectedTotal: options.expectedTotal,
                         validator: options.checksum,
-                        dispatcher,
+                        // Type conflict between undici versions - @xmcl/file-transfer uses different undici types
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        dispatcher: dispatcher as any,
                         rangePolicy
                     });
 
@@ -410,7 +412,7 @@ export class DownloadManager {
                 return;
             } catch (err) {
                 reportMirrorFailure(candidate);
-                errors.push(err);
+                errors.push(err instanceof Error ? err : new Error(String(err)));
                 try {
                     if (downloaded && fs.existsSync(dest)) fs.unlinkSync(dest);
                     if (fs.existsSync(pendingFile)) fs.unlinkSync(pendingFile);

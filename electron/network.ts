@@ -5,11 +5,18 @@ import crypto from 'crypto';
 import net from 'net';
 import { Muxer, MuxerStream } from './network/muxer';
 
+interface Connection {
+    on(event: 'data', listener: (chunk: Buffer) => void): void;
+    on(event: 'close', listener: () => void): void;
+    on(event: 'error', listener: (err: Error) => void): void;
+    write(data: Buffer): void;
+}
+
 const CMD_OPEN = 1;
 
 // P2P tunnel manager used for Minecraft LAN sharing.
 export class NetworkManager {
-    private swarm: Hyperswarm;
+    private swarm: InstanceType<typeof Hyperswarm>;
     private server: net.Server | null = null;
     public activeCode: string | null = null;
 
@@ -42,7 +49,7 @@ export class NetworkManager {
         this.swarm.on('connection', (conn: unknown) => {
             onLog(`[Network] Peer connected! Multiplexer ready.`);
 
-            const muxer = new Muxer(conn);
+            const muxer = new Muxer(conn as Connection);
 
             // Handle incoming streams from client (player joining).
             muxer.on('stream', (stream: MuxerStream) => {
@@ -52,7 +59,7 @@ export class NetworkManager {
                 const socket = net.connect(this._lanPort, 'localhost');
 
                 // Pump data: Stream (peer) -> Socket (Minecraft) -> Stream (peer).
-                pump(stream, socket, stream, (err: Error | null) => {
+                pump(stream, socket, stream, (err?: Error) => {
                     if (err) {
                         // Silence stream errors; disconnects are expected.
                     }
@@ -122,7 +129,7 @@ export class NetworkManager {
             const connWithMuxer = conn as { _muxer?: Muxer };
             let muxer = connWithMuxer._muxer;
             if (!muxer) {
-                muxer = new Muxer(conn as { on: (event: string, listener: (chunk: Buffer) => void) => void; write: (data: Buffer) => void });
+                muxer = new Muxer(conn as Connection);
                 connWithMuxer._muxer = muxer;
                 onLog('[Network] Muxer initialized on existing P2P link.');
             }
@@ -134,7 +141,7 @@ export class NetworkManager {
             // Initiate connection by sending Open command.
             muxer.send(sessionId, CMD_OPEN);
 
-            pump(socket, stream, socket, (_err: Error | null) => {
+            pump(socket, stream, socket, (_err?: Error) => {
                 // Closed
             });
         });
