@@ -1,6 +1,6 @@
 # FriendLauncher 🎮
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Version](https://img.shields.io/badge/version-0.0.6)
+![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Version](https://img.shields.io/badge/version-0.0.7-green.svg)
 
 [English](#english) | [Русский](#russian)
 

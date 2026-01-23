@@ -14,18 +14,21 @@
     "package.json"
   ],
   "asarUnpack": [
-    "**/*.node",
-    "**/tray-icon.png"
+    "**/*.node"
   ],
   "extraResources": [
-    "authlib-injector.jar"
+    "authlib-injector.jar",
+    {
+      "from": "public/icon.png",
+      "to": "icon.png"
+    }
   ],
   "mac": {
     "target": [
       "dmg"
     ],
     "artifactName": "${productName}-Mac-${version}-Installer.${ext}",
-    "icon": "public/tray-icon.png"
+    "icon": "public/icon.png"
   },
   "win": {
     "target": [
@@ -37,21 +40,20 @@
       }
     ],
     "artifactName": "${productName}-Windows-${version}-Setup.${ext}",
-    "icon": "public/tray-icon.png"
+    "icon": "public/icon.ico"
   },
   "nsis": {
-    "oneClick": false,
-    "perMachine": false,
-    "allowToChangeInstallationDirectory": true,
+    "oneClick": true,
     "deleteAppDataOnUninstall": false,
-    "differentialPackage": true
+    "differentialPackage": true,
+    "shortcutName": "FriendLauncher",
   },
   "linux": {
     "target": [
       "AppImage"
     ],
     "artifactName": "${productName}-Linux-${version}.${ext}",
-    "icon": "public/tray-icon.png"
+    "icon": "public/icon.png"
   },
   "publish": {
     "provider": "github",

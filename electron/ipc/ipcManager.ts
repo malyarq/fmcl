@@ -179,48 +179,51 @@ export class IPCManager {
         ipcMain.removeHandler('assets:getIconPath');
         ipcMain.handle('assets:getIconPath', async () => {
             // Get the path to the icon file
-            // In dev: public folder is at APP_ROOT/public
-            // In prod: icon is copied to dist/tray-icon.png by Vite
-            const isDev = process.env.VITE_DEV_SERVER_URL !== undefined;
-            let iconPath: string;
+            // In dev: Vite dev server serves files from public
+            // In prod: file should be in dist/icon.png inside asar
+            // When using loadFile(path.join(RENDERER_DIST, 'index.html')),
+            // relative paths like /icon.png should work relative to dist/
+            const isDev = process.env['VITE_DEV_SERVER_URL'] !== undefined;
             
             if (isDev) {
-                // Development: use public folder
-                iconPath = path.join(process.env.APP_ROOT || path.join(__dirname, '..'), 'public', 'tray-icon.png');
+                // Development: Vite dev server serves files from public
+                return '/icon.png';
             } else {
-                // Production: use app.getAppPath() to get the correct path
-                // In packaged app, this returns the path to the app.asar or app directory
+                // Production: check multiple locations
                 const appPath = app.getAppPath();
-                // Vite copies public files to dist root, so we need to check both locations
-                const distPath = path.join(appPath, 'dist');
-                const possiblePaths = [
-                    path.join(distPath, 'tray-icon.png'),
-                    path.join(appPath, 'tray-icon.png'),
-                    // Fallback: try relative to dist-electron
-                    path.join(__dirname, '..', 'dist', 'tray-icon.png')
-                ];
+                const resourcesPath = path.dirname(appPath); // resources folder
                 
-                // Find the first existing path
-                iconPath = possiblePaths.find(p => {
-                    try {
-                        return fs.existsSync(p);
-                    } catch {
-                        return false;
+                // 1. Check extraResources (most reliable - file is copied there)
+                const extraResourcesPath = path.join(resourcesPath, 'icon.png');
+                
+                // 2. Check asar dist path
+                const asarDistPath = path.join(appPath, 'dist', 'icon.png');
+                
+                // Try extraResources first (most reliable)
+                try {
+                    fs.readFileSync(extraResourcesPath);
+                    const normalizedPath = extraResourcesPath.replace(/\\/g, '/');
+                    if (normalizedPath.match(/^[A-Za-z]:/)) {
+                        return `file:///${normalizedPath}`;
+                    } else {
+                        return `file://${normalizedPath}`;
                     }
-                }) || possiblePaths[0];
-            }
-            
-            // Return as file:// URL for use in renderer
-            // On Windows, we need to handle the path correctly
-            const normalizedPath = iconPath.replace(/\\/g, '/');
-            // Ensure we have a proper file:// URL
-            if (normalizedPath.match(/^[A-Za-z]:/)) {
-                // Windows absolute path (e.g., C:/path/to/file)
-                return `file:///${normalizedPath}`;
-            } else if (normalizedPath.startsWith('/')) {
-                return `file://${normalizedPath}`;
-            } else {
-                return `file:///${normalizedPath}`;
+                } catch {
+                    // Try asar path
+                    try {
+                        fs.readFileSync(asarDistPath);
+                        const normalizedPath = asarDistPath.replace(/\\/g, '/');
+                        if (normalizedPath.match(/^[A-Za-z]:/)) {
+                            return `file:///${normalizedPath}`;
+                        } else {
+                            return `file://${normalizedPath}`;
+                        }
+                    } catch {
+                        // Fallback to relative path
+                        console.warn(`[IPC] Icon file not found, using relative path`);
+                        return '/icon.png';
+                    }
+                }
             }
         });
 
