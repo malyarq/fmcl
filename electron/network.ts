@@ -55,13 +55,11 @@ export class NetworkManager {
             muxer.on('stream', (stream: MuxerStream) => {
                 onLog(`[Network] Incoming connection Stream ${stream.sessionId}`);
 
-                // Connect to local Minecraft LAN port.
                 const socket = net.connect(this._lanPort, 'localhost');
 
-                // Pump data: Stream (peer) -> Socket (Minecraft) -> Stream (peer).
                 pump(stream, socket, stream, (err?: Error) => {
                     if (err) {
-                        // Silence stream errors; disconnects are expected.
+                        // Silence stream errors; disconnects are expected
                     }
                     socket.destroy();
                 });
@@ -91,16 +89,13 @@ export class NetworkManager {
         await discoveryKey.flushed();
 
         const server = net.createServer(async (socket) => {
-            // Wait for peer connection with a short timeout.
             const connectionPromise = new Promise<unknown>((resolve, reject) => {
-                // Check if already connected.
                 const existingConn = this.swarm.connections.values().next().value;
                 if (existingConn) {
                     resolve(existingConn);
                     return;
                 }
 
-                // Wait for new connection event.
                 const onConnection = (conn: unknown) => {
                     this.swarm.off('connection', onConnection);
                     clearTimeout(timeout);
@@ -125,7 +120,6 @@ export class NetworkManager {
                 return;
             }
 
-            // Setup muxer if not exists for this connection.
             const connWithMuxer = conn as { _muxer?: Muxer };
             let muxer = connWithMuxer._muxer;
             if (!muxer) {
@@ -134,15 +128,13 @@ export class NetworkManager {
                 onLog('[Network] Muxer initialized on existing P2P link.');
             }
 
-            // Start new session for this local socket.
-            const sessionId = Math.floor(Math.random() * 60000); // Random ID
+            const sessionId = Math.floor(Math.random() * 60000);
             const stream = muxer.createStream(sessionId);
 
-            // Initiate connection by sending Open command.
             muxer.send(sessionId, CMD_OPEN);
 
             pump(socket, stream, socket, (_err?: Error) => {
-                // Closed
+                // Connection closed
             });
         });
 
@@ -163,7 +155,6 @@ export class NetworkManager {
             this.swarm.leave(b4a.from(this.activeCode, 'hex'));
         }
 
-        // Destroy all P2P connections.
         for (const conn of this.swarm.connections) {
             if (conn && typeof conn === 'object' && 'destroy' in conn && typeof conn.destroy === 'function') {
                 conn.destroy();

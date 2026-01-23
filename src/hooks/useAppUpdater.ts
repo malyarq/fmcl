@@ -45,8 +45,8 @@ export function useAppUpdater(autoCheck: boolean = true): UseAppUpdaterReturn {
 
     try {
       const result = await window.appUpdater.check();
-      // In dev mode, electron-updater skips checking (not packed)
-      // This is expected behavior and not an error
+      // In dev mode, electron-updater skips checking (app not packed)
+      // This is expected behavior, not an error
       if (!result || result.cancelled) {
         setStatus('idle');
       }
@@ -85,8 +85,7 @@ export function useAppUpdater(autoCheck: boolean = true): UseAppUpdaterReturn {
         releaseName: info.releaseName,
         releaseNotes: info.releaseNotes,
       });
-      // Auto-download when update is available
-      // The backend already does this, but we track the status
+      // Backend auto-downloads updates, we just track the status here
     });
 
     const notAvailableUnsub = window.appUpdater.onNotAvailable(() => {

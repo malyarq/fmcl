@@ -51,7 +51,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
         }
     }, [status]);
 
-    // Preset palette is used to keep Tailwind classes static.
+    // Preset palette is used to keep Tailwind classes static (prevents purging).
     const isPreset = (c: string) => COLORS.some(col => col.id === c);
     const isCustom = !isPreset(accentColor);
 
@@ -70,7 +70,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
             className="max-w-2xl"
         >
             <div className="space-y-4">
-                {/* Tabs */}
                 <div className="flex gap-2 border-b border-zinc-200 dark:border-zinc-700 -mx-6 px-6">
                     {tabs.map((tab) => {
                         const isActive = activeTab === tab.id;
@@ -93,13 +92,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                     })}
                 </div>
 
-                {/* Tab Content */}
                 <div>
-                    {/* Appearance Tab */}
                     {activeTab === 'appearance' && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Accent Color */}
                                 <div className="space-y-3">
                                     <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-2 block">
                                         {t('settings.accent')}
@@ -141,7 +137,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                                     </div>
                                 </div>
 
-                                {/* Theme */}
                                 <div className="space-y-3">
                                     <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-2 block">
                                         {t('settings.theme')}
@@ -165,7 +160,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                                 </div>
                             </div>
 
-                            {/* Language */}
                             <div className="space-y-3">
                                 <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-2 block">
                                     {t('settings.language')}
@@ -190,10 +184,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                         </div>
                     )}
 
-                    {/* Game Tab */}
                     {activeTab === 'game' && (
                         <div className="space-y-4">
-                            {/* Memory */}
                             <div className="space-y-3">
                                 <div className="flex justify-between mb-2">
                                     <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
@@ -223,7 +215,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                                 placeholder="Default (Autodetect)"
                             />
 
-                            {/* Minecraft Directory */}
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300 block">
                                     {t('settings.minecraft_path')}
@@ -275,7 +266,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                         </div>
                     )}
 
-                    {/* Downloads Tab */}
                     {activeTab === 'downloads' && (
                         <div className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -332,7 +322,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                         </div>
                     )}
 
-                    {/* Launcher Tab */}
                     {activeTab === 'launcher' && (
                         <div className="space-y-4">
                             <div className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-100 dark:border-zinc-800">
@@ -358,7 +347,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                                 />
                             </div>
 
-                            {/* Update Check and Cache Reset Section */}
                             <div className="flex gap-3 items-stretch">
                                 <div className="flex-1 p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-100 dark:border-zinc-800 flex flex-col">
                                     {(status === 'checking' || status === 'available' || status === 'up-to-date' || status === 'error') && (
@@ -424,7 +412,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                     )}
                 </div>
 
-                {/* Footer Actions */}
                 <div className="flex justify-end pt-4 border-t border-zinc-100 dark:border-zinc-800">
                     <Button
                         onClick={onClose}
@@ -436,7 +423,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                 </div>
             </div>
 
-            {/* Update Modal */}
             <UpdateModal
                 isOpen={showUpdateModal}
                 onClose={() => setShowUpdateModal(false)}

@@ -55,7 +55,7 @@ const PRESET_STYLES: Record<string, Record<string, string>> = {
         hover: 'hover:text-emerald-600 dark:hover:text-emerald-300',
         ring: 'focus:ring-emerald-500/20',
         accent: 'accent-emerald-500 dark:accent-emerald-400',
-        title: 'text-emerald-600 dark:text-emerald-400', // Unique title color
+        title: 'text-emerald-600 dark:text-emerald-400',
     },
     blue: {
         bg: 'bg-blue-600 hover:bg-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 text-white',
@@ -212,7 +212,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             getAccentHex
         }}>
             {children}
-            {/* Keep preset Tailwind classes from being purged. */}
+            {/* Hidden div to prevent Tailwind from purging preset color classes */}
             <div className={`hidden ${Object.values(PRESET_STYLES).flatMap(s => Object.values(s)).join(' ')}`} />
         </SettingsContext.Provider>
     );

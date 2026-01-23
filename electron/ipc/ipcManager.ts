@@ -176,5 +176,53 @@ export class IPCManager {
             return path.join(app.getPath('userData'), 'minecraft_data');
         });
 
+        ipcMain.removeHandler('assets:getIconPath');
+        ipcMain.handle('assets:getIconPath', async () => {
+            // Get the path to the icon file
+            // In dev: public folder is at APP_ROOT/public
+            // In prod: icon is copied to dist/tray-icon.png by Vite
+            const isDev = process.env.VITE_DEV_SERVER_URL !== undefined;
+            let iconPath: string;
+            
+            if (isDev) {
+                // Development: use public folder
+                iconPath = path.join(process.env.APP_ROOT || path.join(__dirname, '..'), 'public', 'tray-icon.png');
+            } else {
+                // Production: use app.getAppPath() to get the correct path
+                // In packaged app, this returns the path to the app.asar or app directory
+                const appPath = app.getAppPath();
+                // Vite copies public files to dist root, so we need to check both locations
+                const distPath = path.join(appPath, 'dist');
+                const possiblePaths = [
+                    path.join(distPath, 'tray-icon.png'),
+                    path.join(appPath, 'tray-icon.png'),
+                    // Fallback: try relative to dist-electron
+                    path.join(__dirname, '..', 'dist', 'tray-icon.png')
+                ];
+                
+                // Find the first existing path
+                iconPath = possiblePaths.find(p => {
+                    try {
+                        return fs.existsSync(p);
+                    } catch {
+                        return false;
+                    }
+                }) || possiblePaths[0];
+            }
+            
+            // Return as file:// URL for use in renderer
+            // On Windows, we need to handle the path correctly
+            const normalizedPath = iconPath.replace(/\\/g, '/');
+            // Ensure we have a proper file:// URL
+            if (normalizedPath.match(/^[A-Za-z]:/)) {
+                // Windows absolute path (e.g., C:/path/to/file)
+                return `file:///${normalizedPath}`;
+            } else if (normalizedPath.startsWith('/')) {
+                return `file://${normalizedPath}`;
+            } else {
+                return `file:///${normalizedPath}`;
+            }
+        });
+
     }
 }

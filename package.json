@@ -1,13 +1,14 @@
 {
   "name": "friend-launcher",
   "private": true,
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --max-warnings 0",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "release": "node scripts/release.js"
   },
   "dependencies": {
     "@types/adm-zip": "^0.5.7",
@@ -50,39 +51,5 @@
     "vite-plugin-electron": "^0.29.0",
     "vite-plugin-electron-renderer": "^0.14.6"
   },
-  "main": "dist-electron/main.js",
-  "build": {
-    "appId": "com.friendlauncher.app",
-    "productName": "FriendLauncher",
-    "copyright": "Copyright © 2026",
-    "directories": {
-      "output": "release"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "public/tray-icon.png"
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "malyarq",
-        "repo": "fmcl"
-      }
-    ],
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true
-    },
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*",
-      "package.json"
-    ],
-    "asarUnpack": [
-      "**/*.node"
-    ],
-    "extraResources": [
-      "authlib-injector.jar"
-    ]
-  }
+  "main": "dist-electron/main.js"
 }

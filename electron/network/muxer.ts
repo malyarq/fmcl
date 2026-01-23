@@ -31,7 +31,7 @@ export class MuxerStream extends Duplex {
     }
 
     _read(_size: number) {
-        // Data is pushed via pushData when packets arrive.
+        // Data is pushed via pushData when packets arrive
     }
 
     _destroy(err: Error | null, callback: (err: Error | null) => void) {
@@ -93,7 +93,6 @@ export class Muxer extends EventEmitter {
         });
     }
 
-    // Process the internal buffer to extract packets.
     private process() {
         if (this.processing) return;
         this.processing = true;
@@ -136,7 +135,6 @@ export class Muxer extends EventEmitter {
         this.processing = false;
     }
 
-    // Send a packet to the remote peer.
     public send(sessionId: number, type: number, data?: Buffer) {
         const payloadLength = data ? data.length : 0;
         const totalLength = HEADER_SIZE + payloadLength;
@@ -163,7 +161,6 @@ export class Muxer extends EventEmitter {
         }
     }
 
-    // Create a new outgoing stream.
     public createStream(sessionId: number): MuxerStream {
         const stream = new MuxerStream(this, sessionId);
         this.streams.set(sessionId, stream);

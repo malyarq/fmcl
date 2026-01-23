@@ -31,6 +31,7 @@ export const useLauncher = () => {
         });
 
         const unsubProgress = window.launcher.onProgress((data) => {
+            // Track progress for download operations only
             if (
                 data.type === 'assets' ||
                 data.type === 'natives' ||
@@ -46,6 +47,7 @@ export const useLauncher = () => {
         });
 
         const unsubClose = window.launcher.onClose((code) => {
+            // Game process exited - reset launch state
             setLogs((prev) => [...prev, `[SYSTEM] Game session ended (Code: ${code})`]);
             setStatusText(t('status.ready'));
             setIsLaunching(false);
@@ -92,6 +94,7 @@ export const useLauncher = () => {
             });
             setStatusText(t('status.game_running'));
         } catch (e) {
+            // Launch failed - log error and reset state
             setLogs((prev) => [...prev, `Error: ${e}`]);
             setStatusText('Launch Failed');
             setIsLaunching(false);

@@ -24,9 +24,7 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
     const [channel, ...omit] = args
     return ipcRenderer.invoke(channel, ...omit)
-  },
-
-  // Add more IPC helpers here if needed.
+  }
 })
 
 // Launcher events and actions used by the UI.
@@ -157,4 +155,9 @@ contextBridge.exposeInMainWorld('settings', {
   selectMinecraftPath: () => ipcRenderer.invoke('settings:selectMinecraftPath'),
   openMinecraftPath: (path?: string) => ipcRenderer.invoke('settings:openMinecraftPath', path),
   getDefaultMinecraftPath: () => ipcRenderer.invoke('settings:getDefaultMinecraftPath')
+})
+
+// Get static asset path (for images, etc.)
+contextBridge.exposeInMainWorld('assets', {
+  getIconPath: () => ipcRenderer.invoke('assets:getIconPath')
 })

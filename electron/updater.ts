@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-// import { net } from 'electron';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
 
@@ -17,6 +16,10 @@ interface Manifest {
     files: ManifestFile[];
 }
 
+/**
+ * Manages synchronization of files from a remote manifest.
+ * Downloads files that are missing or have changed hashes.
+ */
 export class Updater {
     private instancePath: string;
 
@@ -24,7 +27,11 @@ export class Updater {
         this.instancePath = instancePath;
     }
 
-    // Calculate local file hash (sha1).
+    /**
+     * Calculates SHA1 hash of a local file.
+     * @param filePath Path to file
+     * @returns SHA1 hash as hex string, or null if file doesn't exist
+     */
     private async getFileHash(filePath: string): Promise<string | null> {
         if (!fs.existsSync(filePath)) return null;
         const fileBuffer = await fs.promises.readFile(filePath);
@@ -33,7 +40,12 @@ export class Updater {
         return hashSum.digest('hex');
     }
 
-    // Download a file to disk using streaming.
+    /**
+     * Downloads a file from URL to disk using streaming.
+     * @param url Source URL
+     * @param destPath Destination file path
+     * @throws Error if download fails
+     */
     private async downloadFile(url: string, destPath: string) {
         await fs.promises.mkdir(path.dirname(destPath), { recursive: true });
 
@@ -46,6 +58,12 @@ export class Updater {
         await pipeline(Readable.fromWeb(response.body), fileStream);
     }
 
+    /**
+     * Synchronizes files from a remote manifest.
+     * @param manifestUrl URL to the manifest JSON file
+     * @param onProgress Progress callback with status message and percentage
+     * @throws Error if manifest cannot be loaded or sync fails
+     */
     public async sync(manifestUrl: string, onProgress: (status: string, progress: number) => void) {
         onProgress('Fetching manifest...', 0);
 

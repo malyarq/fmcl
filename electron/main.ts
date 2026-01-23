@@ -5,7 +5,6 @@ import { AuthServer } from './auth/server'
 import { LauncherManager } from './launcher'
 import { SelfUpdater } from './self_updater'
 
-// const require = createRequire(import.meta.url)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 

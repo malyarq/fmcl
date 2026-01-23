@@ -16,11 +16,11 @@ const BMCL_MAVEN_MIRRORS = [
     `${BMCL_ROOT}/maven`,
     'https://bmclapi.bangbang93.com/maven',
     'https://forge.fastmcmirror.org',
-    // Российские и ближайшие зеркала (приоритет для пользователей из России)
+    // Chinese and nearby mirrors (priority for users in China/Russia)
     'https://mirror.sjtu.edu.cn/bmclapi/maven',
     'https://mirrors.tuna.tsinghua.edu.cn/bmclapi/maven',
     'https://mirrors.bfsu.edu.cn/bmclapi/maven',
-    // Дополнительные альтернативные зеркала
+    // Additional alternative mirrors
     'https://maven.aliyun.com/repository/public',
     'https://repo.huaweicloud.com/repository/maven'
 ];

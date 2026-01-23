@@ -47,6 +47,9 @@ interface Window {
         openMinecraftPath: (path?: string) => Promise<{ success: boolean; error?: string }>;
         getDefaultMinecraftPath: () => Promise<string>;
     }
+    assets: {
+        getIconPath: () => Promise<string>;
+    }
     appUpdater: {
         check: () => Promise<{ cancelled?: boolean } | null>;
         quitAndInstall: () => void;

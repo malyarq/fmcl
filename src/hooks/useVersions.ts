@@ -35,7 +35,7 @@ export function useVersions() {
                 try {
                     const parsed = JSON.parse(cachedData);
                     setVersions(parsed);
-                    setIsLoading(false); // Show UI immediately
+                    setIsLoading(false);
                     console.log(`[Versions] Loaded ${parsed.length} versions from cache`);
                 } catch {
                     console.warn('[Versions] Cache corrupted');
@@ -43,7 +43,7 @@ export function useVersions() {
             } else {
                 // Use static fallback list from file
                 setVersions(MINECRAFT_VERSIONS);
-                setIsLoading(false); // Show UI immediately with fallback
+                setIsLoading(false);
                 console.log(`[Versions] Using static fallback list (${MINECRAFT_VERSIONS.length} versions)`);
             }
 
@@ -57,7 +57,6 @@ export function useVersions() {
                 return;
             }
 
-            // Refresh in background
             console.log('[Versions] Cache expired or missing, refreshing in background...');
             try {
                 if (!window.launcher?.getVersionList) {
@@ -66,7 +65,7 @@ export function useVersions() {
                 const data = await window.launcher.getVersionList(downloadProvider);
 
                 const releases = data.versions.filter((v: MCVersion) => v.type === 'release');
-                setVersions(releases); // Update with fresh data
+                setVersions(releases);
 
                 localStorage.setItem(CACHE_KEY, JSON.stringify(releases));
                 localStorage.setItem(CACHE_TIMESTAMP_KEY, now.toString());
@@ -146,8 +145,7 @@ export function useModSupportedVersions() {
                         console.warn('[ModVersions] NeoForge cache corrupted');
                     }
                 } else {
-                    // If no cache, show known supported versions immediately
-                    // NeoForge supports 1.20.1+ versions
+                    // NeoForge supports 1.20.1+ versions - use known versions as fallback
                     const knownVersions = [
                         '1.20.1', '1.20.2', '1.20.3', '1.20.4', '1.20.5', '1.20.6',
                         '1.21', '1.21.1', '1.21.2', '1.21.3', '1.21.4', '1.21.5',
@@ -157,7 +155,6 @@ export function useModSupportedVersions() {
                     console.log(`[ModVersions] Using initial NeoForge versions list (${knownVersions.length} versions)`);
                 }
                 
-                // Mark as loaded immediately so buttons show up
                 setIsLoading(false);
             } catch {
                 console.warn('[ModVersions] Failed to load from cache');
@@ -193,7 +190,6 @@ export function useModSupportedVersions() {
                 return;
             }
 
-            // Refresh in background
             console.log('[ModVersions] Cache expired or missing, refreshing in background...');
             
             if (!window.launcher) {
