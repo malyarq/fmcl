@@ -4,15 +4,18 @@
   "appId": "com.friendlauncher.app",
   "asar": true,
   "productName": "FriendLauncher",
+  "compression": "maximum",
   "directories": {
     "output": "release/${version}"
   },
   "files": [
     "dist",
-    "dist-electron"
+    "dist-electron",
+    "package.json"
   ],
   "asarUnpack": [
-    "**/*.node"
+    "**/*.node",
+    "**/tray-icon.png"
   ],
   "extraResources": [
     "authlib-injector.jar"
@@ -21,7 +24,8 @@
     "target": [
       "dmg"
     ],
-    "artifactName": "${productName}-Mac-${version}-Installer.${ext}"
+    "artifactName": "${productName}-Mac-${version}-Installer.${ext}",
+    "icon": "public/tray-icon.png"
   },
   "win": {
     "target": [
@@ -32,23 +36,27 @@
         ]
       }
     ],
-    "artifactName": "${productName}-Windows-${version}-Setup.${ext}"
+    "artifactName": "${productName}-Windows-${version}-Setup.${ext}",
+    "icon": "public/tray-icon.png"
   },
   "nsis": {
     "oneClick": false,
     "perMachine": false,
     "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
+    "deleteAppDataOnUninstall": false,
+    "differentialPackage": true
   },
   "linux": {
     "target": [
       "AppImage"
     ],
-    "artifactName": "${productName}-Linux-${version}.${ext}"
+    "artifactName": "${productName}-Linux-${version}.${ext}",
+    "icon": "public/tray-icon.png"
   },
   "publish": {
     "provider": "github",
     "owner": "malyarq",
-    "repo": "fmcl"
+    "repo": "fmcl",
+    "releaseType": "release"
   }
 }
