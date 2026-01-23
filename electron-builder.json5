@@ -46,11 +46,9 @@
     ],
     "artifactName": "${productName}-Linux-${version}.${ext}"
   },
-  "publish": [
-    {
-      "provider": "github",
-      "owner": "malyarq",
-      "repo": "fmcl"
-    }
-  ]
+  "publish": {
+    "provider": "github",
+    "owner": "malyarq",
+    "repo": "fmcl"
+  }
 }

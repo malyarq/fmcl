@@ -30,13 +30,13 @@ const DEFAULT_RANGE_THRESHOLD = 5 * 1024 * 1024;
 const DEFAULT_RANGE_CONCURRENCY = 4;
 const DEFAULT_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-// Увеличенные таймауты для медленных соединений (особенно для пользователей из России)
-const DEFAULT_CONNECT_TIMEOUT = 30_000; // 30 секунд вместо 10
-const DEFAULT_HEADERS_TIMEOUT = 60_000; // 60 секунд вместо 15
-const DEFAULT_BODY_TIMEOUT = 180_000; // 3 минуты - достаточно для медленных соединений, но отслеживание прогресса прервет раньше
-// Таймаут отсутствия прогресса - если загрузка не прогрессирует, переключаемся на следующий источник
-const PROGRESS_STALL_TIMEOUT = 20_000; // 20 секунд без прогресса
-const PROGRESS_CHECK_INTERVAL = 2_000; // Проверяем каждые 2 секунды
+// Extended timeouts for slow connections
+const DEFAULT_CONNECT_TIMEOUT = 30_000; // 30 seconds instead of 10
+const DEFAULT_HEADERS_TIMEOUT = 60_000; // 60 seconds instead of 15
+const DEFAULT_BODY_TIMEOUT = 180_000; // 3 minutes - sufficient for slow connections, but progress tracking will abort earlier
+// Progress stall timeout - if download doesn't progress, switch to next source
+const PROGRESS_STALL_TIMEOUT = 20_000; // 20 seconds without progress
+const PROGRESS_CHECK_INTERVAL = 2_000; // Check every 2 seconds
 const HTML_PROBE_BYTES = 16 * 1024;
 const HTML_CHALLENGE_MARKERS = [
     /verifying your browser/i,
@@ -85,7 +85,7 @@ class ETagCache {
 const dispatcherCache = new Map<string, Dispatcher>();
 
 const getDispatcher = (maxSockets = 64, retryCount = 5, maxRedirections = 5): Dispatcher => {
-    // Используем комбинацию параметров для кеширования, чтобы разные retryCount создавали разные dispatcher'ы
+    // Use parameter combination for caching, so different retryCount values create different dispatchers
     const key = `${maxSockets}-${retryCount}`;
     const cached = dispatcherCache.get(key);
     if (cached) return cached;
@@ -102,11 +102,22 @@ const getDispatcher = (maxSockets = 64, retryCount = 5, maxRedirections = 5): Di
     return agent;
 };
 
+/**
+ * Determines if a file should be validated as a ZIP archive.
+ * @param dest Destination file path
+ * @param explicit Explicit validation flag (overrides auto-detection)
+ * @returns true if file should be validated as ZIP
+ */
 const shouldValidateZip = (dest: string, explicit?: boolean) => {
     if (explicit !== undefined) return explicit;
     return dest.endsWith('.jar') || dest.endsWith('.zip');
 };
 
+/**
+ * Normalizes HTTP headers, ensuring User-Agent is present.
+ * @param headers Optional headers object
+ * @returns Headers with guaranteed User-Agent
+ */
 const normalizeHeaders = (headers?: Record<string, string>) => {
     const result = { ...(headers ?? {}) };
     const hasUserAgent = Object.keys(result).some((key) => key.toLowerCase() === 'user-agent');
@@ -114,6 +125,12 @@ const normalizeHeaders = (headers?: Record<string, string>) => {
     return result;
 };
 
+/**
+ * Reads the first N bytes of a file for content inspection.
+ * @param filePath Path to file
+ * @param limit Maximum bytes to read
+ * @returns File content snippet as string, or empty string on error
+ */
 const readFileSnippet = (filePath: string, limit: number) => {
     try {
         const fd = fs.openSync(filePath, 'r');
@@ -126,6 +143,12 @@ const readFileSnippet = (filePath: string, limit: number) => {
     }
 };
 
+/**
+ * Detects if content is an HTML challenge page (e.g., Cloudflare protection).
+ * @param snippet Content snippet to check
+ * @param contentType HTTP Content-Type header
+ * @returns true if content appears to be an HTML challenge
+ */
 const isHtmlChallenge = (snippet: string, contentType?: string | null) => {
     const trimmed = snippet.trimStart().toLowerCase();
     if (contentType?.includes('text/html')) return true;
@@ -133,6 +156,12 @@ const isHtmlChallenge = (snippet: string, contentType?: string | null) => {
     return HTML_CHALLENGE_MARKERS.some((pattern) => pattern.test(snippet));
 };
 
+/**
+ * Reads a snippet from a Response stream for content inspection.
+ * @param res Response object
+ * @param limitBytes Maximum bytes to read
+ * @returns Content snippet as string
+ */
 const readResponseSnippet = async (res: Response, limitBytes: number) => {
     const reader = res.body?.getReader?.();
     if (!reader) return '';
@@ -153,12 +182,19 @@ const readResponseSnippet = async (res: Response, limitBytes: number) => {
         try {
             await reader.cancel();
         } catch {
-            // ignore
+            // Ignore reader cancellation errors
         }
     }
     return Buffer.concat(chunks).toString('utf8');
 };
 
+/**
+ * Probes a URL to detect if it returns an HTML challenge page instead of the expected file.
+ * @param url URL to probe
+ * @param headers HTTP headers to use
+ * @param dispatcher Network dispatcher
+ * @returns Object indicating if the URL is blocked by an HTML challenge
+ */
 const probeHtmlChallenge = async (url: string, headers: Record<string, string>, dispatcher: Dispatcher) => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 8000);
@@ -187,6 +223,11 @@ const probeHtmlChallenge = async (url: string, headers: Record<string, string>, 
     return { blocked: false };
 };
 
+/**
+ * Validates that a file is a valid ZIP archive.
+ * @param dest Path to file to validate
+ * @throws Error if file is not a valid ZIP
+ */
 const validateZipIntegrity = async (dest: string) => {
     try {
         const zip = new AdmZip(dest);
@@ -197,6 +238,11 @@ const validateZipIntegrity = async (dest: string) => {
     }
 };
 
+/**
+ * Updates ETag cache from HTTP response headers.
+ * @param url URL to cache
+ * @param res HTTP response with ETag/Last-Modified headers
+ */
 const updateEtagCacheFromResponse = (url: string, res: Response) => {
     const etag = res.headers.get('etag') ?? undefined;
     const lastModified = res.headers.get('last-modified') ?? undefined;
@@ -204,6 +250,12 @@ const updateEtagCacheFromResponse = (url: string, res: Response) => {
     ETagCache.set(url, { etag, lastModified, updatedAt: Date.now() });
 };
 
+/**
+ * Attempts a conditional HEAD request to check if file has changed.
+ * @param url URL to check
+ * @param entry Cached ETag entry
+ * @returns Object indicating if download can be skipped
+ */
 const tryConditionalHead = async (url: string, entry?: ETagEntry) => {
     if (!entry) return { skip: false };
     const headers: Record<string, string> = {};
@@ -224,10 +276,10 @@ const tryConditionalHead = async (url: string, entry?: ETagEntry) => {
 };
 
 /**
- * Мониторит прогресс загрузки файла и прерывает, если прогресс остановился
- * @param pendingFile Путь к .pending файлу
- * @param abortController Контроллер для прерывания загрузки
- * @returns Функция для остановки мониторинга
+ * Monitors download progress and aborts if progress stalls
+ * @param pendingFile Path to .pending file
+ * @param abortController Controller for aborting download
+ * @returns Function to stop monitoring
  */
 const monitorDownloadProgress = (pendingFile: string, abortController: AbortController): (() => void) => {
     let lastSize = 0;
@@ -243,21 +295,17 @@ const monitorDownloadProgress = (pendingFile: string, abortController: AbortCont
                 const currentSize = stats.size;
 
                 if (currentSize > lastSize) {
-                    // Есть прогресс - обновляем время последнего прогресса
                     lastSize = currentSize;
                     lastProgressTime = Date.now();
                 } else {
-                    // Нет прогресса - проверяем, не прошло ли слишком много времени
                     const timeSinceProgress = Date.now() - lastProgressTime;
                     if (timeSinceProgress >= PROGRESS_STALL_TIMEOUT) {
-                        // Прогресс остановился - прерываем загрузку
                         isMonitoring = false;
                         abortController.abort();
                         return;
                     }
                 }
             } else {
-                // Файл еще не создан - если прошло много времени, прерываем
                 const timeSinceStart = Date.now() - lastProgressTime;
                 if (timeSinceStart >= PROGRESS_STALL_TIMEOUT) {
                     isMonitoring = false;
@@ -266,7 +314,7 @@ const monitorDownloadProgress = (pendingFile: string, abortController: AbortCont
                 }
             }
         } catch {
-            // Игнорируем ошибки проверки файла
+            // Ignore file check errors
         }
 
         if (isMonitoring) {
@@ -282,7 +330,6 @@ const monitorDownloadProgress = (pendingFile: string, abortController: AbortCont
     };
 };
 
-// Robust file downloader with fallback, checksum, and range support.
 export class DownloadManager {
     /**
      * Download a single file from URL to destination.
@@ -304,13 +351,13 @@ export class DownloadManager {
         const shouldProbe = !options.checksum && !shouldValidateZip(dest, options.validateZip);
         const pendingFile = `${dest}.pending`;
 
-        // Удаляем старые .pending файлы перед началом загрузки, чтобы избежать использования битых файлов
+        // Remove old .pending files before starting download to avoid using corrupted files
         try {
             if (fs.existsSync(pendingFile)) {
                 fs.unlinkSync(pendingFile);
             }
         } catch {
-            // Игнорируем ошибки удаления
+            // Ignore deletion errors
         }
 
         const errors: Error[] = [];
@@ -334,12 +381,11 @@ export class DownloadManager {
                     }
                 }
 
-                // Отслеживаем прогресс загрузки и прерываем, если прогресс остановился
+                // Monitor download progress and abort if progress stalls
                 const progressAbortController = new AbortController();
                 const stopMonitoring = monitorDownloadProgress(pendingFile, progressAbortController);
 
                 try {
-                    // Запускаем загрузку и мониторинг прогресса параллельно
                     const downloadPromise = download({
                         url: candidate,
                         destination: dest,
@@ -353,35 +399,33 @@ export class DownloadManager {
                         rangePolicy
                     });
 
-                    // Создаем Promise, который отклонится, если прогресс остановился
                     const progressMonitorPromise = new Promise<never>((_, reject) => {
                         progressAbortController.signal.addEventListener('abort', () => {
-                            // Удаляем pending файл, чтобы download не мог его использовать
+                            // Remove pending file so download can't use it
                             try {
                                 if (fs.existsSync(pendingFile)) {
                                     fs.unlinkSync(pendingFile);
                                 }
                             } catch {
-                                // Игнорируем ошибки удаления
+                                // Ignore deletion errors
                             }
                             reject(new Error(`Download stalled - no progress for ${PROGRESS_STALL_TIMEOUT / 1000}s`));
                         });
                     });
 
-                    // Ждем либо завершения загрузки, либо остановки прогресса
                     await Promise.race([downloadPromise, progressMonitorPromise]);
                 } catch (downloadErr) {
                     stopMonitoring();
-                    // Если загрузка была прервана из-за отсутствия прогресса, пробуем следующий источник
+                    // If download was aborted due to no progress, try next source
                     const errorMessage = downloadErr instanceof Error ? downloadErr.message : String(downloadErr);
                     if (errorMessage.includes('stalled')) {
-                        // Убеждаемся, что pending файл удален
+                        // Ensure pending file is removed
                         try {
                             if (fs.existsSync(pendingFile)) {
                                 fs.unlinkSync(pendingFile);
                             }
                         } catch {
-                            // Игнорируем ошибки удаления
+                            // Ignore deletion errors
                         }
                         throw downloadErr;
                     }
@@ -407,7 +451,7 @@ export class DownloadManager {
                     const res = await fetch(candidate, { method: 'HEAD' });
                     if (res.ok) updateEtagCacheFromResponse(candidate, res);
                 } catch {
-                    // ignore cache update errors
+                    // Ignore cache update errors
                 }
                 return;
             } catch (err) {
@@ -417,7 +461,7 @@ export class DownloadManager {
                     if (downloaded && fs.existsSync(dest)) fs.unlinkSync(dest);
                     if (fs.existsSync(pendingFile)) fs.unlinkSync(pendingFile);
                 } catch {
-                    // ignore cleanup errors
+                    // Ignore cleanup errors
                 }
             }
         }

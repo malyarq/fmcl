@@ -76,10 +76,9 @@ export class JavaManager {
                 return javaPath;
             }
         } catch {
-            // Continue searching
+            // Continue to next search location
         }
 
-        // Try JAVA_HOME
         if (process.env.JAVA_HOME) {
             const javaHomePaths = [
                 path.join(process.env.JAVA_HOME, 'bin', 'java.exe'),
@@ -93,12 +92,11 @@ export class JavaManager {
                         return javaPath;
                     }
                 } catch {
-                    // Continue searching
+                    // Continue to next path
                 }
             }
         }
 
-        // Try common Windows installation paths
         const commonPaths = [
             `C:\\Program Files\\Java\\jdk-${requiredVersion}\\bin\\java.exe`,
             `C:\\Program Files\\Java\\jre-${requiredVersion}\\bin\\java.exe`,
@@ -106,7 +104,6 @@ export class JavaManager {
             `C:\\Program Files\\Java\\jre-${requiredVersion}\\bin\\java`,
             `C:\\Program Files (x86)\\Java\\jdk-${requiredVersion}\\bin\\java.exe`,
             `C:\\Program Files (x86)\\Java\\jre-${requiredVersion}\\bin\\java.exe`,
-            // Also try without version number (latest JDK/JRE)
             'C:\\Program Files\\Java\\jdk\\bin\\java.exe',
             'C:\\Program Files\\Java\\jre\\bin\\java.exe',
             'C:\\Program Files\\Java\\jdk\\bin\\java',
@@ -123,11 +120,10 @@ export class JavaManager {
                     }
                 }
             } catch {
-                // Continue searching
+                // Continue to next directory
             }
         }
 
-        // Try to find all Java installations in Program Files
         const programFilesPaths = [
             'C:\\Program Files\\Java',
             'C:\\Program Files (x86)\\Java',
@@ -148,13 +144,13 @@ export class JavaManager {
                                     return javaPath;
                                 }
                             } catch {
-                                // Continue searching
+                                // Continue to next entry
                             }
                         }
                     }
                 }
             } catch {
-                // Continue searching
+                // Continue to next base path
             }
         }
 
@@ -192,21 +188,14 @@ export class JavaManager {
             runtimeDir = path.join(this.runtimeRoot, 'java17');
             target = JavaRuntimeTargetType.Gamma;
         } else {
-            // Java 21 - Minecraft 1.20.5+ uses Java 21
-            // Try different possible runtime target types for Java 21
-            // The runtime manifest system may have Java 21 under a different name
             runtimeDir = path.join(this.runtimeRoot, 'java21');
-            // Try common possible names for Java 21 runtime
-            // If none work, we'll try to fetch and see what's available
-            target = 'java-runtime-gamma' as JavaRuntimeTargetType; // Start with gamma, will try others if needed
+            target = 'java-runtime-gamma' as JavaRuntimeTargetType;
         }
 
-        // Check existing installation first.
         const existingJava = findJavaExecutable(runtimeDir);
         if (existingJava) {
             try {
                 await this.verifyJava(existingJava);
-                // For Java 21, verify it's actually version 21
                 if (version === 21) {
                     const actualVersion = await this.getJavaVersion(existingJava);
                     if (actualVersion === 21) {
@@ -232,7 +221,6 @@ export class JavaManager {
             }
         }
 
-        // For Java 21, try to find system Java first before downloading
         if (version === 21) {
             onProgress('Checking for system Java 21...');
             const systemJava = await this.findSystemJava(21);
@@ -244,10 +232,8 @@ export class JavaManager {
         
         onProgress(`Fetching Java ${version} runtime manifest...`);
         
-        // For Java 21, try multiple possible target types since it might not be explicitly defined
         let manifest;
         if (version === 21) {
-            // Try different possible runtime types for Java 21
             const possibleTargets = [
                 'java-runtime-gamma', // Might be updated to Java 21
                 'java-runtime-delta', // Possible newer runtime
@@ -267,7 +253,6 @@ export class JavaManager {
             }
             
             if (!manifest) {
-                // If all targets failed, try to use system Java 21 if available (one more time)
                 onProgress('Runtime manifest failed, checking system Java 21 again...');
                 const systemJava = await this.findSystemJava(21);
                 if (systemJava) {
@@ -308,11 +293,9 @@ export class JavaManager {
 
         await this.verifyJava(newJava);
         
-        // For Java 21, verify it's actually version 21
         if (version === 21) {
             const actualVersion = await this.getJavaVersion(newJava);
             if (actualVersion !== 21) {
-                // The downloaded Java is not version 21, try system Java
                 onProgress(`Downloaded Java is version ${actualVersion}, not 21. Trying system Java...`);
                 const systemJava = await this.findSystemJava(21);
                 if (systemJava) {

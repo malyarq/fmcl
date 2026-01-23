@@ -22,7 +22,6 @@ export class SelfUpdater {
 
         autoUpdater.on('update-available', (info) => {
             this.send('app-updater:available', info);
-            // Auto download for convenience?
             autoUpdater.downloadUpdate();
         });
 

@@ -19,15 +19,14 @@ function App() {
   const [version, setVersion] = useState('1.12.2');
   const [showSettings, setShowSettings] = useState(false);
   const [showMultiplayer, setShowMultiplayer] = useState(false);
+  const [iconPath, setIconPath] = useState('/tray-icon.png');
 
-  // Global settings from context.
   const {
     ram, hideLauncher, showConsole,
     getAccentStyles, t, theme,
     getAccentHex
   } = useSettings();
 
-  // Launcher logic from custom hook.
   const {
     isLaunching,
     progress,
@@ -38,7 +37,6 @@ function App() {
     copyLogs
   } = useLauncher();
 
-  // Fetch versions list for selector.
   const { versions } = useVersions();
   const { forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions } = useModSupportedVersions();
 
@@ -84,7 +82,6 @@ function App() {
   // Auto-disable OptiFine when Forge is disabled (OptiFine only works with Forge)
   useEffect(() => {
     if (!useForge && useOptiFine) {
-      // Use setTimeout to avoid synchronous setState in effect
       setTimeout(() => {
         setUseOptiFine(false);
       }, 0);
@@ -104,9 +101,22 @@ function App() {
     };
   }, []);
 
+  // Get icon path from Electron
+  useEffect(() => {
+    if (window.assets?.getIconPath) {
+      window.assets.getIconPath().then(path => {
+        setIconPath(path);
+      }).catch(() => {
+        // Fallback to default path if IPC fails
+        setIconPath('/tray-icon.png');
+      });
+    }
+  }, []);
+
 
   const handleLaunch = async () => {
     // Construct version string expected by backend.
+    // Priority: NeoForge > Forge > Fabric (only one modloader can be active)
     let launchVersion = version;
     if (useNeoForge) {
       launchVersion = `${version}-NeoForge`;
@@ -184,10 +194,16 @@ function App() {
               <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 p-10 select-none">
                 <div className="relative mb-6">
                   <img
-                    src="/tray-icon.png"
+                    src={iconPath}
                     className="w-32 h-32 opacity-90 mb-4 transition-all duration-500 hover:scale-105"
                     style={{ 
                       filter: `drop-shadow(0 0 30px ${getAccentHex()}) drop-shadow(0 0 60px ${getAccentHex()}40)`,
+                    }}
+                    onError={(e) => {
+                      // Fallback to default path if image fails to load
+                      if (e.currentTarget.src !== '/tray-icon.png') {
+                        e.currentTarget.src = '/tray-icon.png';
+                      }
                     }}
                   />
                   <div 

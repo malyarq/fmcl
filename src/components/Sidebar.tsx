@@ -101,7 +101,6 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
 
             <div className="space-y-6 flex-1 flex flex-col pt-2">
-                {/* Nickname Input */}
                 <div className="relative">
                     <div className="flex justify-between items-center mb-1">
                         {isOffline && (
@@ -119,7 +118,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                     />
                 </div>
 
-                {/* Version Selector */}
                 <div>
                     <Select
                         label={t('general.version')}
@@ -142,7 +140,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                     )}
                 </div>
 
-                {/* Modloader Selection */}
                 {(() => {
                     const availableModloaders: Array<{ id: 'neoforge' | 'forge' | 'fabric'; label: string; isActive: boolean }> = [];
                     
@@ -160,7 +157,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         return null;
                     }
 
-                    // Если доступен только один модлоадер - показываем кнопку
+                    // Show button if only one modloader is available
                     if (availableModloaders.length === 1) {
                         const loader = availableModloaders[0];
                         return (
@@ -186,7 +183,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         );
                     }
 
-                    // Если доступно несколько модлоадеров - показываем свитчер
+                    // Show switcher if multiple modloaders are available
                     return (
                         <div className="space-y-2">
                             <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
@@ -199,18 +196,16 @@ const Sidebar: React.FC<SidebarProps> = ({
                                         <button
                                             key={loader.id}
                                             onClick={() => {
-                                                // Если кликнули на уже активный - отключаем его
                                                 if (isActive) {
                                                     setUseNeoForge(false);
                                                     setUseForge(false);
                                                     setUseFabric(false);
                                                 } else {
-                                                    // Отключаем все модлоадеры
+                                                    // Disable all modloaders, then enable selected
                                                     setUseNeoForge(false);
                                                     setUseForge(false);
                                                     setUseFabric(false);
                                                     
-                                                    // Включаем выбранный
                                                     if (loader.id === 'neoforge') {
                                                         setUseNeoForge(true);
                                                     } else if (loader.id === 'forge') {
@@ -237,7 +232,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     );
                 })()}
 
-                {/* OptiFine Button - только для Forge */}
+                {/* OptiFine requires Forge to be enabled */}
                 {isOptiFineSupported && useForge && (
                     <Button
                         onClick={() => setUseOptiFine(!useOptiFine)}
@@ -277,6 +272,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         {isLaunching ? t('general.running') : t('general.play')}
                     </Button>
 
+                    {/* Force restart button - only shown during launch */}
                     {isLaunching && (
                         <Button
                             variant="danger"

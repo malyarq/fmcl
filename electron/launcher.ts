@@ -55,10 +55,10 @@ interface VersionEntry {
 
 const DEFAULT_USER_AGENT =
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-// Увеличенные таймауты для медленных соединений (особенно для пользователей из России)
+// Extended timeouts for slow connections
 const DEFAULT_CONNECT_TIMEOUT = 30_000;
 const DEFAULT_HEADERS_TIMEOUT = 60_000;
-const DEFAULT_BODY_TIMEOUT = 180_000; // 3 минуты - достаточно для медленных соединений, но отслеживание прогресса прервет раньше
+const DEFAULT_BODY_TIMEOUT = 180_000; // 3 minutes - sufficient for slow connections, but progress tracking will abort earlier
 
 // Orchestrates game launch flow: Java, Forge, auth, and runtime options.
 export class LauncherManager {
@@ -289,7 +289,7 @@ export class LauncherManager {
 
     private isHtmlResponse(data: Buffer, contentType?: string | null): boolean {
         if (contentType?.includes('text/html')) return true;
-        if (data.length < 100) return false; // Слишком маленький для проверки
+        if (data.length < 100) return false; // Too small to check
         const snippet = data.slice(0, Math.min(1024, data.length)).toString('utf8').trimStart().toLowerCase();
         return snippet.startsWith('<!doctype html') || 
                snippet.startsWith('<html') || 
@@ -301,16 +301,14 @@ export class LauncherManager {
 
     private async downloadFileDirectly(url: string, destination: string, expectedSize?: number, onLog: (data: string) => void = () => {}): Promise<void> {
         const controller = new AbortController();
-        const PROGRESS_STALL_TIMEOUT = 20_000; // 20 секунд без прогресса
-        const PROGRESS_CHECK_INTERVAL = 2_000; // Проверяем каждые 2 секунды
+        const PROGRESS_STALL_TIMEOUT = 20_000;
+        const PROGRESS_CHECK_INTERVAL = 2_000;
         
-        // Создаем директорию если нужно
         const dir = path.dirname(destination);
         if (!fs.existsSync(dir)) {
             fs.mkdirSync(dir, { recursive: true });
         }
         
-        // Удаляем старый файл если есть
         if (fs.existsSync(destination)) {
             fs.unlinkSync(destination);
         }
@@ -327,7 +325,7 @@ export class LauncherManager {
                     'accept': '*/*',
                     'accept-encoding': 'identity'
                 },
-                redirect: 'follow' // Следуем редиректам
+                redirect: 'follow'
             });
             
             if (!response.ok) {
@@ -347,7 +345,6 @@ export class LauncherManager {
                 }
             }
             
-            // Потоковая загрузка с отслеживанием прогресса
             if (!response.body) {
                 throw new Error('Response body is null');
             }
@@ -358,15 +355,12 @@ export class LauncherManager {
             let lastProgressTime = Date.now();
             let lastDownloadedBytes = 0;
             
-            // Мониторинг прогресса
             const progressMonitor = setInterval(() => {
                 const timeSinceProgress = Date.now() - lastProgressTime;
                 if (downloadedBytes === lastDownloadedBytes && timeSinceProgress >= PROGRESS_STALL_TIMEOUT) {
-                    // Прогресс остановился - прерываем загрузку
                     clearInterval(progressMonitor);
                     controller.abort();
                 } else if (downloadedBytes > lastDownloadedBytes) {
-                    // Есть прогресс - обновляем время
                     lastDownloadedBytes = downloadedBytes;
                     lastProgressTime = Date.now();
                 }
@@ -392,35 +386,29 @@ export class LauncherManager {
                 onLog(`[Download] Downloaded: ${Math.round(data.length / 1024)}KB`);
             }
             
-            // Проверка на HTML ошибку
             if (this.isHtmlResponse(data, contentType)) {
                 const snippet = data.slice(0, 200).toString('utf8');
                 throw new Error(`Server returned HTML instead of file. Response starts with: ${snippet.substring(0, 100)}...`);
             }
             
-            // Проверка размера
-            if (expectedSize && data.length < expectedSize * 0.8) { // Допускаем 20% отклонение
+            if (expectedSize && data.length < expectedSize * 0.8) {
                 throw new Error(`File too small: expected at least ${Math.round(expectedSize * 0.8 / 1024)}KB, got ${Math.round(data.length / 1024)}KB`);
             }
             
-            // Минимальная проверка для ZIP файлов
             if (data.length < 100) {
                 throw new Error(`File too small (${data.length} bytes), likely corrupted or incomplete`);
             }
             
-            // Проверка ZIP сигнатуры (PK для ZIP файлов)
             if (!data.slice(0, 2).equals(Buffer.from([0x50, 0x4B]))) {
                 throw new Error(`File doesn't appear to be a ZIP file (missing PK signature)`);
             }
             
-            // Записываем файл
             fs.writeFileSync(destination, data);
             
             if (onLog) {
                 onLog(`[Download] File saved successfully`);
             }
         } catch (err: unknown) {
-            // Удаляем битые файлы при ошибке
             try {
                 if (fs.existsSync(destination)) {
                     fs.unlinkSync(destination);
@@ -429,9 +417,8 @@ export class LauncherManager {
                     fs.unlinkSync(pendingFile);
                 }
             } catch {
-                // Игнорируем ошибки удаления
+                // Ignore deletion errors
             }
-            // Если загрузка была прервана из-за отсутствия прогресса, сообщаем об этом
             if (controller.signal.aborted && err instanceof Error && err.name === 'AbortError') {
                 throw new Error(`Download stalled - no progress for ${PROGRESS_STALL_TIMEOUT / 1000}s`);
             }
@@ -476,7 +463,6 @@ export class LauncherManager {
         const target = candidates[0];
         const destination = path.join(rootPath, 'libraries', target.path);
         
-        // Проверяем существующий файл
         if (fs.existsSync(destination)) {
             try {
                 const currentSha1 = await this.computeFileSha1(destination);
@@ -486,36 +472,29 @@ export class LauncherManager {
                 }
                 onLog(`[Forge] Existing file has wrong SHA1 (${currentSha1}), will re-download...`);
             } catch {
-                // Re-download if we cannot verify.
+                // Re-download if we cannot verify
             }
         }
 
-        // Получаем все возможные URL
         let urls = provider.injectURLWithCandidates(target.url);
         
-        // Добавляем дополнительные альтернативные источники для mcp_config
         const additionalSources: string[] = [];
         
-        // Официальный Maven Forge (приоритет)
         if (target.url.includes('maven.minecraftforge.net')) {
             additionalSources.push(target.url);
         } else {
-            // Если URL не официальный, добавляем официальный
             const officialUrl = target.url.replace(/https?:\/\/[^/]+/, 'https://maven.minecraftforge.net');
             additionalSources.push(officialUrl);
         }
         
-        // Старый Forge Maven
         const oldForgeUrl = target.url.replace(/https?:\/\/[^/]+/, 'https://files.minecraftforge.net/maven');
         if (!additionalSources.includes(oldForgeUrl)) {
             additionalSources.push(oldForgeUrl);
         }
         
-        // Удаляем дубликаты и объединяем
         const allUrls = [...additionalSources, ...urls];
         const uniqueUrls = Array.from(new Set(allUrls));
         
-        // Приоритизируем: сначала официальные, потом зеркала
         const prioritizedUrls = uniqueUrls.sort((a, b) => {
             const aIsOfficial = a.includes('maven.minecraftforge.net') || a.includes('files.minecraftforge.net');
             const bIsOfficial = b.includes('maven.minecraftforge.net') || b.includes('files.minecraftforge.net');
@@ -536,16 +515,14 @@ export class LauncherManager {
         onLog(`[Forge] Expected SHA1: ${target.sha1}`);
         onLog(`[Forge] File size should be ~400KB`);
         
-        // Попытка 1: Прямая загрузка через fetch (более надежно для маленьких файлов)
         onLog('[Forge] Attempting direct download (bypassing download manager)...');
-        const expectedMinSize = 300 * 1024; // Минимум 300KB (файл ~400KB)
-        for (const url of prioritizedUrls.slice(0, 12)) { // Пробуем первые 12 источников
+        const expectedMinSize = 300 * 1024;
+        for (const url of prioritizedUrls.slice(0, 12)) {
             try {
                 const origin = new URL(url).origin;
                 onLog(`[Forge] Trying direct download from: ${origin}`);
                 await this.downloadFileDirectly(url, destination, undefined, onLog);
                 
-                // Проверяем размер файла
                 const stats = fs.statSync(destination);
                 const fileSize = stats.size;
                 onLog(`[Forge] Downloaded file size: ${Math.round(fileSize / 1024)}KB`);
@@ -554,13 +531,11 @@ export class LauncherManager {
                     throw new Error(`File too small (${fileSize} bytes), expected at least ${expectedMinSize} bytes. File may be corrupted or incomplete.`);
                 }
                 
-                // Проверяем валидность ZIP
                 try {
                     const zip = new AdmZip(destination);
                     const entries = zip.getEntries();
                     onLog(`[Forge] ZIP validation passed (${entries.length} entries).`);
                     
-                    // Проверяем SHA1
                     const actualSha1 = await this.computeFileSha1(destination);
                     if (actualSha1.toLowerCase() === target.sha1.toLowerCase()) {
                         onLog('[Forge] ✓ mcp_config downloaded successfully with valid checksum!');
@@ -574,36 +549,32 @@ export class LauncherManager {
                 } catch (zipError: unknown) {
                     const errorMsg = zipError instanceof Error ? zipError.message : String(zipError);
                     onLog(`[Forge] ZIP validation failed: ${errorMsg}`);
-                    // Удаляем поврежденный файл
                     if (fs.existsSync(destination)) {
                         try { fs.unlinkSync(destination); } catch {
                             // File deletion failed, continue
                         }
                     }
-                    continue; // Пробуем следующий URL
+                    continue;
                 }
             } catch (directError: unknown) {
                 const errorMsg = directError instanceof Error ? directError.message : String(directError);
                 onLog(`[Forge] Direct download from ${new URL(url).origin} failed: ${errorMsg}`);
-                // Удаляем поврежденный файл если есть
                 if (fs.existsSync(destination)) {
                     try { fs.unlinkSync(destination); } catch {
                         // File deletion failed, continue
                     }
                 }
-                continue; // Пробуем следующий URL
+                continue;
             }
         }
         
-        // Попытка 2: Через DownloadManager с увеличенными таймаутами
         onLog('[Forge] Direct download failed, trying via DownloadManager with extended timeouts...');
         try {
-            // Создаем специальный dispatcher с большими таймаутами для маленького файла
             const slowDispatcher = new Agent({
                 connections: 1,
                 connectTimeout: 30_000,
                 headersTimeout: 60_000,
-                bodyTimeout: 180_000 // 3 минуты - достаточно для медленных соединений, но отслеживание прогресса прервет раньше
+                bodyTimeout: 180_000 // 3 minutes - sufficient for slow connections, but progress tracking will abort earlier
             }).compose(
                 interceptors.retry({ maxRetries: 3 }),
                 interceptors.redirect({ maxRedirections: 5 })
@@ -814,7 +785,6 @@ export class LauncherManager {
                 console.warn('[Forge] Promotions check failed, falling back to individual checks:', errorMsg);
             }
             
-            // Fallback: check each version individually (slower but more accurate)
             console.log('[Forge] Starting individual version checks (this may take a while)...');
             let checked = 0;
             for (const version of versionList.versions) {
@@ -831,7 +801,7 @@ export class LauncherManager {
                         supportedVersions.push(version.id);
                     }
                 } catch {
-                    // Skip this version
+                    // Skip versions that fail to check
                 }
             }
             const elapsed = Date.now() - startTime;
@@ -988,7 +958,7 @@ export class LauncherManager {
                         }
                     }
                 } catch {
-                    // Skip this version silently (timeout or error)
+                    // Skip versions that timeout or error
                 }
                 return null;
             });
@@ -1049,7 +1019,6 @@ export class LauncherManager {
 
     private async getFabricLoaderVersion(mcVersion: string, onLog: (data: string) => void): Promise<string | null> {
         try {
-            // First check if the game version is supported by Fabric
             const gameVersionsUrl = 'https://meta.fabricmc.net/v2/versions/game';
             const gameVersionsMirror = 'https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/game';
             onLog('[Fabric] Checking game version support...');
@@ -1078,7 +1047,6 @@ export class LauncherManager {
                 return null;
             }
 
-            // Get latest loader version
             const loaderVersionsUrl = 'https://meta.fabricmc.net/v2/versions/loader';
             const loaderVersionsMirror = 'https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader';
             onLog('[Fabric] Fetching loader versions...');
@@ -1106,7 +1074,6 @@ export class LauncherManager {
                 return null;
             }
 
-            // Prefer stable versions, fallback to latest
             const stable = loaderVersions.find(v => v.stable);
             const latest = loaderVersions[0];
             const selected = stable ?? latest;
@@ -1121,28 +1088,24 @@ export class LauncherManager {
 
     private async getNeoForgeVersion(mcVersion: string, onLog: (data: string) => void): Promise<string | null> {
         try {
-            // Try BMCLAPI first
             const bmclUrl = `https://bmclapi2.bangbang93.com/neoforge/list/${mcVersion}`;
             onLog('[NeoForge] Fetching version list from BMCLAPI...');
             const response = await fetch(bmclUrl);
             if (response.ok) {
                 const data: Array<{ version: string }> = await response.json();
                 if (data && data.length > 0) {
-                    // Get the latest version (first in list)
                     const latest = data[0].version;
                     onLog(`[NeoForge] Found version: ${latest}`);
                     return latest;
                 }
             }
             
-            // Fallback to Maven API
             onLog('[NeoForge] Trying Maven API...');
             const mavenUrl = 'https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge';
             const mavenResponse = await fetch(mavenUrl);
             if (mavenResponse.ok) {
                 const mavenData = await mavenResponse.json();
                 const versions: string[] = mavenData.versions || [];
-                // Extract MC version from NeoForge version format (e.g., "20.2.59" for MC 1.20.2)
                 const mcParts = mcVersion.split('.');
                 if (mcParts.length >= 2) {
                     const major = mcParts[1];
@@ -1150,7 +1113,6 @@ export class LauncherManager {
                     const prefix = `${major}.${minor}.`;
                     const matching = versions.filter(v => v.startsWith(prefix));
                     if (matching.length > 0) {
-                        // Get latest (highest version)
                         const latest = matching.sort().reverse()[0];
                         onLog(`[NeoForge] Found version from Maven: ${latest}`);
                         return latest;
@@ -1181,15 +1143,12 @@ export class LauncherManager {
                 onLog(`[OptiFine] No versions found for Minecraft ${mcVersion}`);
                 return null;
             }
-            // Sort by patch (higher is better) and return the latest
-            // Try to parse as number first, otherwise use string comparison
             const sorted = matchingVersions.sort((a, b) => {
                 const aNum = parseInt(a.patch);
                 const bNum = parseInt(b.patch);
                 if (!isNaN(aNum) && !isNaN(bNum)) {
                     return bNum - aNum;
                 }
-                // String comparison for non-numeric patches (e.g., "F5", "pre1")
                 return b.patch.localeCompare(a.patch);
             });
             const latest = sorted[0];
@@ -1214,7 +1173,7 @@ export class LauncherManager {
         try {
             fs.mkdirSync(modsPath, { recursive: true });
         } catch {
-            // Ignore if already exists
+            // Directory already exists
         }
 
         const optiFineVersion = await this.getOptiFineVersion(mcVersion, onLog);
@@ -1223,7 +1182,6 @@ export class LauncherManager {
             return;
         }
 
-        // Normalize version for URL (1.9 -> 1.9.0, 1.8 -> 1.8.0)
         let normalizedVersion = mcVersion;
         if (normalizedVersion === '1.9' || normalizedVersion === '1.8') {
             normalizedVersion += '.0';
@@ -1232,14 +1190,12 @@ export class LauncherManager {
         const fileName = `OptiFine_${mcVersion}_${optiFineVersion.type}_${optiFineVersion.patch}.jar`;
         const modFilePath = path.join(modsPath, fileName);
 
-        // Check if already installed
         if (fs.existsSync(modFilePath)) {
-            onLog(`[OptiFine] ✓ Уже установлен: ${fileName}`);
-            onLog(`[OptiFine] Путь: ${modFilePath}`);
+            onLog(`[OptiFine] ✓ Already installed: ${fileName}`);
+            onLog(`[OptiFine] Path: ${modFilePath}`);
             return;
         }
 
-        // Try to download from BMCLAPI
         const downloadUrl = `https://bmclapi2.bangbang93.com/optifine/${normalizedVersion}/${optiFineVersion.type}/${optiFineVersion.patch}`;
         const urls = provider.injectURLWithCandidates(downloadUrl);
         
@@ -1252,12 +1208,11 @@ export class LauncherManager {
             headers: { 'user-agent': DEFAULT_USER_AGENT, accept: '*/*', 'accept-encoding': 'identity' }
         });
 
-        onLog(`[OptiFine] ✓ Успешно установлен: ${fileName}`);
-        onLog(`[OptiFine] Путь: ${modFilePath}`);
+        onLog(`[OptiFine] ✓ Successfully installed: ${fileName}`);
+        onLog(`[OptiFine] Path: ${modFilePath}`);
         onProgress({ type: 'OptiFine', task: 100, total: 100 });
     }
 
-    // Orchestrate the end-to-end launch flow.
     public async launchGame(options: {
         nickname: string;
         version: string; // Identifier like "1.12.2" or "1.12.2-Forge"
@@ -1275,7 +1230,6 @@ export class LauncherManager {
         const rootPath = options.gamePath || path.join(app.getPath('userData'), 'minecraft_data');
         this.ensureXmclFolders(rootPath);
 
-        // Определение типа версии
         const isNeoForge = options.version.toLowerCase().includes('neoforge');
         const isForge = options.version.toLowerCase().includes('forge') && !isNeoForge;
         const isFabric = options.version.toLowerCase().includes('fabric');
@@ -1287,13 +1241,12 @@ export class LauncherManager {
                     ? options.version.replace(/-?fabric/i, '').trim() 
                     : options.version.trim();
 
-        // Логирование информации о версии
         onLog('═══════════════════════════════════════════════════════════');
-        onLog(`[VERSION INFO] Запуск версии: ${options.version}`);
-        onLog(`[VERSION INFO] Minecraft версия: ${mcVersion}`);
-        onLog(`[VERSION INFO] Тип версии: ${isNeoForge ? 'NeoForge' : isForge ? 'Forge' : isFabric ? 'Fabric' : 'Vanilla'}`);
+        onLog(`[VERSION INFO] Launching version: ${options.version}`);
+        onLog(`[VERSION INFO] Minecraft version: ${mcVersion}`);
+        onLog(`[VERSION INFO] Version type: ${isNeoForge ? 'NeoForge' : isForge ? 'Forge' : isFabric ? 'Fabric' : 'Vanilla'}`);
         if (options.useOptiFine) {
-            onLog(`[VERSION INFO] OptiFine: запрошен`);
+            onLog(`[VERSION INFO] OptiFine: requested`);
         }
         onLog('═══════════════════════════════════════════════════════════');
         const downloadProvider = this.getDownloadProvider(options.downloadProvider);
@@ -1310,20 +1263,16 @@ export class LauncherManager {
         const major = parseInt(versionParts[1] || '0', 10);
         const minor = parseInt(versionParts[2] || '0', 10);
         
-        // Minecraft 1.20.5+ requires Java 21
         if (major === 20 && minor >= 5) {
             requiredJava = 21;
             onLog(`Version ${mcVersion} requires Java 21.`);
         } else if (major > 20) {
-            // Minecraft 1.21+ requires Java 21
             requiredJava = 21;
             onLog(`Version ${mcVersion} requires Java 21.`);
         } else if (major >= 17) {
-            // Minecraft 1.17-1.20.4 requires Java 17
             requiredJava = 17;
             onLog(`Version ${mcVersion} requires Java 17.`);
         } else {
-            // Minecraft 1.16 and earlier requires Java 8
             onLog(`Version ${mcVersion} uses Legacy Java 8.`);
         }
 
@@ -1333,7 +1282,6 @@ export class LauncherManager {
             onLog(`[Java] Validating custom Java path...`);
             const valid = await this.javaManager.validateJavaPath(customJava);
             if (valid) {
-                // For Java 21 requirements, verify the custom Java is actually version 21
                 if (requiredJava === 21) {
                     try {
                         const actualVersion = await this.javaManager.getJavaVersion(customJava);
@@ -1390,13 +1338,13 @@ export class LauncherManager {
                     side: 'client',
                     ...downloadOptions
                 });
-                onLog(`[Fabric] ✓ Установлен успешно!`);
-                onLog(`[Fabric] Версия ID: ${launchVersion}`);
-                onLog(`[Fabric] Loader версия: ${fabricLoaderVersion}`);
+                onLog(`[Fabric] ✓ Installed successfully!`);
+                onLog(`[Fabric] Version ID: ${launchVersion}`);
+                onLog(`[Fabric] Loader version: ${fabricLoaderVersion}`);
                 onProgress({ type: 'Fabric', task: 100, total: 100 });
             } catch (err: unknown) {
                 const errorMsg = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : String(err);
-                onLog(`[Fabric] ✗ Ошибка установки: ${errorMsg ?? err}`);
+                onLog(`[Fabric] ✗ Installation error: ${errorMsg ?? err}`);
                 throw err;
             }
         } else if (isForge) {
@@ -1441,9 +1389,9 @@ export class LauncherManager {
 
             try {
                 launchVersion = await runForgeInstall();
-                onLog(`[Forge] ✓ Установлен успешно!`);
-                onLog(`[Forge] Версия ID: ${launchVersion}`);
-                onLog(`[Forge] Forge версия: ${forgeVersion.version}`);
+                onLog(`[Forge] ✓ Installed successfully!`);
+                onLog(`[Forge] Version ID: ${launchVersion}`);
+                onLog(`[Forge] Forge version: ${forgeVersion.version}`);
             } catch (err: unknown) {
                 const errorMsg = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : String(err);
                 onLog(`[Forge] Library download failed: ${errorMsg}`);
@@ -1460,7 +1408,7 @@ export class LauncherManager {
                 } catch (recoveryError: unknown) {
                     const errorMsg = recoveryError && typeof recoveryError === 'object' && 'message' in recoveryError ? String((recoveryError as { message: unknown }).message) : String(recoveryError);
                     onLog(`[Forge] Recovery attempt failed: ${errorMsg ?? recoveryError}`);
-                    throw err; // Бросаем оригинальную ошибку
+                    throw err; // Throw original error
                 }
             }
         } else if (isNeoForge) {
@@ -1523,7 +1471,6 @@ export class LauncherManager {
                     versionJsonContent = versionJsonEntry.getData().toString('utf-8');
                     onLog(`[NeoForge] Extracted version.json from installer`);
                 } else {
-                    // Try alternative locations
                     const alternativeNames = ['version.json', `version/${mcVersion}.json`, `versions/${mcVersion}.json`];
                     for (const altName of alternativeNames) {
                         const altEntry = zip.getEntry(altName);
@@ -1536,7 +1483,6 @@ export class LauncherManager {
                 }
                 
                 if (!versionJsonContent) {
-                    // If version.json is not in the installer, try to construct it from install_profile
                     onLog(`[NeoForge] version.json not found in installer, constructing from install profile...`);
                     if (installProfile.versionInfo) {
                         versionJsonContent = JSON.stringify(installProfile.versionInfo, null, 2);
@@ -1546,12 +1492,9 @@ export class LauncherManager {
                     }
                 }
                 
-                // Save version.json
                 fs.writeFileSync(versionJsonPath, versionJsonContent);
                 onLog(`[NeoForge] Saved version.json`);
                 
-                // Create launcher_profiles.json if it doesn't exist
-                // NeoForge installer requires this file to work
                 const launcherProfilesPath = path.join(rootPath, 'launcher_profiles.json');
                 if (!fs.existsSync(launcherProfilesPath)) {
                     const launcherProfiles = {
@@ -1575,14 +1518,11 @@ export class LauncherManager {
                     onLog(`[NeoForge] Created launcher_profiles.json (required by installer)`);
                 }
                 
-                // Now try to run the installer to process libraries and create necessary files
-                // The installer needs to process files and create srg versions of client jar
                 onLog('[NeoForge] Running installer to process files and libraries...');
                 const { promisify } = await import('util');
                 const { exec } = await import('child_process');
                 const execAsync = promisify(exec);
                 
-                // Use absolute path for Java to avoid issues
                 const javaExecutable = javaPath.includes(' ') ? `"${javaPath}"` : javaPath;
                 const installCommand = `${javaExecutable} -jar "${installerPath}" --installClient "${rootPath}"`;
                 
@@ -1604,7 +1544,6 @@ export class LauncherManager {
                     if (stderr && stderr.trim()) {
                         const errorLines = stderr.split('\n').filter(l => l.trim());
                         if (errorLines.length > 0) {
-                            // Log stderr but don't treat it as fatal - some installers write to stderr
                             const importantErrors = errorLines.filter(l => 
                                 !l.includes('WARNING') && 
                                 !l.includes('INFO') && 
@@ -1618,7 +1557,6 @@ export class LauncherManager {
                     }
                     onLog(`[NeoForge] Installer completed successfully`);
                 } catch (e: unknown) {
-                    // Log detailed error information
                     const eObj = e && typeof e === 'object' ? e as { message?: unknown; code?: unknown; signal?: unknown; stderr?: string } : null;
                     const errorMsg = eObj?.message ? String(eObj.message) : String(e);
                     const errorCode = eObj?.code;
@@ -1629,7 +1567,6 @@ export class LauncherManager {
                     if (errorCode) onLog(`[NeoForge]   Exit code: ${errorCode}`);
                     if (errorSignal) onLog(`[NeoForge]   Signal: ${errorSignal}`);
                     
-                    // Try to get stderr if available
                     if (eObj?.stderr) {
                         const stderrLines = eObj.stderr.split('\n').filter((l: string) => l.trim());
                         if (stderrLines.length > 0) {
@@ -1637,7 +1574,6 @@ export class LauncherManager {
                         }
                     }
                     
-                    // Check if critical files were created despite the error
                     const versionJsonExists = fs.existsSync(versionJsonPath);
                     const installProfileExists = fs.existsSync(installProfilePath);
                     
@@ -1645,13 +1581,9 @@ export class LauncherManager {
                         throw new Error(`NeoForge installation failed: version.json was not created. Installer error: ${errorMsg}`);
                     }
                     
-                    // Even if installer failed, check if we can proceed
-                    // The installer might have created some files before failing
                     onLog(`[NeoForge] Version.json exists, checking if we can proceed...`);
                     onLog(`[NeoForge] Note: Some files may be missing. The installer should have processed client jar.`);
                     
-                    // Try to manually process the installer using spawn for better control
-                    // The installer needs to run to process files and create srg versions
                     if (installProfileExists && installProfile.processors) {
                         onLog(`[NeoForge] Install profile has processors. Attempting to run installer with spawn for better error handling...`);
                         try {
@@ -1766,15 +1698,12 @@ export class LauncherManager {
                             const errorMsg = spawnError && typeof spawnError === 'object' && 'message' in spawnError ? String((spawnError as { message: unknown }).message) : String(spawnError);
                             onLog(`[NeoForge] Spawn fallback failed: ${errorMsg || spawnError}`);
                             onLog(`[NeoForge] Continuing with extracted files (some processing may be incomplete)...`);
-                            // Don't throw - continue with what we have
                         }
                     }
                 }
 
-                // Patch library URLs in version.json with mirrors
                 this.rewriteForgeVersionJson(rootPath, versionDirName, downloadProvider, onLog);
 
-                // Clean up installer
                 try { 
                     fs.unlinkSync(installerPath); 
                     onLog('[NeoForge] Cleaned up installer JAR');
@@ -1783,9 +1712,9 @@ export class LauncherManager {
                 }
 
                 launchVersion = versionDirName;
-                onLog(`[NeoForge] ✓ Установлен успешно!`);
-                onLog(`[NeoForge] Версия ID: ${launchVersion}`);
-                onLog(`[NeoForge] NeoForge версия: ${neoForgeVersion}`);
+                onLog(`[NeoForge] ✓ Installed successfully!`);
+                onLog(`[NeoForge] Version ID: ${launchVersion}`);
+                onLog(`[NeoForge] NeoForge version: ${neoForgeVersion}`);
                 onProgress({ type: 'NeoForge', task: 100, total: 100 });
             } catch (err: unknown) {
                 const errorMsg = err && typeof err === 'object' && 'message' in err ? String((err as { message: unknown }).message) : String(err);
@@ -1798,7 +1727,6 @@ export class LauncherManager {
         const depsTask = installDependenciesTask(resolved, downloadOptions);
         await this.runTaskWithProgress(depsTask, onProgress, onLog, `Installing dependencies for ${launchVersion}...`);
 
-        // Install OptiFine as mod if requested
         if (options.useOptiFine) {
             try {
                 await this.installOptiFineAsMod(rootPath, mcVersion, downloadProvider, maxSockets, onLog, onProgress);
@@ -1808,19 +1736,17 @@ export class LauncherManager {
             }
         }
 
-        // Проверка установленных модов перед запуском
         onLog('═══════════════════════════════════════════════════════════');
-        onLog(`[LAUNCH INFO] Финальная версия для запуска: ${launchVersion}`);
+        onLog(`[LAUNCH INFO] Final version for launch: ${launchVersion}`);
         this.logInstalledMods(rootPath, onLog);
         onLog('═══════════════════════════════════════════════════════════');
 
-        // Offline auth via authlib-injector.
         const injectorBase = app.isPackaged ? process.resourcesPath : app.getAppPath();
         const sourceInjectorPath = path.join(injectorBase, 'authlib-injector.jar');
         const destInjectorPath = path.join(rootPath, 'authlib-injector.jar');
         const modsPath = path.join(rootPath, 'mods');
         try { fs.mkdirSync(modsPath, { recursive: true }); } catch {
-            // Directory already exists, continue
+            // Directory already exists
         }
 
         try {
@@ -1828,7 +1754,7 @@ export class LauncherManager {
                 onLog(`[Auth] Copying injector to safe path: ${destInjectorPath}`);
                 if (fs.existsSync(destInjectorPath)) {
                     try { fs.unlinkSync(destInjectorPath); } catch {
-                        // File deletion failed, continue
+                        // File deletion failed
                     }
                 }
                 fs.copyFileSync(sourceInjectorPath, destInjectorPath);
@@ -1859,7 +1785,7 @@ export class LauncherManager {
             : `${offlineUuidRaw.substring(0, 8)}-${offlineUuidRaw.substring(8, 12)}-${offlineUuidRaw.substring(12, 16)}-${offlineUuidRaw.substring(16, 20)}-${offlineUuidRaw.substring(20)}`;
         const offlineUser = offline(options.nickname, offlineUuid);
 
-        onLog(`[LAUNCH] Запуск Minecraft ${launchVersion}...`);
+        onLog(`[LAUNCH] Launching Minecraft ${launchVersion}...`);
         onLog(`[LAUNCH] Java: ${javaPath}`);
         onLog(`[LAUNCH] RAM: ${options.ram}MB`);
         const proc = await launch({
@@ -1909,10 +1835,9 @@ export class LauncherManager {
     }
 
     /**
-     * Проверяет и логирует установленные моды и версии
+     * Checks and logs installed mods and versions
      */
     private logInstalledMods(rootPath: string, onLog: (data: string) => void) {
-        // Проверка версий в папке versions
         const versionsPath = path.join(rootPath, 'versions');
         if (fs.existsSync(versionsPath)) {
             try {
@@ -1920,40 +1845,36 @@ export class LauncherManager {
                     .filter(dirent => dirent.isDirectory())
                     .map(dirent => dirent.name);
                 
-                // Поиск Fabric версий
                 const fabricVersions = versionDirs.filter(v => 
                     v.toLowerCase().includes('fabric')
                 );
                 if (fabricVersions.length > 0) {
-                    onLog(`[VERSIONS] Fabric версии найдены: ${fabricVersions.join(', ')}`);
+                    onLog(`[VERSIONS] Fabric versions found: ${fabricVersions.join(', ')}`);
                 }
 
-                // Поиск Forge версий
                 const forgeVersions = versionDirs.filter(v => 
                     v.toLowerCase().includes('forge') && !v.toLowerCase().includes('neoforge')
                 );
                 if (forgeVersions.length > 0) {
-                    onLog(`[VERSIONS] Forge версии найдены: ${forgeVersions.join(', ')}`);
+                    onLog(`[VERSIONS] Forge versions found: ${forgeVersions.join(', ')}`);
                 }
 
-                // Поиск NeoForge версий
                 const neoForgeVersions = versionDirs.filter(v => 
                     v.toLowerCase().includes('neoforge')
                 );
                 if (neoForgeVersions.length > 0) {
-                    onLog(`[VERSIONS] NeoForge версии найдены: ${neoForgeVersions.join(', ')}`);
+                    onLog(`[VERSIONS] NeoForge versions found: ${neoForgeVersions.join(', ')}`);
                 }
             } catch (e: unknown) {
                 const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
-            onLog(`[VERSIONS] Ошибка при проверке версий: ${errorMsg || e}`);
+            onLog(`[VERSIONS] Error checking versions: ${errorMsg || e}`);
             }
         }
 
-        // Проверка модов
         const modsPath = path.join(rootPath, 'mods');
         
         if (!fs.existsSync(modsPath)) {
-            onLog(`[MODS] Папка mods не найдена - моды не установлены`);
+            onLog(`[MODS] mods folder not found - no mods installed`);
             return;
         }
 
@@ -1963,24 +1884,22 @@ export class LauncherManager {
             );
 
             if (modFiles.length === 0) {
-                onLog(`[MODS] В папке mods нет .jar файлов`);
+                onLog(`[MODS] No .jar files in mods folder`);
                 return;
             }
 
-            onLog(`[MODS] Найдено модов: ${modFiles.length}`);
+            onLog(`[MODS] Found mods: ${modFiles.length}`);
             
-            // Проверка на OptiFine
             const optiFineMods = modFiles.filter(file => 
                 file.toLowerCase().includes('optifine') || 
                 file.toLowerCase().startsWith('optifine_')
             );
             if (optiFineMods.length > 0) {
-                onLog(`[MODS] ✓ OptiFine установлен: ${optiFineMods.join(', ')}`);
+                onLog(`[MODS] ✓ OptiFine installed: ${optiFineMods.join(', ')}`);
             } else {
-                onLog(`[MODS] ✗ OptiFine не найден`);
+                onLog(`[MODS] ✗ OptiFine not found`);
             }
 
-            // Проверка на Fabric Loader и API
             const fabricLoaderMods = modFiles.filter(file => 
                 file.toLowerCase().includes('fabric-loader')
             );
@@ -1988,7 +1907,7 @@ export class LauncherManager {
                 file.toLowerCase().includes('fabric-api')
             );
             if (fabricLoaderMods.length > 0 || fabricApiMods.length > 0) {
-                onLog(`[MODS] ✓ Fabric компоненты найдены:`);
+                onLog(`[MODS] ✓ Fabric components found:`);
                 if (fabricLoaderMods.length > 0) {
                     onLog(`[MODS]   - Loader: ${fabricLoaderMods.join(', ')}`);
                 }
@@ -1997,28 +1916,26 @@ export class LauncherManager {
                 }
             }
 
-            // Проверка на Forge моды (обычно имеют специфичные названия)
             const otherMods = modFiles.filter(file => 
                 !file.toLowerCase().includes('optifine') &&
                 !file.toLowerCase().includes('fabric') &&
                 file !== 'authlib-injector.jar'
             );
             if (otherMods.length > 0) {
-                onLog(`[MODS] Другие моды: ${otherMods.length} мод(ов)`);
+                onLog(`[MODS] Other mods: ${otherMods.length} mod(s)`);
                 if (otherMods.length <= 5) {
-                    onLog(`[MODS]   Список: ${otherMods.join(', ')}`);
+                    onLog(`[MODS]   List: ${otherMods.join(', ')}`);
                 }
             }
 
-            // Список всех модов, если их немного
             if (modFiles.length <= 10) {
-                onLog(`[MODS] Все моды: ${modFiles.join(', ')}`);
+                onLog(`[MODS] All mods: ${modFiles.join(', ')}`);
             } else {
-                onLog(`[MODS] Первые 10 модов: ${modFiles.slice(0, 10).join(', ')}...`);
+                onLog(`[MODS] First 10 mods: ${modFiles.slice(0, 10).join(', ')}...`);
             }
         } catch (e: unknown) {
             const errorMsg = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : String(e);
-            onLog(`[MODS] Ошибка при проверке модов: ${errorMsg || e}`);
+            onLog(`[MODS] Error checking mods: ${errorMsg || e}`);
         }
     }
 
