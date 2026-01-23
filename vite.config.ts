@@ -5,11 +5,23 @@ import react from '@vitejs/plugin-react'
 import pkg from './package.json'
 
 export default defineConfig({
+  optimizeDeps: {
+    entries: [
+      'index.html',
+      'src/main.tsx',
+    ],
+  },
+  server: {
+    fs: {
+      deny: ['**/research/**'],
+    },
+  },
   plugins: [
     react(),
     electron({
       main: {
         entry: 'electron/main.ts',
+        // Keep Electron deps external to the renderer bundle.
         vite: {
           build: {
             rollupOptions: {

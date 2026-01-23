@@ -11,14 +11,11 @@ export class SelfUpdater {
     }
 
     private init() {
-        autoUpdater.autoDownload = false; // Let user decide or auto download? Let's manual for now.
+        // Keep downloads explicit to avoid unexpected bandwidth usage.
+        autoUpdater.autoDownload = false;
         autoUpdater.autoInstallOnAppQuit = true;
 
-        // Logging
-        // const log = require('electron-log'); // Optional: usually good for debugging
-        // autoUpdater.logger = log;
-
-        // Events
+        // App update events forwarded to the renderer.
         autoUpdater.on('checking-for-update', () => {
             this.send('app-updater:status', 'checking');
         });
@@ -45,7 +42,7 @@ export class SelfUpdater {
             this.send('app-updater:downloaded', info);
         });
 
-        // IPC Handlers
+        // IPC handlers invoked by the renderer UI.
         ipcMain.handle('app-updater:check', async () => {
             return await autoUpdater.checkForUpdates();
         });
@@ -55,7 +52,7 @@ export class SelfUpdater {
         });
     }
 
-    private send(channel: string, ...args: any[]) {
+    private send(channel: string, ...args: unknown[]) {
         if (!this.win.isDestroyed()) {
             this.win.webContents.send(channel, ...args);
         }

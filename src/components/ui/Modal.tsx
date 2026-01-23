@@ -9,6 +9,7 @@ interface ModalProps {
     className?: string;
 }
 
+// Generic modal with ESC close and header.
 export const Modal: React.FC<ModalProps> = ({
     isOpen,
     onClose,
@@ -27,16 +28,15 @@ export const Modal: React.FC<ModalProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
             <div
                 className={cn(
-                    "bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 w-full max-w-lg rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200",
+                    "bg-white/95 dark:bg-zinc-800/95 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-700/50 w-full max-w-lg rounded-2xl shadow-2xl shadow-black/30 dark:shadow-black/50 overflow-hidden animate-in zoom-in-95 duration-200",
                     className
                 )}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header */}
-                <div className="px-6 py-4 border-b border-zinc-100 dark:border-zinc-700/50 flex justify-between items-center bg-zinc-50/50 dark:bg-zinc-800/80">
+                <div className="px-6 py-4 border-b border-zinc-200/50 dark:border-zinc-700/50 flex justify-between items-center bg-gradient-to-r from-zinc-50/80 to-white/80 dark:from-zinc-800/80 dark:to-zinc-900/80 backdrop-blur-sm">
                     <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{title}</h3>
                     <button
                         onClick={onClose}
@@ -46,7 +46,6 @@ export const Modal: React.FC<ModalProps> = ({
                     </button>
                 </div>
 
-                {/* Body */}
                 <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                     {children}
                 </div>

@@ -20,14 +20,14 @@ declare module 'hyperswarm' {
         /**
          * Set of active peer connections
          */
-        connections: Set<any>;
+        connections: Set<unknown>;
 
         /**
          * Emitted when a new peer connection is established
          */
-        on(event: 'connection', listener: (conn: any) => void): this;
-        off(event: 'connection', listener: (conn: any) => void): this;
-        once(event: 'connection', listener: (conn: any) => void): this;
+        on(event: 'connection', listener: (conn: unknown) => void): this;
+        off(event: 'connection', listener: (conn: unknown) => void): this;
+        once(event: 'connection', listener: (conn: unknown) => void): this;
         removeAllListeners(event?: string): this;
 
         /**

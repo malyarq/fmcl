@@ -3,11 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { fileURLToPath } from 'url';
 
-/**
- * Configuration
- * Run with: node scripts/builder.js <modpack-folder-name> <base-url>
- * Example: node scripts/builder.js super-rpg https://raw.githubusercontent.com/USER/REPO/main/modpacks/super-rpg
- */
+// Build a modpack manifest JSON for a local folder.
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,7 +22,7 @@ const PACK_DIR = path.join(MODPACKS_DIR, PACK_NAME);
 const OUTPUT_FILE = path.join(PACK_DIR, 'manifest.json');
 const IGNORE_FILES = ['manifest.json', '.DS_Store', 'thumbs.db'];
 
-// Helper: Calculate SHA1
+// Calculate SHA1 hash for a file.
 function getFileHash(filePath) {
     const fileBuffer = fs.readFileSync(filePath);
     const hashSum = crypto.createHash('sha1');
@@ -34,7 +30,7 @@ function getFileHash(filePath) {
     return hashSum.digest('hex');
 }
 
-// Helper: Recursive file scan
+// Recursively scan files for manifest entries.
 function scanDirectory(dir, fileList = []) {
     const files = fs.readdirSync(dir);
 
@@ -47,8 +43,7 @@ function scanDirectory(dir, fileList = []) {
         if (stat.isDirectory()) {
             scanDirectory(filePath, fileList);
         } else {
-            // Calculate relative path (e.g., "mods/jei.jar")
-            // We must force forward slashes for URLs even on Windows
+            // Force forward slashes for URLs even on Windows.
             const relativePath = path.relative(PACK_DIR, filePath).replace(/\\/g, '/');
 
             fileList.push({

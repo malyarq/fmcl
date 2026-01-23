@@ -1,33 +1,17 @@
 import { app, BrowserWindow, Tray, Menu, nativeImage } from 'electron'
-// import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 import { AuthServer } from './auth/server'
-
-// ... (imports)
-
-// ...
-
-// Auth Mock Server for Authlib Injector
-const authServer = new AuthServer(25530);
-authServer.start();
 import { LauncherManager } from './launcher'
-// import { Updater } from './updater'
 import { SelfUpdater } from './self_updater'
 
 // const require = createRequire(import.meta.url)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// The built directory structure
-//
-// ├─┬─┬ dist
-// │ │ └── index.html
-// │ │
-// │ ├─┬ dist-electron
-// │ │ ├── main.js
-// │ │ └── preload.mjs
-// │
+// Start local Authlib mock server used by authlib-injector.
+const authServer = new AuthServer(25530)
+authServer.start()
 process.env.APP_ROOT = path.join(__dirname, '..')
 
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
@@ -37,52 +21,51 @@ export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist')
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST
 
-// DEV: If running on second port (5174), use a different User Data dir to allow 2 instances
+// In dev, allow two local instances by splitting userData.
 if (VITE_DEV_SERVER_URL && VITE_DEV_SERVER_URL.includes(':5174')) {
-  const newPath = app.getPath('userData') + '_2';
-  app.setPath('userData', newPath);
-  console.log(`[Main] Running as 2nd instance (Dev)! UserData: ${newPath}`);
+  const newPath = app.getPath('userData') + '_2'
+  app.setPath('userData', newPath)
 } else {
-  // PROD: Check single instance lock to support local testing (Host + Join on same PC)
-  const gotTheLock = app.requestSingleInstanceLock();
+  // In prod, isolate a second instance instead of exiting.
+  const gotTheLock = app.requestSingleInstanceLock()
   if (!gotTheLock) {
-    // This is the SECOND instance. Instead of quitting, we isolate it.
-    const newPath = app.getPath('userData') + '_2';
-    app.setPath('userData', newPath);
-    console.log(`[Main] Secondary Instance Detected. Switching UserData to: ${newPath}`);
+    const newPath = app.getPath('userData') + '_2'
+    app.setPath('userData', newPath)
   }
 }
 
 let win: BrowserWindow | null
 
+// Create the main browser window and load the renderer.
 function createWindow() {
+  const iconPath = path.join(process.env.VITE_PUBLIC, 'tray-icon.png')
+  const appIcon = nativeImage.createFromPath(iconPath)
+  
   win = new BrowserWindow({
     width: 1000,
     height: 750,
     minHeight: 600,
     minWidth: 800,
-    icon: path.join(process.env.VITE_PUBLIC, 'tray-icon.png'),
+    icon: appIcon,
+    title: 'FriendLauncher',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       sandbox: false,
     },
-    frame: false, // Frameless window
-    titleBarStyle: 'hidden', // Hide default title bar but keep traffic lights on macOS (optional, mostly for style)
+    frame: false,
+    titleBarStyle: 'hidden',
   })
-  console.log('[Main] Preload path:', path.join(__dirname, 'preload.cjs'));
-
-  // Test active push message to Renderer-process.
-  win?.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', (new Date).toLocaleString())
-  })
-
-  // Initialize Auto Updater
-  new SelfUpdater(win);
+  
+  // Set window icon explicitly (for Windows taskbar)
+  if (process.platform === 'win32') {
+    win.setIcon(appIcon)
+  }
+  // Initialize auto-updater once the window exists.
+  new SelfUpdater(win)
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    // win.loadFile('dist/index.html')
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 }
@@ -106,51 +89,48 @@ app.on('activate', () => {
 })
 
 app.whenReady().then(() => {
+  // Set application name and metadata (must be called after app is ready)
+  app.setName('FriendLauncher')
+  app.setAppUserModelId('com.friendlauncher.app')
+  
   createWindow()
 
-  // Tray Implementation
-  const iconPath = path.join(process.env.VITE_PUBLIC, 'tray-icon.png');
-  const tray = new Tray((nativeImage.createFromPath(iconPath)).resize({ width: 32, height: 32 }));
+  // Tray menu keeps the window accessible when hidden.
+  const iconPath = path.join(process.env.VITE_PUBLIC, 'tray-icon.png')
+  const tray = new Tray(nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32 }))
 
   const contextMenu = Menu.buildFromTemplate([
     { label: 'FriendLauncher', enabled: false },
     { type: 'separator' },
     { label: 'Show Window', click: () => win?.show() },
     { label: 'Quit', click: () => app.quit() }
-  ]);
+  ])
 
-  tray.setToolTip('FriendLauncher');
-  tray.setContextMenu(contextMenu);
+  tray.setToolTip('FriendLauncher')
+  tray.setContextMenu(contextMenu)
 
   tray.on('click', () => {
     if (win?.isVisible()) {
-      win.hide();
+      win.hide()
     } else {
-      win?.show();
-      win?.focus();
+      win?.show()
+      win?.focus()
     }
-  });
+  })
 
   // --- Managers Initialization ---
-  let launcherManager: LauncherManager;
+  let launcherManager: LauncherManager
   try {
-    console.log('[Main] Initializing Managers...');
-    launcherManager = new LauncherManager();
-    console.log('[Main] LauncherManager init success');
+    launcherManager = new LauncherManager()
   } catch (e) {
-    console.error('[Main] CRITICAL ERROR initializing LauncherManager:', e);
-    // Continue running to show UI error if possible, but launcher won't work
-    return;
+    console.error('[Main] Failed to initialize LauncherManager:', e)
+    return
   }
-
-  // Initialize updater
-  // const updater = new Updater(path.join(app.getPath('userData'), 'minecraft_data'));
 
   // --- Register IPC Handlers ---
   if (win && launcherManager) {
     import('./ipc/ipcManager').then(({ IPCManager }) => {
-      IPCManager.register(win!, launcherManager, launcherManager.networkManager);
-      console.log('[Main] IPC Handlers Registered');
-    });
+      IPCManager.register(win!, launcherManager, launcherManager.networkManager)
+    })
   }
 })

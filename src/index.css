@@ -1,9 +1,12 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
   body {
-    @apply bg-zinc-900 text-white font-sans overflow-hidden select-none;
-    font-family: 'Inter', system-ui, sans-serif;
+    @apply bg-zinc-100 text-zinc-900 font-sans overflow-hidden dark:bg-zinc-900 dark:text-white;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 400;
   }
 }
 
@@ -22,15 +25,27 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: #18181b;
+    background: #e4e4e7;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #3f3f46;
+    background: #a1a1aa;
     border-radius: 3px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #71717a;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-track {
+    background: #18181b;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #3f3f46;
+  }
+
+  .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #52525b;
   }
 }

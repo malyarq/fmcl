@@ -6,6 +6,8 @@ interface LaunchOptions {
     version: string;
     ram: number;
     hideLauncher: boolean;
+    javaPath?: string;
+    useOptiFine?: boolean;
 }
 
 export const useLauncher = () => {
@@ -15,9 +17,15 @@ export const useLauncher = () => {
     const [isLaunching, setIsLaunching] = useState(false);
     const logEndRef = useRef<HTMLDivElement>(null);
 
-    const { t } = useSettings();
+    const { t, javaPath, minecraftPath, downloadProvider, autoDownloadThreads, downloadThreads, maxSockets } = useSettings();
 
+    // Subscribe to launcher events once for the active language.
     useEffect(() => {
+        if (!window.launcher) {
+            setStatusText(t('status.ready'));
+            setLogs((prev) => [...prev, '[SYSTEM] Launcher API not available. Is preload loaded?']);
+            return;
+        }
         const unsubLog = window.launcher.onLog((log) => {
             setLogs((prev) => [...prev, log]);
         });
@@ -28,6 +36,7 @@ export const useLauncher = () => {
                 data.type === 'natives' ||
                 data.type === 'classes' ||
                 data.type === 'Forge' ||
+                data.type === 'OptiFine' ||
                 data.type.startsWith('Java')
             ) {
                 const percent = (data.task / data.total) * 100;
@@ -49,12 +58,18 @@ export const useLauncher = () => {
         };
     }, [t]);
 
+    // Auto-scroll logs view to the newest entry.
     useEffect(() => {
         logEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [logs]);
 
     const handleLaunch = async (options: LaunchOptions) => {
         if (isLaunching) return;
+        if (!window.launcher) {
+            setStatusText('Launcher not available');
+            setLogs((prev) => [...prev, '[SYSTEM] Launcher API not available. Is preload loaded?']);
+            return;
+        }
 
         setIsLaunching(true);
         setProgress(0);
@@ -66,7 +81,14 @@ export const useLauncher = () => {
                 nickname: options.nickname,
                 version: options.version,
                 ram: options.ram,
-                hideLauncher: options.hideLauncher
+                hideLauncher: options.hideLauncher,
+                javaPath: options.javaPath ?? javaPath,
+                gamePath: minecraftPath || undefined,
+                downloadProvider,
+                autoDownloadThreads,
+                downloadThreads,
+                maxSockets,
+                useOptiFine: options.useOptiFine ?? false
             });
             setStatusText(t('status.game_running'));
         } catch (e) {
@@ -78,12 +100,6 @@ export const useLauncher = () => {
 
     const copyLogs = () => {
         navigator.clipboard.writeText(logs.join('\n'));
-        const btn = document.getElementById('copy-logs-btn');
-        if (btn) {
-            const originalText = btn.innerText;
-            btn.innerText = 'Copied!';
-            setTimeout(() => btn.innerText = originalText, 2000);
-        }
     };
 
     return {
