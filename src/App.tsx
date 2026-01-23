@@ -19,6 +19,11 @@ function App() {
   const [version, setVersion] = useState('1.12.2');
   const [showSettings, setShowSettings] = useState(false);
   const [showMultiplayer, setShowMultiplayer] = useState(false);
+  // In dev mode, Vite dev server serves files from public, so use direct path
+  // In production, we'll update this via IPC
+  const [iconPath, setIconPath] = useState(() => 
+    import.meta.env.DEV ? '/icon.png' : '/icon.png'
+  );
 
   const {
     ram, hideLauncher, showConsole,
@@ -98,6 +103,19 @@ function App() {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
+  }, []);
+
+  // Get icon path from Electron (only in production, dev uses direct path)
+  useEffect(() => {
+    // In production, use IPC to get correct path
+    if (!import.meta.env.DEV && window.assets?.getIconPath) {
+      window.assets.getIconPath().then(path => {
+        setIconPath(path);
+      }).catch(() => {
+        // Fallback to default path if IPC fails
+        setIconPath('/icon.png');
+      });
+    }
   }, []);
 
 
@@ -181,10 +199,16 @@ function App() {
               <div className="flex-1 flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500 p-10 select-none">
                 <div className="relative mb-6">
                   <img
-                    src="/tray-icon.png"
+                    src={iconPath}
                     className="w-32 h-32 opacity-90 mb-4 transition-all duration-500 hover:scale-105"
                     style={{ 
                       filter: `drop-shadow(0 0 30px ${getAccentHex()}) drop-shadow(0 0 60px ${getAccentHex()}40)`,
+                    }}
+                    onError={(e) => {
+                      // Fallback to default path if image fails to load
+                      if (e.currentTarget.src !== '/icon.png' && !e.currentTarget.src.includes('icon.png')) {
+                        e.currentTarget.src = '/icon.png';
+                      }
                     }}
                   />
                   <div 

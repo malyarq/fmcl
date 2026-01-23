@@ -1,14 +1,15 @@
 {
   "name": "friend-launcher",
   "private": true,
-  "version": "0.0.6",
+  "version": "0.0.7",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --max-warnings 0",
     "preview": "vite preview",
-    "release": "node scripts/release.js"
+    "release": "node scripts/release.js",
+    "generate-installer-images": "node scripts/generate-installer-images.js"
   },
   "dependencies": {
     "@types/adm-zip": "^0.5.7",
@@ -49,7 +50,8 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6"
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "jimp": "^1.6.0"
   },
   "main": "dist-electron/main.js"
 }

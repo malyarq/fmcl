@@ -349,24 +349,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
 
                             <div className="flex gap-3 items-stretch">
                                 <div className="flex-1 p-3 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-100 dark:border-zinc-800 flex flex-col">
-                                    {(status === 'checking' || status === 'available' || status === 'up-to-date' || status === 'error') && (
-                                        <div className="flex items-center justify-between mb-2">
-                                            {status === 'checking' && (
-                                                <span className="text-xs text-zinc-500">{t('updater.checking')}</span>
-                                            )}
-                                            {status === 'available' && updateInfo && (
-                                                <span className="text-xs text-zinc-600 dark:text-zinc-400">
-                                                    {t('updater.available')}: {updateInfo.version}
-                                                </span>
-                                            )}
-                                            {status === 'up-to-date' && (
-                                                <span className="text-xs text-zinc-500">{t('updater.up_to_date')}</span>
-                                            )}
-                                            {status === 'error' && (
-                                                <span className="text-xs text-red-600 dark:text-red-400">{t('updater.error')}</span>
-                                            )}
-                                        </div>
-                                    )}
                                     <div className="mt-auto">
                                         <Button
                                             onClick={async () => {
@@ -408,6 +390,24 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                                     </div>
                                 </div>
                             </div>
+                            {(status === 'checking' || status === 'available' || status === 'up-to-date' || status === 'error') && (
+                                <div className="flex items-center justify-between">
+                                    {status === 'checking' && (
+                                        <span className="text-xs text-zinc-500">{t('updater.checking')}</span>
+                                    )}
+                                    {status === 'available' && updateInfo && (
+                                        <span className="text-xs text-zinc-600 dark:text-zinc-400">
+                                            {t('updater.available')}: {updateInfo.version}
+                                        </span>
+                                    )}
+                                    {status === 'up-to-date' && (
+                                        <span className="text-xs text-zinc-500">{t('updater.up_to_date')}</span>
+                                    )}
+                                    {status === 'error' && (
+                                        <span className="text-xs text-red-600 dark:text-red-400">{t('updater.error')}</span>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

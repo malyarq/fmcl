@@ -37,7 +37,7 @@ let win: BrowserWindow | null
 
 // Create the main browser window and load the renderer.
 function createWindow() {
-  const iconPath = path.join(process.env.VITE_PUBLIC, 'tray-icon.png')
+  const iconPath = path.join(process.env.VITE_PUBLIC, 'icon.png')
   const appIcon = nativeImage.createFromPath(iconPath)
   
   win = new BrowserWindow({
@@ -95,7 +95,7 @@ app.whenReady().then(() => {
   createWindow()
 
   // Tray menu keeps the window accessible when hidden.
-  const iconPath = path.join(process.env.VITE_PUBLIC, 'tray-icon.png')
+  const iconPath = path.join(process.env.VITE_PUBLIC, 'icon.png')
   const tray = new Tray(nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32 }))
 
   const contextMenu = Menu.buildFromTemplate([

@@ -42,7 +42,7 @@ try {
   
   readme = readme.replace(
     /(!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-)[\d.]+(-[^)]+)?(\))/g,
-    `$1${version}$3`
+    `$1${version}-green.svg$3`
   );
   
   writeFileSync(readmePath, readme, 'utf-8');
