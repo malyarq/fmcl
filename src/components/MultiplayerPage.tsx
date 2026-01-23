@@ -11,6 +11,7 @@ interface MultiplayerPageProps {
 
 const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
     const { t, getAccentStyles } = useSettings();
+    // Persist UI state in localStorage to restore between sessions.
     const [mode, setMode] = useState<'host' | 'join'>(() => (localStorage.getItem('mp_mode') as 'host' | 'join') || 'host');
     const [port, setPort] = useState(() => localStorage.getItem('mp_host_port') || '25565');
     const [roomCode, setRoomCode] = useState(() => localStorage.getItem('mp_room_code') || '');
@@ -31,50 +32,56 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
         else localStorage.removeItem('mp_mapped_port');
     }, [mappedPort]);
 
+    // Copy helper with a brief status hint for users.
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         setStatus(t('general.copied'));
         setTimeout(() => setStatus(''), 2000);
     };
 
+    // Host creates a P2P tunnel and returns a shareable room code.
     const handleHost = async () => {
-        if (!(window as any).networkAPI) {
+        if (!window.networkAPI) {
             setStatus('Error: Network API not loaded.');
             return;
         }
         setIsLoading(true);
         setStatus(t('multiplayer.publishing'));
         try {
-            const code = await (window as any).networkAPI.host(parseInt(port) || 25565);
+            const code = await window.networkAPI.host(parseInt(port) || 25565);
             setRoomCode(code);
             setStatus(t('multiplayer.room_active'));
-        } catch (e: any) {
-            setStatus(`Error: ${e.message}`);
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : String(e);
+            setStatus(`Error: ${errorMessage}`);
         } finally {
             setIsLoading(false);
         }
     };
 
+    // Join connects to an existing room and exposes a local tunnel port.
     const handleJoin = async () => {
-        if (!(window as any).networkAPI) {
+        if (!window.networkAPI) {
             setStatus('Error: Network API not loaded.');
             return;
         }
         setIsLoading(true);
         setStatus(t('multiplayer.joining'));
         try {
-            const localPort = await (window as any).networkAPI.join(joinCode);
+            const localPort = await window.networkAPI.join(joinCode);
             setMappedPort(localPort);
             setStatus(`${t('multiplayer.tunnel_established')} localhost:${localPort}`);
-        } catch (e: any) {
-            setStatus(`Error: ${e.message}`);
+        } catch (e) {
+            const errorMessage = e instanceof Error ? e.message : String(e);
+            setStatus(`Error: ${errorMessage}`);
         } finally {
             setIsLoading(false);
         }
     };
 
+    // Stop closes any active room or tunnel session.
     const handleStop = async () => {
-        await (window as any).networkAPI.stop();
+        await window.networkAPI.stop();
         setRoomCode('');
         setMappedPort(null);
         setStatus(t('multiplayer.session_stopped'));
@@ -93,7 +100,7 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                     {['host', 'join'].map((m) => (
                         <button
                             key={m}
-                            onClick={() => setMode(m as any)}
+                            onClick={() => setMode(m as 'host' | 'join')}
                             className={cn(
                                 "flex-1 py-2 text-sm font-bold uppercase rounded-md transition-all",
                                 mode === m

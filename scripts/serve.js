@@ -9,6 +9,7 @@ const __dirname = path.dirname(__filename);
 const PORT = 3000;
 const ROOT = path.join(__dirname, '../');
 
+// Minimal static server to preview modpack manifests locally.
 const mimeTypes = {
     '.json': 'application/json',
     '.jar': 'application/java-archive',
@@ -20,7 +21,6 @@ http.createServer((req, res) => {
 
     const filePath = path.join(ROOT, req.url || '');
 
-    // Prevent directory traversal
     if (!filePath.startsWith(ROOT)) {
         res.statusCode = 403;
         res.end('Forbidden');

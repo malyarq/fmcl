@@ -14,7 +14,11 @@ export default {
     'bg-rose-600', 'hover:bg-rose-500', 'text-rose-400', 'focus:border-rose-500', 'hover:text-rose-300', 'focus:ring-rose-500/20',
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+      },
+    },
   },
   plugins: [],
 }

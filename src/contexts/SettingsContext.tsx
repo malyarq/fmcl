@@ -1,9 +1,9 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 import en from '../locales/en.json';
 import ru from '../locales/ru.json';
 
-// Allow generic string for hex colors
+// Accent color can be a preset name or a custom hex string.
 type AccentColor = string;
 type Language = 'en' | 'ru';
 
@@ -12,6 +12,8 @@ interface SettingsState {
     setRam: (val: number) => void;
     javaPath: string;
     setJavaPath: (val: string) => void;
+    minecraftPath: string;
+    setMinecraftPath: (val: string) => void;
     hideLauncher: boolean;
     setHideLauncher: (val: boolean) => void;
     accentColor: AccentColor;
@@ -22,6 +24,14 @@ interface SettingsState {
     setLanguage: (val: Language) => void;
     theme: 'dark' | 'light';
     setTheme: (val: 'dark' | 'light') => void;
+    downloadProvider: 'mojang' | 'bmcl' | 'auto';
+    setDownloadProvider: (val: 'mojang' | 'bmcl' | 'auto') => void;
+    autoDownloadThreads: boolean;
+    setAutoDownloadThreads: (val: boolean) => void;
+    downloadThreads: number;
+    setDownloadThreads: (val: number) => void;
+    maxSockets: number;
+    setMaxSockets: (val: number) => void;
     t: (key: string) => string;
     getAccentStyles: (type: 'bg' | 'text' | 'border' | 'ring' | 'hover' | 'accent' | 'title' | 'soft-bg' | 'soft-border') => { className?: string; style?: React.CSSProperties };
     getAccentClass: (tailwindClasses: string) => string;
@@ -30,9 +40,13 @@ interface SettingsState {
 
 const SettingsContext = createContext<SettingsState | undefined>(undefined);
 
-const translations: Record<Language, any> = { en, ru };
+interface Translations {
+    [key: string]: string;
+}
 
-// Define Presets Statically to prevent Tailwind Purging
+const translations: Record<Language, Translations> = { en, ru };
+
+// Preset styles are static to prevent Tailwind purging.
 const PRESET_STYLES: Record<string, Record<string, string>> = {
     emerald: {
         bg: 'bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white',
@@ -83,33 +97,53 @@ const PRESET_STYLES: Record<string, Record<string, string>> = {
 
 const PRESET_KEYS = Object.keys(PRESET_STYLES);
 
+// Centralized UI settings with localStorage persistence.
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    // Load from localStorage or defaults
     const [ram, setRamState] = useState(() => parseFloat(localStorage.getItem('settings_ram') || '4'));
     const [javaPath, setJavaPathState] = useState(() => localStorage.getItem('settings_javaPath') || '');
+    const [minecraftPath, setMinecraftPathState] = useState(() => localStorage.getItem('settings_minecraftPath') || '');
     const [hideLauncher, setHideLauncherState] = useState(() => localStorage.getItem('settings_hideLauncher') === 'true');
     const [accentColor, setAccentColorState] = useState<AccentColor>(() => localStorage.getItem('settings_accentColor') || 'emerald');
     const [showConsole, setShowConsoleState] = useState(() => localStorage.getItem('settings_showConsole') !== 'false');
     const [language, setLanguageState] = useState<Language>(() => (localStorage.getItem('settings_language') as Language) || 'en');
     const [theme, setThemeState] = useState<'dark' | 'light'>(() => (localStorage.getItem('settings_theme') as 'dark' | 'light') || 'dark');
+    const [downloadProvider, setDownloadProviderState] = useState<'mojang' | 'bmcl' | 'auto'>(() => (localStorage.getItem('settings_downloadProvider') as 'mojang' | 'bmcl' | 'auto') || 'auto');
+    const [autoDownloadThreads, setAutoDownloadThreadsState] = useState(() => localStorage.getItem('settings_autoDownloadThreads') !== 'false');
+    const [downloadThreads, setDownloadThreadsState] = useState(() => {
+        const value = parseInt(localStorage.getItem('settings_downloadThreads') || '8', 10);
+        return Number.isFinite(value) ? value : 8;
+    });
+    const [maxSockets, setMaxSocketsState] = useState(() => {
+        const value = parseInt(localStorage.getItem('settings_maxSockets') || '64', 10);
+        return Number.isFinite(value) ? value : 64;
+    });
 
-    // Persist changes
+    useEffect(() => {
+        const isDark = theme === 'dark';
+        document.documentElement.classList.toggle('dark', isDark);
+        document.body.classList.toggle('dark', isDark);
+    }, [theme]);
+
     const setRam = (val: number) => { setRamState(val); localStorage.setItem('settings_ram', val.toString()); };
     const setJavaPath = (val: string) => { setJavaPathState(val); localStorage.setItem('settings_javaPath', val); };
+    const setMinecraftPath = (val: string) => { setMinecraftPathState(val); localStorage.setItem('settings_minecraftPath', val); };
     const setHideLauncher = (val: boolean) => { setHideLauncherState(val); localStorage.setItem('settings_hideLauncher', val.toString()); };
     const setAccentColor = (val: AccentColor) => { setAccentColorState(val); localStorage.setItem('settings_accentColor', val); };
     const setShowConsole = (val: boolean) => { setShowConsoleState(val); localStorage.setItem('settings_showConsole', val.toString()); };
     const setLanguage = (val: Language) => { setLanguageState(val); localStorage.setItem('settings_language', val); };
     const setTheme = (val: 'dark' | 'light') => { setThemeState(val); localStorage.setItem('settings_theme', val); };
+    const setDownloadProvider = (val: 'mojang' | 'bmcl' | 'auto') => { setDownloadProviderState(val); localStorage.setItem('settings_downloadProvider', val); };
+    const setAutoDownloadThreads = (val: boolean) => { setAutoDownloadThreadsState(val); localStorage.setItem('settings_autoDownloadThreads', val.toString()); };
+    const setDownloadThreads = (val: number) => { setDownloadThreadsState(val); localStorage.setItem('settings_downloadThreads', val.toString()); };
+    const setMaxSockets = (val: number) => { setMaxSocketsState(val); localStorage.setItem('settings_maxSockets', val.toString()); };
 
-    // Translation helper
     const t = (key: string): string => {
         return translations[language][key] || key;
     };
 
     const isPreset = (color: string) => PRESET_KEYS.includes(color);
 
-    // Helper to convert hex to rgba for custom colors
+    // Convert hex to rgba for custom colors.
     const hexToRgba = (hex: string, alpha: number) => {
         const r = parseInt(hex.slice(1, 3), 16);
         const g = parseInt(hex.slice(3, 5), 16);
@@ -134,13 +168,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const color = accentColor || 'emerald';
 
         if (isPreset(color)) {
-            // Dynamic Soft Construction for Presets to avoid massive map
             if (type === 'soft-bg') return { className: `bg-${color}-500/10` };
             if (type === 'soft-border') return { className: `border-${color}-500/20` };
             return { className: PRESET_STYLES[color][type] || '' };
         }
 
-        // Custom Hex Logic
         if (type === 'bg') return { style: { backgroundColor: color, color: '#fff' } };
         if (type === 'text') return { style: { color: color } };
         if (type === 'title') return { style: { color: color } };
@@ -152,14 +184,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         return {};
     };
 
-    // Helper: Replace placeholder 'XXX' with active color if preset
+    // Replace placeholder 'XXX' with preset colors when possible.
     const getAccentClass = (tailwindClasses: string) => {
-        // Since we can't reliably replace classes dynamically without purging,
-        // this method is less safe. Prefer getAccentStyles.
-        // We fallback to emerald if generic replacement is requested for now.
         if (isPreset(accentColor)) {
-            // This return is risky if tailwindClasses contains "bg-XXX-600"
-            // but we should avoid using this method for core styling now.
             return tailwindClasses.replace(/XXX/g, accentColor);
         }
         return tailwindClasses.replace(/XXX/g, 'emerald');
@@ -169,22 +196,29 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         <SettingsContext.Provider value={{
             ram, setRam,
             javaPath, setJavaPath,
+            minecraftPath, setMinecraftPath,
             hideLauncher, setHideLauncher,
             accentColor, setAccentColor,
             showConsole, setShowConsole,
             language, setLanguage,
             theme, setTheme,
+            downloadProvider, setDownloadProvider,
+            autoDownloadThreads, setAutoDownloadThreads,
+            downloadThreads, setDownloadThreads,
+            maxSockets, setMaxSockets,
             t,
             getAccentStyles,
             getAccentClass,
             getAccentHex
         }}>
             {children}
+            {/* Keep preset Tailwind classes from being purged. */}
             <div className={`hidden ${Object.values(PRESET_STYLES).flatMap(s => Object.values(s)).join(' ')}`} />
         </SettingsContext.Provider>
     );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useSettings = () => {
     const context = useContext(SettingsContext);
     if (!context) throw new Error('useSettings must be used within a SettingsProvider');

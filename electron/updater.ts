@@ -24,7 +24,7 @@ export class Updater {
         this.instancePath = instancePath;
     }
 
-    // Calculate local file hash
+    // Calculate local file hash (sha1).
     private async getFileHash(filePath: string): Promise<string | null> {
         if (!fs.existsSync(filePath)) return null;
         const fileBuffer = await fs.promises.readFile(filePath);
@@ -33,19 +33,17 @@ export class Updater {
         return hashSum.digest('hex');
     }
 
-    // Download file
+    // Download a file to disk using streaming.
     private async downloadFile(url: string, destPath: string) {
         await fs.promises.mkdir(path.dirname(destPath), { recursive: true });
 
-        // Using Electron's net module or native fetch. 
-        // Since we are in Main process with Node 18+, fetch is available.
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Failed to download ${url}: ${response.statusText}`);
 
         const fileStream = fs.createWriteStream(destPath);
-        // @ts-ignore
+        // @ts-expect-error - response.body is a ReadableStream which is compatible with Readable.fromWeb
         if (!response.body) throw new Error('No body');
-        // @ts-ignore
+        // @ts-expect-error - response.body is a ReadableStream which is compatible with Readable.fromWeb
         await pipeline(Readable.fromWeb(response.body), fileStream);
     }
 
@@ -70,12 +68,10 @@ export class Updater {
             if (localHash !== file.hash) {
                 onProgress(`Downloading ${path.basename(file.path)}...`, (processed / totalFiles) * 100);
 
-                // Retry logic could be added here
                 try {
                     await this.downloadFile(file.url, destPath);
                 } catch (e) {
                     console.error(`Error downloading ${file.path}:`, e);
-                    // Verify if it failed or just some network blip, for now throw
                     throw e;
                 }
             }

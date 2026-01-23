@@ -19,7 +19,7 @@ export class AuthServer {
 
         this.server = http.createServer((req, res) => this.handleRequest(req, res));
 
-        this.server.on('error', (e: any) => {
+        this.server.on('error', (e: Error & { code?: string }) => {
             if (e.code === 'EADDRINUSE') {
                 console.log(`[AuthMock] Port ${this.port} busy. Assuming another instance is providing Auth.`);
             } else {
@@ -28,18 +28,12 @@ export class AuthServer {
         });
     }
 
-    /**
-     * Start the mock server.
-     */
     public start() {
         this.server.listen(this.port, '127.0.0.1', () => {
             console.log(`[AuthMock] Permissive Yggdrasil running on 127.0.0.1:${this.port}`);
         });
     }
 
-    /**
-     * Stop the mock server.
-     */
     public stop() {
         this.server.close();
     }
@@ -101,7 +95,7 @@ export class AuthServer {
         this.respondJSON(res, 200, {});
     }
 
-    private respondJSON(res: http.ServerResponse, code: number, data: any) {
+    private respondJSON(res: http.ServerResponse, code: number, data: unknown) {
         res.writeHead(code, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(data));
     }

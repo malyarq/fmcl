@@ -2,8 +2,7 @@ import { EventEmitter } from 'events';
 import { Duplex } from 'stream';
 import b4a from 'b4a';
 
-// Packet Protocol Constants
-// Header: [Length (2 bytes BE)][SessionID (2 bytes BE)][Type (1 byte)]
+// Packet header: [Length (2 bytes BE)][SessionID (2 bytes BE)][Type (1 byte)].
 const HEADER_SIZE = 5;
 const CMD_DATA = 0;
 const CMD_OPEN = 1;
@@ -26,13 +25,13 @@ export class MuxerStream extends Duplex {
         try {
             this.muxer.send(this.sessionId, CMD_DATA, chunk);
             callback();
-        } catch (err: any) {
-            callback(err);
+        } catch (err) {
+            callback(err instanceof Error ? err : new Error(String(err)));
         }
     }
 
     _read(_size: number) {
-        // Data is pushed via pushData called by Muxer when packet arrives
+        // Data is pushed via pushData when packets arrive.
     }
 
     _destroy(err: Error | null, callback: (err: Error | null) => void) {
@@ -54,18 +53,24 @@ export class MuxerStream extends Duplex {
  * Used to support multiple player connections (though rarely used in simple LAN) 
  * or just to provide a clean Stream interface over the raw Hyperswarm connection.
  */
+interface Connection {
+    on(event: 'data', listener: (chunk: Buffer) => void): void;
+    on(event: 'close', listener: () => void): void;
+    on(event: 'error', listener: (err: Error) => void): void;
+    write(data: Buffer): void;
+}
+
 export class Muxer extends EventEmitter {
-    private conn: any;
+    private conn: Connection;
     private buffer: Buffer;
     private processing: boolean = false;
     private streams: Map<number, MuxerStream> = new Map();
 
-    constructor(conn: any) {
+    constructor(conn: Connection) {
         super();
         this.conn = conn;
         this.buffer = b4a.alloc(0);
 
-        // Handle incoming raw P2P data
         conn.on('data', (chunk: Buffer) => {
             this.buffer = b4a.concat([this.buffer, chunk]);
             this.process();
@@ -73,14 +78,13 @@ export class Muxer extends EventEmitter {
 
         conn.on('close', () => {
             this.emit('close');
-            // Destroy all streams
             for (const stream of this.streams.values()) {
                 stream.destroy();
             }
             this.streams.clear();
         });
 
-        conn.on('error', (err: any) => {
+        conn.on('error', (err: Error) => {
             this.emit('error', err);
             for (const stream of this.streams.values()) {
                 stream.destroy(err);
@@ -89,32 +93,25 @@ export class Muxer extends EventEmitter {
         });
     }
 
-    /**
-     * Process the internal buffer to extract packets.
-     */
+    // Process the internal buffer to extract packets.
     private process() {
         if (this.processing) return;
         this.processing = true;
 
         while (this.buffer.length >= HEADER_SIZE) {
-            // Read length (first 2 bytes)
             const length = this.buffer.readUInt16BE(0);
 
-            // Check if we have the full packet
             if (this.buffer.length < length) {
-                break; // Wait for more data
+                break;
             }
 
-            // Extract packet
             const packet = this.buffer.subarray(0, length);
             this.buffer = this.buffer.subarray(length);
 
-            // Parse Header
             const sessionId = packet.readUInt16BE(2);
             const type = packet.readUInt8(4);
             const data = packet.subarray(HEADER_SIZE);
 
-            // Handle Packet
             if (type === CMD_DATA) {
                 const stream = this.streams.get(sessionId);
                 if (stream) {
@@ -131,7 +128,7 @@ export class Muxer extends EventEmitter {
             } else if (type === CMD_CLOSE) {
                 const stream = this.streams.get(sessionId);
                 if (stream) {
-                    stream.destroy(); // Will remove from map
+                stream.destroy();
                 }
             }
         }
@@ -139,14 +136,11 @@ export class Muxer extends EventEmitter {
         this.processing = false;
     }
 
-    /**
-     * Send a packet.
-     */
+    // Send a packet to the remote peer.
     public send(sessionId: number, type: number, data?: Buffer) {
         const payloadLength = data ? data.length : 0;
         const totalLength = HEADER_SIZE + payloadLength;
 
-        // Safety check for max packet size (uint16 = 65535)
         if (totalLength > 65535) {
             if (data && data.length > 60000) {
                 const chunk1 = data.subarray(0, 60000);
@@ -169,9 +163,7 @@ export class Muxer extends EventEmitter {
         }
     }
 
-    /**
-     * Create a new outgoing stream.
-     */
+    // Create a new outgoing stream.
     public createStream(sessionId: number): MuxerStream {
         const stream = new MuxerStream(this, sessionId);
         this.streams.set(sessionId, stream);

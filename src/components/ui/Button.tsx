@@ -8,6 +8,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     progress?: number;
 }
 
+// Reusable button with variants and optional progress overlay.
 export const Button: React.FC<ButtonProps> = ({
     className,
     variant = 'primary',
@@ -18,13 +19,13 @@ export const Button: React.FC<ButtonProps> = ({
     disabled,
     ...props
 }) => {
-    const baseStyles = 'rounded font-bold transition-all transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-1 dark:focus:ring-offset-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2';
+    const baseStyles = 'rounded-lg font-bold transition-all transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl';
 
     const variants = {
-        primary: 'bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-200 dark:text-black dark:hover:bg-zinc-300',
-        secondary: 'bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700',
-        danger: 'bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700',
-        ghost: 'bg-transparent text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800/50',
+        primary: 'bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-200 dark:text-black dark:hover:bg-zinc-300 shadow-zinc-900/20 dark:shadow-zinc-200/20',
+        secondary: 'bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm text-zinc-900 hover:bg-white dark:text-zinc-100 dark:hover:bg-zinc-800 border border-zinc-300/50 dark:border-zinc-700/50 shadow-zinc-900/10 dark:shadow-black/20',
+        danger: 'bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 shadow-red-500/30 dark:shadow-red-600/30',
+        ghost: 'bg-transparent text-zinc-600 hover:bg-zinc-100/80 dark:text-zinc-400 dark:hover:bg-zinc-800/50 shadow-none',
     };
 
     const sizes = {
@@ -39,7 +40,6 @@ export const Button: React.FC<ButtonProps> = ({
             disabled={disabled || isLoading}
             {...props}
         >
-            {/* Progress Bar Background */}
             {typeof progress === 'number' && (
                 <div
                     className="absolute inset-y-0 left-0 bg-black/10 dark:bg-white/10 transition-all duration-300 ease-linear"

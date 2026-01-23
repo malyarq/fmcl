@@ -1,6 +1,8 @@
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain, BrowserWindow, app, dialog, shell } from 'electron';
 import { LauncherManager } from '../launcher';
 import { NetworkManager } from '../network';
+import fs from 'fs';
+import path from 'path';
 
 /**
  * Centralized Manager for Electron Inter-Process Communication (IPC).
@@ -19,10 +21,8 @@ export class IPCManager {
         launcher: LauncherManager,
         network: NetworkManager
     ) {
-        // --- Window Controls ---
         ipcMain.removeHandler('window:minimize');
         ipcMain.handle('window:minimize', () => {
-            // Check if window is destroyed to prevent errors
             if (!window.isDestroyed()) window.minimize();
         });
 
@@ -31,12 +31,10 @@ export class IPCManager {
             if (!window.isDestroyed()) window.close();
         });
 
-        // --- Launcher Operations ---
         ipcMain.removeHandler('launcher:launch');
         ipcMain.handle('launcher:launch', async (_, options) => {
             try {
-                // Delegate launch logic to LauncherManager
-                // We pass callbacks that send IPC messages back to the renderer
+                const shouldHide = Boolean(options?.hideLauncher);
                 await launcher.launchGame(
                     options,
                     (log) => {
@@ -46,18 +44,52 @@ export class IPCManager {
                         if (!window.isDestroyed()) window.webContents.send('launcher:progress', progress);
                     },
                     (code) => {
+                        if (shouldHide && !window.isDestroyed()) {
+                            window.show();
+                            window.focus();
+                        }
                         if (!window.isDestroyed()) window.webContents.send('launcher:close', code);
+                    },
+                    () => {
+                        if (shouldHide && !window.isDestroyed()) {
+                            window.hide();
+                        }
                     }
                 );
-            } catch (error: any) {
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
                 if (!window.isDestroyed()) {
-                    window.webContents.send('launcher:log', `[FATAL] Launch failed: ${error.message}`);
+                    window.webContents.send('launcher:log', `[FATAL] Launch failed: ${errorMessage}`);
                 }
                 throw error;
             }
         });
 
-        // --- Network (P2P) Operations ---
+        ipcMain.removeHandler('launcher:getVersionList');
+        ipcMain.handle('launcher:getVersionList', async (_, providerId) => {
+            return await launcher.getVersionList(providerId);
+        });
+
+        ipcMain.removeHandler('launcher:getForgeSupportedVersions');
+        ipcMain.handle('launcher:getForgeSupportedVersions', async (_, providerId) => {
+            return await launcher.getForgeSupportedVersions(providerId);
+        });
+
+        ipcMain.removeHandler('launcher:getFabricSupportedVersions');
+        ipcMain.handle('launcher:getFabricSupportedVersions', async () => {
+            return await launcher.getFabricSupportedVersions();
+        });
+
+        ipcMain.removeHandler('launcher:getOptiFineSupportedVersions');
+        ipcMain.handle('launcher:getOptiFineSupportedVersions', async () => {
+            return await launcher.getOptiFineSupportedVersions();
+        });
+
+        ipcMain.removeHandler('launcher:getNeoForgeSupportedVersions');
+        ipcMain.handle('launcher:getNeoForgeSupportedVersions', async (_, providerId) => {
+            return await launcher.getNeoForgeSupportedVersions(providerId);
+        });
+
         ipcMain.removeHandler('network:host');
         ipcMain.handle('network:host', async (_, port) => {
             return await network.host(port, (msg) => {
@@ -79,7 +111,70 @@ export class IPCManager {
             });
         });
 
-        // --- Updater (Placeholder) ---
-        // ipcMain.handle('updater:sync', ...)
+        ipcMain.removeHandler('launcher:clearCache');
+        ipcMain.handle('launcher:clearCache', async () => {
+            try {
+                const userData = app.getPath('userData');
+                const cacheFile = path.join(userData, 'download-cache.json');
+                
+                // Delete download cache file
+                if (fs.existsSync(cacheFile)) {
+                    fs.unlinkSync(cacheFile);
+                }
+                
+                // Clear browser cache
+                if (!window.isDestroyed()) {
+                    await window.webContents.session.clearCache();
+                    await window.webContents.session.clearStorageData();
+                }
+                
+                return { success: true };
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                return { success: false, error: errorMessage };
+            }
+        });
+
+        ipcMain.removeHandler('launcher:reload');
+        ipcMain.handle('launcher:reload', async () => {
+            if (!window.isDestroyed()) {
+                window.reload();
+            }
+        });
+
+        ipcMain.removeHandler('settings:selectMinecraftPath');
+        ipcMain.handle('settings:selectMinecraftPath', async () => {
+            try {
+                const result = await dialog.showOpenDialog(window, {
+                    properties: ['openDirectory'],
+                    title: 'Select Minecraft Directory'
+                });
+                if (!result.canceled && result.filePaths.length > 0) {
+                    return { success: true, path: result.filePaths[0] };
+                }
+                return { success: false, path: null };
+            } catch (error: unknown) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                return { success: false, error: errorMessage, path: null };
+            }
+        });
+
+        ipcMain.removeHandler('settings:openMinecraftPath');
+        ipcMain.handle('settings:openMinecraftPath', async (_, targetPath?: string) => {
+            try {
+                const pathToOpen = targetPath || path.join(app.getPath('userData'), 'minecraft_data');
+                await shell.openPath(pathToOpen);
+                return { success: true };
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                return { success: false, error: errorMessage };
+            }
+        });
+
+        ipcMain.removeHandler('settings:getDefaultMinecraftPath');
+        ipcMain.handle('settings:getDefaultMinecraftPath', async () => {
+            return path.join(app.getPath('userData'), 'minecraft_data');
+        });
+
     }
 }

@@ -7,6 +7,7 @@ interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> {
     error?: string;
 }
 
+// Labeled select with optional description and error text.
 export const Select: React.FC<SelectProps> = ({
     label,
     description,
@@ -18,16 +19,16 @@ export const Select: React.FC<SelectProps> = ({
     return (
         <div className="flex flex-col gap-1.5 w-full">
             {label && (
-                <label className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                     {label}
                 </label>
             )}
             <div className="relative">
                 <select
                     className={cn(
-                        "w-full bg-white dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2.5 text-sm",
+                        "w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-zinc-300/50 dark:border-zinc-700/50 rounded-lg px-3 py-2.5 text-sm",
                         "focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 focus:border-transparent",
-                        "appearance-none cursor-pointer transition-colors text-zinc-900 dark:text-zinc-100",
+                        "appearance-none cursor-pointer transition-all shadow-sm hover:shadow-md text-zinc-900 dark:text-zinc-100",
                         error && "border-red-500 focus:ring-red-500",
                         className
                     )}

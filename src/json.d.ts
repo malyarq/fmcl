@@ -1,4 +1,5 @@
+// Allow importing JSON files in the renderer.
 declare module '*.json' {
-    const value: any;
+    const value: Record<string, unknown>;
     export default value;
 }
