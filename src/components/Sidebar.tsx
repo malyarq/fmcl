@@ -1,14 +1,18 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import pkg from '../../package.json';
 import { useSettings } from '../contexts/SettingsContext';
+import type { MCVersion } from '../services/versions/types';
+import type { VersionHint } from '../utils/minecraftVersions';
+import { SidebarHeader } from './sidebar/SidebarHeader';
+import { NicknameSection } from './sidebar/NicknameSection';
+import { VersionSection } from './sidebar/VersionSection';
+import { ModloaderSection } from './sidebar/ModloaderSection';
+import { OptifineToggle } from './sidebar/OptifineToggle';
+import { LaunchControls } from './sidebar/LaunchControls';
 import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { Select } from './ui/Select';
 import { cn } from '../utils/cn';
-import { MCVersion } from '../hooks/useVersions';
-import { VersionHint } from '../utils/minecraftVersions';
 
-interface SidebarProps {
+export type SidebarLaunchModel = {
     nickname: string;
     setNickname: (name: string) => void;
     version: string;
@@ -22,271 +26,173 @@ interface SidebarProps {
     setUseOptiFine: (val: boolean) => void;
     useNeoForge: boolean;
     setUseNeoForge: (val: boolean) => void;
+    setLoader: (loader: 'vanilla' | 'forge' | 'fabric' | 'neoforge') => void;
     isOffline: boolean;
+    currentHint: VersionHint | null;
+    supportedVersions: {
+        forge: string[];
+        fabric: string[];
+        optiFine: string[];
+        neoForge: string[];
+    };
+};
+
+export type SidebarRuntimeModel = {
     isLaunching: boolean;
     progress: number;
     statusText: string;
     onLaunch: () => void;
-    onShowMultiplayer: () => void;
-    onShowSettings: () => void;
-    currentHint: VersionHint | null;
-    forgeSupportedVersions: string[];
-    fabricSupportedVersions: string[];
-    optiFineSupportedVersions: string[];
-    neoForgeSupportedVersions: string[];
+};
+
+interface SidebarProps {
+    launch: SidebarLaunchModel;
+    runtime: SidebarRuntimeModel;
+    actions: {
+        onShowMultiplayer: () => void;
+        onShowSettings: () => void;
+    };
 }
 
 // Left panel with launch controls and quick settings access.
-const Sidebar: React.FC<SidebarProps> = ({
-    nickname, setNickname,
-    version, setVersion, versions,
-    useForge, setUseForge,
-    useFabric, setUseFabric,
-    useOptiFine, setUseOptiFine,
-    useNeoForge, setUseNeoForge,
-    isOffline,
-    isLaunching, progress, statusText,
-    onLaunch, onShowMultiplayer, onShowSettings,
-    currentHint,
-    forgeSupportedVersions,
-    fabricSupportedVersions,
-    optiFineSupportedVersions,
-    neoForgeSupportedVersions
-}) => {
+const Sidebar = React.memo(({
+    launch,
+    runtime,
+    actions,
+}: SidebarProps) => {
     const { getAccentStyles, getAccentHex, t } = useSettings();
+    const [isCollapsed, setIsCollapsed] = useState(() => {
+        const saved = localStorage.getItem('sidebar_collapsed');
+        return saved === 'true';
+    });
 
-    const isForgeSupported = forgeSupportedVersions.includes(version);
-    const isFabricSupported = fabricSupportedVersions.includes(version);
-    const isOptiFineSupported = optiFineSupportedVersions.includes(version);
-    const isNeoForgeSupported = neoForgeSupportedVersions.includes(version);
+    useEffect(() => {
+        localStorage.setItem('sidebar_collapsed', String(isCollapsed));
+    }, [isCollapsed]);
 
-    const accentStyle = getAccentStyles('bg').style || {};
+    // Memoize OptiFine support check
+    const isOptiFineSupported = useMemo(
+        () => launch.supportedVersions.optiFine.includes(launch.version),
+        [launch.supportedVersions.optiFine, launch.version]
+    );
 
     return (
-        <div className="w-80 flex flex-col p-6 bg-gradient-to-b from-zinc-200/95 to-zinc-300/50 dark:from-zinc-800 dark:to-zinc-900/80 backdrop-blur-sm border-r border-zinc-300/50 dark:border-zinc-700/50 shadow-2xl shadow-black/10 dark:shadow-black/30 z-10 relative">
+        <div className={cn(
+            "flex flex-col bg-gradient-to-b from-zinc-200/95 to-zinc-300/50 dark:from-zinc-800 dark:to-zinc-900/80 backdrop-blur-sm border-r border-zinc-300/50 dark:border-zinc-700/50 shadow-2xl shadow-black/10 dark:shadow-black/30 z-10 relative transition-all duration-300 ease-out",
+            isCollapsed ? "w-16 p-2" : "w-80 p-6"
+        )}>
 
-            <div className="flex justify-between items-start mb-8">
-                <div>
-                    <h1
-                        className={cn("text-2xl font-black tracking-tighter drop-shadow-sm", getAccentStyles('text').className)}
-                        style={{
-                            ...getAccentStyles('text').style,
-                            textShadow: `0 2px 8px ${getAccentHex()}30`,
-                        }}
-                    >
-                        FriendLauncher
-                    </h1>
-                    <p className="text-[10px] text-zinc-500 font-mono mt-1 opacity-70">BUILD v{pkg.version}</p>
-                </div>
-                <div className="flex gap-1">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={onShowMultiplayer}
-                        className="px-2"
-                        title="Multiplayer (Tunnel)"
-                    >
-                        <span className="text-lg">🌐</span>
-                    </Button>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={onShowSettings}
-                        className="px-2"
-                        title="Settings"
-                    >
-                        <span className="text-lg">⚙️</span>
-                    </Button>
-                </div>
-            </div>
+            <SidebarHeader
+                appVersion={pkg.version}
+                onShowMultiplayer={actions.onShowMultiplayer}
+                onShowSettings={actions.onShowSettings}
+                getAccentStyles={(type) => getAccentStyles(type)}
+                getAccentHex={getAccentHex}
+                isCollapsed={isCollapsed}
+                onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+                t={t}
+            />
 
-            <div className="space-y-6 flex-1 flex flex-col pt-2">
-                <div className="relative">
-                    <div className="flex justify-between items-center mb-1">
-                        {isOffline && (
-                            <span className="absolute top-0 right-0 text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-500 border border-amber-200 dark:border-amber-800/50 uppercase tracking-wider z-10">
-                                {t('general.offline')}
-                            </span>
-                        )}
-                    </div>
-                    <Input
-                        label={t('general.nickname')}
-                        value={nickname}
-                        onChange={(e) => setNickname(e.target.value)}
-                        placeholder="Steve"
-                        className="bg-white dark:bg-zinc-900"
+            {!isCollapsed && (
+                <div className="space-y-6 flex-1 flex flex-col pt-2">
+                {/* Игровые настройки */}
+                <div className="space-y-4">
+                    <h2 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                        {t('sidebar.game_settings') || 'Игровые настройки'}
+                    </h2>
+                    <NicknameSection nickname={launch.nickname} setNickname={launch.setNickname} isOffline={launch.isOffline} t={t} />
+
+                    <VersionSection version={launch.version} setVersion={launch.setVersion} versions={launch.versions} currentHint={launch.currentHint} t={t} />
+                </div>
+
+                {/* Разделитель */}
+                <div className="h-px bg-gradient-to-r from-transparent via-zinc-300/50 dark:via-zinc-700/50 to-transparent" />
+
+                {/* Модлоадеры и моды */}
+                <div className="space-y-4">
+                    <h2 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                        {t('sidebar.mods') || 'Моды и модлоадеры'}
+                    </h2>
+                    <ModloaderSection
+                        version={launch.version}
+                    useForge={launch.useForge}
+                    setUseForge={launch.setUseForge}
+                    useFabric={launch.useFabric}
+                    setUseFabric={launch.setUseFabric}
+                    useNeoForge={launch.useNeoForge}
+                    setUseNeoForge={launch.setUseNeoForge}
+                    setLoader={launch.setLoader}
+                    forgeSupportedVersions={launch.supportedVersions.forge}
+                    fabricSupportedVersions={launch.supportedVersions.fabric}
+                    neoForgeSupportedVersions={launch.supportedVersions.neoForge}
+                    t={t}
+                    getAccentStyles={(type) => getAccentStyles(type)}
+                />
+
+                <OptifineToggle
+                    isOptiFineSupported={isOptiFineSupported}
+                    useForge={launch.useForge}
+                    useOptiFine={launch.useOptiFine}
+                    setUseOptiFine={launch.setUseOptiFine}
+                    t={t}
+                    getAccentStyles={(type) => getAccentStyles(type)}
                     />
                 </div>
-
-                <div>
-                    <Select
-                        label={t('general.version')}
-                        value={version}
-                        onChange={(e) => setVersion(e.target.value)}
-                        className="font-mono"
-                    >
-                        {versions.map(v => (
-                            <option key={v.id} value={v.id}>{v.id}</option>
-                        ))}
-                    </Select>
-
-                    {currentHint && (
-                        <div
-                            className={cn("text-xs mt-2 font-medium px-2 py-1 rounded bg-black/5 dark:bg-white/5", currentHint.className)}
-                            style={currentHint.style}
-                        >
-                            {currentHint.text}
-                        </div>
-                    )}
                 </div>
+            )}
 
-                {(() => {
-                    const availableModloaders: Array<{ id: 'neoforge' | 'forge' | 'fabric'; label: string; isActive: boolean }> = [];
-                    
-                    if (isNeoForgeSupported) {
-                        availableModloaders.push({ id: 'neoforge', label: t('neoforge.enable'), isActive: useNeoForge });
-                    }
-                    if (isForgeSupported) {
-                        availableModloaders.push({ id: 'forge', label: t('forge.enable'), isActive: useForge });
-                    }
-                    if (isFabricSupported) {
-                        availableModloaders.push({ id: 'fabric', label: t('fabric.enable'), isActive: useFabric });
-                    }
-
-                    if (availableModloaders.length === 0) {
-                        return null;
-                    }
-
-                    // Show button if only one modloader is available
-                    if (availableModloaders.length === 1) {
-                        const loader = availableModloaders[0];
-                        return (
-                            <Button
-                                onClick={() => {
-                                    if (loader.id === 'neoforge') {
-                                        setUseNeoForge(!useNeoForge);
-                                    } else if (loader.id === 'forge') {
-                                        setUseForge(!useForge);
-                                    } else if (loader.id === 'fabric') {
-                                        setUseFabric(!useFabric);
-                                    }
-                                }}
-                                variant={loader.isActive ? 'primary' : 'secondary'}
-                                className={cn(
-                                    "w-full justify-center",
-                                    loader.isActive && getAccentStyles('bg').className
-                                )}
-                                style={loader.isActive ? getAccentStyles('bg').style : undefined}
-                            >
-                                {loader.label}
-                            </Button>
-                        );
-                    }
-
-                    // Show switcher if multiple modloaders are available
-                    return (
-                        <div className="space-y-2">
-                            <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
-                                {t('general.modloader') || 'Modloader'}
-                            </label>
-                            <div className="flex bg-zinc-100/80 dark:bg-zinc-900/50 backdrop-blur-sm p-1 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 shadow-inner">
-                                {availableModloaders.map((loader) => {
-                                    const isActive = loader.isActive;
-                                    return (
-                                        <button
-                                            key={loader.id}
-                                            onClick={() => {
-                                                if (isActive) {
-                                                    setUseNeoForge(false);
-                                                    setUseForge(false);
-                                                    setUseFabric(false);
-                                                } else {
-                                                    // Disable all modloaders, then enable selected
-                                                    setUseNeoForge(false);
-                                                    setUseForge(false);
-                                                    setUseFabric(false);
-                                                    
-                                                    if (loader.id === 'neoforge') {
-                                                        setUseNeoForge(true);
-                                                    } else if (loader.id === 'forge') {
-                                                        setUseForge(true);
-                                                    } else if (loader.id === 'fabric') {
-                                                        setUseFabric(true);
-                                                    }
-                                                }
-                                            }}
-                                            className={cn(
-                                                "flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all",
-                                                isActive
-                                                    ? cn("bg-white/90 dark:bg-zinc-700/90 backdrop-blur-sm shadow-md text-zinc-900 dark:text-white", getAccentStyles('bg').className)
-                                                    : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
-                                            )}
-                                            style={isActive ? getAccentStyles('bg').style : undefined}
-                                        >
-                                            {loader.id === 'neoforge' ? 'NeoForge' : loader.id === 'forge' ? 'Forge' : 'Fabric'}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-                    );
-                })()}
-
-                {/* OptiFine requires Forge to be enabled */}
-                {isOptiFineSupported && useForge && (
+            {isCollapsed && (
+                <div className="flex-1 flex flex-col items-center gap-4 pt-4">
                     <Button
-                        onClick={() => setUseOptiFine(!useOptiFine)}
-                        variant={useOptiFine ? 'primary' : 'secondary'}
-                        className={cn(
-                            "w-full justify-center",
-                            useOptiFine && getAccentStyles('bg').className
-                        )}
-                        style={useOptiFine ? getAccentStyles('bg').style : undefined}
+                        variant="ghost"
+                        size="sm"
+                        onClick={actions.onShowMultiplayer}
+                        className="w-12 h-12 p-0"
+                        title={t('multiplayer.title') || 'Multiplayer'}
                     >
-                        {t('optifine.enable')}
+                        <span className="text-xl">🌐</span>
                     </Button>
-                )}
-            </div>
-
-            <div className="space-y-4 mt-8 pb-4">
-                <div className="text-center text-xs font-medium text-zinc-500 min-h-[1.25rem] animate-pulse">
-                    {statusText}
-                </div>
-
-                <div className="flex gap-2">
                     <Button
-                        onClick={onLaunch}
-                        disabled={isLaunching}
-                        className={cn(
-                            "flex-1 py-4 text-base uppercase tracking-widest shadow-2xl transition-all",
-                            isLaunching
-                                ? 'bg-zinc-300 dark:bg-zinc-600 text-zinc-500 dark:text-zinc-400 cursor-not-allowed shadow-none'
-                                : cn('text-white hover:brightness-110 active:scale-[0.98] hover:shadow-[0_0_30px_rgba(0,0,0,0.3)]', getAccentStyles('bg').className)
-                        )}
-                        style={!isLaunching ? {
-                            ...accentStyle,
-                            boxShadow: `0 10px 30px ${getAccentHex()}40, 0 0 20px ${getAccentHex()}20`,
-                        } : {}}
-                        progress={isLaunching ? progress : undefined}
+                        variant="ghost"
+                        size="sm"
+                        onClick={actions.onShowSettings}
+                        className="w-12 h-12 p-0"
+                        title={t('general.settings') || 'Settings'}
                     >
-                        {isLaunching ? t('general.running') : t('general.play')}
+                        <span className="text-xl">⚙️</span>
                     </Button>
-
-                    {/* Force restart button - only shown during launch */}
-                    {isLaunching && (
-                        <Button
-                            variant="danger"
-                            onClick={() => window.location.reload()}
-                            className="px-3"
-                            title="Force Restart"
-                        >
-                            ✕
-                        </Button>
-                    )}
                 </div>
+            )}
+
+            <div className="mt-auto">
+                <LaunchControls
+                    isLaunching={runtime.isLaunching}
+                    progress={runtime.progress}
+                    statusText={runtime.statusText}
+                    onLaunch={runtime.onLaunch}
+                    t={t}
+                    getAccentHex={getAccentHex}
+                    getAccentStyles={(type) => getAccentStyles(type)}
+                    isCollapsed={isCollapsed}
+                />
             </div>
         </div>
     );
-};
+}, (prevProps, nextProps) => {
+    // Custom comparison function for React.memo
+    // Only re-render if important props changed
+    return (
+        prevProps.launch.nickname === nextProps.launch.nickname &&
+        prevProps.launch.version === nextProps.launch.version &&
+        prevProps.launch.useForge === nextProps.launch.useForge &&
+        prevProps.launch.useFabric === nextProps.launch.useFabric &&
+        prevProps.launch.useNeoForge === nextProps.launch.useNeoForge &&
+        prevProps.launch.useOptiFine === nextProps.launch.useOptiFine &&
+        prevProps.launch.isOffline === nextProps.launch.isOffline &&
+        prevProps.runtime.isLaunching === nextProps.runtime.isLaunching &&
+        prevProps.runtime.progress === nextProps.runtime.progress &&
+        prevProps.runtime.statusText === nextProps.runtime.statusText &&
+        JSON.stringify(prevProps.launch.supportedVersions) === JSON.stringify(nextProps.launch.supportedVersions)
+    );
+});
 
 export default Sidebar;

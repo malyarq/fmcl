@@ -1,20 +1,33 @@
 {
   "name": "friend-launcher",
   "private": true,
-  "version": "0.0.7",
+  "version": "0.0.8",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test:full": "node scripts/test-full.js",
+    "test:full:vanilla": "node scripts/test-full.js --stage=vanilla",
+    "test:full:forge": "node scripts/test-full.js --stage=forge",
+    "test:full:fabric": "node scripts/test-full.js --stage=fabric",
+    "test:full:neoforge": "node scripts/test-full.js --stage=neoforge",
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --max-warnings 0",
+    "contracts:check": "node scripts/check-contracts.cjs",
+    "ipc:check": "node scripts/check-ipc-handlers.cjs",
     "preview": "vite preview",
     "release": "node scripts/release.js",
-    "generate-installer-images": "node scripts/generate-installer-images.js"
+    "postinstall": "node scripts/postinstall-fix-xmcl-bytebuffer.cjs"
   },
   "dependencies": {
     "@types/adm-zip": "^0.5.7",
+    "@xmcl/client": "^3.2.0",
     "@xmcl/core": "^2.15.1",
+    "@xmcl/curseforge": "^2.2.0",
+    "@xmcl/file-transfer": "^2.0.3",
     "@xmcl/installer": "^6.1.2",
+    "@xmcl/mod-parser": "^3.4.2",
+    "@xmcl/modrinth": "^2.5.0",
+    "@xmcl/nat-api": "^0.4.3",
     "@xmcl/task": "^4.1.1",
     "@xmcl/user": "^4.3.0",
     "adm-zip": "^0.5.16",
@@ -50,8 +63,7 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6",
-    "jimp": "^1.6.0"
+    "vite-plugin-electron-renderer": "^0.14.6"
   },
   "main": "dist-electron/main.js"
 }

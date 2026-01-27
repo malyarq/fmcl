@@ -41,6 +41,6 @@ http.createServer((req, res) => {
         fs.createReadStream(filePath).pipe(res);
     });
 }).listen(PORT, () => {
-    console.log(`Server listening on http://localhost:${PORT}`);
-    console.log(`Test manifest at: http://localhost:${PORT}/modpacks/example-pack/manifest.json`);
+    console.log(`Server listening on https://localhost:${PORT}`);
+    console.log(`Test manifest at: https://localhost:${PORT}/modpacks/example-pack/manifest.json`);
 });
