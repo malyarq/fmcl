@@ -25,7 +25,9 @@ dist-ssr
 
 # Minecraft Launcher Specific
 minecraft_data
-runtime
 release
 dist-electron
 authlib-injector.log
+.test-config.json
+*storybook.log
+storybook-static

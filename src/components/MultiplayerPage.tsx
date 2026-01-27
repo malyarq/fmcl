@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { cn } from '../utils/cn';
+import { useMultiplayer } from '../features/multiplayer/hooks/useMultiplayer';
 
 interface MultiplayerPageProps {
     onBack: () => void;
@@ -11,80 +12,43 @@ interface MultiplayerPageProps {
 
 const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
     const { t, getAccentStyles } = useSettings();
-    // Persist UI state in localStorage to restore between sessions.
-    const [mode, setMode] = useState<'host' | 'join'>(() => (localStorage.getItem('mp_mode') as 'host' | 'join') || 'host');
-    const [port, setPort] = useState(() => localStorage.getItem('mp_host_port') || '25565');
-    const [roomCode, setRoomCode] = useState(() => localStorage.getItem('mp_room_code') || '');
-    const [joinCode, setJoinCode] = useState(() => localStorage.getItem('mp_join_code') || '');
-    const [mappedPort, setMappedPort] = useState<number | null>(() => {
-        const stored = localStorage.getItem('mp_mapped_port');
-        return stored ? parseInt(stored) : null;
-    });
-    const [status, setStatus] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
+    const {
+        mode, setMode,
+        port, setPort,
+        roomCode,
+        joinCode, setJoinCode,
+        mappedPort,
+        status,
+        isLoading,
+        networkMode, setNetworkMode,
+        host, join, stop,
+        copyToClipboard,
+    } = useMultiplayer();
+    const [portError, setPortError] = useState<string | null>(null);
+    const [joinCodeError, setJoinCodeError] = useState<string | null>(null);
 
-    useEffect(() => { localStorage.setItem('mp_mode', mode); }, [mode]);
-    useEffect(() => { localStorage.setItem('mp_host_port', port); }, [port]);
-    useEffect(() => { localStorage.setItem('mp_join_code', joinCode); }, [joinCode]);
-    useEffect(() => { localStorage.setItem('mp_room_code', roomCode); }, [roomCode]);
-    useEffect(() => {
-        if (mappedPort) localStorage.setItem('mp_mapped_port', mappedPort.toString());
-        else localStorage.removeItem('mp_mapped_port');
-    }, [mappedPort]);
-
-    // Copy helper with a brief status hint for users.
-    const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
-        setStatus(t('general.copied'));
-        setTimeout(() => setStatus(''), 2000);
+    const validatePort = (value: string): string | null => {
+        if (!value.trim()) {
+            return t('validation.port_required') || 'Порт обязателен';
+        }
+        const portNum = parseInt(value.trim(), 10);
+        if (isNaN(portNum)) {
+            return t('validation.port_invalid') || 'Порт должен быть числом';
+        }
+        if (portNum < 1 || portNum > 65535) {
+            return t('validation.port_range') || 'Порт должен быть от 1 до 65535';
+        }
+        return null;
     };
 
-    // Host creates a P2P tunnel and returns a shareable room code.
-    const handleHost = async () => {
-        if (!window.networkAPI) {
-            setStatus('Error: Network API not loaded.');
-            return;
+    const validateJoinCode = (value: string): string | null => {
+        if (!value.trim()) {
+            return t('validation.room_code_required') || 'Код комнаты обязателен';
         }
-        setIsLoading(true);
-        setStatus(t('multiplayer.publishing'));
-        try {
-            const code = await window.networkAPI.host(parseInt(port) || 25565);
-            setRoomCode(code);
-            setStatus(t('multiplayer.room_active'));
-        } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : String(e);
-            setStatus(`Error: ${errorMessage}`);
-        } finally {
-            setIsLoading(false);
+        if (value.trim().length < 10) {
+            return t('validation.room_code_too_short') || 'Код комнаты слишком короткий';
         }
-    };
-
-    // Join connects to an existing room and exposes a local tunnel port.
-    const handleJoin = async () => {
-        if (!window.networkAPI) {
-            setStatus('Error: Network API not loaded.');
-            return;
-        }
-        setIsLoading(true);
-        setStatus(t('multiplayer.joining'));
-        try {
-            const localPort = await window.networkAPI.join(joinCode);
-            setMappedPort(localPort);
-            setStatus(`${t('multiplayer.tunnel_established')} localhost:${localPort}`);
-        } catch (e) {
-            const errorMessage = e instanceof Error ? e.message : String(e);
-            setStatus(`Error: ${errorMessage}`);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    // Stop closes any active room or tunnel session.
-    const handleStop = async () => {
-        await window.networkAPI.stop();
-        setRoomCode('');
-        setMappedPort(null);
-        setStatus(t('multiplayer.session_stopped'));
+        return null;
     };
 
     return (
@@ -114,6 +78,25 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                     ))}
                 </div>
 
+                {/* Network mode (per selected instance) */}
+                <div className="space-y-2">
+                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                        {t('settings.network_mode')}
+                    </label>
+                    <select
+                        value={networkMode}
+                        onChange={(e) => setNetworkMode(e.target.value as typeof networkMode)}
+                        className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-zinc-300/50 dark:border-zinc-700/50 rounded-lg p-3 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 shadow-sm hover:shadow-md transition-all"
+                    >
+                        <option value="hyperswarm">{t('settings.network_mode_hyperswarm')}</option>
+                        <option value="xmcl_lan">{t('settings.network_mode_xmcl_lan')}</option>
+                        <option value="xmcl_upnp_host">{t('settings.network_mode_xmcl_upnp_host')}</option>
+                    </select>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                        {t('settings.network_mode_desc')}
+                    </p>
+                </div>
+
                 {/* Content Area */}
                 <div className="min-h-[250px] flex flex-col justify-center">
                     {mode === 'host' ? (
@@ -127,11 +110,27 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                                     <Input
                                         label={t('multiplayer.lan_port')}
                                         value={port}
-                                        onChange={(e) => setPort(e.target.value)}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setPort(value);
+                                            setPortError(validatePort(value));
+                                        }}
+                                        onBlur={(e) => {
+                                            setPortError(validatePort(e.target.value));
+                                        }}
                                         placeholder="25565"
                                         className="text-center font-mono"
+                                        error={portError || undefined}
+                                        type="number"
+                                        min="1"
+                                        max="65535"
                                     />
-                                    <Button onClick={handleHost} isLoading={isLoading} className="w-full">
+                                    <Button 
+                                        onClick={host} 
+                                        isLoading={isLoading} 
+                                        className="w-full"
+                                        disabled={!!portError || !port.trim()}
+                                    >
                                         {t('multiplayer.create_room')}
                                     </Button>
                                 </>
@@ -153,7 +152,7 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                                         <p className="font-mono text-sm break-all text-zinc-900 dark:text-zinc-100 group-hover:scale-105 transition-transform">{roomCode}</p>
                                         <p className={cn("text-[10px] mt-2 opacity-70", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.click_copy')}</p>
                                     </div>
-                                    <Button variant="danger" onClick={handleStop} className="w-full">
+                                    <Button variant="danger" onClick={stop} className="w-full">
                                         {t('multiplayer.stop')}
                                     </Button>
                                 </div>
@@ -170,11 +169,24 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                                     <Input
                                         label={t('multiplayer.room_code')}
                                         value={joinCode}
-                                        onChange={(e) => setJoinCode(e.target.value)}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            setJoinCode(value);
+                                            setJoinCodeError(validateJoinCode(value));
+                                        }}
+                                        onBlur={(e) => {
+                                            setJoinCodeError(validateJoinCode(e.target.value));
+                                        }}
                                         placeholder={t('multiplayer.code_placeholder')}
                                         className="font-mono text-center text-xs"
+                                        error={joinCodeError || undefined}
                                     />
-                                    <Button onClick={handleJoin} isLoading={isLoading} className="w-full">
+                                    <Button 
+                                        onClick={join} 
+                                        isLoading={isLoading} 
+                                        className="w-full"
+                                        disabled={!!joinCodeError || !joinCode.trim()}
+                                    >
                                         {t('multiplayer.join_room')}
                                     </Button>
                                 </>
@@ -196,7 +208,7 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                                         </p>
                                         <p className={cn("text-xs mt-2 opacity-70", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.direct_connect')}</p>
                                     </div>
-                                    <Button variant="danger" onClick={handleStop} className="w-full">
+                                    <Button variant="danger" onClick={stop} className="w-full">
                                         {t('multiplayer.stop')}
                                     </Button>
                                 </div>

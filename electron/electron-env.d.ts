@@ -21,7 +21,5 @@ declare namespace NodeJS {
   }
 }
 
-// Used in Renderer process, expose in `preload.ts`
-interface Window {
-  ipcRenderer: import('electron').IpcRenderer
-}
+// Note: renderer `Window` surface is declared in `src/vite-env.d.ts`.
+// Keep this file focused on Electron/Vite environment typing.

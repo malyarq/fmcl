@@ -1,5 +1,5 @@
 import React from 'react';
-import { UpdateStatus, UpdateInfo } from '../hooks/useAppUpdater';
+import { UpdateStatus, UpdateInfo } from '../features/updater/hooks/useAppUpdater';
 import { useSettings } from '../contexts/SettingsContext';
 import { Button } from './ui/Button';
 import { cn } from '../utils/cn';

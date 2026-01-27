@@ -1,6 +1,6 @@
 # FriendLauncher 🎮
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Version](https://img.shields.io/badge/version-0.0.7-green.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Version](https://img.shields.io/badge/version-0.0.8-green.svg)
 
 [English](#english) | [Русский](#russian)
 
@@ -40,6 +40,16 @@ FriendLauncher removes the headache of setting up servers. It treats the interne
 ### Prerequisites
 - [Node.js](https://nodejs.org/) (v16 or higher)
 - [Java](https://www.java.com/) (Java 8 for older versions, Java 17 for 1.18+)
+
+## 📚 Docs
+
+- Project docs: `docs/README.md`
+- **Development Roadmap:**
+  - `docs/en/roadmap.md` (EN)
+  - `docs/ru/roadmap.md` (RU)
+- Public contracts (IPC + `window.*`):
+  - `docs/en/contracts-map.md` (EN)
+  - `docs/ru/contracts-map.md` (RU)
 
 ### Setup
 
@@ -103,6 +113,16 @@ FriendLauncher превращает интернет в локальную се�
 ### Требования
 - [Node.js](https://nodejs.org/) (v16 и выше)
 - [Java](https://www.java.com/) (Java 8 для старых версий, Java 17 для 1.18+)
+
+## 📚 Документация
+
+- Документация проекта: `docs/README.md`
+- **Роадмап разработки:**
+  - `docs/ru/roadmap.md` (RU)
+  - `docs/en/roadmap.md` (EN)
+- Контракты (IPC + `window.*`):
+  - `docs/ru/contracts-map.md` (RU)
+  - `docs/en/contracts-map.md` (EN)
 
 ### Запуск проекта
 

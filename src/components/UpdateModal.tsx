@@ -1,8 +1,9 @@
 import React from 'react';
-import { UpdateInfo, UpdateProgress } from '../hooks/useAppUpdater';
+import { UpdateInfo, UpdateProgress } from '../features/updater/hooks/useAppUpdater';
 import { useSettings } from '../contexts/SettingsContext';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
+import { ProgressBar, formatBytes } from './ui/ProgressBar';
 import { cn } from '../utils/cn';
 import pkg from '../../package.json';
 
@@ -25,14 +26,6 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   onInstall,
 }) => {
   const { t, getAccentStyles } = useSettings();
-
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-  };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t('updater.available')}>
@@ -59,23 +52,12 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 
         {/* Download Progress */}
         {status === 'downloading' && progress && (
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
-              <span>{t('updater.progress')}</span>
-              <span>
-                {Math.round(progress.percent)}% ({formatBytes(progress.transferred)} / {formatBytes(progress.total)})
-              </span>
-            </div>
-            <div className="w-full bg-zinc-200 dark:bg-zinc-700 rounded-full h-2 overflow-hidden">
-              <div
-                className={cn("h-full transition-all duration-300", getAccentStyles('bg').className)}
-                style={{
-                  ...getAccentStyles('bg').style,
-                  width: `${progress.percent}%`,
-                }}
-              />
-            </div>
-          </div>
+          <ProgressBar
+            value={progress.percent}
+            label={t('updater.progress')}
+            valueLabel={`${Math.round(progress.percent)}% (${formatBytes(progress.transferred)} / ${formatBytes(progress.total)})`}
+            animated
+          />
         )}
 
         {/* Status Messages */}

@@ -26,7 +26,7 @@ export const Select: React.FC<SelectProps> = ({
             <div className="relative">
                 <select
                     className={cn(
-                        "w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-zinc-300/50 dark:border-zinc-700/50 rounded-lg px-3 py-2.5 text-sm",
+                        "w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-zinc-300/50 dark:border-zinc-700/50 rounded-lg px-3 py-3 text-sm leading-normal",
                         "focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 focus:border-transparent",
                         "appearance-none cursor-pointer transition-all shadow-sm hover:shadow-md text-zinc-900 dark:text-zinc-100",
                         error && "border-red-500 focus:ring-red-500",
