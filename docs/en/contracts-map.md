@@ -63,14 +63,9 @@ Snapshot date: **2026-01-26**
   - `modpacks:addMod` (Phase 4)
   - `modpacks:removeMod` (Phase 4)
   - `modpacks:updateOverrides` (Phase 4)
-  - `modpacks:getMetadata`
-  - `modpacks:updateMetadata`
-  - `modpacks:searchCurseForge`
-  - `modpacks:searchModrinth`
-  - `modpacks:getCurseForgeVersions`
-  - `modpacks:getModrinthVersions`
-  - `modpacks:installCurseForge`
-  - `modpacks:installModrinth`
+  - `modpacks:getModpackInfoFromFile`
+  - `modpacks:getMods`
+  - `modpacks:backup`
 
 - **network**
   - `network:host`
@@ -93,6 +88,22 @@ Snapshot date: **2026-01-26**
 - **assets**
   - `assets:getIconPath`
 
+- **dialog**
+  - `dialog:showOpenDialog`
+  - `dialog:showSaveDialog`
+
+- **instances**
+  - `instances:list`
+  - `instances:bootstrap`
+  - `instances:getSelected`
+  - `instances:setSelected`
+  - `instances:create`
+  - `instances:rename`
+  - `instances:duplicate`
+  - `instances:delete`
+  - `instances:getConfig`
+  - `instances:saveConfig`
+
 ### 1.2 `webContents.send(...)` (main → renderer events)
 
 - **launcher**
@@ -102,6 +113,9 @@ Snapshot date: **2026-01-26**
 
 - **network**
   - `network:lan-discover` (LAN discovery events)
+
+- **modpacks**
+  - `modpacks:updateProgress` (modpack installation/update progress events)
 
 ---
 

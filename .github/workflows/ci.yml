@@ -34,3 +34,8 @@ jobs:
       - name: IPC allowlist check
         run: npm run ipc:check
 
+      - name: Build
+        run: npm run build
+        env:
+          CI: true
+
