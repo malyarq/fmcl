@@ -63,14 +63,9 @@
   - `modpacks:addMod` (Фаза 4)
   - `modpacks:removeMod` (Фаза 4)
   - `modpacks:updateOverrides` (Фаза 4)
-  - `modpacks:getMetadata`
-  - `modpacks:updateMetadata`
-  - `modpacks:searchCurseForge`
-  - `modpacks:searchModrinth`
-  - `modpacks:getCurseForgeVersions`
-  - `modpacks:getModrinthVersions`
-  - `modpacks:installCurseForge`
-  - `modpacks:installModrinth`
+  - `modpacks:getModpackInfoFromFile`
+  - `modpacks:getMods`
+  - `modpacks:backup`
 
 - **network**
   - `network:host`
@@ -93,6 +88,22 @@
 - **assets**
   - `assets:getIconPath`
 
+- **dialog**
+  - `dialog:showOpenDialog`
+  - `dialog:showSaveDialog`
+
+- **instances**
+  - `instances:list`
+  - `instances:bootstrap`
+  - `instances:getSelected`
+  - `instances:setSelected`
+  - `instances:create`
+  - `instances:rename`
+  - `instances:duplicate`
+  - `instances:delete`
+  - `instances:getConfig`
+  - `instances:saveConfig`
+
 ### 1.2 `webContents.send(...)` (main → renderer, события)
 
 - **launcher**
@@ -102,6 +113,9 @@
 
 - **network**
   - `network:lan-discover` (LAN discovery events)
+
+- **modpacks**
+  - `modpacks:updateProgress` (события прогресса установки/обновления модпака)
 
 ---
 
