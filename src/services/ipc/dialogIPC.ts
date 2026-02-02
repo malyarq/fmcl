@@ -59,6 +59,12 @@ export const dialogIPC = {
       requireIpcRenderer('showOpenDialog').invoke<OpenDialogResult>('dialog:showOpenDialog', options)
     );
   },
+
+  getDesktopPath(): Promise<string> {
+    return call('getDesktopPath', () => 
+      requireIpcRenderer('getDesktopPath').invoke<string>('dialog:getDesktopPath')
+    );
+  },
 };
 
 export type DialogIPC = typeof dialogIPC;

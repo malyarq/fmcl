@@ -46,6 +46,7 @@ export const modpacks: ModpacksAPI = {
   importModpack: (filePath: string, targetModpackId?: string, rootPath?: string) => ipcRenderer.invoke('modpacks:import', filePath, targetModpackId, rootPath),
   addModToModpack: (modpackId: string, mod: { platform: 'curseforge' | 'modrinth'; projectId: string | number; versionId: string | number }, rootPath?: string) => ipcRenderer.invoke('modpacks:addMod', modpackId, mod, rootPath),
   removeModFromModpack: (modpackId: string, modPath: string, rootPath?: string) => ipcRenderer.invoke('modpacks:removeMod', modpackId, modPath, rootPath),
+  setModEnabled: (modpackId: string, modPath: string, enabled: boolean, rootPath?: string) => ipcRenderer.invoke('modpacks:setModEnabled', modpackId, modPath, enabled, rootPath),
   updateModpackOverrides: (modpackId: string, overrides: Record<string, string>, rootPath?: string) => ipcRenderer.invoke('modpacks:updateOverrides', modpackId, overrides, rootPath),
   getModpackMods: (modpackId: string, rootPath?: string) => ipcRenderer.invoke('modpacks:getMods', modpackId, rootPath),
   backupModpack: (modpackId: string, rootPath?: string) => ipcRenderer.invoke('modpacks:backup', modpackId, rootPath),

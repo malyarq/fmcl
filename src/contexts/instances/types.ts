@@ -23,6 +23,11 @@ export interface ModpackConfig {
      * Extra game (program) arguments passed to @xmcl/core LaunchOption.extraMCArgs.
      */
     extraArgs?: string[];
+    /**
+     * Whether OptiFine should be used when launching this modpack.
+     * This is a high-level flag that controls the OptiFine toggle in the launcher.
+     */
+    useOptiFine?: boolean;
   };
   server?: { host: string; port: number };
   networkMode?: NetworkMode;

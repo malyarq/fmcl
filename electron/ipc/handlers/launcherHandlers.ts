@@ -12,6 +12,12 @@ export function registerLauncherHandlers(deps: {
 }) {
   const { window, launcher, sendLog } = deps
 
+  ipcMain.removeHandler('launcher:killAndRestart')
+  ipcMain.handle('launcher:killAndRestart', async () => {
+    await launcher.killGameProcess()
+    if (!window.isDestroyed()) window.reload()
+  })
+
   ipcMain.removeHandler('launcher:launch')
   ipcMain.handle('launcher:launch', async (_evt, options: LaunchGameOptions) => {
     try {

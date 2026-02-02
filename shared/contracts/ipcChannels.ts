@@ -22,6 +22,7 @@ export const allowedIpcChannels = [
   'launcher:getNeoForgeSupportedVersions',
   'launcher:clearCache',
   'launcher:reload',
+  'launcher:killAndRestart',
 
   // launcher events
   'launcher:log',
@@ -69,6 +70,7 @@ export const allowedIpcChannels = [
   // dialog
   'dialog:showSaveDialog',
   'dialog:showOpenDialog',
+  'dialog:getDesktopPath',
 
   // assets
   'assets:getIconPath',
@@ -114,6 +116,7 @@ export const allowedIpcChannels = [
   'modpacks:import',
   'modpacks:addMod',
   'modpacks:removeMod',
+  'modpacks:setModEnabled',
   'modpacks:updateOverrides',
   'modpacks:getMods',
   'modpacks:backup',

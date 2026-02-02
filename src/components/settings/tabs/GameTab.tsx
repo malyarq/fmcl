@@ -5,7 +5,6 @@ import { RuntimeSection } from './game/RuntimeSection';
 import { ResolutionSection } from './game/ResolutionSection';
 import { ArgsSection } from './game/ArgsSection';
 import { AutoConnectSection } from './game/AutoConnectSection';
-import { MinecraftPathSection } from './game/MinecraftPathSection';
 
 export interface GameTabProps {
   modpackConfig: ModpackConfig | null;
@@ -15,10 +14,6 @@ export interface GameTabProps {
   setGameExtraArgs: (args: string[]) => void;
   setGameResolution: (resolution?: { width?: number; height?: number; fullscreen?: boolean }) => void;
   setAutoConnectServer: (server?: { host: string; port: number }) => void;
-  refreshInstances: () => Promise<void>;
-
-  minecraftPath: string;
-  setMinecraftPath: (val: string) => void;
   t: (key: string) => string;
   getAccentStyles: (type: 'bg' | 'text' | 'border' | 'ring' | 'hover' | 'accent' | 'title' | 'soft-bg' | 'soft-border') => {
     className?: string;
@@ -34,9 +29,6 @@ export const GameTab: React.FC<GameTabProps> = ({
   setGameExtraArgs,
   setGameResolution,
   setAutoConnectServer,
-  refreshInstances: _refreshInstances,
-  minecraftPath,
-  setMinecraftPath,
   t,
   getAccentStyles,
 }) => {
@@ -144,8 +136,6 @@ export const GameTab: React.FC<GameTabProps> = ({
           t={t}
         />
       </div>
-
-      <MinecraftPathSection minecraftPath={minecraftPath} setMinecraftPath={setMinecraftPath} t={t} />
     </div>
   );
 };

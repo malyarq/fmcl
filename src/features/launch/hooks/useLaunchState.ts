@@ -17,10 +17,10 @@ export function useLaunchState(params: {
   const { forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions } = params;
 
   const [nickname, setNickname] = useState(() => loadNickname());
-  const [useOptiFine, setUseOptiFine] = useState(false);
+  const [useOptiFineState, setUseOptiFineState] = useState(false);
 
   const { isOffline } = useNetworkStatus();
-  const { config: modpackConfig, setRuntimeMinecraft, setRuntimeLoader } = useModpack();
+  const { config: modpackConfig, setRuntimeMinecraft, setRuntimeLoader, patchConfig } = useModpack();
 
   // Persist nickname across sessions.
   useEffect(() => {
@@ -45,6 +45,23 @@ export function useLaunchState(params: {
     setRuntimeLoader(loader as ModLoaderType);
   };
 
+  // Sync OptiFine flag with modpack config (per-modpack setting).
+  useEffect(() => {
+    setUseOptiFineState(Boolean(modpackConfig?.game?.useOptiFine));
+  }, [modpackConfig?.id, modpackConfig?.game?.useOptiFine]);
+
+  const setUseOptiFine = (next: boolean) => {
+    setUseOptiFineState(next);
+    if (modpackConfig) {
+      patchConfig({
+        game: {
+          ...(modpackConfig.game ?? {}),
+          useOptiFine: next,
+        },
+      });
+    }
+  };
+
   // Auto-disable mods when version changes and mod is not supported
   useEffect(() => {
     if (
@@ -61,7 +78,7 @@ export function useLaunchState(params: {
 
     if (
       shouldDisableOptiFine({
-        useOptiFine,
+        useOptiFine: useOptiFineState,
         mcVersion: version,
         loaderType,
         optiFineVersions,
@@ -69,16 +86,16 @@ export function useLaunchState(params: {
     ) {
       setTimeout(() => setUseOptiFine(false), 0);
     }
-  }, [version, forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions, loaderType, setRuntimeLoader, useOptiFine]);
+  }, [version, forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions, loaderType, setRuntimeLoader, useOptiFineState, patchConfig, modpackConfig]);
 
   // Auto-disable OptiFine when Forge is disabled (OptiFine only works with Forge)
   useEffect(() => {
-    if (loaderType !== 'forge' && useOptiFine) {
+    if (loaderType !== 'forge' && useOptiFineState) {
       setTimeout(() => {
         setUseOptiFine(false);
       }, 0);
     }
-  }, [loaderType, useOptiFine]);
+  }, [loaderType, useOptiFineState, patchConfig, modpackConfig]);
 
   const launchVersion = useMemo(() => {
     return computeLaunchVersion({ loaderType, mcVersion: version });
@@ -98,7 +115,7 @@ export function useLaunchState(params: {
     useNeoForge,
     setUseNeoForge,
     setLoader,
-    useOptiFine,
+    useOptiFine: useOptiFineState,
     setUseOptiFine,
     isOffline,
     launchVersion,

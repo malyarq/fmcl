@@ -20,38 +20,79 @@ export class ModPlatformService {
   }
 
   public async searchMods(query: ModSearchQuery): Promise<ModSearchResult> {
+    const sort = query.sort ?? 'popularity';
+
     if (query.platform === 'modrinth') {
       const facets: string[][] = [['project_type:mod']];
       const loader = mapLoaderToModrinth(query.loader);
       if (loader) facets.push([`categories:${loader}`]);
       if (query.mcVersion) facets.push([`versions:${query.mcVersion}`]);
 
+      let index: string;
+      switch (sort) {
+        case 'date':
+          index = 'newest';
+          break;
+        case 'alphabetical':
+          index = 'relevance'; // will sort client-side
+          break;
+        case 'popularity':
+        default:
+          index = 'downloads';
+          break;
+      }
+
+      const fetchLimit = sort === 'alphabetical' ? Math.min((query.limit ?? 20) * 10, 100) : (query.limit ?? 20);
       const result = await this.modrinth.searchProjects({
         query: query.query,
         facets: JSON.stringify(facets),
-        offset: query.offset ?? 0,
-        limit: query.limit ?? 20,
+        index,
+        offset: sort === 'alphabetical' ? 0 : (query.offset ?? 0),
+        limit: fetchLimit,
       });
 
+      let items = result.hits.map((h) => ({
+        platform: 'modrinth' as const,
+        projectId: h.project_id,
+        slug: h.slug,
+        title: h.title,
+        description: h.description,
+        iconUrl: h.icon_url,
+        downloads: h.downloads,
+      }));
+
+      if (sort === 'alphabetical') {
+        items.sort((a, b) => a.title.localeCompare(b.title));
+        const start = query.offset ?? 0;
+        const limit = query.limit ?? 20;
+        items = items.slice(start, start + limit);
+      }
+
       return {
-        items: result.hits.map((h) => ({
-          platform: 'modrinth',
-          projectId: h.project_id,
-          slug: h.slug,
-          title: h.title,
-          description: h.description,
-          iconUrl: h.icon_url,
-          downloads: h.downloads,
-        })),
+        items,
         total: result.total_hits,
-        offset: result.offset,
-        limit: result.limit,
+        offset: query.offset ?? 0,
+        limit: query.limit ?? 20,
       };
     }
 
     // curseforge
     if (!this.curseforge) {
       throw new Error('CurseForge API key is not configured. Set CURSEFORGE_API_KEY env var.');
+    }
+
+    let sortField: number;
+    switch (sort) {
+      case 'date':
+        sortField = CF_SORT_LAST_UPDATED;
+        break;
+      case 'alphabetical':
+        sortField = CF_SORT_NAME;
+        break;
+      case 'popularity':
+      default:
+        sortField = CF_SORT_POPULARITY;
+        break;
     }
 
     const modLoaderType = mapLoaderToCurseforge(query.loader);
@@ -63,8 +104,8 @@ export class ModPlatformService {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       modLoaderType: modLoaderType as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      sortField: CF_SORT_POPULARITY as any,
-      sortOrder: 'desc',
+      sortField: sortField as any,
+      sortOrder: sort === 'alphabetical' ? 'asc' : 'desc',
       index: query.offset ?? 0,
       pageSize: query.limit ?? 20,
     });
@@ -152,7 +193,10 @@ export class ModPlatformService {
   }
 
   public async installModFile(req: ModInstallRequest): Promise<ModInstallResult> {
-    const rootPath = req.rootPath ?? this.instances.getDefaultRootPath();
+    const rootPath =
+      (req.rootPath != null && String(req.rootPath).trim() !== '')
+        ? req.rootPath
+        : this.instances.getDefaultRootPath();
     // Per-instance installation:
     // - instancePath/mods (highest priority)
     // - instances/<id>/mods

@@ -1,5 +1,4 @@
 import type { CSSProperties } from 'react';
-import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 
 export function ModloaderSection(props: {
@@ -14,6 +13,7 @@ export function ModloaderSection(props: {
   forgeSupportedVersions: string[];
   fabricSupportedVersions: string[];
   neoForgeSupportedVersions: string[];
+  isModloadersLoading?: boolean;
   t: (key: string) => string;
   getAccentStyles: (type: 'bg') => { className?: string; style?: CSSProperties };
 }) {
@@ -26,53 +26,49 @@ export function ModloaderSection(props: {
     forgeSupportedVersions,
     fabricSupportedVersions,
     neoForgeSupportedVersions,
+    isModloadersLoading = false,
     t,
     getAccentStyles,
   } = props;
+
+  // Показываем все 3 модлоадера, пока загружаем версии или списки пусты. После загрузки — только поддерживаемые.
+  const hasData =
+    forgeSupportedVersions.length > 0 ||
+    fabricSupportedVersions.length > 0 ||
+    neoForgeSupportedVersions.length > 0;
+  const showAllThree = isModloadersLoading || !hasData;
 
   const isForgeSupported = forgeSupportedVersions.includes(version);
   const isFabricSupported = fabricSupportedVersions.includes(version);
   const isNeoForgeSupported = neoForgeSupportedVersions.includes(version);
 
   const availableModloaders: Array<{ id: 'neoforge' | 'forge' | 'fabric'; label: string; isActive: boolean }> = [];
-  if (isNeoForgeSupported) {
-    availableModloaders.push({ id: 'neoforge', label: t('neoforge.enable'), isActive: useNeoForge });
-  }
-  if (isForgeSupported) {
-    availableModloaders.push({ id: 'forge', label: t('forge.enable'), isActive: useForge });
-  }
-  if (isFabricSupported) {
-    availableModloaders.push({ id: 'fabric', label: t('fabric.enable'), isActive: useFabric });
+  if (showAllThree) {
+    availableModloaders.push(
+      { id: 'neoforge', label: t('neoforge.enable'), isActive: useNeoForge },
+      { id: 'forge', label: t('forge.enable'), isActive: useForge },
+      { id: 'fabric', label: t('fabric.enable'), isActive: useFabric },
+    );
+  } else {
+    if (isNeoForgeSupported) availableModloaders.push({ id: 'neoforge', label: t('neoforge.enable'), isActive: useNeoForge });
+    if (isForgeSupported) availableModloaders.push({ id: 'forge', label: t('forge.enable'), isActive: useForge });
+    if (isFabricSupported) availableModloaders.push({ id: 'fabric', label: t('fabric.enable'), isActive: useFabric });
   }
 
   if (availableModloaders.length === 0) {
     return null;
   }
 
-  // Show button if only one modloader is available
-  if (availableModloaders.length === 1) {
-    const loader = availableModloaders[0];
-    return (
-      <Button
-        onClick={() => {
-          // Use direct setLoader to avoid race conditions from multiple state updates
-          setLoader(loader.isActive ? 'vanilla' : loader.id);
-        }}
-        variant={loader.isActive ? 'primary' : 'secondary'}
-        className={cn('w-full justify-center', loader.isActive && getAccentStyles('bg').className)}
-        style={loader.isActive ? getAccentStyles('bg').style : undefined}
-      >
-        {loader.label}
-      </Button>
-    );
-  }
-
-  // Show switcher if multiple modloaders are available
   return (
     <div className="space-y-2" data-tour="modloaders">
       <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
         {t('general.modloader') || 'Modloader'}
       </label>
+      {showAllThree && (
+        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+          {t('modloaders.loading_hint') || 'Checking available versions in the background. Compatible modloaders will appear within a minute.'}
+        </p>
+      )}
       <div className="flex bg-zinc-100/80 dark:bg-zinc-900/50 backdrop-blur-sm p-1 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 shadow-inner">
         {availableModloaders.map((loader) => {
           const isActive = loader.isActive;

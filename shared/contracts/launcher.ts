@@ -44,6 +44,7 @@ export type LauncherProgressEvent = TaskProgressData;
  */
 export interface LauncherAPI {
   launch: (options: LauncherLaunchOptions) => Promise<void>;
+  killAndRestart: () => Promise<void>;
   getVersionList: (providerId?: DownloadProviderId) => Promise<LauncherVersionListResponse>;
   getForgeSupportedVersions: (providerId?: DownloadProviderId) => Promise<string[]>;
   getFabricSupportedVersions: () => Promise<string[]>;

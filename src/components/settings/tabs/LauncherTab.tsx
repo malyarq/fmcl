@@ -3,6 +3,7 @@ import { Button } from '../../ui/Button';
 import { useToast } from '../../../contexts/ToastContext';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { cacheIPC } from '../../../services/ipc/cacheIPC';
+import { MinecraftPathSection } from './game/MinecraftPathSection';
 import type { UpdateInfo, UpdateStatus } from '../../../features/updater/hooks/useAppUpdater';
 
 export interface LauncherTabProps {
@@ -10,6 +11,8 @@ export interface LauncherTabProps {
   setHideLauncher: (val: boolean) => void;
   showConsole: boolean;
   setShowConsole: (val: boolean) => void;
+  minecraftPath: string;
+  setMinecraftPath: (val: string) => void;
   t: (key: string) => string;
 
   status: UpdateStatus;
@@ -23,6 +26,8 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
   setHideLauncher,
   showConsole,
   setShowConsole,
+  minecraftPath,
+  setMinecraftPath,
   t,
   status,
   updateInfo,
@@ -106,6 +111,8 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
           </div>
         </div>
       </div>
+
+      <MinecraftPathSection minecraftPath={minecraftPath} setMinecraftPath={setMinecraftPath} t={t} />
 
       {(status === 'checking' || status === 'available' || status === 'up-to-date' || status === 'error') && (
         <div className="flex items-center justify-between">

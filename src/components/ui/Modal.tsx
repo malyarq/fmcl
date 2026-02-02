@@ -57,23 +57,35 @@ export const Modal: React.FC<ModalProps> = ({
     if (!shouldRender) return null;
 
     return (
-        <div 
-            className={cn(
-                "fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 md:p-8 bg-black/70 backdrop-blur-md transition-opacity duration-300 ease-out",
-                isAnimating ? "opacity-100" : "opacity-0"
-            )}
-            onClick={onClose}
-        >
-            <div
+        <>
+            {/* Background overlay — затемнение без блюра */}
+            <div 
                 className={cn(
-                    "bg-white/95 dark:bg-zinc-800/95 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-700/50 w-full max-w-lg rounded-xl sm:rounded-2xl shadow-2xl shadow-black/30 dark:shadow-black/50 overflow-hidden transition-all duration-300 ease-out transform",
-                    "max-h-[95vh] sm:max-h-[90vh] md:max-h-[85vh]",
-                    isAnimating ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4",
-                    className
+                    "fixed inset-0 z-50 bg-black/70 transition-opacity duration-300 ease-out pointer-events-auto",
+                    isAnimating ? "opacity-100" : "opacity-0"
                 )}
-                onClick={(e) => e.stopPropagation()}
+                onClick={onClose}
+                style={{ isolation: 'isolate' }}
+            />
+            {/* Modal content */}
+            <div 
+                className={cn(
+                    "fixed inset-0 z-[51] flex items-center justify-center p-2 sm:p-4 md:p-8 pointer-events-none transition-opacity duration-300 ease-out",
+                    isAnimating ? "opacity-100" : "opacity-0"
+                )}
+                style={{ isolation: 'isolate' }}
             >
-                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200/50 dark:border-zinc-700/50 flex justify-between items-center bg-gradient-to-r from-zinc-50/80 to-white/80 dark:from-zinc-800/80 dark:to-zinc-900/80 backdrop-blur-sm">
+                <div
+                    className={cn(
+                        "bg-white dark:bg-zinc-800 border border-zinc-200/50 dark:border-zinc-700/50 w-full max-w-lg rounded-xl sm:rounded-2xl shadow-2xl shadow-black/30 dark:shadow-black/50 overflow-hidden transition-all duration-300 ease-out transform pointer-events-auto",
+                        "max-h-[95vh] sm:max-h-[90vh] md:max-h-[85vh]",
+                        isAnimating ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-95 translate-y-4",
+                        className
+                    )}
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ isolation: 'isolate' }}
+                >
+                <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200/50 dark:border-zinc-700/50 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900">
                     <h3 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white truncate pr-2">{title}</h3>
                     <button
                         onClick={onClose}
@@ -88,5 +100,6 @@ export const Modal: React.FC<ModalProps> = ({
                 </div>
             </div>
         </div>
+        </>
     );
 };

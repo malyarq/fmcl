@@ -111,14 +111,72 @@
     animation: shimmer 2s infinite;
   }
 
+  @keyframes pulse-glow {
+    0%, 100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.8;
+      transform: scale(1.05);
+    }
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  @keyframes mode-switch-fade {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .mode-switch-transition {
+    transition: opacity 250ms ease-out, transform 250ms ease-out;
+  }
+
+  .mode-switch-enter {
+    animation: mode-switch-fade 250ms ease-out forwards;
+  }
+
+  @keyframes sidebar-fade {
+    from {
+      opacity: 0;
+      transform: translateY(-5px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .sidebar-section-transition {
+    transition: opacity 200ms ease-out, transform 200ms ease-out;
+  }
+
+  .sidebar-section-enter {
+    animation: sidebar-fade 200ms ease-out forwards;
+  }
+
   /* Respect reduced motion preference */
   @media (prefers-reduced-motion: reduce) {
     .animate-fade-in-up,
     .animate-fade-in,
     .animate-slide-in-up,
-    .animate-scale-in {
+    .animate-scale-in,
+    .mode-switch-transition,
+    .mode-switch-enter,
+    .sidebar-section-transition,
+    .sidebar-section-enter {
       animation: none;
       opacity: 1;
+      transform: none;
     }
   }
 }

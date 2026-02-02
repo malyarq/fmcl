@@ -15,7 +15,7 @@ export function VersionSection(props: {
 
   return (
     <div data-tour="version">
-      <Select label={t('general.version')} value={version} onChange={(e) => setVersion(e.target.value)} className="font-mono">
+      <Select label={t('general.version')} value={version} onChange={(e) => setVersion(e.target.value)}>
         {versions.map((v) => (
           <option key={v.id} value={v.id}>
             {v.id}

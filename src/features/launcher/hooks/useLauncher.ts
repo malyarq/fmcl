@@ -5,6 +5,7 @@ import { useModpack } from '../../../contexts/ModpackContext';
 import { launcherIPC } from '../../../services/ipc/launcherIPC';
 import { useLauncherState } from './useLauncherState';
 import { useLauncherIPC } from './useLauncherIPC';
+import { saveLastGame } from '../../launch/services/lastGame';
 
 interface LaunchOptions {
   nickname: string;
@@ -28,7 +29,7 @@ export interface UseLauncherResult {
 export const useLauncher = (): UseLauncherResult => {
   const state = useLauncherState();
   const { t, minecraftPath, downloadProvider, autoDownloadThreads, downloadThreads, maxSockets } = useSettings();
-  const { selectedId: modpackId, config: modpackConfig } = useModpack();
+  const { effectiveModpackId: modpackId, config: modpackConfig } = useModpack();
   const javaPath = modpackConfig?.java?.path || '';
 
   useLauncherIPC({
@@ -75,6 +76,19 @@ export const useLauncher = (): UseLauncherResult => {
         useOptiFine: options.useOptiFine ?? false,
       });
       state.setStatusText(t('status.game_running'));
+
+      const loader = modpackConfig?.runtime?.modLoader?.type ?? 'vanilla';
+      const loaderNorm = loader === 'quilt' ? 'fabric' : loader;
+      if (modpackId && ['vanilla', 'forge', 'fabric', 'neoforge'].includes(loaderNorm)) {
+        const mc = modpackConfig?.runtime?.minecraft ?? '1.20.1';
+        saveLastGame(modpackId, {
+          versionId: mc,
+          nickname: options.nickname,
+          loader: loaderNorm as 'vanilla' | 'forge' | 'fabric' | 'neoforge',
+          launchVersion: options.version,
+          timestamp: Date.now(),
+        });
+      }
     } catch (e) {
       state.appendLog(`Error: ${e}`);
       state.setStatusText('Launch Failed');

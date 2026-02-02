@@ -14,7 +14,7 @@ export function useLauncherIPC(params: {
   // Subscribe to launcher events once for the active language.
   useEffect(() => {
     if (!launcherIPC.isAvailable()) {
-      onSetStatusText(t('status.ready'));
+      onSetStatusText('');
       onAppendLog('[SYSTEM] Launcher API not available. Is preload loaded?');
       return;
     }
@@ -33,7 +33,7 @@ export function useLauncherIPC(params: {
 
     const unsubClose = launcherIPC.onClose((code) => {
       onAppendLog(`[SYSTEM] Game session ended (Code: ${code})`);
-      onSetStatusText(t('status.ready'));
+      onSetStatusText('');
       onSetLaunching(false);
     });
 

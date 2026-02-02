@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
-import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Modal } from '../ui/Modal';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';

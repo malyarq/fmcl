@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { CLASSIC_MODPACK_ID } from '../../../../shared/constants';
 import type { ModpackService } from '../../modpacks/modpackService';
 
 export function resolveRootAndModpack(params: {
@@ -24,8 +25,8 @@ export function resolveRootAndModpack(params: {
   if (!modpackPath) {
     const selected = modpackId || modpacks.getSelectedModpackId(rootPath);
     modpackId = selected;
-    // Persist selection when the caller explicitly passes modpackId.
-    if (options.modpackId) {
+    // Persist selection when the caller explicitly passes modpackId. Skip for classic — hidden instance, not in index.
+    if (options.modpackId && modpackId !== CLASSIC_MODPACK_ID) {
       try {
         modpacks.setSelectedModpack(rootPath, selected);
       } catch {

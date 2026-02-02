@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../utils/cn';
 
-export type SettingsTabId = 'appearance' | 'game' | 'downloads' | 'launcher';
+export type SettingsTabId = 'appearance' | 'downloads' | 'launcher';
 
 export function SettingsTabsHeader(props: {
   activeTab: SettingsTabId;
@@ -13,7 +13,6 @@ export function SettingsTabsHeader(props: {
 
   const tabs: { id: SettingsTabId; label: string }[] = [
     { id: 'appearance', label: t('settings.tab_appearance') },
-    { id: 'game', label: t('settings.tab_game') },
     { id: 'downloads', label: t('settings.tab_downloads') },
     { id: 'launcher', label: t('settings.tab_launcher') },
   ];

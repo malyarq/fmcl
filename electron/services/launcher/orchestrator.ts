@@ -17,12 +17,15 @@ import type { TaskProgressData, VersionEntry } from './types';
 import type { LaunchGameOptions } from './orchestratorTypes';
 import { prepareLaunchContext, ensureAuthInjector, createOfflineSession } from './preLaunchSetup';
 import { installModLoaderIfNeeded } from './modLoaderInstaller';
+import type { ChildProcess } from 'child_process';
+import kill from 'tree-kill';
 import { spawnMinecraft } from './launchFlow/spawnMinecraft';
 import { getFabricSupportedVersions, getForgeSupportedVersions, getNeoForgeSupportedVersions, getOptiFineSupportedVersions } from './versionResolver';
 import { patchForgeVersionMetadata, prefetchLegacyForgeRuntimeDeps } from './legacyCompatibility';
 
 // Orchestrates game launch flow: Java, modloaders, auth, and runtime options.
 export class LauncherManager {
+  private currentGameProcess: ChildProcess | null = null;
   private javaManager: JavaManager;
   public networkManager: NetworkManager;
   private readonly downloads: RuntimeDownloadService;
@@ -186,7 +189,7 @@ export class LauncherManager {
     onLog(`[LAUNCH] Java: ${javaPath}`);
     onLog(`[LAUNCH] RAM: ${ramGb}GB`);
 
-    await spawnMinecraft({
+    const proc = await spawnMinecraft({
       requiredJava,
       effectiveVmOptions,
       onLog,
@@ -215,6 +218,31 @@ export class LauncherManager {
         launcherName: 'FriendLauncher',
         launcherBrand: 'FriendLauncher',
       },
+    });
+
+    this.currentGameProcess = proc;
+    proc.on('close', () => {
+      this.currentGameProcess = null;
+    });
+  }
+
+  /** Kills the running game process and its entire tree (Java + children). */
+  public async killGameProcess(): Promise<void> {
+    const proc = this.currentGameProcess;
+    this.currentGameProcess = null;
+    const pid = proc?.pid;
+    if (!pid) return;
+    return new Promise((resolve) => {
+      kill(pid, 'SIGKILL', (err) => {
+        if (err) {
+          try {
+            proc?.kill('SIGKILL');
+          } catch {
+            // ignore
+          }
+        }
+        resolve();
+      });
     });
   }
 }

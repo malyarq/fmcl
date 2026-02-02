@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
-import type { AccentColor, AccentStyleType, DownloadProvider, Language, Theme } from './settings/types';
+import type { AccentColor, AccentStyleType, DownloadProvider, Language, Theme, UIMode } from './settings/types';
 import {
   deserializeBoolean,
   deserializeInt,
@@ -34,6 +34,9 @@ interface SettingsState {
     setDownloadThreads: (val: number) => void;
     maxSockets: number;
     setMaxSockets: (val: number) => void;
+    // Global UI mode – controls Classic vs Modpacks layout.
+    uiMode: UIMode;
+    setUIMode: (val: UIMode) => void;
     t: (key: string) => string;
     getAccentStyles: (type: AccentStyleType) => { className?: string; style?: React.CSSProperties };
     getAccentClass: (tailwindClasses: string) => string;
@@ -54,6 +57,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [autoDownloadThreads, setAutoDownloadThreads] = useLocalStorageState('settings_autoDownloadThreads', deserializeBoolean(true), serializeBoolean);
     const [downloadThreads, setDownloadThreads] = useLocalStorageState('settings_downloadThreads', deserializeInt(8), serializeInt);
     const [maxSockets, setMaxSockets] = useLocalStorageState('settings_maxSockets', deserializeInt(64), serializeInt);
+    // UI mode: simple play vs modpacks, persisted across sessions.
+    const [uiMode, setUIMode] = useLocalStorageState<UIMode>(
+        'settings_uiMode',
+        (raw) => (raw === 'modpacks' ? 'modpacks' : 'simple'),
+        serializeString,
+    );
 
     useEffect(() => {
         applyThemeToDocument(theme);
@@ -62,7 +71,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const t = useMemo(() => createTranslator(language), [language]);
 
     const getAccentHex = useCallback(() => getAccentHexForColor(accentColor), [accentColor]);
-    const getAccentStyles = useCallback((type: AccentStyleType) => getAccentStylesForColor(accentColor, type), [accentColor]);
+    const getAccentStyles = useCallback(
+      (type: AccentStyleType) => getAccentStylesForColor(accentColor, type, theme),
+      [accentColor, theme]
+    );
     const getAccentClass = useCallback((tailwindClasses: string) => getAccentClassForColor(accentColor, tailwindClasses), [accentColor]);
 
     return (
@@ -77,6 +89,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             autoDownloadThreads, setAutoDownloadThreads,
             downloadThreads, setDownloadThreads,
             maxSockets, setMaxSockets,
+            uiMode, setUIMode,
             t,
             getAccentStyles,
             getAccentClass,
@@ -93,4 +106,13 @@ export const useSettings = () => {
     const context = useContext(SettingsContext);
     if (!context) throw new Error('useSettings must be used within a SettingsProvider');
     return context;
+};
+
+// Convenience hook for working with the global UI mode.
+export const useUIMode = () => {
+    const { uiMode, setUIMode } = useSettings();
+    return {
+        uiMode,
+        setMode: setUIMode,
+    };
 };

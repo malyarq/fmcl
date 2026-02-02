@@ -34,6 +34,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
   } | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const spotlightRef = useRef<HTMLDivElement>(null);
+  const isGoingBackRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen || currentStep >= steps.length) return;
@@ -42,6 +43,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
     const element = document.querySelector(step.target);
 
     if (element) {
+      isGoingBackRef.current = false;
       const rect = element.getBoundingClientRect();
       const scrollX = window.scrollX || window.pageXOffset;
       const scrollY = window.scrollY || window.pageYOffset;
@@ -58,8 +60,19 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
 
       // Прокрутка к элементу, если он не виден
       element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      // Элемент не найден — пропускаем шаг только при движении вперёд, не при «Назад»
+      if (isGoingBackRef.current) {
+        isGoingBackRef.current = false;
+        setOverlayPosition(null); // показываем tooltip по центру
+      } else if (currentStep < steps.length - 1) {
+        setCurrentStep((prev) => prev + 1);
+        setOverlayPosition(null);
+      } else {
+        onComplete();
+      }
     }
-  }, [isOpen, currentStep, steps]);
+  }, [isOpen, currentStep, steps, onComplete]);
 
   if (!isOpen || currentStep >= steps.length) return null;
 
@@ -76,6 +89,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
 
   const handlePrevious = () => {
     if (currentStep > 0) {
+      isGoingBackRef.current = true;
       setCurrentStep(currentStep - 1);
     }
   };
@@ -141,11 +155,18 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
         transform = 'translate(-50%, 0)';
     }
 
-    // Финальная проверка границ
-    if (left < 10) left = 10;
-    if (left + tooltipWidth > viewportWidth - 10) left = viewportWidth - tooltipWidth - 10;
-    if (top < 10) top = 10;
-    if (top + tooltipHeight > viewportHeight - 10) top = viewportHeight - tooltipHeight - 10;
+    // Финальная проверка границ (учитываем transform)
+    const margin = 16;
+    if (position === 'top' || position === 'bottom') {
+      // left — центр tooltip, transform: translate(-50%, ...)
+      const minCenter = margin + tooltipWidth / 2;
+      const maxCenter = viewportWidth - margin - tooltipWidth / 2;
+      left = Math.max(minCenter, Math.min(maxCenter, left));
+    } else {
+      // left — левый край tooltip
+      left = Math.max(margin, Math.min(viewportWidth - margin - tooltipWidth, left));
+    }
+    top = Math.max(margin + 32, Math.min(viewportHeight - margin - tooltipHeight, top)); // +32 под TitleBar
 
     return { top: `${top}px`, left: `${left}px`, transform };
   };
@@ -227,7 +248,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
 
       {/* Tooltip */}
       <div
-        className="fixed z-[92] w-full max-w-sm bg-white dark:bg-zinc-800 rounded-lg shadow-2xl p-6 pointer-events-auto border border-zinc-200 dark:border-zinc-700"
+          className="fixed z-[110] w-full max-w-sm bg-white dark:bg-zinc-800 rounded-lg shadow-2xl p-6 pointer-events-auto border border-zinc-200 dark:border-zinc-700"
         style={{
           ...tooltipStyle,
           // Ограничиваем позицию tooltip, чтобы он не выходил за границы экрана
@@ -252,7 +273,14 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
         <div className="flex items-center justify-between gap-3">
           <div className="flex gap-2">
             {currentStep > 0 && (
-              <Button variant="secondary" size="sm" onClick={handlePrevious}>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handlePrevious();
+                }}
+              >
                 {t('onboarding.tour.previous') || 'Назад'}
               </Button>
             )}

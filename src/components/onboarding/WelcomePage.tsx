@@ -5,10 +5,11 @@ import { cn } from '../../utils/cn';
 
 interface WelcomePageProps {
   onComplete: () => void;
+  onSkip?: () => void;
   onShowSettings?: () => void;
 }
 
-export const WelcomePage: React.FC<WelcomePageProps> = ({ onComplete, onShowSettings }) => {
+export const WelcomePage: React.FC<WelcomePageProps> = ({ onComplete, onSkip, onShowSettings }) => {
   const { t, getAccentStyles, getAccentHex } = useSettings();
 
   return (
@@ -110,7 +111,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onComplete, onShowSett
             )}
             <Button
               variant="ghost"
-              onClick={onComplete}
+              onClick={onSkip ?? onComplete}
               className="flex-1 sm:flex-initial"
             >
               {t('onboarding.welcome.skip') || 'Пропустить'}

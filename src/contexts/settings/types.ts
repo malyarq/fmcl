@@ -6,6 +6,9 @@ export type Language = 'en' | 'ru';
 export type Theme = 'dark' | 'light';
 export type DownloadProvider = 'mojang' | 'bmcl' | 'auto';
 
+// Global UI mode for Phase 0 split between simple play and modpacks.
+export type UIMode = 'simple' | 'modpacks';
+
 export type AccentStyleType =
   | 'bg'
   | 'text'
