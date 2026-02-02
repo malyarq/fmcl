@@ -153,6 +153,10 @@ export const modpacksIPC = {
     return call('getModpackMetadata', () => requireModpacks('getModpackMetadata').getModpackMetadata(modpackId, rootPath));
   },
 
+  updateMetadata(modpackId: string, updates: Partial<import('@shared/types/modpack').ModpackMetadata>, rootPath?: string) {
+    return call('updateModpackMetadata', () => requireModpacks('updateModpackMetadata').updateModpackMetadata(modpackId, updates, rootPath));
+  },
+
   // Поиск модпаков
   searchCurseForge(
     query: string,
@@ -221,6 +225,11 @@ export const modpacksIPC = {
   // Удаление мода из модпака
   removeMod(modpackId: string, modPath: string, rootPath?: string) {
     return call('removeModFromModpack', () => requireModpacks('removeModFromModpack').removeModFromModpack(modpackId, modPath, rootPath));
+  },
+
+  // Включить/выключить мод (.jar <-> .jar.disabled)
+  setModEnabled(modpackId: string, modPath: string, enabled: boolean, rootPath?: string) {
+    return call('setModEnabled', () => requireModpacks('setModEnabled').setModEnabled(modpackId, modPath, enabled, rootPath));
   },
 
   // Резервное копирование модпака

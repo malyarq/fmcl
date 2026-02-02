@@ -35,34 +35,39 @@ export function ModpackSection() {
   if (!selectedModpack) {
     return (
       <>
-        <div className="p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-2">
+        <div className="p-4 rounded-lg bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
             {t('modpacks.no_modpack_selected')}
           </p>
           <Button
             variant="primary"
-            size="sm"
+            size="md"
             onClick={() => setShowBrowser(true)}
-            className="w-full"
+            className="w-full min-h-[2.5rem]"
             style={getAccentStyles('bg').style}
           >
             {t('modpacks.select_modpack')}
           </Button>
         </div>
-        {showBrowser && <ModpackBrowser isOpen={showBrowser} onClose={() => setShowBrowser(false)} />}
+        {showBrowser && (
+          <ModpackBrowser
+            onBack={() => setShowBrowser(false)}
+            onNavigate={() => setShowBrowser(false)}
+          />
+        )}
       </>
     );
   }
 
   return (
     <>
-      <div className="p-3 rounded-lg bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700" data-tour="modpacks">
-        <div className="flex items-center gap-2 mb-2">
+      <div className="p-4 rounded-lg bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700" data-tour="modpacks">
+        <div className="flex items-center gap-3 mb-3">
           {metadata?.iconUrl && (
             <img
               src={metadata.iconUrl}
               alt={selectedModpack.name}
-              className="w-8 h-8 rounded object-cover"
+              className="w-10 h-10 rounded object-cover flex-shrink-0"
               onError={(e) => {
                 if (e.currentTarget.src !== '/icon.png') {
                   e.currentTarget.src = '/icon.png';
@@ -75,7 +80,7 @@ export function ModpackSection() {
               {t('modpacks.selected')}
             </p>
             <p
-              className={cn('text-sm font-semibold truncate', getAccentStyles('text').className)}
+              className={cn('text-base font-semibold truncate', getAccentStyles('text').className)}
               style={getAccentStyles('text').style}
             >
               {selectedModpack.name}
@@ -89,14 +94,19 @@ export function ModpackSection() {
         </div>
         <Button
           variant="secondary"
-          size="sm"
+          size="md"
           onClick={() => setShowBrowser(true)}
-          className="w-full mt-2"
+          className="w-full mt-3 min-h-[2.5rem]"
         >
           {t('modpacks.change_modpack')}
         </Button>
       </div>
-      {showBrowser && <ModpackBrowser isOpen={showBrowser} onClose={() => setShowBrowser(false)} />}
+      {showBrowser && (
+        <ModpackBrowser
+          onBack={() => setShowBrowser(false)}
+          onNavigate={() => setShowBrowser(false)}
+        />
+      )}
     </>
   );
 }

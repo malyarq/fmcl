@@ -1,20 +1,21 @@
 import type { RefObject } from 'react';
-import React, { lazy, Suspense, useMemo } from 'react';
+import { useMemo } from 'react';
 import TitleBar from './TitleBar';
 import Sidebar from './Sidebar';
 import { UpdateNotification } from './UpdateNotification';
 import { ModpackUpdateNotification } from './modpacks/ModpackUpdateNotification';
 import { ConsoleView } from './layout/ConsoleView';
-import { ModpackList } from './modpacks/ModpackList';
-import { LoadingSpinner } from './ui/LoadingSpinner';
+import { ModpackRouter } from './modpacks/ModpackRouter';
 import type { UpdateInfo, UpdateStatus } from '../features/updater/hooks/useAppUpdater';
 import type { ModpackUpdateInfo } from '../features/modpacks/hooks/useModpackUpdates';
+import { useUIMode } from '../contexts/SettingsContext';
+import { SimplePlayDashboard } from './SimplePlayDashboard';
 import type { MCVersion } from '../services/versions/types';
 import type { VersionHint } from '../utils/minecraftVersions';
 
-// Lazy load heavy components
-const SettingsPage = lazy(() => import('./SettingsPage').then(m => ({ default: m.default })));
-const MultiplayerPage = lazy(() => import('./MultiplayerPage').then(m => ({ default: m.default })));
+// SettingsPage is imported directly to avoid loading delay
+import SettingsPage from './SettingsPage';
+import MultiplayerPage from './MultiplayerPage';
 
 export type AppLayoutProps = {
   theme: 'light' | 'dark';
@@ -27,6 +28,7 @@ export type AppLayoutProps = {
     updates: ModpackUpdateInfo[];
     onDismiss?: () => void;
   };
+  modpackOnLaunch?: () => void | Promise<void>;
   overlays: {
     showSettings: boolean;
     onCloseSettings: () => void;
@@ -54,12 +56,15 @@ export type AppLayoutProps = {
     setUseOptiFine: (v: boolean) => void;
     isOffline: boolean;
     currentHint: VersionHint | null;
+    loaderType: 'vanilla' | 'forge' | 'fabric' | 'neoforge';
+    ram: number;
     supportedVersions: {
       forge: string[];
       fabric: string[];
       optiFine: string[];
       neoForge: string[];
     };
+    isModloadersLoading?: boolean;
   };
   runtime: {
     isLaunching: boolean;
@@ -74,11 +79,12 @@ export type AppLayoutProps = {
   };
 };
 
-export const AppLayout = React.memo(function AppLayout(props: AppLayoutProps) {
-  const { theme, updates, modpackUpdates, overlays, actions, launch, runtime } = props;
+export function AppLayout(props: AppLayoutProps) {
+  const { theme, updates, modpackUpdates, modpackOnLaunch, overlays, actions, launch, runtime } = props;
 
   // Memoize modpackUpdates check to prevent unnecessary re-renders
   const hasModpackUpdates = useMemo(() => modpackUpdates && modpackUpdates.updates.length > 0, [modpackUpdates]);
+  const { uiMode } = useUIMode();
 
   return (
     <div className={theme === 'dark' ? 'dark h-full w-full' : 'h-full w-full'}>
@@ -88,22 +94,10 @@ export const AppLayout = React.memo(function AppLayout(props: AppLayoutProps) {
         <TitleBar />
 
         {overlays.showSettings && (
-          <Suspense fallback={
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
-              <LoadingSpinner size="lg" />
-            </div>
-          }>
-            <SettingsPage onClose={overlays.onCloseSettings} />
-          </Suspense>
+          <SettingsPage onClose={overlays.onCloseSettings} />
         )}
         {overlays.showMultiplayer && (
-          <Suspense fallback={
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
-              <LoadingSpinner size="lg" />
-            </div>
-          }>
-            <MultiplayerPage onBack={overlays.onBackFromMultiplayer} />
-          </Suspense>
+          <MultiplayerPage onBack={overlays.onBackFromMultiplayer} />
         )}
 
         <div className="flex flex-1 overflow-hidden relative">
@@ -113,32 +107,20 @@ export const AppLayout = React.memo(function AppLayout(props: AppLayoutProps) {
             actions={actions}
           />
 
-          <div className="flex-1 flex flex-col bg-gradient-to-br from-zinc-50/50 to-white dark:from-zinc-950 dark:to-zinc-900 min-w-0 transition-all duration-300">
-            {runtime.showConsole ? (
-              <ConsoleView logs={runtime.logs} logEndRef={runtime.logEndRef} onCopyLogs={runtime.onCopyLogs} />
-            ) : (
-              <ModpackList />
-            )}
+          <div className="flex-1 flex flex-col bg-gradient-to-br from-zinc-50/50 to-white dark:from-zinc-950 dark:to-zinc-900 min-w-0 transition-all duration-300 overflow-hidden">
+            <div key={uiMode} className="flex-1 flex flex-col mode-switch-enter min-h-0">
+              {runtime.showConsole ? (
+                <ConsoleView logs={runtime.logs} logEndRef={runtime.logEndRef} onCopyLogs={runtime.onCopyLogs} />
+              ) : uiMode === 'modpacks' ? (
+                <ModpackRouter onLaunch={modpackOnLaunch ?? runtime.onLaunch} />
+              ) : (
+                <SimplePlayDashboard launch={launch} runtime={runtime} actions={actions} />
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
-}, (prevProps, nextProps) => {
-  // Custom comparison function for React.memo
-  // Only re-render if important props changed
-  return (
-    prevProps.theme === nextProps.theme &&
-    prevProps.updates.status === nextProps.updates.status &&
-    prevProps.updates.info === nextProps.updates.info &&
-    prevProps.overlays.showSettings === nextProps.overlays.showSettings &&
-    prevProps.overlays.showMultiplayer === nextProps.overlays.showMultiplayer &&
-    prevProps.runtime.isLaunching === nextProps.runtime.isLaunching &&
-    prevProps.runtime.progress === nextProps.runtime.progress &&
-    prevProps.runtime.showConsole === nextProps.runtime.showConsole &&
-    prevProps.launch.nickname === nextProps.launch.nickname &&
-    prevProps.launch.version === nextProps.launch.version &&
-    prevProps.modpackUpdates?.updates.length === nextProps.modpackUpdates?.updates.length
-  );
-});
+}
 

@@ -14,9 +14,10 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
   const iconPath = path.join(vitePublicPath, 'icon.png');
   const appIcon = nativeImage.createFromPath(iconPath);
 
+  // Размер окна: width/height — стартовый размер, minWidth/minHeight — минимум при ресайзе
   const win = new BrowserWindow({
-    width: 1000,
-    height: 750,
+    width: 1100,
+    height: 850,
     minHeight: 600,
     minWidth: 800,
     icon: appIcon,

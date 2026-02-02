@@ -137,6 +137,12 @@ export interface ModpacksAPI {
     modPath: string,
     rootPath?: string,
   ) => Promise<{ ok: boolean }>;
+  setModEnabled: (
+    modpackId: string,
+    modPath: string,
+    enabled: boolean,
+    rootPath?: string,
+  ) => Promise<{ ok: boolean }>;
   updateModpackOverrides: (
     modpackId: string,
     overrides: Record<string, string>, // base64 encoded buffers

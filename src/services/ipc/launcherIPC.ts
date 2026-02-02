@@ -61,6 +61,9 @@ export const launcherIPC = {
   },
 
   // launcher
+  killAndRestart(): Promise<void> {
+    return call('killAndRestart', () => requireLauncher('killAndRestart').killAndRestart());
+  },
   launch(options: Parameters<LauncherApi['launch']>[0]): Promise<void> {
     return call('launch', () => requireLauncher('launch').launch(options));
   },

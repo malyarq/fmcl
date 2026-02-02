@@ -1,20 +1,14 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
-import { useModpack } from '../../contexts/ModpackContext';
+import { useModpackListContext } from '../../contexts/ModpackContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { Button } from '../ui/Button';
 import { SkeletonLoader } from '../ui/SkeletonLoader';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { LazyImage } from '../ui/LazyImage';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { cn } from '../../utils/cn';
-
-// Lazy load heavy modal components
-const ModpackBrowser = lazy(() => import('./ModpackBrowser').then(m => ({ default: m.ModpackBrowser })));
-const ModpackDetails = lazy(() => import('./ModpackDetails').then(m => ({ default: m.ModpackDetails })));
-const CreateModpackModal = lazy(() => import('./CreateModpackModal').then(m => ({ default: m.CreateModpackModal })));
 
 interface ModpackListItemWithMetadata {
   id: string;
@@ -24,35 +18,18 @@ interface ModpackListItemWithMetadata {
   metadata?: ModpackMetadata;
 }
 
-// Custom hook to get only modpacks-related values from context, memoized to prevent re-renders
-// This hook isolates ModpackList from config changes by only returning values that matter for the list
+// Uses ModpackListContext — only updates when modpacks/selectedId change, not when config changes (downloads).
 function useModpackListValues() {
-  const modpackContext = useModpack();
-  
-  // Calculate stable key for modpacks list - only changes when modpacks list actually changes
-  const modpacksKey = useMemo(() => 
-    modpackContext.modpacks.map(m => m.id).sort().join(','), 
-    [modpackContext.modpacks]
-  );
-  
-  // Memoize the result object - only recreate when relevant values change
-  const result = useMemo(() => ({
-    modpacks: modpackContext.modpacks,
-    selectedId: modpackContext.selectedId,
-    select: modpackContext.select,
-    remove: modpackContext.remove,
-    refresh: modpackContext.refresh,
+  const { modpacks, selectedId, select, remove, refresh } = useModpackListContext();
+  const modpacksKey = useMemo(() => modpacks.map(m => m.id).sort().join(','), [modpacks]);
+  return useMemo(() => ({
+    modpacks,
+    selectedId,
+    select,
+    remove,
+    refresh,
     modpacksKey,
-  }), [
-    modpackContext.modpacks,
-    modpackContext.selectedId,
-    modpackContext.select,
-    modpackContext.remove,
-    modpackContext.refresh,
-    modpacksKey,
-  ]);
-  
-  return result;
+  }), [modpacks, selectedId, select, remove, refresh, modpacksKey]);
 }
 
 // Internal component that doesn't re-render when context config changes
@@ -63,15 +40,14 @@ const ModpackListComponentInternal: React.FC<{
   remove: ReturnType<typeof useModpackListValues>['remove'];
   refresh: ReturnType<typeof useModpackListValues>['refresh'];
   modpacksKey: string;
-}> = ({ contextModpacks: _contextModpacks, selectedId, select, remove, refresh, modpacksKey }) => {
+  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string }) => void;
+  onCreateWizard?: () => void;
+}> = ({ contextModpacks: _contextModpacks, selectedId, select, remove, refresh, modpacksKey, onNavigate, onCreateWizard }) => {
   const { t, getAccentStyles, minecraftPath } = useSettings();
   const toast = useToast();
   const confirm = useConfirm();
   const [modpacks, setModpacks] = useState<ModpackListItemWithMetadata[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showBrowser, setShowBrowser] = useState(false);
-  const [showDetails, setShowDetails] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; modpackId: string } | null>(null);
 
@@ -115,23 +91,23 @@ const ModpackListComponentInternal: React.FC<{
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
-        setShowCreateModal(true);
+        onCreateWizard?.();
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         e.preventDefault();
-        setShowBrowser(true);
+        onNavigate?.({ type: 'browser' });
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
         e.preventDefault();
         if (selectedId) {
-          setShowDetails(selectedId);
+          onNavigate?.({ type: 'details', modpackId: selectedId });
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedId]);
+  }, [selectedId, onNavigate, onCreateWizard]);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -261,9 +237,9 @@ const ModpackListComponentInternal: React.FC<{
 
   // Skeleton loader для карточки модпака
   const ModpackCardSkeleton = React.memo(() => (
-    <div className="p-4 rounded-xl border-2 border-zinc-200 dark:border-zinc-700">
+    <div className="p-5 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 min-h-[200px]">
       <div className="flex items-start gap-4 mb-3">
-        <SkeletonLoader variant="rounded" width={64} height={64} />
+        <SkeletonLoader variant="rounded" width={80} height={80} />
         <div className="flex-1 min-w-0 space-y-2">
           <SkeletonLoader variant="text" width="60%" height={20} />
           <SkeletonLoader variant="text" width="40%" height={16} />
@@ -272,9 +248,9 @@ const ModpackListComponentInternal: React.FC<{
       </div>
       <SkeletonLoader variant="text" lines={2} className="mb-3" />
       <div className="flex gap-2 mt-3">
-        <SkeletonLoader variant="rounded" width="100%" height={32} />
-        <SkeletonLoader variant="rounded" width={80} height={32} />
-        <SkeletonLoader variant="rounded" width={80} height={32} />
+        <SkeletonLoader variant="rounded" width="100%" height={40} />
+        <SkeletonLoader variant="rounded" width={90} height={40} />
+        <SkeletonLoader variant="rounded" width={90} height={40} />
       </div>
     </div>
   ));
@@ -309,7 +285,7 @@ const ModpackListComponentInternal: React.FC<{
     return (
       <div
         className={cn(
-          'relative p-4 rounded-xl border-2 transition-all duration-300 ease-out cursor-pointer flex flex-col h-full',
+          'relative p-5 rounded-xl border-2 transition-all duration-300 ease-out cursor-pointer flex flex-col min-h-[220px]',
           'transform hover:scale-[1.02] hover:shadow-lg',
           'hover:-translate-y-1',
           'animate-fade-in-up',
@@ -331,20 +307,20 @@ const ModpackListComponentInternal: React.FC<{
       >
         {/* Icon */}
         <div className="flex items-start gap-4 mb-3">
-          <div className="w-16 h-16 flex-shrink-0">
+          <div className="w-20 h-20 flex-shrink-0">
             <LazyImage
               src={iconSrc}
               alt={modpack.name}
               className="w-full h-full rounded-lg object-cover border border-zinc-200 dark:border-zinc-700"
               fallback="/icon.png"
               placeholder={
-                <SkeletonLoader variant="rounded" width={64} height={64} />
+                <SkeletonLoader variant="rounded" width={80} height={80} />
               }
             />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-semibold text-zinc-900 dark:text-white truncate flex-1 min-w-0">
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white truncate flex-1 min-w-0">
                 {modpack.name}
               </h3>
               {sourceBadge}
@@ -379,30 +355,35 @@ const ModpackListComponentInternal: React.FC<{
         )}
 
         {/* Actions - всегда снизу */}
-        <div className="flex gap-2 mt-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex flex-wrap gap-2 mt-auto pt-1" onClick={(e) => e.stopPropagation()}>
           <Button
-            variant="primary"
-            size="sm"
-            onClick={() => onSelect(modpack.id)}
-            className="flex-1 transition-all duration-200"
-            style={isSelected ? getAccentStyles('bg').style : undefined}
+            variant={isSelected ? 'secondary' : 'primary'}
+            size="md"
+            onClick={() => {
+              if (!isSelected) {
+                onSelect(modpack.id);
+              }
+            }}
+            disabled={isSelected}
+            className="flex-1 min-w-0 transition-all duration-200"
+            style={!isSelected ? getAccentStyles('bg').style : undefined}
           >
             {isSelected ? t('modpacks.selected') : t('modpacks.select')}
           </Button>
           <Button
             variant="secondary"
-            size="sm"
+            size="md"
             onClick={() => onShowDetails(modpack.id)}
-            className="transition-all duration-200"
+            className="shrink-0 transition-all duration-200"
           >
             {t('general.settings')}
           </Button>
           {canDelete && (
             <Button
               variant="danger"
-              size="sm"
+              size="md"
               onClick={() => onDelete(modpack.id, modpack.name)}
-              className="transition-all duration-200"
+              className="shrink-0 transition-all duration-200"
             >
               {t('modpacks.delete')}
             </Button>
@@ -425,6 +406,7 @@ const ModpackListComponentInternal: React.FC<{
     );
   });
   ModpackCard.displayName = 'ModpackCard';
+
 
   return (
     <>
@@ -450,14 +432,14 @@ const ModpackListComponentInternal: React.FC<{
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button
               variant="secondary"
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => onCreateWizard?.()}
               className="w-full sm:w-auto"
             >
               {t('modpacks.create')}
             </Button>
             <Button
               variant="primary"
-              onClick={() => setShowBrowser(true)}
+              onClick={() => onNavigate?.({ type: 'browser' })}
               className={cn("w-full sm:w-auto", getAccentStyles('bg').className)}
               style={getAccentStyles('bg').style}
             >
@@ -482,7 +464,7 @@ const ModpackListComponentInternal: React.FC<{
 
         {/* Modpacks Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-5">
             {Array.from({ length: 6 }).map((_, index) => (
               <ModpackCardSkeleton key={index} />
             ))}
@@ -493,49 +475,25 @@ const ModpackListComponentInternal: React.FC<{
             <h3 className="text-xl font-bold text-zinc-700 dark:text-zinc-300 mb-2">
               {t('modpacks.no_modpacks_title') || 'Нет модпаков'}
             </h3>
-            <p className="text-sm mb-6 text-center max-w-md">
+            <p className="text-sm mb-2 text-center max-w-md">
               {t('modpacks.no_modpacks_desc') || 'Начните с выбора модпака из браузера или создайте свой собственный'}
             </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                variant="primary"
-                onClick={() => setShowBrowser(true)}
-                className={cn(getAccentStyles('bg').className)}
-                style={getAccentStyles('bg').style}
-              >
-                {t('modpacks.browser')}
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => setShowCreateModal(true)}
-              >
-                {t('modpacks.create')}
-              </Button>
-            </div>
-            <p className="text-xs mt-6 text-zinc-400 dark:text-zinc-500 text-center">
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center">
               {t('modpacks.drag_drop_hint') || 'Или перетащите файл модпака (.mrpack, .zip, .curseforge) в это окно'}
             </p>
-            <div className="mt-4 text-xs text-zinc-400 dark:text-zinc-500">
-              <p className="mb-1">
-                <kbd className="px-2 py-1 bg-zinc-200 dark:bg-zinc-800 rounded text-xs">Ctrl+N</kbd> - {t('modpacks.create')}
-              </p>
-              <p>
-                <kbd className="px-2 py-1 bg-zinc-200 dark:bg-zinc-800 rounded text-xs">Ctrl+O</kbd> - {t('modpacks.browser')}
-              </p>
-            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-5">
             {modpacks.map((modpack, index) => (
               <ModpackCard
                 key={modpack.id}
                 modpack={modpack}
                 index={index}
                 isSelected={modpack.id === selectedId}
-                canDelete={modpacks.length > 1}
+                canDelete={true}
                 onSelect={handleSelect}
                 onDelete={handleDelete}
-                onShowDetails={setShowDetails}
+                onShowDetails={(id) => onNavigate?.({ type: 'details', modpackId: id })}
                 onContextMenu={handleContextMenu}
               />
             ))}
@@ -543,44 +501,6 @@ const ModpackListComponentInternal: React.FC<{
         )}
       </div>
 
-      {showBrowser && (
-        <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
-            <LoadingSpinner size="lg" />
-          </div>
-        }>
-          <ModpackBrowser isOpen={showBrowser} onClose={() => setShowBrowser(false)} />
-        </Suspense>
-      )}
-      {showCreateModal && (
-        <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
-            <LoadingSpinner size="lg" />
-          </div>
-        }>
-          <CreateModpackModal
-            isOpen={showCreateModal}
-            onClose={() => setShowCreateModal(false)}
-            onCreated={async (modpackId) => {
-              await loadModpacks();
-              await select(modpackId);
-            }}
-          />
-        </Suspense>
-      )}
-      {showDetails && (
-        <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
-            <LoadingSpinner size="lg" />
-          </div>
-        }>
-          <ModpackDetails
-            modpackId={showDetails}
-            isOpen={!!showDetails}
-            onClose={() => setShowDetails(null)}
-          />
-        </Suspense>
-      )}
       
       {/* Context Menu */}
       {contextMenu && (
@@ -601,26 +521,24 @@ const ModpackListComponentInternal: React.FC<{
           <button
             className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
             onClick={() => {
-              setShowDetails(contextMenu.modpackId);
+              onNavigate?.({ type: 'details', modpackId: contextMenu.modpackId });
               setContextMenu(null);
             }}
           >
             {t('general.settings')}
           </button>
-          {modpacks.length > 1 && (
-            <button
-              className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-              onClick={() => {
-                const modpack = modpacks.find((m) => m.id === contextMenu.modpackId);
-                if (modpack) {
-                  handleDelete(contextMenu.modpackId, modpack.name);
-                }
-                setContextMenu(null);
-              }}
-            >
-              {t('modpacks.delete')}
-            </button>
-          )}
+          <button
+            className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+            onClick={() => {
+              const modpack = modpacks.find((m) => m.id === contextMenu.modpackId);
+              if (modpack) {
+                handleDelete(contextMenu.modpackId, modpack.name);
+              }
+              setContextMenu(null);
+            }}
+          >
+            {t('modpacks.delete')}
+          </button>
         </div>
       )}
     </>
@@ -630,45 +548,15 @@ const ModpackListComponentInternal: React.FC<{
 // Memoize internal component to prevent re-renders when props haven't changed
 // Only re-render if modpacks list or selectedId actually changed
 // Functions are compared by reference - if they're stable, this will work
-const MemoizedModpackListInternal = React.memo(ModpackListComponentInternal, (prevProps, nextProps) => {
-  // Check if modpacks list changed (by key)
-  if (prevProps.modpacksKey !== nextProps.modpacksKey) {
-    return false; // Re-render
-  }
-  
-  // Check if selectedId changed
-  if (prevProps.selectedId !== nextProps.selectedId) {
-    return false; // Re-render
-  }
-  
-  // Check if modpacks array reference changed (should be same if key is same)
-  // Note: contextModpacks is renamed to _contextModpacks in component but used here for comparison
-  if (prevProps.contextModpacks !== nextProps.contextModpacks) {
-    return false; // Re-render
-  }
-  
-  // All important props are the same - skip re-render
-  // Functions are compared but should be stable, so we trust they're the same
-  return true; // Skip re-render
-});
+const MemoizedModpackListInternal = React.memo(ModpackListComponentInternal);
 
 // Wrapper component that extracts values from context
-const ModpackListComponent: React.FC = () => {
+const ModpackListComponent: React.FC<{
+  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string }) => void;
+  onCreateWizard?: () => void;
+}> = ({ onNavigate, onCreateWizard }) => {
   const values = useModpackListValues();
-  
-  // Debug logging in effect to avoid accessing refs during render
-  useEffect(() => {
-    // This effect runs after render, so we can safely log changes
-    // Only log in development
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[ModpackList] Render with values:', {
-        modpacksCount: values.modpacks.length,
-        selectedId: values.selectedId,
-        modpacksKey: values.modpacksKey,
-      });
-    }
-  }, [values]);
-  
+
   return <MemoizedModpackListInternal
     contextModpacks={values.modpacks}
     selectedId={values.selectedId}
@@ -676,6 +564,8 @@ const ModpackListComponent: React.FC = () => {
     remove={values.remove}
     refresh={values.refresh}
     modpacksKey={values.modpacksKey}
+    onNavigate={onNavigate}
+    onCreateWizard={onCreateWizard}
   />;
 };
 

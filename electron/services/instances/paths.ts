@@ -7,10 +7,11 @@ export function getDefaultRootPath() {
 }
 
 export function ensureXmclFolders(rootPath: string) {
-  fs.mkdirSync(rootPath, { recursive: true });
+  const base = rootPath?.trim() ? rootPath : getDefaultRootPath();
+  fs.mkdirSync(base, { recursive: true });
   for (const folder of ['assets', 'libraries', 'versions', 'modpacks']) {
     try {
-      fs.mkdirSync(path.join(rootPath, folder), { recursive: true });
+      fs.mkdirSync(path.join(base, folder), { recursive: true });
     } catch {
       // Folder already exists or creation failed, continue
     }

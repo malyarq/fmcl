@@ -86,7 +86,16 @@
 
 ### 0.3 Main Screen for Simple Play
 
-- [ ] **"Last Game" Card**
+**Note:** Various content options were considered. A combined approach with an information dashboard was chosen.
+
+- [ ] **Information Dashboard**
+  - Current Minecraft version
+  - Selected mod loader (Forge/Fabric/NeoForge/Vanilla)
+  - Allocated RAM
+  - Connection status (online/offline)
+  - Last launch (date/time, if available)
+
+- [ ] **"Last Game" Card** (optional)
   - Shows last settings (version, nickname)
   - Large "Play Now" button
   - Quick launch with saved settings
@@ -94,14 +103,21 @@
 
 - [ ] **Quick Actions**
   - Compact buttons: 🌐 Multiplayer, ⚙️ Settings
-  - Located below card or in header
+  - Located below information dashboard
+  - Visually prominent but not overwhelming
 
 - [ ] **Switch to Modpacks**
   - Text link or button
   - Smooth transition to "Modpacks" mode
+  - Less visually prominent than main actions
+
+- [ ] **Additional Widgets** (for future versions)
+  - Game statistics (play time, launches)
+  - Update notifications
+  - Tips and hints
 
 **Dependencies:** 0.1 (Mode Switcher)  
-**Time:** 1 week
+**Time:** 1-2 weeks
 
 ---
 
@@ -299,7 +315,7 @@
   - For simple play: welcome message with hints
   - For modpacks: call to action (Browser, Create, Import)
   - Visual icons and illustrations
-  - Hotkeys in hints
+  - Hotkeys removed from hints (to simplify interface)
 
 - [ ] **Improved Notifications**
   - Extend Toast system

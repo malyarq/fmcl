@@ -29,7 +29,43 @@ export const ExportModpackModal: React.FC<ExportModpackModalProps> = ({
   const [format, setFormat] = useState<'curseforge' | 'modrinth' | 'zip'>('zip');
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [outputPath, setOutputPath] = useState('');
+
+  const getFileExtension = (fmt: 'curseforge' | 'modrinth' | 'zip'): string => {
+    if (fmt === 'modrinth') return 'mrpack';
+    if (fmt === 'curseforge') return 'zip';
+    return 'zip';
+  };
+
+  const getDefaultFileName = (fmt: 'curseforge' | 'modrinth' | 'zip' = format) =>
+    `${modpackName}.${getFileExtension(fmt)}`;
+
+  const [desktopPath, setDesktopPath] = useState<string | null>(null);
+
+  // Загружаем путь к Desktop при открытии модалки
+  React.useEffect(() => {
+    if (isOpen && !desktopPath) {
+      dialogIPC.getDesktopPath()
+        .then(path => {
+          setDesktopPath(path);
+          // Обновляем outputPath с полным путём к Desktop
+          setOutputPath(`${path}\\${getDefaultFileName()}`);
+        })
+        .catch(err => {
+          console.error('Failed to get desktop path:', err);
+          setDesktopPath(null);
+        });
+    }
+  }, [isOpen, desktopPath]);
+
+  const getDesktopPath = (fmt: 'curseforge' | 'modrinth' | 'zip' = format): string => {
+    if (desktopPath) {
+      return `${desktopPath}\\${getDefaultFileName(fmt)}`;
+    }
+    // Fallback: возвращаем только имя файла, если Desktop путь ещё не загружен
+    return getDefaultFileName(fmt);
+  };
+
+  const [outputPath, setOutputPath] = useState(() => getDefaultFileName());
   const [outputPathError, setOutputPathError] = useState<string | null>(null);
 
   const validateOutputPath = (value: string): string | null => {
@@ -54,12 +90,17 @@ export const ExportModpackModal: React.FC<ExportModpackModalProps> = ({
     setError(null);
     setOutputPathError(null);
 
-    try {
-      await modpacksIPC.export(modpackId, format, outputPath, minecraftPath);
-      onExported?.();
-      onClose();
-      setOutputPath('');
-    } catch (err) {
+      try {
+        await modpacksIPC.export(modpackId, format, outputPath, minecraftPath);
+        onExported?.();
+        onClose();
+        // Сбрасываем на Desktop путь для следующего открытия
+        if (desktopPath) {
+          setOutputPath(`${desktopPath}\\${getDefaultFileName()}`);
+        } else {
+          setOutputPath(getDefaultFileName());
+        }
+      } catch (err) {
       console.error('Error exporting modpack:', err);
       const errorMessage = t('modpacks.export_error') || 'Ошибка при экспорте модпака';
       setError(errorMessage);
@@ -74,11 +115,11 @@ export const ExportModpackModal: React.FC<ExportModpackModalProps> = ({
       // Use Electron dialog to select save path
       const result = await dialogIPC.showSaveDialog({
         title: t('modpacks.select_export_path') || 'Выберите путь для сохранения',
-        defaultPath: `${modpackName}.${format === 'zip' ? 'zip' : format === 'modrinth' ? 'mrpack' : 'zip'}`,
+        defaultPath: getDesktopPath(),
         filters: [
           {
             name: format === 'zip' ? 'ZIP Archive' : format === 'modrinth' ? 'Modrinth Pack' : 'CurseForge Pack',
-            extensions: format === 'zip' ? ['zip'] : format === 'modrinth' ? ['mrpack'] : ['zip'],
+            extensions: [getFileExtension(format)],
           },
           { name: 'All Files', extensions: ['*'] },
         ],
@@ -108,13 +149,19 @@ export const ExportModpackModal: React.FC<ExportModpackModalProps> = ({
           label={t('modpacks.export_format') || 'Формат экспорта'}
           value={format}
           onChange={(e) => {
-            setFormat(e.target.value as 'curseforge' | 'modrinth' | 'zip');
-            setOutputPath('');
+            const newFormat = e.target.value as 'curseforge' | 'modrinth' | 'zip';
+            setFormat(newFormat);
+            // Обновляем путь на Desktop с новым расширением файла
+            if (desktopPath) {
+              setOutputPath(`${desktopPath}\\${getDefaultFileName(newFormat)}`);
+            } else {
+              setOutputPath(getDefaultFileName(newFormat));
+            }
           }}
         >
           <option value="zip">ZIP Archive</option>
           <option value="curseforge">CurseForge Format</option>
-          <option value="modrinth">Modrinth Format (.mrpack)</option>
+          <option value="modrinth">Modrinth Format</option>
         </Select>
 
         <div>

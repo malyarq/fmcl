@@ -20,9 +20,9 @@ export function NicknameSection(props: {
     if (value.trim().length > 16) {
       return t('validation.nickname_too_long') || 'Никнейм не должен превышать 16 символов';
     }
-    // Minecraft username validation: alphanumeric and underscores only
+    // Minecraft: only Latin letters, numbers, underscores
     if (!/^[a-zA-Z0-9_]+$/.test(value.trim())) {
-      return t('validation.nickname_invalid') || 'Никнейм может содержать только буквы, цифры и подчеркивания';
+      return t('validation.nickname_invalid') || 'Только латиница, цифры и подчёркивания';
     }
     return null;
   };

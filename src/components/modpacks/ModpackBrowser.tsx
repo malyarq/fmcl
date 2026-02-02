@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
-import { useToast } from '../../contexts/ToastContext';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
@@ -11,34 +10,25 @@ import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import { dialogIPC } from '../../services/ipc/dialogIPC';
 import { MINECRAFT_VERSIONS } from '../../utils/minecraftVersionsList';
 
-// Lazy load heavy modal components
-const InstallModpackModal = lazy(() => import('./InstallModpackModal').then(m => ({ default: m.InstallModpackModal })));
-const ImportModpackPreviewModal = lazy(() => import('./ImportModpackPreviewModal').then(m => ({ default: m.ImportModpackPreviewModal })));
-
 type Platform = 'curseforge' | 'modrinth';
 type SortOption = 'popularity' | 'date' | 'alphabetical';
 type FilterMCVersion = string | 'all';
 type FilterLoader = string | 'all';
 
 interface ModpackBrowserProps {
-  isOpen: boolean;
-  onClose: () => void;
+  onBack: () => void;
+  onNavigate: (view: { type: 'install'; modpack: any; versions: any[]; platform: 'curseforge' | 'modrinth' } | { type: 'importPreview'; filePath: string }) => void;
 }
 
-export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ isOpen, onClose }) => {
+export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ onBack, onNavigate }) => {
   const { t, getAccentStyles } = useSettings();
-  const toast = useToast();
   const [platform, setPlatform] = useState<Platform>('modrinth');
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ModpackSearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedModpack, setSelectedModpack] = useState<ModpackSearchResultItem | null>(null);
-  const [versions, setVersions] = useState<ModpackVersionDescriptor[]>([]);
-  const [showInstallModal, setShowInstallModal] = useState(false);
-  const [showImportPreview, setShowImportPreview] = useState(false);
-  const [selectedImportFile, setSelectedImportFile] = useState<string | null>(null);
+  const [, setSelectedModpack] = useState<ModpackSearchResultItem | null>(null);
+  const [, setVersions] = useState<ModpackVersionDescriptor[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('popularity');
-  const [importing, setImporting] = useState(false);
   const [filterMCVersion, setFilterMCVersion] = useState<FilterMCVersion>('all');
   const [filterLoader, setFilterLoader] = useState<FilterLoader>('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -152,7 +142,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ isOpen, onClose 
       }
       
       setVersions(versionsList);
-      setShowInstallModal(true);
+      onNavigate({ type: 'install', modpack, versions: versionsList, platform });
     } catch (error) {
       console.error('Error loading versions:', error);
     } finally {
@@ -177,97 +167,69 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ isOpen, onClose 
       });
 
       if (result && !result.canceled && result.filePaths.length > 0) {
-        setSelectedImportFile(result.filePaths[0]);
-        setShowImportPreview(true);
+        onNavigate({ type: 'importPreview', filePath: result.filePaths[0] });
       }
     } catch (err) {
       console.error('Error opening file dialog:', err);
     }
   };
 
-  const handleImportConfirm = async () => {
-    if (!selectedImportFile) return;
-
-    setImporting(true);
-    try {
-      await modpacksIPC.import(selectedImportFile);
-      toast.success(t('modpacks.import_success') || 'Модпак успешно импортирован!');
-      setShowImportPreview(false);
-      setSelectedImportFile(null);
-      onClose(); // Close browser after import
-      // Reload page to show new modpack
-      window.location.reload();
-    } catch (error) {
-      console.error('Error importing modpack:', error);
-      toast.error(t('modpacks.import_error') || 'Ошибка при импорте модпака');
-    } finally {
-      setImporting(false);
-    }
-  };
-
-  if (!isOpen) return null;
 
   return (
-    <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-        <div
-          className={cn(
-            "bg-white/95 dark:bg-zinc-800/95 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-700/50 w-full max-w-4xl rounded-2xl shadow-2xl shadow-black/30 dark:shadow-black/50 overflow-hidden animate-in zoom-in-95 duration-200"
-          )}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="px-6 py-4 border-b border-zinc-200/50 dark:border-zinc-700/50 flex justify-between items-center bg-gradient-to-r from-zinc-50/80 to-white/80 dark:from-zinc-800/80 dark:to-zinc-900/80 backdrop-blur-sm">
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">{t('modpacks.browser')}</h3>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={handleImport}
-                disabled={importing}
-                isLoading={importing}
-              >
-                {t('modpacks.import') || 'Импорт'}
-              </Button>
-              <button
-                onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Header with back button, title, platform tabs, import */}
+      <div className="flex items-center gap-4 p-6 border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40 min-w-0 flex-wrap">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onBack}
+            className="flex items-center gap-2 shrink-0"
+          >
+            <span>←</span>
+            {t('general.back') || 'Назад'}
+          </Button>
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-white shrink-0">
+            {t('modpacks.browser')}
+          </h2>
+          <div className="flex gap-2 shrink-0 items-center">
+            <button
+              onClick={() => setPlatform('curseforge')}
+              disabled
+              className={cn(
+                "px-4 py-2 rounded-lg font-medium transition-colors text-sm",
+                "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-500",
+                "cursor-not-allowed opacity-60"
+              )}
+              title={t('modpacks.curseforge_wip') || 'CurseForge в разработке'}
+            >
+              {t('modpacks.platform_curseforge')} (WIP)
+            </button>
+            <button
+              onClick={() => setPlatform('modrinth')}
+              className={cn(
+                "px-4 py-2 rounded-lg font-medium transition-colors text-sm",
+                platform === 'modrinth'
+                  ? cn("text-white", getAccentStyles('bg').className)
+                  : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600"
+              )}
+              style={platform === 'modrinth' ? getAccentStyles('bg').style : undefined}
+            >
+              {t('modpacks.platform_modrinth')}
+            </button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleImport}
+              className="shrink-0 ml-2"
+            >
+              {t('modpacks.import') || 'Импорт'}
+            </Button>
           </div>
+      </div>
 
-          <div className="p-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-            {/* Platform Tabs */}
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setPlatform('curseforge')}
-                disabled
-                className={cn(
-                  "px-4 py-2 rounded-lg font-medium transition-colors",
-                  "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-500",
-                  "cursor-not-allowed opacity-60"
-                )}
-                title={t('modpacks.curseforge_wip') || 'CurseForge в разработке'}
-              >
-                {t('modpacks.platform_curseforge')} (WIP)
-              </button>
-              <button
-                onClick={() => setPlatform('modrinth')}
-                className={cn(
-                  "px-4 py-2 rounded-lg font-medium transition-colors",
-                  platform === 'modrinth'
-                    ? cn("text-white", getAccentStyles('bg').className)
-                    : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600"
-                )}
-                style={platform === 'modrinth' ? getAccentStyles('bg').style : undefined}
-              >
-                {t('modpacks.platform_modrinth')}
-              </button>
-            </div>
-
-            {/* Search and Filters */}
-            <div className="mb-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-6 min-h-0 custom-scrollbar">
+        {/* Search and Filters */}
+        <div className="mb-4 space-y-3">
               <Input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -310,29 +272,29 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ isOpen, onClose 
                   <option value="neoforge">NeoForge</option>
                 </Select>
               </div>
-            </div>
+        </div>
 
-            {/* Results */}
-            {loading && (
-              <div className="flex flex-col items-center justify-center py-12 gap-3">
+        {/* Results */}
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-12 gap-3">
                 <LoadingSpinner size="lg" />
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
                   {t('modpacks.loading')}
                 </p>
-              </div>
-            )}
+          </div>
+        )}
 
-            {!loading && paginatedResults.length === 0 && (
-              <div className="text-center py-8 text-zinc-500 dark:text-zinc-400">
+        {!loading && paginatedResults.length === 0 && (
+          <div className="text-center py-8 text-zinc-500 dark:text-zinc-400">
                 {query.trim() 
                   ? t('modpacks.no_results')
                   : t('modpacks.loading_popular') || 'Загрузка популярных модпаков...'}
-              </div>
-            )}
+          </div>
+        )}
 
-            {!loading && paginatedResults.length > 0 && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {!loading && paginatedResults.length > 0 && (
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   {paginatedResults.map((modpack) => (
                   <div
                     key={modpack.projectId}
@@ -380,11 +342,11 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ isOpen, onClose 
                     </div>
                   </div>
                   ))}
-                </div>
-                
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-4">
+            </div>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-4">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
@@ -402,51 +364,11 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ isOpen, onClose 
                     >
                       {t('modpacks.next') || 'Вперед'}
                     </button>
-                  </div>
-                )}
-              </>
+              </div>
             )}
           </div>
-        </div>
+        )}
       </div>
-
-      {showInstallModal && selectedModpack && (
-        <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
-            <LoadingSpinner size="lg" />
-          </div>
-        }>
-          <InstallModpackModal
-            isOpen={showInstallModal}
-            onClose={() => {
-              setShowInstallModal(false);
-              setSelectedModpack(null);
-              setVersions([]);
-            }}
-            modpack={selectedModpack}
-            versions={versions}
-            platform={platform}
-          />
-        </Suspense>
-      )}
-
-      {showImportPreview && selectedImportFile && (
-        <Suspense fallback={
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
-            <LoadingSpinner size="lg" />
-          </div>
-        }>
-          <ImportModpackPreviewModal
-            filePath={selectedImportFile}
-            isOpen={showImportPreview}
-            onClose={() => {
-              setShowImportPreview(false);
-              setSelectedImportFile(null);
-            }}
-            onImport={handleImportConfirm}
-          />
-        </Suspense>
-      )}
-    </>
+    </div>
   );
 };

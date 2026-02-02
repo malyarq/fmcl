@@ -1,9 +1,11 @@
 import type { AccentStyleResult, AccentStyleType } from './types';
 
 // Preset styles are static to prevent Tailwind purging.
+const TEXT_ON_ACCENT = 'text-zinc-900 dark:text-white';
+
 const PRESET_STYLES: Record<string, Record<string, string>> = {
   emerald: {
-    bg: 'bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white',
+    bg: `bg-emerald-600 hover:bg-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500 ${TEXT_ON_ACCENT}`,
     text: 'text-emerald-500 dark:text-emerald-400',
     border: 'focus:border-emerald-500 dark:focus:border-emerald-400',
     hover: 'hover:text-emerald-600 dark:hover:text-emerald-300',
@@ -12,7 +14,7 @@ const PRESET_STYLES: Record<string, Record<string, string>> = {
     title: 'text-emerald-600 dark:text-emerald-400',
   },
   blue: {
-    bg: 'bg-blue-600 hover:bg-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 text-white',
+    bg: `bg-blue-600 hover:bg-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500 ${TEXT_ON_ACCENT}`,
     text: 'text-blue-500 dark:text-blue-400',
     border: 'focus:border-blue-500 dark:focus:border-blue-400',
     hover: 'hover:text-blue-600 dark:hover:text-blue-300',
@@ -21,7 +23,7 @@ const PRESET_STYLES: Record<string, Record<string, string>> = {
     title: 'text-blue-600 dark:text-blue-400',
   },
   purple: {
-    bg: 'bg-purple-600 hover:bg-purple-500 dark:bg-purple-600 dark:hover:bg-purple-500 text-white',
+    bg: `bg-purple-600 hover:bg-purple-500 dark:bg-purple-600 dark:hover:bg-purple-500 ${TEXT_ON_ACCENT}`,
     text: 'text-purple-500 dark:text-purple-400',
     border: 'focus:border-purple-500 dark:focus:border-purple-400',
     hover: 'hover:text-purple-600 dark:hover:text-purple-300',
@@ -30,7 +32,7 @@ const PRESET_STYLES: Record<string, Record<string, string>> = {
     title: 'text-purple-600 dark:text-purple-400',
   },
   orange: {
-    bg: 'bg-orange-600 hover:bg-orange-500 dark:bg-orange-600 dark:hover:bg-orange-500 text-white',
+    bg: `bg-orange-600 hover:bg-orange-500 dark:bg-orange-600 dark:hover:bg-orange-500 ${TEXT_ON_ACCENT}`,
     text: 'text-orange-500 dark:text-orange-400',
     border: 'focus:border-orange-500 dark:focus:border-orange-400',
     hover: 'hover:text-orange-600 dark:hover:text-orange-300',
@@ -39,7 +41,7 @@ const PRESET_STYLES: Record<string, Record<string, string>> = {
     title: 'text-orange-600 dark:text-orange-400',
   },
   rose: {
-    bg: 'bg-rose-600 hover:bg-rose-500 dark:bg-rose-600 dark:hover:bg-rose-500 text-white',
+    bg: `bg-rose-600 hover:bg-rose-500 dark:bg-rose-600 dark:hover:bg-rose-500 ${TEXT_ON_ACCENT}`,
     text: 'text-rose-500 dark:text-rose-400',
     border: 'focus:border-rose-500 dark:focus:border-rose-400',
     hover: 'hover:text-rose-600 dark:hover:text-rose-300',
@@ -75,7 +77,11 @@ export function getAccentHexForColor(accentColor: string) {
   return isPreset(color) ? PRESET_HEX_MAP[color] : color;
 }
 
-export function getAccentStylesForColor(accentColor: string, type: AccentStyleType): AccentStyleResult {
+export function getAccentStylesForColor(
+  accentColor: string,
+  type: AccentStyleType,
+  theme?: 'light' | 'dark'
+): AccentStyleResult {
   const color = accentColor || 'emerald';
 
   if (isPreset(color)) {
@@ -84,7 +90,10 @@ export function getAccentStylesForColor(accentColor: string, type: AccentStyleTy
     return { className: PRESET_STYLES[color][type] || '' };
   }
 
-  if (type === 'bg') return { style: { backgroundColor: color, color: '#fff' } };
+  if (type === 'bg') {
+    const textColor = theme === 'light' ? '#18181b' : '#fff';
+    return { style: { backgroundColor: color, color: textColor } };
+  }
   if (type === 'text') return { style: { color } };
   if (type === 'title') return { style: { color } };
   if (type === 'border') return { style: { borderColor: color } };

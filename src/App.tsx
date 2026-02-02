@@ -1,5 +1,4 @@
-import { useMemo } from 'react';
-import { AppProviders } from './app/providers';
+import { useCallback, useMemo, useRef } from 'react';
 import { ErrorBoundaryWrapper } from './components/ErrorBoundaryWrapper';
 import { useAppIcon } from './app/hooks/useAppIcon';
 import { useAppOverlays } from './app/hooks/useAppOverlays';
@@ -36,7 +35,7 @@ function AppRoot() {
   const { isLaunching, progress, statusText, logs, logEndRef, handleLaunch: launchGame, copyLogs } = useLauncher();
 
   const { versions } = useVersions();
-  const { forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions } = useModSupportedVersions();
+  const { forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions, isLoading: isModloadersLoading } = useModSupportedVersions();
 
   // App updater with auto-check on mount
   const { status: updateStatus, updateInfo, installUpdate } = useAppUpdater(true);
@@ -60,6 +59,7 @@ function AppRoot() {
     setUseOptiFine,
     isOffline,
     launchVersion,
+    loaderType,
   } = useLaunchState({ forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions });
 
   const handleLaunch = useLaunchHandler({
@@ -71,10 +71,46 @@ function AppRoot() {
     useOptiFine,
   });
 
-  const currentHint = useMemo(() => getVersionHint(version, t, getAccentStyles('text')), [version, t, getAccentStyles]);
+  // Stable ref so ModpackRouter doesn't re-render when handleLaunch changes during downloads
+  const onLaunchRef = useRef(handleLaunch);
+  onLaunchRef.current = handleLaunch;
+  const stableOnLaunch = useCallback(() => onLaunchRef.current(), []);
 
-  // Tour steps
+  const currentHint = useMemo(
+    () => getVersionHint(modpackConfig?.runtime?.minecraft || '1.12.2', t, getAccentStyles('text')),
+    [modpackConfig?.runtime?.minecraft, t, getAccentStyles]
+  );
+
+  // Tour steps — порядок: классика, модпаки, настройки, мультиплеер, никнейм, версия, модлоадеры, запуск
   const tourSteps: TourStep[] = useMemo(() => [
+    {
+      id: 'classic',
+      target: '[data-tour="classic"]',
+      title: t('onboarding.tour.step_classic.title') || 'Классика',
+      content: t('onboarding.tour.step_classic.content') || 'Режим быстрого запуска без менеджмента модпаков. Укажите никнейм, версию и модлоадер, затем нажмите «Играть».',
+      position: 'bottom',
+    },
+    {
+      id: 'modpacks',
+      target: '[data-tour="modpacks"]',
+      title: t('onboarding.tour.step_modpacks.title') || 'Модпаки',
+      content: t('onboarding.tour.step_modpacks.content') || 'Здесь вы можете выбрать или создать модпак. Модпаки содержат моды, настройки и версию Minecraft.',
+      position: 'bottom',
+    },
+    {
+      id: 'settings',
+      target: '[data-tour="settings"]',
+      title: t('onboarding.tour.step_settings.title') || 'Настройки',
+      content: t('onboarding.tour.step_settings.content') || 'Путь к Minecraft, язык, тема, источник загрузок и другие параметры лаунчера.',
+      position: 'bottom',
+    },
+    {
+      id: 'multiplayer',
+      target: '[data-tour="multiplayer"]',
+      title: t('onboarding.tour.step_multiplayer.title') || 'Мультиплеер',
+      content: t('onboarding.tour.step_multiplayer.content') || 'Управление серверами и подключением к мультиплееру.',
+      position: 'bottom',
+    },
     {
       id: 'nickname',
       target: '[data-tour="nickname"]',
@@ -93,7 +129,7 @@ function AppRoot() {
       id: 'modloaders',
       target: '[data-tour="modloaders"]',
       title: t('onboarding.tour.step_modloaders.title') || 'Модлоадеры',
-      content: t('onboarding.tour.step_modloaders.content') || 'Выберите модлоадер (Forge, Fabric, NeoForge) в зависимости от требований модпака.',
+      content: t('onboarding.tour.step_modloaders.content') || 'Выберите модлоадер (Forge, Fabric, NeoForge).',
       position: 'right',
     },
     {
@@ -101,7 +137,7 @@ function AppRoot() {
       target: '[data-tour="launch"]',
       title: t('onboarding.tour.step_launch.title') || 'Запуск игры',
       content: t('onboarding.tour.step_launch.content') || 'Нажмите эту кнопку, чтобы запустить Minecraft с выбранными настройками.',
-      position: 'top',
+      position: 'right',
     },
   ], [t]);
 
@@ -110,6 +146,7 @@ function AppRoot() {
       {showWelcome && (
         <WelcomePage
           onComplete={handleWelcomeComplete}
+          onSkip={handleSkip}
           onShowSettings={openSettings}
         />
       )}
@@ -122,60 +159,64 @@ function AppRoot() {
         />
       )}
       <AppLayout
-      theme={theme}
-      updates={{
-        status: updateStatus,
-        info: updateInfo,
-        onInstall: installUpdate,
-      }}
-      modpackUpdates={{
-        updates: modpackUpdates,
-      }}
-      overlays={{
-        showSettings,
-        onCloseSettings: closeSettings,
-        showMultiplayer,
-        onBackFromMultiplayer: closeMultiplayer,
-      }}
-      actions={{
-        onShowMultiplayer: openMultiplayer,
-        onShowSettings: openSettings,
-      }}
-      launch={{
-        nickname,
-        setNickname,
-        version,
-        setVersion,
-        versions,
-        useForge,
-        setUseForge,
-        useFabric,
-        setUseFabric,
-        useNeoForge,
-        setUseNeoForge,
-        setLoader,
-        useOptiFine,
-        setUseOptiFine,
-        isOffline,
-        currentHint,
-        supportedVersions: {
-          forge: forgeVersions,
-          fabric: fabricVersions,
-          optiFine: optiFineVersions,
-          neoForge: neoForgeVersions,
-        },
-      }}
-      runtime={{
-        isLaunching,
-        progress,
-        statusText,
-        onLaunch: handleLaunch,
-        showConsole,
-        logs,
-        logEndRef,
-        onCopyLogs: copyLogs,
-        iconPath,
-      }}
+        theme={theme}
+        updates={{
+          status: updateStatus,
+          info: updateInfo,
+          onInstall: installUpdate,
+        }}
+        modpackUpdates={{
+          updates: modpackUpdates,
+        }}
+        overlays={{
+          showSettings,
+          onCloseSettings: closeSettings,
+          showMultiplayer,
+          onBackFromMultiplayer: closeMultiplayer,
+        }}
+        actions={{
+          onShowMultiplayer: openMultiplayer,
+          onShowSettings: openSettings,
+        }}
+        modpackOnLaunch={stableOnLaunch}
+        launch={{
+          nickname,
+          setNickname,
+          version,
+          setVersion,
+          versions,
+          useForge,
+          setUseForge,
+          useFabric,
+          setUseFabric,
+          useNeoForge,
+          setUseNeoForge,
+          setLoader,
+          useOptiFine,
+          setUseOptiFine,
+          isOffline,
+          currentHint,
+          loaderType: loaderType === 'quilt' ? 'fabric' : loaderType,
+          ram,
+          supportedVersions: {
+            forge: forgeVersions,
+            fabric: fabricVersions,
+            optiFine: optiFineVersions,
+            neoForge: neoForgeVersions,
+          },
+          isModloadersLoading,
+        }}
+        runtime={{
+          isLaunching,
+          progress,
+          statusText,
+          onLaunch: handleLaunch,
+          showConsole,
+          logs,
+          logEndRef,
+          onCopyLogs: copyLogs,
+          iconPath,
+        }}
       />
     </>
   );
@@ -183,10 +224,8 @@ function AppRoot() {
 
 export default function App() {
   return (
-    <AppProviders>
-      <ErrorBoundaryWrapper>
-        <AppRoot />
-      </ErrorBoundaryWrapper>
-    </AppProviders>
+    <ErrorBoundaryWrapper>
+      <AppRoot />
+    </ErrorBoundaryWrapper>
   );
 }

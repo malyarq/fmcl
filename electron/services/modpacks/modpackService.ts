@@ -38,6 +38,20 @@ export type {
  */
 export class ModpackService extends BaseModpackService {
   /**
+   * Сохранить конфиг и синхронизировать metadata.minecraftVersion для отображения в списке
+   */
+  public override saveModpackConfig(rootPath: string, cfg: ModpackConfig): void {
+    super.saveModpackConfig(rootPath, cfg);
+    const metadata = loadModpacksMetadata(rootPath);
+    if (metadata.modpacks[cfg.id] && cfg.runtime?.minecraft) {
+      metadata.modpacks[cfg.id] = updateMetadata(metadata.modpacks[cfg.id], {
+        minecraftVersion: cfg.runtime.minecraft,
+      });
+      saveModpacksMetadata(rootPath, metadata);
+    }
+  }
+
+  /**
    * Получить метаданные модпака
    */
   public getModpackMetadata(rootPath: string, modpackId: string): ModpackMetadata {
@@ -457,6 +471,28 @@ export class ModpackService extends BaseModpackService {
 
     // Сохранить манифест
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  }
+
+  /**
+   * Включить/выключить мод (переименование .jar <-> .jar.disabled)
+   */
+  public setModEnabled(rootPath: string, modpackId: string, modPath: string, enabled: boolean): void {
+    const modpackDir = this.getModpackDir(rootPath, modpackId);
+    const modsDir = path.join(modpackDir, 'mods');
+    const modFilePath = path.join(modsDir, modPath);
+
+    if (!fs.existsSync(modFilePath)) return;
+
+    const dir = path.dirname(modPath);
+
+    if (enabled && modPath.endsWith('.jar.disabled')) {
+      const newName = modPath.slice(0, -8);
+      const newPath = path.join(modsDir, dir ? path.join(dir, newName) : newName);
+      fs.renameSync(modFilePath, newPath);
+    } else if (!enabled && modPath.endsWith('.jar') && !modPath.endsWith('.jar.disabled')) {
+      const newPath = path.join(modsDir, dir ? path.join(dir, `${modPath}.disabled`) : `${modPath}.disabled`);
+      fs.renameSync(modFilePath, newPath);
+    }
   }
 
   /**

@@ -258,7 +258,7 @@ export async function scanModsFolder(modsDir: string): Promise<ModEntry[]> {
   if (!fs.existsSync(modsDir)) return [];
   const files = await fs.promises.readdir(modsDir);
   const jars = files
-    .filter((f) => f.endsWith('.jar') && !f.startsWith('.'))
+    .filter((f) => (f.endsWith('.jar') || f.endsWith('.jar.disabled')) && !f.startsWith('.'))
     .map((f) => path.join(modsDir, f));
 
   const results: ModEntry[] = [];

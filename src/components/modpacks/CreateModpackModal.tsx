@@ -34,6 +34,7 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
   const [name, setName] = useState('');
   const [version, setVersion] = useState('1.0.0');
   const [minecraftVersion, setMinecraftVersion] = useState('1.20.1');
+  const [description, setDescription] = useState('');
   const [useForge, setUseForge] = useState(false);
   const [useFabric, setUseFabric] = useState(false);
   const [useNeoForge, setUseNeoForge] = useState(false);
@@ -91,6 +92,11 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
         minecraftPath
       );
 
+      if (result?.id && description.trim()) {
+        // Сохраняем описание в метаданных модпака
+        await modpacksIPC.updateMetadata(result.id, { description: description.trim() }, minecraftPath);
+      }
+
       await refresh();
       onCreated?.(result.id);
       onClose();
@@ -99,6 +105,7 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
       setName('');
       setVersion('1.0.0');
       setMinecraftVersion('1.20.1');
+      setDescription('');
       setUseForge(false);
       setUseFabric(false);
       setUseNeoForge(false);
@@ -114,6 +121,11 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
   };
 
   if (!isOpen) return null;
+
+  const descriptionPlaceholderRaw = t('modpacks.description_placeholder');
+  const descriptionPlaceholder = descriptionPlaceholderRaw === 'modpacks.description_placeholder'
+    ? 'Кратко опишите модпак (опционально)'
+    : descriptionPlaceholderRaw;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t('modpacks.create_new') || 'Создать новый модпак'}>
@@ -141,14 +153,12 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
             value={version}
             onChange={(e) => setVersion(e.target.value)}
             placeholder="1.0.0"
-            className="font-mono"
           />
 
           <Select
             label={t('modpacks.minecraft_version')}
             value={minecraftVersion}
             onChange={(e) => setMinecraftVersion(e.target.value)}
-            className="font-mono"
           >
             {versions.filter(v => v.type === 'release').map((v) => (
               <option key={v.id} value={v.id}>
@@ -157,6 +167,13 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
             ))}
           </Select>
         </div>
+
+        <Input
+          label={t('modpacks.description') || 'Описание'}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder={descriptionPlaceholder}
+        />
 
         <ModloaderSection
           version={minecraftVersion}

@@ -6,6 +6,7 @@ import { mods } from './ModsBridge'
 
 export const launcher: LauncherAPI = {
   launch: (options: LauncherLaunchOptions) => ipcRenderer.invoke('launcher:launch', options),
+  killAndRestart: () => ipcRenderer.invoke('launcher:killAndRestart'),
   getVersionList: (providerId?: DownloadProviderId) => ipcRenderer.invoke('launcher:getVersionList', providerId),
   getForgeSupportedVersions: (providerId?: DownloadProviderId) => ipcRenderer.invoke('launcher:getForgeSupportedVersions', providerId),
   getFabricSupportedVersions: () => ipcRenderer.invoke('launcher:getFabricSupportedVersions'),

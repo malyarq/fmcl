@@ -2,6 +2,8 @@ export type ModPlatformId = 'modrinth' | 'curseforge';
 
 export type ModLoaderFilter = 'forge' | 'fabric' | 'quilt' | 'neoforge' | 'any';
 
+export type ModSortOption = 'popularity' | 'date' | 'alphabetical';
+
 export interface ModSearchQuery {
   platform: ModPlatformId;
   query: string;
@@ -9,6 +11,7 @@ export interface ModSearchQuery {
   loader?: ModLoaderFilter;
   offset?: number;
   limit?: number;
+  sort?: ModSortOption;
 }
 
 export interface ModSearchResultItem {

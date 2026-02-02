@@ -261,6 +261,19 @@ export function registerModpacksHandlers(deps: {
     return { ok: true }
   })
 
+  ipcMain.removeHandler('modpacks:setModEnabled')
+  ipcMain.handle('modpacks:setModEnabled', async (
+    _evt,
+    modpackId: string,
+    modPath: string,
+    enabled: boolean,
+    rootPath?: string,
+  ) => {
+    const root = rootPath || modpacks.getDefaultRootPath()
+    modpacks.setModEnabled(root, modpackId, modPath, enabled)
+    return { ok: true }
+  })
+
   ipcMain.removeHandler('modpacks:updateOverrides')
   ipcMain.handle('modpacks:updateOverrides', async (
     _evt,

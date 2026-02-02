@@ -59,5 +59,15 @@ export function registerSettingsHandlers(deps: { window: BrowserWindow }) {
       return { canceled: true, filePaths: [], error: errorMessage }
     }
   })
+
+  ipcMain.removeHandler('dialog:getDesktopPath')
+  ipcMain.handle('dialog:getDesktopPath', async () => {
+    try {
+      return app.getPath('desktop')
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error)
+      throw new Error(`Failed to get desktop path: ${errorMessage}`)
+    }
+  })
 }
 
