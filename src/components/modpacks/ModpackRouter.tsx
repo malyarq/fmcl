@@ -1,5 +1,5 @@
 import React, { memo, useCallback } from 'react';
-import { useModpackNavigation } from '../../features/modpacks/hooks/useModpackNavigation';
+import { DEFAULT_MODPACK_BROWSER_STATE, useModpackNavigation } from '../../features/modpacks/hooks/useModpackNavigation';
 import { ModpackList } from './ModpackList';
 import { ModpackBrowser } from './ModpackBrowser';
 import { ModpackDetails } from './ModpackDetails';
@@ -14,19 +14,32 @@ interface ModpackRouterProps {
 }
 
 const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
-  const { view, goBack, navigate } = useModpackNavigation();
+  const { view, goBack, navigate, replace } = useModpackNavigation();
   const handleCreateWizard = useCallback(() => navigate({ type: 'create' }), [navigate]);
+  const handleOpenBrowser = useCallback(() => {
+    navigate({ type: 'browser', state: DEFAULT_MODPACK_BROWSER_STATE });
+  }, [navigate]);
+  const handleBrowserStateChange = useCallback((state: typeof DEFAULT_MODPACK_BROWSER_STATE) => {
+    replace({ type: 'browser', state });
+  }, [replace]);
 
   // Render based on current view
   switch (view.type) {
     case 'list':
       return (
         <ModpackList
-          onNavigate={navigate}
+          onNavigate={(targetView) => {
+            if (targetView.type === 'browser') {
+              handleOpenBrowser();
+              return;
+            }
+
+            navigate(targetView);
+          }}
           onCreateWizard={handleCreateWizard}
         />
       );
-    
+
     case 'create':
       return (
         <ModpackCreationWizard
@@ -36,15 +49,17 @@ const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
           }}
         />
       );
-    
+
     case 'browser':
       return (
         <ModpackBrowser
+          initialState={view.state}
           onBack={goBack}
           onNavigate={navigate}
+          onStateChange={handleBrowserStateChange}
         />
       );
-    
+
     case 'details':
       return (
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -56,7 +71,7 @@ const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
           />
         </div>
       );
-    
+
     case 'addMod':
       return (
         <AddModPage
@@ -64,7 +79,25 @@ const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
           onBack={goBack}
         />
       );
-    
+
+    case 'addResourcePack':
+      return (
+        <AddModPage
+          modpackId={view.modpackId}
+          onBack={goBack}
+          contentType="resourcepack"
+        />
+      );
+
+    case 'addShader':
+      return (
+        <AddModPage
+          modpackId={view.modpackId}
+          onBack={goBack}
+          contentType="shader"
+        />
+      );
+
     case 'export':
       return (
         <ExportModpackPage
@@ -72,7 +105,7 @@ const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
           onBack={goBack}
         />
       );
-    
+
     case 'install':
       return (
         <InstallModpackPage
@@ -82,7 +115,7 @@ const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
           onBack={goBack}
         />
       );
-    
+
     case 'importPreview':
       return (
         <ImportModpackPreviewPage
@@ -90,11 +123,18 @@ const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
           onBack={goBack}
         />
       );
-    
+
     default:
       return (
         <ModpackList
-          onNavigate={navigate}
+          onNavigate={(targetView) => {
+            if (targetView.type === 'browser') {
+              handleOpenBrowser();
+              return;
+            }
+
+            navigate(targetView);
+          }}
           onCreateWizard={handleCreateWizard}
         />
       );

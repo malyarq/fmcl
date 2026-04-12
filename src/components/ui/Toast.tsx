@@ -8,6 +8,7 @@ export interface ToastProps {
     message: string;
     type: ToastType;
     duration?: number;
+    count?: number;
     onClose: (id: string) => void;
 }
 
@@ -30,6 +31,7 @@ export const Toast: React.FC<ToastProps> = ({
     message,
     type,
     duration = 5000,
+    count = 1,
     onClose,
 }) => {
     const [isVisible, setIsVisible] = useState(true);
@@ -71,7 +73,14 @@ export const Toast: React.FC<ToastProps> = ({
             aria-live="polite"
         >
             <span className="text-lg font-bold flex-shrink-0">{toastIcons[type]}</span>
-            <p className="flex-1 text-sm font-medium">{message}</p>
+            <p className="flex-1 text-sm font-medium">
+                {message}
+                {count > 1 && (
+                    <span className="ml-2 px-1.5 py-0.5 text-xs font-bold rounded-full bg-white/20 text-white inline-block align-middle">
+                        x{count}
+                    </span>
+                )}
+            </p>
             <button
                 onClick={handleClose}
                 className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors text-white/80 hover:text-white"

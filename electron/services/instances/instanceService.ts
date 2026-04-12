@@ -10,8 +10,15 @@ import {
   getModpackDir,
   getModpacksIndexPath,
 } from './paths';
+import {
+  duplicateModpackMetadata,
+  syncRenamedModpackMetadata,
+} from '../modpacks/storage';
 
 export type { ModpackConfig, ModpacksIndex, ModpackRuntime, ModLoaderType, NetworkMode } from './types';
+import { javaScanner, type DetectedJava } from '../java/javaScanner';
+
+export type { DetectedJava };
 
 /**
  * Owns modpack/root folder layout concerns.
@@ -132,17 +139,17 @@ export class ModpackService {
   public deleteModpack(rootPath: string, modpackId: string) {
     const idx = this.loadModpacksIndex(rootPath);
     if (!idx.modpacks[modpackId]) return;
-    
+
     delete idx.modpacks[modpackId];
-    
+
     // If deleted modpack was selected, select another one (prefer 'default' if exists, otherwise first available)
     if (idx.selectedModpack === modpackId) {
       const remainingIds = Object.keys(idx.modpacks);
-      idx.selectedModpack = remainingIds.length > 0 
+      idx.selectedModpack = remainingIds.length > 0
         ? (idx.modpacks['default'] ? 'default' : remainingIds[0])
         : 'default';
     }
-    
+
     this.saveModpacksIndex(rootPath, idx);
     const dir = this.getModpackDir(rootPath, modpackId);
     try {
@@ -183,6 +190,7 @@ export class ModpackService {
     const cfg = this.loadModpackConfig(rootPath, modpackId);
     cfg.name = newName;
     this.saveModpackConfig(rootPath, cfg);
+    syncRenamedModpackMetadata(rootPath, cfg);
     return { ok: true } as const;
   }
 
@@ -233,8 +241,12 @@ export class ModpackService {
     idx.modpacks[id] = { name: baseName };
     idx.selectedModpack = id;
     this.saveModpacksIndex(rootPath, idx);
+    duplicateModpackMetadata(rootPath, sourceId, cfg);
 
     return { id, config: cfg } as const;
   }
-}
 
+  public async scanJava(): Promise<DetectedJava[]> {
+    return await javaScanner.scanJava();
+  }
+}

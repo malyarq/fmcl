@@ -31,6 +31,12 @@ export function computeEffectiveLaunchOptions(params: {
     return options.ram;
   })();
 
+  const minRamGb = (() => {
+    const mb = instanceCfg?.memory?.minMb;
+    if (typeof mb === 'number' && Number.isFinite(mb) && mb > 0) return mb / 1024;
+    return undefined;
+  })();
+
   const effectiveJavaPath = (instanceCfg?.java?.path ?? options.javaPath)?.trim() || '';
   const effectiveVmOptions = (instanceCfg?.vmOptions ?? options.vmOptions ?? []).filter(
     (s) => typeof s === 'string' && s.trim().length > 0
@@ -65,6 +71,7 @@ export function computeEffectiveLaunchOptions(params: {
     effectiveMcArgs,
     effectiveResolution: effectiveResolution as EffectiveResolution | undefined,
     effectiveServer: effectiveServer as EffectiveServer | undefined,
+    minRamGb,
   };
 }
 

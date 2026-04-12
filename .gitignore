@@ -31,3 +31,8 @@ authlib-injector.log
 .test-config.json
 *storybook.log
 storybook-static
+
+# Agent / temp files
+.agent
+lint_output.txt
+tsc_output*.txt

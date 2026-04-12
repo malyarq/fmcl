@@ -1,13 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
-import type { AccentColor, AccentStyleType, DownloadProvider, Language, Theme, UIMode } from './settings/types';
+import type { AccentColor, AccentStyleType, DownloadProvider, Language, Theme, UIMode, CustomThemeConfig } from './settings/types';
 import {
-  deserializeBoolean,
-  deserializeInt,
-  deserializeString,
-  serializeBoolean,
-  serializeInt,
-  serializeString,
-  useLocalStorageState,
+    deserializeBoolean,
+    deserializeInt,
+    deserializeString,
+    serializeBoolean,
+    serializeInt,
+    serializeString,
+    useLocalStorageState,
 } from './settings/persistence';
 import { applyThemeToDocument } from './settings/theme';
 import { createTranslator } from './settings/i18n';
@@ -37,10 +37,20 @@ interface SettingsState {
     // Global UI mode – controls Classic vs Modpacks layout.
     uiMode: UIMode;
     setUIMode: (val: UIMode) => void;
-    t: (key: string) => string;
+    t: (key: string, params?: Record<string, string | number>) => string;
     getAccentStyles: (type: AccentStyleType) => { className?: string; style?: React.CSSProperties };
     getAccentClass: (tailwindClasses: string) => string;
     getAccentHex: () => string;
+    customTheme: CustomThemeConfig;
+    setCustomTheme: (val: CustomThemeConfig) => void;
+    uiScale: number;
+    setUiScale: (val: number) => void;
+    disableAnimations: boolean;
+    setDisableAnimations: (val: boolean) => void;
+    sidebarPosition: 'left' | 'right';
+    setSidebarPosition: (val: 'left' | 'right') => void;
+    compactMode: boolean;
+    setCompactMode: (val: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsState | undefined>(undefined);
@@ -53,10 +63,34 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [showConsole, setShowConsole] = useLocalStorageState('settings_showConsole', deserializeBoolean(false), serializeBoolean);
     const [language, setLanguage] = useLocalStorageState<Language>('settings_language', (raw) => (raw === 'ru' ? 'ru' : 'en'), serializeString);
     const [theme, setTheme] = useLocalStorageState<Theme>('settings_theme', (raw) => (raw === 'light' ? 'light' : 'dark'), serializeString);
-    const [downloadProvider, setDownloadProvider] = useLocalStorageState<DownloadProvider>('settings_downloadProvider', (raw) => (raw === 'mojang' || raw === 'bmcl' ? raw : 'auto'), serializeString);
+    const [legacyDownloadProvider, setDownloadProvider] = useLocalStorageState<DownloadProvider>(
+        'settings_downloadProvider',
+        (raw) => (raw === 'mojang' || raw === 'bmcl' ? raw : 'auto'),
+        serializeString
+    );
     const [autoDownloadThreads, setAutoDownloadThreads] = useLocalStorageState('settings_autoDownloadThreads', deserializeBoolean(true), serializeBoolean);
     const [downloadThreads, setDownloadThreads] = useLocalStorageState('settings_downloadThreads', deserializeInt(8), serializeInt);
     const [maxSockets, setMaxSockets] = useLocalStorageState('settings_maxSockets', deserializeInt(64), serializeInt);
+    const downloadProvider: DownloadProvider = 'auto';
+    // Custom theme configuration
+    const [customTheme, setCustomTheme] = useLocalStorageState<CustomThemeConfig>(
+        'settings_customTheme',
+        (raw) => {
+            if (!raw) return {};
+            try {
+                return JSON.parse(raw);
+            } catch {
+                return {};
+            }
+        },
+        (val) => JSON.stringify(val)
+    );
+
+    const [uiScale, setUiScale] = useLocalStorageState('settings_uiScale', deserializeInt(100), serializeInt);
+    const [disableAnimations, setDisableAnimations] = useLocalStorageState('settings_disableAnimations', deserializeBoolean(false), serializeBoolean);
+    const [sidebarPosition, setSidebarPosition] = useLocalStorageState<'left' | 'right'>('settings_sidebarPosition', (raw) => (raw === 'right' ? 'right' : 'left'), serializeString);
+    const [compactMode, setCompactMode] = useLocalStorageState('settings_compactMode', deserializeBoolean(false), serializeBoolean);
+
     // UI mode: simple play vs modpacks, persisted across sessions.
     const [uiMode, setUIMode] = useLocalStorageState<UIMode>(
         'settings_uiMode',
@@ -65,24 +99,63 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
 
     useEffect(() => {
-        applyThemeToDocument(theme);
-    }, [theme]);
+        applyThemeToDocument(theme, customTheme);
+    }, [theme, customTheme]);
+
+    useEffect(() => {
+        if (legacyDownloadProvider !== 'auto') {
+            setDownloadProvider('auto');
+        }
+    }, [legacyDownloadProvider, setDownloadProvider]);
+
+    useEffect(() => {
+        document.documentElement.style.fontSize = `${uiScale}%`;
+    }, [uiScale]);
+
+    useEffect(() => {
+        if (disableAnimations) {
+            document.body.classList.add('disable-animations');
+        } else {
+            document.body.classList.remove('disable-animations');
+        }
+    }, [disableAnimations]);
+
+    useEffect(() => {
+        if (compactMode) {
+            document.body.classList.add('compact-mode');
+        } else {
+            document.body.classList.remove('compact-mode');
+        }
+    }, [compactMode]);
 
     const t = useMemo(() => createTranslator(language), [language]);
 
     const getAccentHex = useCallback(() => getAccentHexForColor(accentColor), [accentColor]);
     const getAccentStyles = useCallback(
-      (type: AccentStyleType) => getAccentStylesForColor(accentColor, type, theme),
-      [accentColor, theme]
+        (type: AccentStyleType) => getAccentStylesForColor(accentColor, type, theme),
+        [accentColor, theme]
     );
     const getAccentClass = useCallback((tailwindClasses: string) => getAccentClassForColor(accentColor, tailwindClasses), [accentColor]);
+
+    const setShowConsoleProxy = useCallback((val: boolean) => {
+        setShowConsole(val);
+    }, [setShowConsole]);
+
+    // Sync console window state with state
+    useEffect(() => {
+        if (showConsole) {
+            window.windowControls?.openConsole();
+        } else {
+            window.windowControls?.closeConsole();
+        }
+    }, [showConsole]);
 
     return (
         <SettingsContext.Provider value={{
             minecraftPath, setMinecraftPath,
             hideLauncher, setHideLauncher,
             accentColor, setAccentColor,
-            showConsole, setShowConsole,
+            showConsole, setShowConsole: setShowConsoleProxy,
             language, setLanguage,
             theme, setTheme,
             downloadProvider, setDownloadProvider,
@@ -93,7 +166,13 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             t,
             getAccentStyles,
             getAccentClass,
-            getAccentHex
+            getAccentHex,
+            customTheme,
+            setCustomTheme,
+            uiScale, setUiScale,
+            disableAnimations, setDisableAnimations,
+            sidebarPosition, setSidebarPosition,
+            compactMode, setCompactMode
         }}>
             {children}
             {/* Hidden div to prevent Tailwind from purging preset color classes */}
@@ -109,6 +188,7 @@ export const useSettings = () => {
 };
 
 // Convenience hook for working with the global UI mode.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useUIMode = () => {
     const { uiMode, setUIMode } = useSettings();
     return {

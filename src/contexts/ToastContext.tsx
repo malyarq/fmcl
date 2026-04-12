@@ -20,15 +20,33 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, []);
 
     const showToast = useCallback((message: string, type: ToastType = 'info', duration?: number) => {
-        const id = `toast-${Date.now()}-${Math.random()}`;
-        const newToast: ToastData = {
-            id,
-            message,
-            type,
-            duration,
-        };
+        setToasts((prev) => {
+            const existingIndex = prev.findIndex(t => t.message === message && t.type === type);
 
-        setToasts((prev) => [...prev, newToast]);
+            if (existingIndex !== -1) {
+                // Return new array with updated toast at the END (so it pops/resets)
+                // We use a new ID to force component re-mount/timer reset
+                const existing = prev[existingIndex];
+                const newId = `toast-${Date.now()}-${Math.random()}`;
+                const others = prev.filter((_, i) => i !== existingIndex);
+                return [...others, {
+                    ...existing,
+                    id: newId,
+                    count: (existing.count || 1) + 1,
+                    duration // reset duration
+                }];
+            }
+
+            const id = `toast-${Date.now()}-${Math.random()}`;
+            const newToast: ToastData = {
+                id,
+                message,
+                type,
+                duration,
+                count: 1
+            };
+            return [...prev, newToast];
+        });
     }, []);
 
     const success = useCallback((message: string, duration?: number) => {

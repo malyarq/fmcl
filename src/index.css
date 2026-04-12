@@ -3,10 +3,93 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  :root {
+    /* Default Light Theme (Zinc) */
+    --bg-app: 244 244 245;
+    /* zinc-100 */
+    --bg-card: 255 255 255;
+    /* white */
+    --bg-overlay: 255 255 255;
+    /* white */
+    --bg-sidebar: 255 255 255;
+    /* white */
+
+    --text-main: 24 24 27;
+    /* zinc-900 */
+    --text-secondary: 82 82 91;
+    /* zinc-600 */
+    --text-muted: 113 113 122;
+    /* zinc-500 */
+
+    --border-default: 228 228 231;
+    /* zinc-200 */
+    --border-active: 161 161 170;
+    /* zinc-400 */
+    --color-error: 220 38 38;
+    /* red-600 */
+
+    /* Default Accent (Emerald) */
+    --accent-main: 16 185 129;
+    /* emerald-500 */
+    --accent-hover: 5 150 105;
+    /* emerald-600 */
+    --accent-content: 255 255 255;
+    /* white */
+  }
+
+  .dark {
+    /* Default Dark Theme (Zinc) */
+    --bg-app: 24 24 27;
+    /* zinc-900 */
+    --bg-card: 39 39 42;
+    /* zinc-800 */
+    --bg-overlay: 24 24 27;
+    /* zinc-900 */
+    --bg-sidebar: 39 39 42;
+    /* zinc-800 */
+
+    --text-main: 255 255 255;
+    /* white */
+    --text-secondary: 212 212 216;
+    /* zinc-300 */
+    --text-muted: 161 161 170;
+    /* zinc-400 */
+
+    --border-default: 63 63 70;
+    /* zinc-700 */
+    --border-active: 113 113 122;
+    /* zinc-500 */
+    --color-error: 220 38 38;
+    /* red-600 */
+  }
+
   body {
-    @apply bg-zinc-100 text-zinc-900 font-sans overflow-hidden dark:bg-zinc-900 dark:text-white;
+    @apply bg-background text-foreground font-sans overflow-hidden transition-colors duration-300;
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 400;
+  }
+
+  html {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  :where(
+      button,
+      [href],
+      input,
+      select,
+      textarea,
+      [role="button"],
+      [role="tab"],
+      [role="menuitem"],
+      [tabindex]:not([tabindex="-1"])
+    ):focus-visible {
+    outline: 2px solid rgb(var(--accent-main));
+    outline-offset: 2px;
   }
 }
 
@@ -56,6 +139,7 @@
       opacity: 0;
       transform: translateY(10px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -71,6 +155,7 @@
     from {
       opacity: 0;
     }
+
     to {
       opacity: 1;
     }
@@ -81,6 +166,7 @@
       opacity: 0;
       transform: translateY(20px) scale(0.95);
     }
+
     to {
       opacity: 1;
       transform: translateY(0) scale(1);
@@ -92,6 +178,7 @@
       opacity: 0;
       transform: scale(0.9);
     }
+
     to {
       opacity: 1;
       transform: scale(1);
@@ -102,6 +189,7 @@
     0% {
       transform: translateX(-100%);
     }
+
     100% {
       transform: translateX(100%);
     }
@@ -112,10 +200,13 @@
   }
 
   @keyframes pulse-glow {
-    0%, 100% {
+
+    0%,
+    100% {
       opacity: 0.4;
       transform: scale(1);
     }
+
     50% {
       opacity: 0.8;
       transform: scale(1.05);
@@ -131,6 +222,7 @@
       opacity: 0;
       transform: translateX(-10px);
     }
+
     to {
       opacity: 1;
       transform: translateX(0);
@@ -150,6 +242,7 @@
       opacity: 0;
       transform: translateY(-5px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -166,17 +259,37 @@
 
   /* Respect reduced motion preference */
   @media (prefers-reduced-motion: reduce) {
+
     .animate-fade-in-up,
     .animate-fade-in,
     .animate-slide-in-up,
     .animate-scale-in,
+    .animate-in,
+    .animate-out,
+    .animate-pulse,
+    .animate-spin,
+    .animate-pulse-slow,
+    .firework-particle,
     .mode-switch-transition,
     .mode-switch-enter,
     .sidebar-section-transition,
     .sidebar-section-enter {
-      animation: none;
+      animation: none !important;
       opacity: 1;
-      transform: none;
+      transform: none !important;
+      transition-duration: 0ms !important;
     }
+  }
+
+  .disable-animations *,
+  .disable-animations *::before,
+  .disable-animations *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+
+  .disable-animations .motion-safe-transform:hover,
+  .disable-animations .motion-safe-transform:active {
+    transform: none !important;
   }
 }

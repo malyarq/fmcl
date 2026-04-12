@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { useSettings, useUIMode } from './SettingsContext';
 import { CLASSIC_MODPACK_ID } from '../../shared/constants';
 import type { ModpackConfig, ModpackListItem, ModLoaderType, NetworkMode } from './instances/types';
-import { getInstanceRamGb } from './instances/utils/memory';
+
 import { useInstanceBootstrap } from './instances/hooks/useInstanceBootstrap';
 import { useInstanceConfigPersistence } from './instances/hooks/useInstanceConfigPersistence';
 import { useInstanceCrudActions } from './instances/hooks/useInstanceCrudActions';
@@ -16,6 +16,7 @@ import {
 import {
   withModpackJavaPath,
   withModpackMemoryGb,
+  withModpackMinMemoryGb,
   withRuntimeLoader,
   withRuntimeMinecraft,
 } from './instances/utils/configPatching';
@@ -41,6 +42,7 @@ interface ModpackContextState {
   saveConfig: (cfg: ModpackConfig) => Promise<void>;
   patchConfig: (patch: Partial<ModpackConfig>) => void;
   setMemoryGb: (gb: number) => void;
+  setMinMemoryGb: (gb: number) => void;
   setJavaPath: (javaPath: string) => void;
   setRuntimeMinecraft: (mc: string) => void;
   setRuntimeLoader: (loader: ModLoaderType) => void;
@@ -59,6 +61,8 @@ const ModpackListContext = createContext<{
   selectedId: string;
   select: (id: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
+  rename: (id: string, name: string) => Promise<void>;
+  duplicate: (sourceId: string, name?: string) => Promise<void>;
   refresh: () => Promise<void>;
 } | undefined>(undefined);
 
@@ -119,6 +123,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     saveConfig,
     patchConfig,
     setMemoryGb,
+    setMinMemoryGb,
     setJavaPath,
     setRuntimeMinecraft,
     setRuntimeLoader,
@@ -133,6 +138,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     saveConfig: saveClassicConfig,
     patchConfig: patchClassicConfig,
     setMemoryGb: setClassicMemoryGb,
+    setMinMemoryGb: setClassicMinMemoryGb,
     setJavaPath: setClassicJavaPath,
     setRuntimeMinecraft: setClassicRuntimeMinecraft,
     setRuntimeLoader: setClassicRuntimeLoader,
@@ -157,6 +163,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setClassicMemoryGb(gb);
         } else {
           fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {
+            if (!cfg) return;
             const next = withModpackMemoryGb(cfg, gb);
             setClassicConfig(next);
             void saveModpackConfigSvc(next, rootPath);
@@ -169,6 +176,26 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [isClassicMode, classicConfig, rootPath, setClassicMemoryGb, setMemoryGb]
   );
 
+  const effectiveSetMinMemoryGb = useCallback(
+    (gb: number) => {
+      if (isClassicMode) {
+        if (classicConfig) {
+          setClassicMinMemoryGb(gb);
+        } else {
+          fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {
+            if (!cfg) return;
+            const next = withModpackMinMemoryGb(cfg, gb);
+            setClassicConfig(next);
+            void saveModpackConfigSvc(next, rootPath);
+          });
+        }
+      } else {
+        setMinMemoryGb(gb);
+      }
+    },
+    [isClassicMode, classicConfig, rootPath, setClassicMinMemoryGb, setMinMemoryGb]
+  );
+
   const effectiveSetJavaPath = useCallback(
     (javaPath: string) => {
       if (isClassicMode) {
@@ -176,6 +203,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setClassicJavaPath(javaPath);
         } else {
           fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {
+            if (!cfg) return;
             const next = withModpackJavaPath(cfg, javaPath);
             setClassicConfig(next);
             void saveModpackConfigSvc(next, rootPath);
@@ -194,6 +222,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setClassicRuntimeMinecraft(mc);
         } else {
           fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {
+            if (!cfg) return;
             const next = withRuntimeMinecraft(cfg, mc);
             setClassicConfig(next);
             void saveModpackConfigSvc(next, rootPath);
@@ -213,6 +242,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setClassicRuntimeLoader(loader);
         } else {
           fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {
+            if (!cfg) return;
             const next = withRuntimeLoader(cfg, loader);
             setClassicConfig(next);
             void saveModpackConfigSvc(next, rootPath);
@@ -245,7 +275,9 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     select,
     remove,
     refresh,
-  }), [modpacks, selectedId, select, remove, refresh]);
+    rename,
+    duplicate,
+  }), [modpacks, selectedId, select, remove, refresh, rename, duplicate]);
 
   const value = useMemo<ModpackContextState>(() => ({
     isReady,
@@ -262,6 +294,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     saveConfig: effectiveSaveConfig,
     patchConfig: effectivePatchConfig,
     setMemoryGb: effectiveSetMemoryGb,
+    setMinMemoryGb: effectiveSetMinMemoryGb,
     setJavaPath: effectiveSetJavaPath,
     setRuntimeMinecraft: effectiveSetRuntimeMinecraft,
     setRuntimeLoader: effectiveSetRuntimeLoader,
@@ -271,8 +304,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setGameResolution: effectiveSetGameResolution,
     setAutoConnectServer: effectiveSetAutoConnectServer,
   }), [
-    classicConfig,
-    config,
+
     create,
     duplicate,
     effectiveConfig,
@@ -284,6 +316,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     effectiveSetGameResolution,
     effectiveSetJavaPath,
     effectiveSetMemoryGb,
+    effectiveSetMinMemoryGb,
     effectiveSetNetworkMode,
     effectiveSetRuntimeLoader,
     effectiveSetRuntimeMinecraft,
@@ -304,6 +337,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useModpackListContext = () => {
   const ctx = useContext(ModpackListContext);
   if (!ctx) throw new Error('useModpackListContext must be used within ModpackProvider');
@@ -316,4 +350,4 @@ export const useModpack = () => {
   return ctx;
 };
 
-export { getInstanceRamGb };
+

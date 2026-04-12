@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../../utils/cn';
+import { cacheIPC } from '../../services/ipc/cacheIPC';
 
 export interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   /** Placeholder to show while loading */
@@ -27,9 +28,14 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   onError,
   ...props
 }) => {
-  const [isLoaded, setIsLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
   const [isInView, setIsInView] = useState(false);
+  const sourceKey = `${src ?? ''}::${fallback ?? ''}`;
+  const [imageState, setImageState] = useState(() => ({
+    key: sourceKey,
+    isLoaded: false,
+    hasError: false,
+    resolvedSrc: undefined as string | undefined,
+  }));
   const imgRef = useRef<HTMLImageElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -38,6 +44,10 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   const isSmallImage = sizeClasses.includes('w-16') || sizeClasses.includes('h-16') || 
                       sizeClasses.includes('w-12') || sizeClasses.includes('h-12') ||
                       sizeClasses.includes('w-20') || sizeClasses.includes('h-20');
+  const isRemoteImage = typeof src === 'string' && /^https?:\/\//i.test(src);
+  const currentImageState = imageState.key === sourceKey
+    ? imageState
+    : { key: sourceKey, isLoaded: false, hasError: false, resolvedSrc: undefined as string | undefined };
 
   useEffect(() => {
     // If no src but fallback exists, load immediately
@@ -116,23 +126,92 @@ export const LazyImage: React.FC<LazyImageProps> = ({
     };
   }, [rootMargin, useNativeLazy, src, fallback, isSmallImage]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    if (!src || !isInView) {
+      return () => {
+        isActive = false;
+      };
+    }
+
+    if (!isRemoteImage || !cacheIPC.has('resolveImage') || currentImageState.resolvedSrc) {
+      return () => {
+        isActive = false;
+      };
+    }
+
+    void cacheIPC.resolveImage(src)
+      .then((result) => {
+        if (!isActive) {
+          return;
+        }
+
+        setImageState((previous) => {
+          const nextState = previous.key === sourceKey
+            ? previous
+            : { key: sourceKey, isLoaded: false, hasError: false, resolvedSrc: undefined as string | undefined };
+
+          return {
+            ...nextState,
+            resolvedSrc: result.localUrl || src,
+          };
+        });
+      })
+      .catch((error) => {
+        console.warn('[LazyImage] Failed to resolve cached image, using source URL instead.', error);
+        if (!isActive) {
+          return;
+        }
+
+        setImageState((previous) => {
+          const nextState = previous.key === sourceKey
+            ? previous
+            : { key: sourceKey, isLoaded: false, hasError: false, resolvedSrc: undefined as string | undefined };
+
+          return {
+            ...nextState,
+            resolvedSrc: src,
+          };
+        });
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [currentImageState.resolvedSrc, isInView, isRemoteImage, sourceKey, src]);
+
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    if (!hasError && fallback && e.currentTarget.src !== fallback) {
+    if (!currentImageState.hasError && fallback && e.currentTarget.src !== fallback) {
       // Try fallback if not already using it
-      setHasError(true);
+      setImageState((previous) => ({
+        ...(previous.key === sourceKey
+          ? previous
+          : { key: sourceKey, isLoaded: false, hasError: false, resolvedSrc: undefined as string | undefined }),
+        hasError: true,
+        isLoaded: false,
+      }));
     } else if (onError) {
       onError(e);
     }
   };
 
   const handleLoad = () => {
-    setIsLoaded(true);
+    setImageState((previous) => ({
+      ...(previous.key === sourceKey
+        ? previous
+        : { key: sourceKey, isLoaded: false, hasError: false, resolvedSrc: undefined as string | undefined }),
+      isLoaded: true,
+    }));
   };
 
   // Determine image source: use fallback if error occurred, otherwise use src if in view
-  const imageSrc = hasError && fallback 
-    ? fallback 
-    : (src && isInView ? src : (fallback && !src ? fallback : undefined));
+  const primarySrc = src && isInView
+    ? (isRemoteImage ? currentImageState.resolvedSrc : src)
+    : undefined;
+  const imageSrc = currentImageState.hasError && fallback
+    ? fallback
+    : primarySrc ?? (fallback && !src ? fallback : undefined);
 
   // Extract size classes from className to apply to wrapper
   const otherClasses = className?.replace(/\b(w-|h-|w\[|h\[)\S+/g, '').trim() || '';
@@ -152,7 +231,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
 
   return (
     <div className={cn('relative overflow-hidden', sizeClasses)}>
-      {!isLoaded && placeholder && (
+      {!currentImageState.isLoaded && placeholder && (
         <div className="absolute inset-0 flex items-center justify-center bg-zinc-200 dark:bg-zinc-800 z-10">
           {placeholder}
         </div>
@@ -164,7 +243,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
           alt={alt}
           className={cn(
             'w-full h-full object-cover transition-opacity duration-300',
-            isLoaded ? 'opacity-100' : 'opacity-0',
+            currentImageState.isLoaded ? 'opacity-100' : 'opacity-0',
             otherClasses
           )}
           onLoad={handleLoad}

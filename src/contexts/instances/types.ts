@@ -11,7 +11,7 @@ export interface ModpackConfig {
   name: string;
   runtime: ModpackRuntime;
   java?: { path?: string };
-  memory?: { maxMb: number };
+  memory?: { maxMb: number; minMb?: number };
   vmOptions?: string[];
   game?: {
     /**

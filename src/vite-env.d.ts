@@ -7,13 +7,17 @@ import type {
   InstanceUpdaterAPI,
   IpcRendererAPI,
   ModpacksAPI,
+  MirrorsAPI,
   LauncherAPI,
   ModsAPI,
   NetworkAPI,
   SettingsAPI,
   WindowControlsAPI,
   FriendLauncherApi,
+  AccountAPI,
+  ExternalLinksAPI,
 } from '@shared/contracts';
+import type { ShareAPI } from '@shared/contracts/share';
 
 declare global {
   interface Window {
@@ -28,10 +32,14 @@ declare global {
     assets: AssetsAPI;
     appUpdater: AppUpdaterAPI;
     ipcRenderer: IpcRendererAPI;
+    account: AccountAPI;
+    mirrors: MirrorsAPI;
+    share: ShareAPI;
+    externalLinks: ExternalLinksAPI;
 
-    // Preferred surface for new code (namespaced).
+    // Supported surface for renderer code (namespaced).
     api: FriendLauncherApi;
   }
 }
 
-export {};
+export { };

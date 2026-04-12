@@ -14,6 +14,7 @@ export function ModloaderSection(props: {
   fabricSupportedVersions: string[];
   neoForgeSupportedVersions: string[];
   isModloadersLoading?: boolean;
+  disabled?: boolean;
   t: (key: string) => string;
   getAccentStyles: (type: 'bg') => { className?: string; style?: CSSProperties };
 }) {
@@ -27,6 +28,7 @@ export function ModloaderSection(props: {
     fabricSupportedVersions,
     neoForgeSupportedVersions,
     isModloadersLoading = false,
+    disabled,
     t,
     getAccentStyles,
   } = props;
@@ -60,7 +62,7 @@ export function ModloaderSection(props: {
   }
 
   return (
-    <div className="space-y-2" data-tour="modloaders">
+    <div className={cn("space-y-2", disabled && "opacity-60 pointer-events-none")} data-tour="modloaders">
       <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
         {t('general.modloader') || 'Modloader'}
       </label>
@@ -75,6 +77,7 @@ export function ModloaderSection(props: {
           return (
             <button
               key={loader.id}
+              disabled={disabled}
               onClick={() => {
                 // Use direct setLoader to avoid race conditions from multiple state updates
                 if (isActive) {

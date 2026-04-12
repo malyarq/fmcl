@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../ui/Button';
+import { LazyImage } from '../ui/LazyImage';
 import { ProgressBar } from '../ui/ProgressBar';
 import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
@@ -80,8 +81,7 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
       toast.success(t('modpacks.install_success') || 'Модпак успешно установлен!');
       setTimeout(() => {
         onBack();
-        window.location.reload();
-      }, 2000);
+      }, 1200);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('modpacks.install_error'));
       setInstalling(false);
@@ -112,10 +112,11 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
           {/* Modpack Info */}
           <div className="flex gap-4 p-4 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-200 dark:border-zinc-700">
             {modpack.iconUrl && (
-              <img
+              <LazyImage
                 src={modpack.iconUrl}
                 alt={modpack.title}
                 className="w-20 h-20 rounded-lg object-cover"
+                fallback="/icon.png"
               />
             )}
             <div className="flex-1">

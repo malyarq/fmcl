@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useSettings } from '../../../contexts/SettingsContext';
 import { MINECRAFT_VERSIONS } from '../../../utils/minecraftVersionsList';
 import type { MCVersion } from '../../../services/versions/types';
 import {
@@ -15,7 +14,6 @@ export function useVersions() {
   const [versions, setVersions] = useState<MCVersion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { downloadProvider } = useSettings();
 
   // Fetch the official version manifest with a 24h local cache.
   useEffect(() => {
@@ -40,7 +38,7 @@ export function useVersions() {
 
       console.log('[Versions] Cache expired or missing, refreshing in background...');
       try {
-        const data = await fetchMinecraftVersionList(downloadProvider);
+        const data = await fetchMinecraftVersionList();
         if (!data) return;
 
         const releases = filterReleaseVersions(data);
@@ -61,8 +59,7 @@ export function useVersions() {
     };
 
     fetchVersions();
-  }, [downloadProvider]);
+  }, []);
 
   return { versions, isLoading, error };
 }
-

@@ -1,4 +1,5 @@
 import type { ModpackMetadata } from '../types/modpack';
+import type { ModEntry } from '../types/mods';
 
 export interface ModpackSearchResultItem {
   platform: 'curseforge' | 'modrinth';
@@ -111,10 +112,16 @@ export interface ModpacksAPI {
     modLoader?: { type: string; version?: string },
     rootPath?: string,
   ) => Promise<{ id: string; config: unknown; metadata: ModpackMetadata }>;
+  createFromManifest: (
+    manifest: unknown, // ModpackManifest
+    rootPath?: string,
+  ) => Promise<{ id: string }>;
   exportModpack: (
     modpackId: string,
-    format: 'curseforge' | 'modrinth' | 'zip',
+    format: 'curseforge' | 'modrinth' | 'zip' | 'multimc',
     outputPath: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    options?: any,
     rootPath?: string,
   ) => Promise<{ ok: boolean }>;
   getModpackInfoFromFile: (filePath: string) => Promise<{
@@ -149,28 +156,24 @@ export interface ModpacksAPI {
     rootPath?: string,
   ) => Promise<{ ok: boolean }>;
   // Получение списка модов в модпаке
-  getModpackMods: (modpackId: string, rootPath?: string) => Promise<Array<{
-    id: string;
-    name: string;
-    version: string;
-    loaders: string[];
-    deps: Array<{
-      id: string;
-      versionRange?: string | string[];
-      optional?: boolean;
-      kind: string;
-    }>;
-    file: {
-      path: string;
-      name: string;
-      size: number;
-      mtimeMs: number;
-    };
-    hash: {
-      sha1: string;
-    };
-  }>>;
+  getModpackMods: (modpackId: string, rootPath?: string) => Promise<ModEntry[]>;
   // Резервное копирование модпака
   backupModpack: (modpackId: string, rootPath?: string) => Promise<{ backupPath: string }>;
+  resolvePath: (modpackId: string, rootPath?: string) => Promise<string>;
+
+  // Java
+  scanJava: () => Promise<DetectedJava[]>;
+
+  // Управление контентом
+  getContentStats: () => Promise<{ totalSize: number; dedupedSize: number; totalFiles: number; storedFiles: number }>;
+  cleanupContent: () => Promise<{ freedSize: number; deletedFiles: number }>;
+}
+
+export interface DetectedJava {
+  path: string;
+  version: string;
+  majorVersion: number;
+  valid: boolean;
+  arch?: string; // x86, x64, arm64
 }
 

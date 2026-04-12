@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
+import { Breadcrumbs } from '../ui/Breadcrumbs';
 import { useModpack } from '../../contexts/ModpackContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -16,23 +17,27 @@ import {
   ModpackDetailsModsTab,
   ModpackDetailsSettingsTab,
   ModpackDetailsActions,
+  ResourcePacksTab,
+  ShadersTab,
+  WorldsTab,
   type ModpackDetailsTab,
   type ModpackModEntry,
 } from './details';
+import { ScreenshotsTab } from '../../features/screenshots/components/ScreenshotsTab';
 import { useVersions } from '../../features/launcher/hooks/useVersions';
 import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
 
 interface ModpackDetailsProps {
   modpackId: string;
   onBack: () => void;
-  onNavigate: (view: { type: 'addMod'; modpackId: string } | { type: 'export'; modpackId: string }) => void;
+  onNavigate: (view: { type: 'addMod'; modpackId: string } | { type: 'addResourcePack'; modpackId: string } | { type: 'addShader'; modpackId: string } | { type: 'export'; modpackId: string }) => void;
   onLaunch?: () => void | Promise<void>;
   onMetadataUpdated?: (metadata: ModpackMetadata) => void;
 }
 
 export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBack, onNavigate, onLaunch, onMetadataUpdated }) => {
   const { t, getAccentStyles, getAccentHex, minecraftPath } = useSettings();
-  const { modpacks, select, remove, refresh } = useModpack();
+  const { modpacks, select, rename, duplicate, remove, refresh } = useModpack();
   const toast = useToast();
   const confirm = useConfirm();
 
@@ -169,13 +174,56 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
     }
   };
 
+  const handleRename = async () => {
+    if (!modpack) return;
+
+    const nextName = await confirm.prompt({
+      title: t('modpacks.rename') || 'Переименовать',
+      message: t('modpacks.rename_prompt') || 'Введите новое название:',
+      confirmText: t('modpacks.rename') || 'Переименовать',
+      cancelText: t('general.cancel') || 'Отмена',
+      input: {
+        initialValue: modpack.name,
+        placeholder: modpack.name,
+        requireNonEmpty: true,
+      },
+    });
+    const newName = nextName?.trim();
+
+    if (newName && newName !== modpack.name) {
+      try {
+        await rename(modpackId, newName);
+        await loadDetails();
+      } catch (error) {
+        console.error('Error renaming modpack:', error);
+        toast.error(t('modpacks.rename_error') || 'Ошибка при переименовании');
+      }
+    }
+  };
+
   const handleDuplicate = async () => {
     if (!modpack) return;
+
+    const suggestedName = `${modpack.name} - Copy`;
+    const nextName = await confirm.prompt({
+      title: t('modpacks.duplicate') || 'Дублировать',
+      message: t('modpacks.duplicate_prompt') || 'Введите название копии:',
+      confirmText: t('modpacks.duplicate') || 'Дублировать',
+      cancelText: t('general.cancel') || 'Отмена',
+      input: {
+        initialValue: suggestedName,
+        placeholder: suggestedName,
+        requireNonEmpty: true,
+      },
+    });
+    const newName = nextName?.trim();
+
+    if (!newName) {
+      return;
+    }
+
     try {
-      const result = await modpacksIPC.duplicate(modpackId);
-      if (result?.id) {
-        await refresh();
-      }
+      await duplicate(modpackId, newName);
     } catch (error) {
       console.error('Error duplicating modpack:', error);
       toast.error(t('modpacks.duplicate_error') || 'Ошибка при дублировании модпака');
@@ -222,14 +270,22 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div className="flex items-center gap-4 p-6 border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40 flex-shrink-0">
-        <Button variant="secondary" size="sm" onClick={onBack} className="flex items-center gap-2">
-          <span>←</span>
-          {t('general.back') || 'Назад'}
-        </Button>
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
-          {t('modpacks.settings_title') || t('modpacks.tab_settings') || 'Modpack settings'}
-        </h2>
+      <div className="flex flex-col border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40 px-6 py-4 gap-4 flex-shrink-0">
+        <Breadcrumbs
+          items={[
+            { label: t('modpacks.title') || 'Modpacks', onClick: onBack },
+            { label: modpack.name, active: true }
+          ]}
+        />
+        <div className="flex items-center gap-4">
+          <Button variant="secondary" size="sm" onClick={onBack} className="flex items-center gap-2">
+            <span>←</span>
+            {t('general.back') || 'Назад'}
+          </Button>
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+            {t('modpacks.settings_title') || t('modpacks.tab_settings') || 'Modpack settings'}
+          </h2>
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -275,8 +331,39 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
                       onAddMod={() => onNavigate({ type: 'addMod', modpackId })}
                       onRemoveMod={handleRemoveMod}
                       onModToggle={handleModToggle}
+                      onRefresh={loadMods}
                       t={t}
                       getAccentStyles={getAccentStyles}
+                    />
+                  )}
+
+                  {activeTab === 'resourcepacks' && modpack && (
+                    <ResourcePacksTab
+                      instancePath={modpack.path}
+                      onUpdate={refresh}
+                      onAddResourcePack={() => onNavigate({ type: 'addResourcePack', modpackId })}
+                    />
+                  )}
+
+                  {activeTab === 'shaders' && modpack && (
+                    <ShadersTab
+                      instancePath={modpack.path}
+                      onUpdate={refresh}
+                      onAddShader={() => onNavigate({ type: 'addShader', modpackId })}
+                    />
+                  )}
+
+                  {activeTab === 'worlds' && modpack && (
+                    <WorldsTab
+                      instancePath={modpack.path}
+                      mcVersion={effectiveConfig?.runtime?.minecraft}
+                      onUpdate={refresh}
+                    />
+                  )}
+
+                  {activeTab === 'screenshots' && modpack && (
+                    <ScreenshotsTab
+                      instancePath={modpack.path}
                     />
                   )}
 
@@ -310,6 +397,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
                 }}
                 hasUpdate={hasUpdate && !!metadata?.source && !!metadata?.sourceId && metadata.source !== 'local'}
                 onShowUpdate={() => setShowUpdateModal(true)}
+                onRename={handleRename}
                 onDuplicate={handleDuplicate}
                 onExport={() => onNavigate({ type: 'export', modpackId })}
                 canDelete={modpacks.length > 1}

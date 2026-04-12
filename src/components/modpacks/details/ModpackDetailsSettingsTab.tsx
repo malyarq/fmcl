@@ -37,8 +37,8 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
   fabricVersions,
   neoForgeVersions,
   optiFineVersions,
-  onRefresh,
-  minecraftPath,
+  onRefresh: _onRefresh,
+  minecraftPath: _minecraftPath,
   t,
   getAccentStyles,
 }) => {
@@ -99,6 +99,7 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
       <GameTab
         modpackConfig={effectiveConfig}
         setMemoryGb={(gb) => setters.setMemoryGb(gb)}
+        setMinMemoryGb={(gb) => setters.setMinMemoryGb(gb)}
         setJavaPath={(path) => setters.setJavaPath(path)}
         setVmOptions={(options) => setters.setVmOptions(options)}
         setGameExtraArgs={(args) => setters.setGameExtraArgs(args)}

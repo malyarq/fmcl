@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { useModpack, type ModpackConfig, type ModLoaderType } from '../../../contexts/ModpackContext';
 import { fetchModpackConfig } from '../../../contexts/instances/services/instancesService';
 import {
   withModpackMemoryGb,
+  withModpackMinMemoryGb,
   withModpackJavaPath,
   withRuntimeMinecraft,
   withRuntimeLoader,
@@ -19,6 +20,7 @@ export interface UseModpackDetailsConfigParams {
 
 export interface ModpackDetailsConfigSetters {
   setMemoryGb: (gb: number) => Promise<void>;
+  setMinMemoryGb: (gb: number) => Promise<void>;
   setJavaPath: (path: string) => Promise<void>;
   setVmOptions: (options: string[]) => Promise<void>;
   setGameExtraArgs: (args: string[]) => Promise<void>;
@@ -49,6 +51,7 @@ export function useModpackDetailsConfig({
     selectedId,
     config,
     setMemoryGb: ctxSetMemoryGb,
+    setMinMemoryGb: ctxSetMinMemoryGb,
     setJavaPath: ctxSetJavaPath,
     setVmOptions: ctxSetVmOptions,
     setGameExtraArgs: ctxSetGameExtraArgs,
@@ -84,6 +87,19 @@ export function useModpackDetailsConfig({
       }
     },
     [isSelectedModpack, modpackConfig, ctxSetMemoryGb, saveConfig]
+  );
+
+  const setMinMemoryGb = useCallback(
+    async (gb: number) => {
+      if (isSelectedModpack) {
+        ctxSetMinMemoryGb(gb);
+      } else if (modpackConfig) {
+        const updated = withModpackMinMemoryGb(modpackConfig, gb);
+        setModpackConfig(updated);
+        await saveConfig(updated);
+      }
+    },
+    [isSelectedModpack, modpackConfig, ctxSetMinMemoryGb, saveConfig]
   );
 
   const setJavaPath = useCallback(
@@ -195,6 +211,7 @@ export function useModpackDetailsConfig({
 
   const setters: ModpackDetailsConfigSetters = {
     setMemoryGb,
+    setMinMemoryGb,
     setJavaPath,
     setVmOptions,
     setGameExtraArgs,

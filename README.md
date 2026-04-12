@@ -1,6 +1,6 @@
 # FriendLauncher 🎮
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Version](https://img.shields.io/badge/version-0.0.10-green.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg) ![Version](https://img.shields.io/badge/version-0.1.0-green.svg)
 
 [English](#english) | [Русский](#russian)
 
@@ -17,15 +17,27 @@
   - Built-in tunneling system using **Hyperswarm**.
   - Host a world, generate a code, and friends can join as if they were on your local Wi-Fi.
   - Bypass NAT and firewall restrictions automatically.
-- **🔓 Offline/Cracked Support**:
-  - Full support for offline accounts ("Pirate" mode).
-  - Uses an internal mock authentication server via **authlib-injector** to fully emulate a valid session.
-- **🛠 Modding Ready**:
-  - Auto-detection and installation of **Forge**.
-  - Smart version management (Legacy - Modern versions).
+- **📦 Modpack and Instance Workflows**:
+  - Browse Modrinth modpacks with history and configurable pagination.
+  - Create local instances, duplicate or rename them from the installed cards, and import or export packs.
+  - Share instances with invite codes and import shared manifests directly in the launcher.
+- **🧩 Content Management**:
+  - Manage mods, resource packs, shaders, worlds, datapacks, and screenshots from the launcher UI.
+  - Track content storage usage and clean up stale data safely.
+- **🔓 Flexible Accounts and Skins**:
+  - Support offline accounts and third-party auth servers through **authlib-injector**.
+  - Add, remove, and switch between multiple accounts.
+  - Provider-aware skin preview and management handoff for **Blessing Skin** and **LittleSkin**.
+- **🚀 Download Resilience and Caching**:
+  - Parallel and resumable downloads with validation and retry handling.
+  - Persistent disk cache for remote modpack and mod imagery.
+  - Custom mirrors, speed tests, auto-select, persisted priority order, and fallback download behavior.
+- **📊 Local Statistics and UI Customization**:
+  - View total play time, launch counts, popular modpacks, usage trends, and export local statistics.
+  - Customize themes, background images/videos/particles, UI scale, sidebar position, compact mode, and animation settings.
 - **⚡ Modern Tech Stack**:
-  - Built on **Electron** + **React** for a performant and beautiful UI.
-  - **Vite** powered build system.
+  - Built on **Electron** + **React** + **TypeScript** + **TailwindCSS**.
+  - **Vite** powered build system with **Vitest** coverage for release-critical logic.
 
 ## 🚀 How It Works
 
@@ -60,7 +72,10 @@ git clone https://github.com/your-username/friend-launcher.git
 # 2. Install dependencies
 npm install
 
-# 3. Start Development Mode
+# 3. Run tests (recommended before local changes)
+npm test
+
+# 4. Start Development Mode
 # This runs the Vite renderer and Electron main process concurrently
 npm run dev
 ```
@@ -90,15 +105,27 @@ This project includes tools (`authlib-injector`) to bypass official Minecraft au
   - Встроенная система туннелирования на базе **Hyperswarm**.
   - Создайте мир, скиньте другу **Код Комнаты**, и он подключится к вам через интернет, как по локальной сети.
   - Работает через любые NAT и брандмауэры.
-- **🔓 Свободный Режим (Offline/Pirate)**:
-  - Полная поддержка оффлайн-аккаунтов.
-  - Использует **authlib-injector** и встроенный эмулятор сервера авторизации для корректной работы скинов и сетевой игры.
-- **🛠 Поддержка Модов**:
-  - Автоматическая установка **Forge** одним кликом.
-  - Поддержка старых и новых версий игры.
+- **📦 Управление модпаками и инстансами**:
+  - Браузер Modrinth с историей просмотров и настраиваемой пагинацией.
+  - Создание локальных инстансов, дублирование и переименование прямо из карточек.
+  - Импорт, экспорт и обмен инстансами через share code.
+- **🧩 Управление контентом**:
+  - Моды, ресурспаки, шейдеры, миры, датапаки и скриншоты управляются из UI лаунчера.
+  - Есть статистика использования контента и безопасная очистка лишних данных.
+- **🔓 Гибкие аккаунты и скины**:
+  - Поддержка оффлайн-аккаунтов и сторонних auth-серверов через **authlib-injector**.
+  - Несколько аккаунтов, переключение между ними и удаление из настроек.
+  - Provider-aware preview и переход к управлению скинами для **Blessing Skin** и **LittleSkin**.
+- **🚀 Устойчивые загрузки и кэширование**:
+  - Параллельные и возобновляемые загрузки с проверкой файлов и retry-логикой.
+  - Постоянный дисковый кэш для иконок и изображений модпаков и модов.
+  - Кастомные зеркала, тест скорости, авто-выбор, сохранение приоритета и fallback-поведение загрузок.
+- **📊 Локальная статистика и кастомизация UI**:
+  - Время игры, число запусков, популярные модпаки, тренды использования и экспорт статистики.
+  - Кастомные темы, фоновые изображения/видео/частицы, zoom интерфейса, положение сайдбара, compact mode и отключение анимаций.
 - **⚡ Современный Стек**:
-  - Интерфейс на **React** + **TailwindCSS**.
-  - Быстрое и отзывчивое приложение на **Electron**.
+  - Интерфейс на **Electron** + **React** + **TypeScript** + **TailwindCSS**.
+  - Сборка на **Vite** и тесты на **Vitest** для критичных релизных сценариев.
 
 ## 🚀 Как это работает?
 
@@ -130,7 +157,10 @@ FriendLauncher превращает интернет в локальную се�
 # 1. Установите зависимости
 npm install
 
-# 2. Запуск в режиме разработки
+# 2. Прогон тестов перед изменениями (рекомендуется)
+npm test
+
+# 3. Запуск в режиме разработки
 # Запускает и интерфейс (Vite), и ядро (Electron)
 npm run dev
 ```

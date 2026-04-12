@@ -48,15 +48,15 @@ export const launcherIPC = {
 
   // events
   onLog(callback: (log: string) => void): () => void {
-    if (!hasMethod('onLog')) return () => {};
+    if (!hasMethod('onLog')) return () => { };
     return requireLauncher('onLog').onLog(callback);
   },
   onProgress(callback: (progress: { type: string; task: number; total: number }) => void): () => void {
-    if (!hasMethod('onProgress')) return () => {};
+    if (!hasMethod('onProgress')) return () => { };
     return requireLauncher('onProgress').onProgress(callback);
   },
   onClose(callback: (code: number) => void): () => void {
-    if (!hasMethod('onClose')) return () => {};
+    if (!hasMethod('onClose')) return () => { };
     return requireLauncher('onClose').onClose(callback);
   },
 
@@ -81,6 +81,9 @@ export const launcherIPC = {
   },
   getNeoForgeSupportedVersions(providerId?: Parameters<LauncherApi['getNeoForgeSupportedVersions']>[0]): ReturnType<LauncherApi['getNeoForgeSupportedVersions']> {
     return call('getNeoForgeSupportedVersions', () => requireLauncher('getNeoForgeSupportedVersions').getNeoForgeSupportedVersions(providerId));
+  },
+  sendStdin(data: string): Promise<void> {
+    return call('sendStdin', () => requireLauncher('sendStdin').sendStdin(data));
   },
 };
 

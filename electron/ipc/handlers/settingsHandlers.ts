@@ -1,5 +1,10 @@
 import { ipcMain, type BrowserWindow, app, dialog, shell } from 'electron'
 import path from 'path'
+import {
+  validateOpenDialogOptions,
+  validateOptionalRootPath,
+  validateSaveDialogOptions,
+} from '../validation/privilegedPayloads'
 
 export function registerSettingsHandlers(deps: { window: BrowserWindow }) {
   const { window } = deps
@@ -22,9 +27,10 @@ export function registerSettingsHandlers(deps: { window: BrowserWindow }) {
   })
 
   ipcMain.removeHandler('settings:openMinecraftPath')
-  ipcMain.handle('settings:openMinecraftPath', async (_evt, targetPath?: string) => {
+  ipcMain.handle('settings:openMinecraftPath', async (_evt, targetPath?: unknown) => {
     try {
-      const pathToOpen = targetPath || path.join(app.getPath('userData'), 'minecraft_data')
+      const pathToOpen = validateOptionalRootPath(targetPath, 'Minecraft directory path')
+        ?? path.join(app.getPath('userData'), 'minecraft_data')
       await shell.openPath(pathToOpen)
       return { success: true }
     } catch (error) {
@@ -39,9 +45,9 @@ export function registerSettingsHandlers(deps: { window: BrowserWindow }) {
   })
 
   ipcMain.removeHandler('dialog:showSaveDialog')
-  ipcMain.handle('dialog:showSaveDialog', async (_evt, options: Electron.SaveDialogOptions) => {
+  ipcMain.handle('dialog:showSaveDialog', async (_evt, options: unknown) => {
     try {
-      const result = await dialog.showSaveDialog(window, options)
+      const result = await dialog.showSaveDialog(window, validateSaveDialogOptions(options))
       return result
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -50,9 +56,9 @@ export function registerSettingsHandlers(deps: { window: BrowserWindow }) {
   })
 
   ipcMain.removeHandler('dialog:showOpenDialog')
-  ipcMain.handle('dialog:showOpenDialog', async (_evt, options: Electron.OpenDialogOptions) => {
+  ipcMain.handle('dialog:showOpenDialog', async (_evt, options: unknown) => {
     try {
-      const result = await dialog.showOpenDialog(window, options)
+      const result = await dialog.showOpenDialog(window, validateOpenDialogOptions(options))
       return result
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error)
@@ -70,4 +76,3 @@ export function registerSettingsHandlers(deps: { window: BrowserWindow }) {
     }
   })
 }
-

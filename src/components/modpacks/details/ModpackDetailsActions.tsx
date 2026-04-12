@@ -6,6 +6,7 @@ export interface ModpackDetailsActionsProps {
   onLaunch: () => void;
   hasUpdate: boolean;
   onShowUpdate: () => void;
+  onRename: () => void;
   onDuplicate: () => void;
   onExport: () => void;
   canDelete: boolean;
@@ -21,6 +22,7 @@ export const ModpackDetailsActions: React.FC<ModpackDetailsActionsProps> = ({
   onLaunch,
   hasUpdate,
   onShowUpdate,
+  onRename,
   onDuplicate,
   onExport,
   canDelete,
@@ -42,6 +44,9 @@ export const ModpackDetailsActions: React.FC<ModpackDetailsActionsProps> = ({
         {t('modpacks.update_available') || 'Обновление доступно'}
       </Button>
     )}
+    <Button variant="secondary" onClick={onRename}>
+      {t('modpacks.rename')}
+    </Button>
     <Button variant="secondary" onClick={onDuplicate}>
       {t('modpacks.duplicate')}
     </Button>

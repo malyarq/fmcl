@@ -28,7 +28,7 @@ export interface UseLauncherResult {
 
 export const useLauncher = (): UseLauncherResult => {
   const state = useLauncherState();
-  const { t, minecraftPath, downloadProvider, autoDownloadThreads, downloadThreads, maxSockets } = useSettings();
+  const { t, minecraftPath, autoDownloadThreads, downloadThreads, maxSockets } = useSettings();
   const { effectiveModpackId: modpackId, config: modpackConfig } = useModpack();
   const javaPath = modpackConfig?.java?.path || '';
 
@@ -69,7 +69,6 @@ export const useLauncher = (): UseLauncherResult => {
         modpackId: modpackId || undefined,
         // Legacy alias for backward compatibility
         instanceId: modpackId || undefined,
-        downloadProvider,
         autoDownloadThreads,
         downloadThreads,
         maxSockets,
@@ -110,4 +109,3 @@ export const useLauncher = (): UseLauncherResult => {
     copyLogs,
   };
 };
-

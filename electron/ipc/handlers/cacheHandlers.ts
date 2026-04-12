@@ -1,9 +1,11 @@
 import { ipcMain, type BrowserWindow, app } from 'electron'
 import fs from 'fs'
 import path from 'path'
+import { ImageCacheService } from '../../services/cache/imageCacheService'
 
 export function registerCacheHandlers(deps: { window: BrowserWindow }) {
   const { window } = deps
+  const imageCacheService = new ImageCacheService(app.getPath('userData'))
 
   ipcMain.removeHandler('launcher:clearCache')
   ipcMain.handle('launcher:clearCache', async () => {
@@ -15,6 +17,8 @@ export function registerCacheHandlers(deps: { window: BrowserWindow }) {
       if (fs.existsSync(cacheFile)) {
         fs.unlinkSync(cacheFile)
       }
+
+      await imageCacheService.clear()
 
       // Clear browser cache
       if (!window.isDestroyed()) {
@@ -35,5 +39,32 @@ export function registerCacheHandlers(deps: { window: BrowserWindow }) {
       window.reload()
     }
   })
-}
 
+  ipcMain.removeHandler('cache:getImageState')
+  ipcMain.handle('cache:getImageState', async () => {
+    return imageCacheService.getState()
+  })
+
+  ipcMain.removeHandler('cache:setImageLimit')
+  ipcMain.handle('cache:setImageLimit', async (_event, maxSizeBytes: unknown) => {
+    if (typeof maxSizeBytes !== 'number' || !Number.isFinite(maxSizeBytes)) {
+      throw new Error('Image cache limit must be a finite number')
+    }
+
+    return imageCacheService.setMaxSizeBytes(maxSizeBytes)
+  })
+
+  ipcMain.removeHandler('cache:cleanupImage')
+  ipcMain.handle('cache:cleanupImage', async () => {
+    return imageCacheService.cleanupToLimit()
+  })
+
+  ipcMain.removeHandler('cache:resolveImage')
+  ipcMain.handle('cache:resolveImage', async (_event, sourceUrl: unknown) => {
+    if (typeof sourceUrl !== 'string' || !sourceUrl.trim()) {
+      throw new Error('Image cache resolve requires a non-empty URL')
+    }
+
+    return imageCacheService.resolveImage(sourceUrl)
+  })
+}

@@ -5,9 +5,10 @@ export function NicknameSection(props: {
   nickname: string;
   setNickname: (name: string) => void;
   isOffline: boolean;
+  disabled?: boolean;
   t: (key: string) => string;
 }) {
-  const { nickname, setNickname, isOffline, t } = props;
+  const { nickname, setNickname, isOffline, disabled, t } = props;
   const [nicknameError, setNicknameError] = useState<string | null>(null);
 
   const validateNickname = (value: string): string | null => {
@@ -49,6 +50,7 @@ export function NicknameSection(props: {
         className="bg-white dark:bg-zinc-900"
         error={nicknameError || undefined}
         required
+        disabled={disabled}
       />
     </div>
   );

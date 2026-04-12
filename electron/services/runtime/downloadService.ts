@@ -2,10 +2,19 @@ import path from 'node:path';
 import type { Dispatcher } from 'undici';
 import { DefaultRangePolicy } from '@xmcl/file-transfer';
 import { getVersionList, type MinecraftVersionList } from '@xmcl/installer';
-import { BMCL_ROOT, getProviderById, type DownloadProvider, type DownloadProviderId } from '../mirrors/providers';
+import {
+  BMCL_ROOT,
+  createProviderForMirror,
+  getProviderById,
+  PriorityProvider,
+  type DownloadProvider,
+  type DownloadProviderId,
+} from '../mirrors/providers';
 import { reportMirrorFailure, reportMirrorSuccess } from '../mirrors/scoring';
 import { DEFAULT_USER_AGENT } from '@shared/constants';
 import type { LibraryEntry, VersionEntry } from '@shared/types';
+
+import type { MirrorsService } from '../mirrors/mirrorsService';
 
 /**
  * Owns download/mirror state (e.g. bad hosts blacklist) and constructs XMCL installer options.
@@ -16,9 +25,25 @@ import type { LibraryEntry, VersionEntry } from '@shared/types';
  */
 export class RuntimeDownloadService {
   private badDownloadHosts = new Set<string>();
+  private mirrorsService?: MirrorsService;
+
+  constructor(mirrorsService?: MirrorsService) {
+    this.mirrorsService = mirrorsService;
+  }
 
   public getDownloadProvider(providerId?: DownloadProviderId): DownloadProvider {
-    return getProviderById(providerId ?? 'auto');
+    if (providerId && providerId !== 'auto') {
+      return getProviderById(providerId);
+    }
+
+    if (this.mirrorsService) {
+      const preferredMirrors = this.mirrorsService.getPreferredMirrors();
+      if (preferredMirrors.length > 0) {
+        return new PriorityProvider(preferredMirrors.map((mirror) => createProviderForMirror(mirror)));
+      }
+    }
+
+    return getProviderById('auto');
   }
 
   /**
@@ -197,4 +222,3 @@ export class RuntimeDownloadService {
     };
   }
 }
-

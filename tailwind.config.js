@@ -15,6 +15,19 @@ export default {
   ],
   theme: {
     extend: {
+      colors: {
+        background: 'rgb(var(--bg-app) / <alpha-value>)',
+        card: 'rgb(var(--bg-card) / <alpha-value>)',
+        overlay: 'rgb(var(--bg-overlay) / <alpha-value>)',
+        sidebar: 'rgb(var(--bg-sidebar) / <alpha-value>)',
+
+        foreground: 'rgb(var(--text-main) / <alpha-value>)',
+        secondary: 'rgb(var(--text-secondary) / <alpha-value>)',
+        muted: 'rgb(var(--text-muted) / <alpha-value>)',
+
+        border: 'rgb(var(--border-default) / <alpha-value>)',
+        'border-active': 'rgb(var(--border-active) / <alpha-value>)',
+      },
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
       },

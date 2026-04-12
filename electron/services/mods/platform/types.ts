@@ -4,6 +4,8 @@ export type ModLoaderFilter = 'forge' | 'fabric' | 'quilt' | 'neoforge' | 'any';
 
 export type ModSortOption = 'popularity' | 'date' | 'alphabetical';
 
+export type ContentType = 'mod' | 'resourcepack' | 'shader' | 'datapack';
+
 export interface ModSearchQuery {
   platform: ModPlatformId;
   query: string;
@@ -12,6 +14,8 @@ export interface ModSearchQuery {
   offset?: number;
   limit?: number;
   sort?: ModSortOption;
+  /** Type of content to search for. Defaults to 'mod'. */
+  contentType?: ContentType;
 }
 
 export interface ModSearchResultItem {
@@ -85,6 +89,11 @@ export interface ModInstallRequest {
    * Optional extra fallback urls to try after the primary one.
    */
   fallbackUrls?: string[];
+  /**
+   * Type of content being installed. Determines destination folder.
+   * 'mod' -> mods/, 'resourcepack' -> resourcepacks/, 'shader' -> shaderpacks/
+   */
+  contentType?: ContentType;
 }
 
 export interface ModInstallResult {

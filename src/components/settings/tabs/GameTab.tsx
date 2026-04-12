@@ -9,6 +9,7 @@ import { AutoConnectSection } from './game/AutoConnectSection';
 export interface GameTabProps {
   modpackConfig: ModpackConfig | null;
   setMemoryGb: (gb: number) => void;
+  setMinMemoryGb: (gb: number) => void;
   setJavaPath: (path: string) => void;
   setVmOptions: (vmOptions: string[]) => void;
   setGameExtraArgs: (args: string[]) => void;
@@ -24,6 +25,7 @@ export interface GameTabProps {
 export const GameTab: React.FC<GameTabProps> = ({
   modpackConfig,
   setMemoryGb,
+  setMinMemoryGb,
   setJavaPath,
   setVmOptions,
   setGameExtraArgs,
@@ -87,6 +89,7 @@ export const GameTab: React.FC<GameTabProps> = ({
         <RuntimeSection
           modpackConfig={modpackConfig}
           setMemoryGb={setMemoryGb}
+          setMinMemoryGb={setMinMemoryGb}
           setJavaPath={setJavaPath}
           t={t}
           getAccentStyles={getAccentStyles}

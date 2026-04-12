@@ -50,6 +50,7 @@ export interface LauncherAPI {
   getFabricSupportedVersions: () => Promise<string[]>;
   getOptiFineSupportedVersions: () => Promise<string[]>;
   getNeoForgeSupportedVersions: (providerId?: DownloadProviderId) => Promise<string[]>;
+  sendStdin: (data: string) => Promise<void>;
 
   onLog: (callback: (log: string) => void) => () => void;
   onProgress: (callback: (progress: LauncherProgressEvent) => void) => () => void;

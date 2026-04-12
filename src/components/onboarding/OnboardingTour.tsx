@@ -64,10 +64,10 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
       // Элемент не найден — пропускаем шаг только при движении вперёд, не при «Назад»
       if (isGoingBackRef.current) {
         isGoingBackRef.current = false;
-        setOverlayPosition(null); // показываем tooltip по центру
+        setTimeout(() => setOverlayPosition(null), 0);
       } else if (currentStep < steps.length - 1) {
-        setCurrentStep((prev) => prev + 1);
-        setOverlayPosition(null);
+        setTimeout(() => setCurrentStep((prev) => prev + 1), 0);
+        setTimeout(() => setOverlayPosition(null), 0);
       } else {
         onComplete();
       }
@@ -248,7 +248,7 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
 
       {/* Tooltip */}
       <div
-          className="fixed z-[110] w-full max-w-sm bg-white dark:bg-zinc-800 rounded-lg shadow-2xl p-6 pointer-events-auto border border-zinc-200 dark:border-zinc-700"
+        className="fixed z-[110] w-full max-w-sm bg-white dark:bg-zinc-800 rounded-lg shadow-2xl p-6 pointer-events-auto border border-zinc-200 dark:border-zinc-700"
         style={{
           ...tooltipStyle,
           // Ограничиваем позицию tooltip, чтобы он не выходил за границы экрана

@@ -6,6 +6,7 @@ import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import type { ModpackManifest } from '@shared/types/modpack';
+import { useModpackListContext } from '../../contexts/ModpackContext';
 
 interface ImportModpackPreviewPageProps {
   filePath: string;
@@ -25,9 +26,10 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
 }) => {
   const { t, getAccentStyles } = useSettings();
   const toast = useToast();
+  const { refresh } = useModpackListContext();
   const [loading, setLoading] = useState(true);
   const [info, setInfo] = useState<{
-    format: 'curseforge' | 'modrinth' | 'zip' | null;
+    format: 'curseforge' | 'modrinth' | 'zip' | 'multimc' | null;
     manifest: ModpackManifest | null;
     error?: string;
   } | null>(null);
@@ -54,17 +56,15 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
     setImporting(true);
     try {
       await modpacksIPC.import(filePath);
+      await refresh();
       toast.success(t('modpacks.import_success') || 'Модпак успешно импортирован!');
-      setTimeout(() => {
-        onBack();
-        window.location.reload();
-      }, 1000);
+      onBack();
     } catch (error) {
       console.error('Error importing modpack:', error);
       toast.error(t('modpacks.import_error') || 'Ошибка при импорте модпака');
-    } finally {
-      setImporting(false);
     }
+
+    setImporting(false);
   };
 
   return (
@@ -105,7 +105,7 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
                 <h3 className="font-bold text-lg text-zinc-900 dark:text-white mb-4">
                   {info.manifest.name || path.basename(filePath)}
                 </h3>
-                
+
                 <div className="space-y-3">
                   {info.manifest.version && (
                     <div>
@@ -170,8 +170,9 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
                     </p>
                     <p className="text-sm font-medium text-zinc-900 dark:text-white capitalize">
                       {info.format === 'curseforge' ? t('modpacks.platform_curseforge') :
-                       info.format === 'modrinth' ? t('modpacks.platform_modrinth') :
-                       info.format || 'Unknown'}
+                        info.format === 'modrinth' ? t('modpacks.platform_modrinth') :
+                          info.format === 'multimc' ? 'MultiMC / Prism / FriendLauncher' :
+                            info.format || 'Unknown'}
                     </p>
                   </div>
                 </div>

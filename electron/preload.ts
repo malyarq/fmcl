@@ -10,6 +10,12 @@ import { networkAPI } from './preload/bridges/NetworkBridge'
 import { settings } from './preload/bridges/SettingsBridge'
 import { updater } from './preload/bridges/UpdaterBridge'
 import { windowControls } from './preload/bridges/WindowControlsBridge'
+import { ScreenshotsBridge } from './preload/bridges/ScreenshotsBridge'
+import { AccountBridge } from './preload/bridges/AccountBridge'
+import { MirrorsBridge } from './preload/bridges/MirrorsBridge'
+import { statistics } from './preload/bridges/StatisticsBridge'
+import { ShareBridge } from './preload/bridges/ShareBridge'
+import { ExternalLinksBridge } from './preload/bridges/ExternalLinksBridge'
 import type { FriendLauncherApi } from '@shared/contracts'
 
 // Expose a minimal, typed surface for the renderer process.
@@ -24,8 +30,13 @@ contextBridge.exposeInMainWorld('windowControls', windowControls)
 contextBridge.exposeInMainWorld('cache', cache)
 contextBridge.exposeInMainWorld('settings', settings)
 contextBridge.exposeInMainWorld('assets', assets)
+contextBridge.exposeInMainWorld('screenshots', ScreenshotsBridge)
+contextBridge.exposeInMainWorld('account', AccountBridge)
+contextBridge.exposeInMainWorld('mirrors', MirrorsBridge)
+contextBridge.exposeInMainWorld('share', ShareBridge)
+contextBridge.exposeInMainWorld('externalLinks', ExternalLinksBridge)
 
-// Unified namespace (preferred for new code). Existing `window.*` globals remain as aliases.
+// Unified namespace (supported for renderer code). Legacy `window.*` globals remain as aliases.
 const api: FriendLauncherApi = {
   launcher,
   modpacks,
@@ -38,6 +49,11 @@ const api: FriendLauncherApi = {
   settings,
   assets,
   ipcRenderer: ipcRendererBridge,
+  account: AccountBridge,
+  mirrors: MirrorsBridge,
+  statistics,
+  share: ShareBridge,
+  externalLinks: ExternalLinksBridge,
 }
 
 contextBridge.exposeInMainWorld('api', api)

@@ -15,7 +15,12 @@ type LegacyLauncherModpacks = Partial<{
   deleteModpack: (id: string, rootPath?: string) => Promise<{ ok: boolean }>;
   getModpackConfig: (id: string, rootPath?: string) => Promise<ModpackConfig | null>;
   saveModpackConfig: (cfg: ModpackConfig, rootPath?: string) => Promise<{ ok: boolean }>;
+  scanJava: () => Promise<{ path: string; version: string; majorVersion: number; valid: boolean }[]>;
 }>;
+
+// Helper to access ipcRenderer directly
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ipc = () => (window as any).ipcRenderer;
 
 function hasModpacks(): boolean {
   return typeof window !== 'undefined' && Boolean(window.api?.modpacks || window.modpacks);
@@ -157,6 +162,10 @@ export const modpacksIPC = {
     return call('updateModpackMetadata', () => requireModpacks('updateModpackMetadata').updateModpackMetadata(modpackId, updates, rootPath));
   },
 
+  scanJava(): Promise<{ path: string; version: string; majorVersion: number; valid: boolean }[]> {
+    return call('scanJava', () => requireModpacks('scanJava').scanJava());
+  },
+
   // Поиск модпаков
   searchCurseForge(
     query: string,
@@ -207,14 +216,20 @@ export const modpacksIPC = {
     return call('importModpack', () => requireModpacks('importModpack').importModpack(filePath, targetModpackId, rootPath));
   },
 
+  // Создание по манифесту
+  createFromManifest(manifest: unknown, rootPath?: string) {
+    return call('createFromManifest', () => requireModpacks('createFromManifest').createFromManifest(manifest, rootPath));
+  },
+
   // Создание локального модпака
   createLocal(name: string, version: string, minecraftVersion: string, modLoader?: { type: string; version?: string }, rootPath?: string) {
     return call('createLocalModpack', () => requireModpacks('createLocalModpack').createLocalModpack(name, version, minecraftVersion, modLoader, rootPath));
   },
 
   // Экспорт модпака
-  export(modpackId: string, format: 'curseforge' | 'modrinth' | 'zip', outputPath: string, rootPath?: string) {
-    return call('exportModpack', () => requireModpacks('exportModpack').exportModpack(modpackId, format, outputPath, rootPath));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  export(modpackId: string, format: 'curseforge' | 'modrinth' | 'zip' | 'multimc', outputPath: string, options?: any, rootPath?: string) {
+    return call('exportModpack', () => requireModpacks('exportModpack').exportModpack(modpackId, format, outputPath, options, rootPath));
   },
 
   // Получение списка модов в модпаке
@@ -240,6 +255,19 @@ export const modpacksIPC = {
   // Добавление мода в модпак
   addMod(modpackId: string, mod: { platform: 'curseforge' | 'modrinth'; projectId: string | number; versionId: string | number }, rootPath?: string) {
     return call('addModToModpack', () => requireModpacks('addModToModpack').addModToModpack(modpackId, mod, rootPath));
+  },
+
+  resolvePath(id: string, rootPath?: string): Promise<string> {
+    return ipc()?.invoke('modpacks:resolvePath', id, rootPath) ?? Promise.resolve('');
+  },
+
+  // Управление контентом
+  getContentStats(): Promise<{ totalSize: number; dedupedSize: number; totalFiles: number; storedFiles: number }> {
+    return call('getContentStats', () => requireModpacks('getContentStats').getContentStats());
+  },
+
+  cleanupContent(): Promise<{ freedSize: number; deletedFiles: number }> {
+    return call('cleanupContent', () => requireModpacks('cleanupContent').cleanupContent());
   },
 };
 

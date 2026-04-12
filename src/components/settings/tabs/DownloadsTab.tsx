@@ -1,9 +1,8 @@
 import React from 'react';
 import { Input } from '../../ui/Input';
+import { MirrorsSettings } from '../../../features/settings/mirrors/MirrorsSettings';
 
 export interface DownloadsTabProps {
-  downloadProvider: 'mojang' | 'bmcl' | 'auto';
-  setDownloadProvider: (val: 'mojang' | 'bmcl' | 'auto') => void;
   autoDownloadThreads: boolean;
   setAutoDownloadThreads: (val: boolean) => void;
   downloadThreads: number;
@@ -14,8 +13,6 @@ export interface DownloadsTabProps {
 }
 
 export const DownloadsTab: React.FC<DownloadsTabProps> = ({
-  downloadProvider,
-  setDownloadProvider,
   autoDownloadThreads,
   setAutoDownloadThreads,
   downloadThreads,
@@ -27,19 +24,8 @@ export const DownloadsTab: React.FC<DownloadsTabProps> = ({
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-3">
-          <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-2 block">
-            {t('settings.download_provider')}
-          </label>
-          <select
-            value={downloadProvider}
-            onChange={(e) => setDownloadProvider(e.target.value as 'mojang' | 'bmcl' | 'auto')}
-            className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-zinc-300/50 dark:border-zinc-700/50 rounded-lg p-3 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 shadow-sm hover:shadow-md transition-all"
-          >
-            <option value="auto">{t('settings.download_provider_auto')}</option>
-            <option value="bmcl">{t('settings.download_provider_bmcl')}</option>
-            <option value="mojang">{t('settings.download_provider_mojang')}</option>
-          </select>
+        <div className="space-y-3 md:col-span-2">
+          <MirrorsSettings />
         </div>
 
         <div className="space-y-3">

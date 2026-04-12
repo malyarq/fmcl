@@ -74,5 +74,10 @@ export function registerLauncherHandlers(deps: {
   ipcMain.handle('launcher:getNeoForgeSupportedVersions', async (_evt, providerId?: DownloadProviderId) => {
     return await launcher.getNeoForgeSupportedVersions(providerId)
   })
+
+  ipcMain.removeHandler('launcher:stdin')
+  ipcMain.handle('launcher:stdin', (_evt, data: string) => {
+    launcher.writeToGameStdin(data)
+  })
 }
 

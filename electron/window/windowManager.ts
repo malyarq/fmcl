@@ -1,5 +1,6 @@
-import { BrowserWindow, nativeImage, shell } from 'electron';
+import { BrowserWindow, nativeImage } from 'electron';
 import path from 'node:path';
+import { openExternalUrl } from '../security/externalUrls';
 
 export type CreateMainWindowParams = {
   preloadPath: string;
@@ -8,11 +9,65 @@ export type CreateMainWindowParams = {
   vitePublicPath: string;
 };
 
+function buildAllowedOrigins(rendererDevUrl?: string): Set<string> {
+  const allowedOrigins = new Set<string>();
+  if (!rendererDevUrl) {
+    return allowedOrigins;
+  }
+
+  try {
+    allowedOrigins.add(new URL(rendererDevUrl).origin);
+  } catch {
+    // ignore invalid dev URL
+  }
+
+  return allowedOrigins;
+}
+
+function allowInternalWindowUrl(url: string, allowedOrigins: ReadonlySet<string>): boolean {
+  if (url.startsWith('file://')) {
+    return true;
+  }
+
+  try {
+    return allowedOrigins.has(new URL(url).origin);
+  } catch {
+    return false;
+  }
+}
+
+function attachExternalNavigationGuards(
+  win: BrowserWindow,
+  allowedOrigins: ReadonlySet<string>,
+  contextPrefix: string,
+): void {
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    void openExternalUrl(
+      { url, context: `${contextPrefix} popup` },
+      { parentWindow: win, showBlockedDialog: true },
+    );
+    return { action: 'deny' };
+  });
+
+  win.webContents.on('will-navigate', (event, url) => {
+    if (allowInternalWindowUrl(url, allowedOrigins)) {
+      return;
+    }
+
+    event.preventDefault();
+    void openExternalUrl(
+      { url, context: `${contextPrefix} navigation` },
+      { parentWindow: win, showBlockedDialog: true },
+    );
+  });
+}
+
 export function createMainWindow(params: CreateMainWindowParams): BrowserWindow {
   const { preloadPath, rendererDevUrl, rendererDist, vitePublicPath } = params;
 
   const iconPath = path.join(vitePublicPath, 'icon.png');
   const appIcon = nativeImage.createFromPath(iconPath);
+  const allowedOrigins = buildAllowedOrigins(rendererDevUrl);
 
   // Размер окна: width/height — стартовый размер, minWidth/minHeight — минимум при ресайзе
   const win = new BrowserWindow({
@@ -24,6 +79,9 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
     title: 'FriendLauncher',
     webPreferences: {
       preload: preloadPath,
+      // Phase 1 keeps sandbox disabled until the preload surface is boot-verified under sandbox.
+      // Compensating controls stay enforced through context isolation, the IPC allowlist, and
+      // the shared external-link trust gates below.
       sandbox: false,
       // Security posture: keep Node out of renderer, use preload + contextBridge only.
       contextIsolation: true,
@@ -32,6 +90,7 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
       nodeIntegrationInSubFrames: false,
       webSecurity: true,
       allowRunningInsecureContent: false,
+      navigateOnDragDrop: false,
       devTools: Boolean(rendererDevUrl),
       webviewTag: false,
     },
@@ -39,36 +98,7 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
     titleBarStyle: 'hidden',
   });
 
-  // Prevent unexpected navigation / popups from renderer content.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    void shell.openExternal(url);
-    return { action: 'deny' };
-  });
-
-  const allowedOrigins = new Set<string>();
-  if (rendererDevUrl) {
-    try {
-      allowedOrigins.add(new URL(rendererDevUrl).origin);
-    } catch {
-      // ignore
-    }
-  }
-
-  win.webContents.on('will-navigate', (event, url) => {
-    // Allow file:// navigation in production builds.
-    if (url.startsWith('file://')) return;
-
-    // Allow navigation within dev server origin.
-    try {
-      const origin = new URL(url).origin;
-      if (allowedOrigins.has(origin)) return;
-    } catch {
-      // fallthrough
-    }
-
-    event.preventDefault();
-    void shell.openExternal(url);
-  });
+  attachExternalNavigationGuards(win, allowedOrigins, 'Main window');
 
   // Set window icon explicitly (for Windows taskbar)
   if (process.platform === 'win32') {
@@ -84,3 +114,50 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
   return win;
 }
 
+export function createConsoleWindow(params: CreateMainWindowParams): BrowserWindow {
+  const { preloadPath, rendererDevUrl, rendererDist, vitePublicPath } = params;
+
+  const iconPath = path.join(vitePublicPath, 'icon.png');
+  const appIcon = nativeImage.createFromPath(iconPath);
+  const allowedOrigins = buildAllowedOrigins(rendererDevUrl);
+
+  const win = new BrowserWindow({
+    width: 900,
+    height: 600,
+    minHeight: 400,
+    minWidth: 600,
+    icon: appIcon,
+    title: 'Debug Console',
+    webPreferences: {
+      preload: preloadPath,
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false,
+      nodeIntegrationInWorker: false,
+      nodeIntegrationInSubFrames: false,
+      webSecurity: true,
+      allowRunningInsecureContent: false,
+      navigateOnDragDrop: false,
+      webviewTag: false,
+      devTools: Boolean(rendererDevUrl),
+    },
+    // Console window has standard frame/titlebar
+    autoHideMenuBar: true,
+  });
+
+  attachExternalNavigationGuards(win, allowedOrigins, 'Console window');
+
+  if (process.platform === 'win32') {
+    win.setIcon(appIcon);
+  }
+
+  // Load with hash #console
+  if (rendererDevUrl) {
+    win.loadURL(`${rendererDevUrl}#console`);
+  } else {
+    // In production, loading file://.../index.html#console works
+    win.loadURL(`file://${path.join(rendererDist, 'index.html')}#console`);
+  }
+
+  return win;
+}

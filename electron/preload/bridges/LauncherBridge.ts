@@ -12,6 +12,7 @@ export const launcher: LauncherAPI = {
   getFabricSupportedVersions: () => ipcRenderer.invoke('launcher:getFabricSupportedVersions'),
   getOptiFineSupportedVersions: () => ipcRenderer.invoke('launcher:getOptiFineSupportedVersions'),
   getNeoForgeSupportedVersions: (providerId?: DownloadProviderId) => ipcRenderer.invoke('launcher:getNeoForgeSupportedVersions', providerId),
+  sendStdin: (data: string) => ipcRenderer.invoke('launcher:stdin', data),
   onLog: (callback: (log: string) => void) => {
     const subscription = (_event: IpcRendererEvent, log: string) => callback(log)
     ipcRenderer.on('launcher:log', subscription)

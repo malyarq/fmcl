@@ -12,6 +12,8 @@ export const allowedIpcChannels = [
   // window controls
   'window:minimize',
   'window:close',
+  'window:openConsole',
+  'window:closeConsole',
 
   // launcher
   'launcher:launch',
@@ -23,6 +25,7 @@ export const allowedIpcChannels = [
   'launcher:clearCache',
   'launcher:reload',
   'launcher:killAndRestart',
+  'launcher:stdin',
 
   // launcher events
   'launcher:log',
@@ -75,6 +78,12 @@ export const allowedIpcChannels = [
   // assets
   'assets:getIconPath',
 
+  // cache
+  'cache:getImageState',
+  'cache:setImageLimit',
+  'cache:cleanupImage',
+  'cache:resolveImage',
+
   // instance updater (manifest sync)
   'updater:sync',
   'updater:progress',
@@ -120,12 +129,90 @@ export const allowedIpcChannels = [
   'modpacks:updateOverrides',
   'modpacks:getMods',
   'modpacks:backup',
+  'modpacks:createFromManifest',
+  'modpacks:cleanupContent',
+  'modpacks:getContentStats',
+  'modpacks:resolvePath',
+  'modpacks:scanJava',
 
   // modpacks events
   'modpacks:updateProgress',
+  // resource packs
+  'resourcePacks:list',
+  'resourcePacks:enable',
+  'resourcePacks:disable',
+  'resourcePacks:reorder',
+  'resourcePacks:import',
+  'resourcePacks:delete',
+  'resourcePacks:openFolder',
+  'resourcePacks:add',
+
+  // shaders
+  'shaders:list',
+  'shaders:setActive',
+  'shaders:disable',
+  'shaders:delete',
+  'shaders:openFolder',
+  'shaders:add',
+
+  // worlds
+  'worlds:list',
+  'worlds:delete',
+  'worlds:backup',
+  'worlds:duplicate',
+  'worlds:openFolder',
+
+  // datapacks
+  'datapacks:list',
+  'datapacks:enable',
+  'datapacks:disable',
+  'datapacks:delete',
+  'datapacks:search',
+  'datapacks:install',
+  'datapacks:getVersions',
+
+  // app
+  'app:saveFile',
+
+  // accounts
+  'account:getAccounts',
+  'account:getSelectedAccount',
+  'account:addOffline',
+  'account:addThirdParty',
+  'account:getSkinState',
+  'account:refreshSkinState',
+  'account:removeAccount',
+  'account:selectAccount',
+
+  // mirrors
+  'mirrors:getMirrors',
+  'mirrors:getSelectedMirror',
+  'mirrors:addCustomMirror',
+  'mirrors:removeMirror',
+  'mirrors:selectMirror',
+  'mirrors:moveMirror',
+  'mirrors:testSpeed',
+  'mirrors:setAutoSelect',
+  'mirrors:isAutoSelectEnabled',
+
+  // screenshots
+  'screenshots:list',
+  'screenshots:delete',
+  'screenshots:rename',
+  'screenshots:openFolder',
+
+  // sharing
+  'share:generateCode',
+  'share:importCode',
+
+  // statistics
+  'stats:get',
+  'stats:export',
+
+  // external links
+  'externalLinks:open',
 ] as const;
 
 export type AllowedIpcChannel = typeof allowedIpcChannels[number];
 
 export const allowedIpcChannelSet: ReadonlySet<string> = new Set<string>(allowedIpcChannels);
-

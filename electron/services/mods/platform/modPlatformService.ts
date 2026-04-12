@@ -6,6 +6,7 @@ import { ModpackService } from '../../modpacks/modpackService';
 import { ensureDir } from './fsUtils';
 import { CF_SORT_POPULARITY, CF_SORT_LAST_UPDATED, CF_SORT_NAME, mapLoaderToCurseforge, mapLoaderToModrinth } from './loaderMapping';
 import { pickPrimaryModrinthFile } from './modrinthUtils';
+import { InstanceManifestManager } from '../../instances/manifestManager';
 import type { ModInstallRequest, ModInstallResult, ModSearchQuery, ModSearchResult, ModVersionDescriptor, ModVersionQuery } from './types';
 
 export class ModPlatformService {
@@ -19,11 +20,24 @@ export class ModPlatformService {
     this.curseforge = key ? new CurseforgeV1Client(key) : null;
   }
 
+  private manifestManager = new InstanceManifestManager();
+
   public async searchMods(query: ModSearchQuery): Promise<ModSearchResult> {
     const sort = query.sort ?? 'popularity';
+    const contentType = query.contentType ?? 'mod';
+
+    // Map contentType to platform-specific filter
+    const modrinthProjectType = contentType === 'resourcepack' ? 'resourcepack'
+      : contentType === 'shader' ? 'shader'
+        : contentType === 'datapack' ? 'datapack'
+          : 'mod';
+    // CurseForge classIds: 6=Mods, 12=Resource Packs, 6552=Shaders
+    const curseforgeClassId = contentType === 'resourcepack' ? 12
+      : contentType === 'shader' ? 6552
+        : 6;
 
     if (query.platform === 'modrinth') {
-      const facets: string[][] = [['project_type:mod']];
+      const facets: string[][] = [[`project_type:${modrinthProjectType}`]];
       const loader = mapLoaderToModrinth(query.loader);
       if (loader) facets.push([`categories:${loader}`]);
       if (query.mcVersion) facets.push([`versions:${query.mcVersion}`]);
@@ -98,7 +112,7 @@ export class ModPlatformService {
     const modLoaderType = mapLoaderToCurseforge(query.loader);
     const res = await this.curseforge.searchMods({
       gameId: 432,
-      classId: 6, // "Mods"
+      classId: curseforgeClassId,
       searchFilter: query.query,
       gameVersion: query.mcVersion,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -197,24 +211,31 @@ export class ModPlatformService {
       (req.rootPath != null && String(req.rootPath).trim() !== '')
         ? req.rootPath
         : this.instances.getDefaultRootPath();
+
+    // Determine destination folder based on contentType
+    const contentType = req.contentType ?? 'mod';
+    const folderName = contentType === 'resourcepack' ? 'resourcepacks'
+      : contentType === 'shader' ? 'shaderpacks'
+        : 'mods';
+
     // Per-instance installation:
-    // - instancePath/mods (highest priority)
-    // - instances/<id>/mods
-    // - rootPath/mods (legacy fallback)
+    // - instancePath/<folder> (highest priority)
+    // - instances/<id>/<folder>
+    // - rootPath/<folder> (legacy fallback)
     this.instances.ensureModpacksMigrated(rootPath);
-    const modsDir = req.instancePath
-      ? path.join(req.instancePath, 'mods')
+    const destDir = req.instancePath
+      ? path.join(req.instancePath, folderName)
       : req.instanceId
-        ? path.join(this.instances.getModpackDir(rootPath, req.instanceId), 'mods')
-        : path.join(rootPath, 'mods');
-    ensureDir(modsDir);
+        ? path.join(this.instances.getModpackDir(rootPath, req.instanceId), folderName)
+        : path.join(rootPath, folderName);
+    ensureDir(destDir);
 
     if (req.platform === 'modrinth') {
       const version = await this.modrinth.getProjectVersion(req.versionId);
       const file = pickPrimaryModrinthFile(version);
       if (!file?.url || !file.filename) throw new Error('Modrinth version has no downloadable file.');
 
-      const destination = path.join(modsDir, file.filename);
+      const destination = path.join(destDir, file.filename);
       const urls = [file.url, ...(req.fallbackUrls ?? [])];
       const sha1 = file.hashes?.sha1;
 
@@ -223,6 +244,23 @@ export class ModPlatformService {
         destination,
         validator: sha1 ? { algorithm: 'sha1', hash: sha1 } : undefined,
       });
+
+      // Track installation
+      try {
+        const instanceDir = req.instancePath || (req.instanceId ? this.instances.getModpackDir(rootPath, req.instanceId) : null);
+        if (instanceDir) {
+          this.manifestManager.addMod(instanceDir, {
+            fileName: file.filename,
+            source: 'modrinth',
+            projectId: req.projectId,
+            versionId: req.versionId,
+            sha1: sha1,
+            installDate: new Date().toISOString()
+          });
+        }
+      } catch (e) {
+        console.error('Failed to save mod manifest:', e);
+      }
 
       return {
         destination,
@@ -246,7 +284,7 @@ export class ModPlatformService {
     if (!url) {
       throw new Error('CurseForge file has no downloadUrl (distribution might be disabled).');
     }
-    const destination = path.join(modsDir, file.fileName);
+    const destination = path.join(destDir, file.fileName);
     const sha1 = file.hashes?.find((h) => h.algo === 1 /* sha1 */)?.value;
     const urls = [url, ...(req.fallbackUrls ?? [])];
 
@@ -256,11 +294,30 @@ export class ModPlatformService {
       validator: sha1 ? { algorithm: 'sha1', hash: sha1 } : undefined,
     });
 
-    return {
+    const result = {
       destination,
       filename: file.fileName,
       usedUrl: url,
     };
+
+    // Track installation
+    try {
+      const instanceDir = req.instancePath || (req.instanceId ? this.instances.getModpackDir(rootPath, req.instanceId) : null);
+      if (instanceDir) {
+        this.manifestManager.addMod(instanceDir, {
+          fileName: file.fileName,
+          source: 'curseforge',
+          projectId: String(modId),
+          versionId: String(fileId),
+          sha1: sha1,
+          installDate: new Date().toISOString()
+        });
+      }
+    } catch (e) {
+      console.error('Failed to save mod manifest:', e);
+    }
+
+    return result;
   }
 
   /**
@@ -398,6 +455,19 @@ export class ModPlatformService {
       }
     }
 
+    const facetsJson = JSON.stringify(facets);
+    const mapSearchHit = (hit: Awaited<ReturnType<ModrinthV2Client['searchProjects']>>['hits'][number]) => ({
+      platform: 'modrinth' as const,
+      projectId: hit.project_id,
+      slug: hit.slug,
+      title: hit.title,
+      description: hit.description,
+      iconUrl: hit.icon_url,
+      downloads: hit.downloads,
+      dateCreated: hit.date_created,
+      dateModified: hit.date_modified,
+    });
+
     // Map sort option to Modrinth index
     let index: string;
     switch (sort) {
@@ -413,42 +483,58 @@ export class ModPlatformService {
         break;
     }
 
-    // For alphabetical sorting, we need to fetch more results and sort them
-    // Modrinth API doesn't support alphabetical sorting directly
-    const fetchLimit = sort === 'alphabetical' ? Math.min(limit * 10, 100) : limit;
-    
+    if (sort === 'alphabetical') {
+      const pageSize = 100;
+      const allHits: Awaited<ReturnType<ModrinthV2Client['searchProjects']>>['hits'] = [];
+      let nextOffset = 0;
+      let totalHits = 0;
+
+      while (nextOffset === 0 || nextOffset < totalHits) {
+        const page = await this.modrinth.searchProjects({
+          query,
+          facets: facetsJson,
+          index,
+          offset: nextOffset,
+          limit: pageSize,
+        });
+
+        totalHits = page.total_hits;
+        allHits.push(...page.hits);
+
+        if (page.hits.length === 0) {
+          break;
+        }
+
+        nextOffset += page.hits.length;
+      }
+
+      const items = allHits
+        .map(mapSearchHit)
+        .sort((left, right) => left.title.localeCompare(right.title))
+        .slice(offset, offset + limit);
+
+      return {
+        items,
+        total: totalHits,
+        offset,
+        limit,
+      };
+    }
+
     const result = await this.modrinth.searchProjects({
       query,
-      facets: JSON.stringify(facets),
+      facets: facetsJson,
       index,
-      offset: sort === 'alphabetical' ? 0 : offset, // For alphabetical, we fetch from start
-      limit: fetchLimit,
+      offset,
+      limit,
     });
 
-    let items = result.hits.map((h) => ({
-      platform: 'modrinth' as const,
-      projectId: h.project_id,
-      slug: h.slug,
-      title: h.title,
-      description: h.description,
-      iconUrl: h.icon_url,
-      downloads: h.downloads,
-      dateCreated: h.date_created,
-      dateModified: h.date_modified,
-    }));
-
-    // Apply alphabetical sorting if needed
-    if (sort === 'alphabetical') {
-      items.sort((a, b) => a.title.localeCompare(b.title));
-      // Apply pagination after sorting
-      const start = offset;
-      items = items.slice(start, start + limit);
-    }
+    const items = result.hits.map(mapSearchHit);
 
     return {
       items,
       total: result.total_hits,
-      offset: sort === 'alphabetical' ? offset : result.offset,
+      offset: result.offset,
       limit: result.limit,
     };
   }
@@ -491,4 +577,3 @@ export class ModPlatformService {
     return this.modrinth;
   }
 }
-

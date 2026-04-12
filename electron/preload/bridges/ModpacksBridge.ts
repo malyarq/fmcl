@@ -41,7 +41,9 @@ export const modpacks: ModpacksAPI = {
   // Фаза 4: Создание и экспорт модпаков
   exportModpackFromInstance: (modpackId: string, name: string, version: string, author?: string, rootPath?: string) => ipcRenderer.invoke('modpacks:exportFromInstance', modpackId, name, version, author, rootPath),
   createLocalModpack: (name: string, version: string, minecraftVersion: string, modLoader?: { type: string; version?: string }, rootPath?: string) => ipcRenderer.invoke('modpacks:createLocal', name, version, minecraftVersion, modLoader, rootPath),
-  exportModpack: (modpackId: string, format: 'curseforge' | 'modrinth' | 'zip', outputPath: string, rootPath?: string) => ipcRenderer.invoke('modpacks:export', modpackId, format, outputPath, rootPath),
+  createFromManifest: (manifest: unknown, rootPath?: string) => ipcRenderer.invoke('modpacks:createFromManifest', manifest, rootPath),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  exportModpack: (modpackId: string, format: 'curseforge' | 'modrinth' | 'zip' | 'multimc', outputPath: string, options?: any, rootPath?: string) => ipcRenderer.invoke('modpacks:export', modpackId, format, outputPath, options, rootPath),
   getModpackInfoFromFile: (filePath: string) => ipcRenderer.invoke('modpacks:getModpackInfoFromFile', filePath),
   importModpack: (filePath: string, targetModpackId?: string, rootPath?: string) => ipcRenderer.invoke('modpacks:import', filePath, targetModpackId, rootPath),
   addModToModpack: (modpackId: string, mod: { platform: 'curseforge' | 'modrinth'; projectId: string | number; versionId: string | number }, rootPath?: string) => ipcRenderer.invoke('modpacks:addMod', modpackId, mod, rootPath),
@@ -50,5 +52,14 @@ export const modpacks: ModpacksAPI = {
   updateModpackOverrides: (modpackId: string, overrides: Record<string, string>, rootPath?: string) => ipcRenderer.invoke('modpacks:updateOverrides', modpackId, overrides, rootPath),
   getModpackMods: (modpackId: string, rootPath?: string) => ipcRenderer.invoke('modpacks:getMods', modpackId, rootPath),
   backupModpack: (modpackId: string, rootPath?: string) => ipcRenderer.invoke('modpacks:backup', modpackId, rootPath),
+  // Резолвинг пути модпака (для frontend, когда settings.minecraftPath пуст)
+  resolvePath: (modpackId: string, rootPath?: string) => ipcRenderer.invoke('modpacks:resolvePath', modpackId, rootPath),
+
+  // Java
+  scanJava: () => ipcRenderer.invoke('modpacks:scanJava'),
+
+  // Управление контентом
+  getContentStats: () => ipcRenderer.invoke('modpacks:getContentStats'),
+  cleanupContent: () => ipcRenderer.invoke('modpacks:cleanupContent'),
 }
 

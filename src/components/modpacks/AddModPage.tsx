@@ -5,6 +5,8 @@ import { Button } from '../ui/Button';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
+import { Breadcrumbs } from '../ui/Breadcrumbs';
+import { LazyImage } from '../ui/LazyImage';
 import { cn } from '../../utils/cn';
 import { modsIPC } from '../../services/ipc/modsIPC';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
@@ -14,6 +16,8 @@ import type { ModpackMetadata } from '@shared/types/modpack';
 interface AddModPageProps {
   modpackId: string;
   onBack: () => void;
+  /** Type of content to search/install. Defaults to 'mod'. */
+  contentType?: 'mod' | 'resourcepack' | 'shader';
 }
 
 interface ModSearchResult {
@@ -37,7 +41,7 @@ interface ModVersion {
 
 type CheckedEntry = { mod: ModSearchResult; version: ModVersion } | 'loading';
 
-export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack }) => {
+export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, contentType = 'mod' }) => {
   const { t, getAccentStyles, minecraftPath } = useSettings();
   const toast = useToast();
   const [query, setQuery] = useState('');
@@ -55,7 +59,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack }) => 
   const resultsScrollRef = useRef<HTMLDivElement>(null);
   const PAGE_SIZE = 20;
 
-  const effectiveLoader = filterLoader || modpackMetadata?.modLoader?.type || '';
+  const effectiveLoader = contentType === 'mod' ? (filterLoader || modpackMetadata?.modLoader?.type || '') : '';
   const effectiveMCVersion = filterMCVersion || modpackMetadata?.minecraftVersion || '';
 
   const loadModpackMetadataAndConfig = useCallback(async () => {
@@ -90,6 +94,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack }) => 
         sort: filterSort,
         offset,
         limit: PAGE_SIZE,
+        contentType,
       });
       const data = result as { items: ModSearchResult[]; total?: number };
       setSearchResults((prev) => (append ? [...prev, ...(data.items || [])] : (data.items || [])));
@@ -101,7 +106,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack }) => 
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [query, platform, effectiveMCVersion, effectiveLoader, filterSort]);
+  }, [query, platform, effectiveMCVersion, effectiveLoader, filterSort, contentType]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -155,7 +160,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack }) => 
         });
         toast.error(`${mod.title}: ${t('modpacks.no_versions') || 'Нет доступных версий'}`);
       }
-    } catch (error) {
+    } catch {
       setCheckedMods((prev) => {
         const next = new Map(prev);
         next.delete(key);
@@ -182,6 +187,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack }) => 
             versionId: version.versionId,
             instanceId: modpackId,
             rootPath: minecraftPath,
+            contentType,
           });
           await modpacksIPC.addMod(modpackId, {
             platform: mod.platform,
@@ -205,53 +211,77 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack }) => 
     }
   };
 
+  const getTitle = () => {
+    switch (contentType) {
+      case 'resourcepack': return t('modpacks.add_resourcepack') || 'Добавить ресурспак';
+      case 'shader': return t('modpacks.add_shader') || 'Добавить шейдер';
+      default: return t('modpacks.add_mod') || 'Добавить мод';
+    }
+  };
+
+  const getPlaceholder = () => {
+    switch (contentType) {
+      case 'resourcepack': return t('modpacks.search_resourcepack_placeholder') || 'Поиск ресурспаков...';
+      case 'shader': return t('modpacks.search_shader_placeholder') || 'Поиск шейдеров...';
+      default: return t('modpacks.search_mod_placeholder') || 'Поиск модов...';
+    }
+  };
+
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header with back button, title, platform tabs */}
-      <div className="flex items-center gap-4 p-6 border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={onBack}
-          className="flex items-center gap-2 shrink-0"
-        >
-          <span>←</span>
-          {t('general.back') || 'Назад'}
-        </Button>
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-white shrink-0">
-          {t('modpacks.add_mod') || 'Добавить мод'}
-        </h2>
-        <div className="flex gap-2 shrink-0">
-          <button
-            onClick={() => {
-              setPlatform('curseforge');
-              setCheckedMods(new Map());
-            }}
-            disabled
-            className={cn(
-              "px-4 py-2 rounded-lg font-medium transition-colors text-sm",
-              "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-500",
-              "cursor-not-allowed opacity-60"
-            )}
-            title={t('modpacks.curseforge_wip') || 'CurseForge в разработке'}
+      <div className="flex flex-col border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40 px-6 py-4 gap-4">
+        <Breadcrumbs
+          items={[
+            { label: t('modpacks.title') || 'Modpacks', onClick: onBack }, // Ideally navigate to list/details
+            { label: getTitle(), active: true }
+          ]}
+        />
+        <div className="flex items-center gap-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onBack}
+            className="flex items-center gap-2 shrink-0"
           >
-            {t('modpacks.platform_curseforge')} (WIP)
-          </button>
-          <button
-            onClick={() => {
-              setPlatform('modrinth');
-              setCheckedMods(new Map());
-            }}
-            className={cn(
-              "px-4 py-2 rounded-lg font-medium transition-colors text-sm",
-              platform === 'modrinth'
-                ? cn("text-white", getAccentStyles('bg').className)
-                : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600"
-            )}
-            style={platform === 'modrinth' ? getAccentStyles('bg').style : undefined}
-          >
-            {t('modpacks.platform_modrinth')}
-          </button>
+            <span>←</span>
+            {t('general.back') || 'Назад'}
+          </Button>
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-white shrink-0 flex-1">
+            {getTitle()}
+          </h2>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={() => {
+                setPlatform('curseforge');
+                setCheckedMods(new Map());
+              }}
+              disabled
+              className={cn(
+                "px-4 py-2 rounded-lg font-medium transition-colors text-sm",
+                "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-500",
+                "cursor-not-allowed opacity-60"
+              )}
+              title={t('modpacks.curseforge_wip') || 'CurseForge в разработке'}
+            >
+              {t('modpacks.platform_curseforge')} (WIP)
+            </button>
+            <button
+              onClick={() => {
+                setPlatform('modrinth');
+                setCheckedMods(new Map());
+              }}
+              className={cn(
+                "px-4 py-2 rounded-lg font-medium transition-colors text-sm",
+                platform === 'modrinth'
+                  ? cn("text-white", getAccentStyles('bg').className)
+                  : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600"
+              )}
+              style={platform === 'modrinth' ? getAccentStyles('bg').style : undefined}
+            >
+              {t('modpacks.platform_modrinth')}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -271,17 +301,19 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack }) => 
                 </option>
               ))}
             </Select>
-            
-            <Select
-              value={filterLoader}
-              onChange={(e) => setFilterLoader(e.target.value)}
-              className="flex-1 min-w-[150px]"
-            >
-              <option value="">{t('modpacks.filter_all_loaders') || 'Все модлоадеры'}</option>
-              <option value="forge">Forge</option>
-              <option value="fabric">Fabric</option>
-              <option value="neoforge">NeoForge</option>
-            </Select>
+
+            {contentType === 'mod' && (
+              <Select
+                value={filterLoader}
+                onChange={(e) => setFilterLoader(e.target.value)}
+                className="flex-1 min-w-[150px]"
+              >
+                <option value="">{t('modpacks.filter_all_loaders') || 'Все модлоадеры'}</option>
+                <option value="forge">Forge</option>
+                <option value="fabric">Fabric</option>
+                <option value="neoforge">NeoForge</option>
+              </Select>
+            )}
 
             <Select
               value={filterSort}
@@ -298,7 +330,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack }) => 
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t('modpacks.search_mod_placeholder') || 'Поиск модов...'}
+            placeholder={getPlaceholder()}
             className="w-full"
           />
 
@@ -313,79 +345,80 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack }) => 
           )}
 
           {!loading && searchResults.length > 0 && (
-              <div
-                ref={resultsScrollRef}
-                className="max-h-96 overflow-y-auto custom-scrollbar space-y-2"
-                onScroll={handleScroll}
-              >
-                {searchResults.map((mod) => {
-                  const key = `${mod.platform}:${mod.projectId}`;
-                  const entry = checkedMods.get(key);
-                  const isChecked = entry !== undefined;
-                  const isLoading = entry === 'loading';
-                  const version = entry !== 'loading' && entry ? entry.version : null;
-                  return (
-                    <div
-                      key={key}
-                      className={cn(
-                        'p-3 border rounded-lg transition-colors flex gap-3 items-start',
-                        isChecked
-                          ? 'border-zinc-400 dark:border-zinc-500 bg-zinc-50 dark:bg-zinc-900/60'
-                          : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/50'
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        disabled={isLoading || installing}
-                        onChange={(e) => handleCheckChange(mod, e.target.checked)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-1 w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 focus:ring-2 focus:ring-zinc-500"
+            <div
+              ref={resultsScrollRef}
+              className="max-h-96 overflow-y-auto custom-scrollbar space-y-2"
+              onScroll={handleScroll}
+            >
+              {searchResults.map((mod) => {
+                const key = `${mod.platform}:${mod.projectId}`;
+                const entry = checkedMods.get(key);
+                const isChecked = entry !== undefined;
+                const isLoading = entry === 'loading';
+                const version = entry !== 'loading' && entry ? entry.version : null;
+                return (
+                  <div
+                    key={key}
+                    className={cn(
+                      'p-3 border rounded-lg transition-colors flex gap-3 items-start',
+                      isChecked
+                        ? 'border-zinc-400 dark:border-zinc-500 bg-zinc-50 dark:bg-zinc-900/60'
+                        : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/50'
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      disabled={isLoading || installing}
+                      onChange={(e) => handleCheckChange(mod, e.target.checked)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-1 w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 focus:ring-2 focus:ring-zinc-500"
+                    />
+                    {mod.iconUrl && (
+                      <LazyImage
+                        src={mod.iconUrl}
+                        alt={mod.title}
+                        className="w-12 h-12 rounded object-cover shrink-0"
+                        fallback="/icon.png"
                       />
-                      {mod.iconUrl && (
-                        <img
-                          src={mod.iconUrl}
-                          alt={mod.title}
-                          className="w-12 h-12 rounded object-cover shrink-0"
-                        />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-zinc-900 dark:text-white truncate">
+                        {mod.title}
+                      </h4>
+                      {version && (
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
+                          {version.name} {version.mcVersions[0] && `(${version.mcVersions[0]})`}
+                        </p>
                       )}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-zinc-900 dark:text-white truncate">
-                          {mod.title}
-                        </h4>
-                        {version && (
-                          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
-                            {version.name} {version.mcVersions[0] && `(${version.mcVersions[0]})`}
-                          </p>
-                        )}
-                        {mod.description && !version && (
-                          <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1">
-                            {mod.description}
-                          </p>
-                        )}
-                        {mod.downloads !== undefined && (
-                          <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
-                            {t('modpacks.downloads')}: {mod.downloads.toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-                      {isLoading && (
-                        <LoadingSpinner size="sm" className="shrink-0" />
+                      {mod.description && !version && (
+                        <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1">
+                          {mod.description}
+                        </p>
+                      )}
+                      {mod.downloads !== undefined && (
+                        <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+                          {t('modpacks.downloads')}: {mod.downloads.toLocaleString()}
+                        </p>
                       )}
                     </div>
-                  );
-                })}
-                {loadingMore && (
-                  <div className="flex justify-center py-4">
-                    <LoadingSpinner size="md" />
+                    {isLoading && (
+                      <LoadingSpinner size="sm" className="shrink-0" />
+                    )}
                   </div>
-                )}
-                {!loadingMore && searchResults.length > 0 && searchResults.length < total && (
-                  <p className="text-xs text-center text-zinc-500 dark:text-zinc-400 py-2">
-                    {t('modpacks.scroll_for_more') || 'Прокрутите вниз для загрузки'}
-                  </p>
-                )}
-              </div>
+                );
+              })}
+              {loadingMore && (
+                <div className="flex justify-center py-4">
+                  <LoadingSpinner size="md" />
+                </div>
+              )}
+              {!loadingMore && searchResults.length > 0 && searchResults.length < total && (
+                <p className="text-xs text-center text-zinc-500 dark:text-zinc-400 py-2">
+                  {t('modpacks.scroll_for_more') || 'Прокрутите вниз для загрузки'}
+                </p>
+              )}
+            </div>
           )}
 
           <div className="flex gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-700">

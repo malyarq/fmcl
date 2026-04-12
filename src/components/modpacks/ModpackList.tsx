@@ -3,12 +3,18 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { useModpackListContext } from '../../contexts/ModpackContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { SkeletonLoader } from '../ui/SkeletonLoader';
 import { LazyImage } from '../ui/LazyImage';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
-import type { ModpackMetadata } from '@shared/types/modpack';
+import type { ModpackManifest, ModpackMetadata } from '@shared/types/modpack';
 import { cn } from '../../utils/cn';
+import { ShareModal } from '../../features/share/ShareModal';
+import { ImportShareModal } from '../../features/share/ImportShareModal';
+import { Download, MoreHorizontal, Share2 } from 'lucide-react';
+import type { ModLoaderType } from '../../contexts/instances/types';
 
 interface ModpackListItemWithMetadata {
   id: string;
@@ -18,18 +24,27 @@ interface ModpackListItemWithMetadata {
   metadata?: ModpackMetadata;
 }
 
+const SORT_OPTIONS = ['name', 'created', 'updated'] as const;
+type SortOption = (typeof SORT_OPTIONS)[number];
+
+function isActivationKey(key: string) {
+  return key === 'Enter' || key === ' ';
+}
+
 // Uses ModpackListContext — only updates when modpacks/selectedId change, not when config changes (downloads).
 function useModpackListValues() {
-  const { modpacks, selectedId, select, remove, refresh } = useModpackListContext();
+  const { modpacks, selectedId, select, remove, rename, duplicate, refresh } = useModpackListContext();
   const modpacksKey = useMemo(() => modpacks.map(m => m.id).sort().join(','), [modpacks]);
   return useMemo(() => ({
     modpacks,
     selectedId,
     select,
     remove,
+    rename,
+    duplicate,
     refresh,
     modpacksKey,
-  }), [modpacks, selectedId, select, remove, refresh, modpacksKey]);
+  }), [modpacks, selectedId, select, remove, rename, duplicate, refresh, modpacksKey]);
 }
 
 // Internal component that doesn't re-render when context config changes
@@ -38,11 +53,13 @@ const ModpackListComponentInternal: React.FC<{
   selectedId: string;
   select: ReturnType<typeof useModpackListValues>['select'];
   remove: ReturnType<typeof useModpackListValues>['remove'];
+  rename: ReturnType<typeof useModpackListValues>['rename'];
+  duplicate: ReturnType<typeof useModpackListValues>['duplicate'];
   refresh: ReturnType<typeof useModpackListValues>['refresh'];
   modpacksKey: string;
-  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string }) => void;
+  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string } | { type: 'export'; modpackId: string }) => void;
   onCreateWizard?: () => void;
-}> = ({ contextModpacks: _contextModpacks, selectedId, select, remove, refresh, modpacksKey, onNavigate, onCreateWizard }) => {
+}> = ({ contextModpacks: _contextModpacks, selectedId, select, remove, rename, duplicate, refresh, modpacksKey, onNavigate, onCreateWizard }) => {
   const { t, getAccentStyles, minecraftPath } = useSettings();
   const toast = useToast();
   const confirm = useConfirm();
@@ -50,6 +67,19 @@ const ModpackListComponentInternal: React.FC<{
   const [loading, setLoading] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; modpackId: string } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement | null>(null);
+  const contextMenuTriggerRef = useRef<HTMLElement | null>(null);
+
+  // Share state
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareModpackId, setShareModpackId] = useState<string | null>(null);
+  const [importShareModalOpen, setImportShareModalOpen] = useState(false);
+
+  // Search and Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterMCVersion, setFilterMCVersion] = useState<string>('all');
+  const [filterLoader, setFilterLoader] = useState<string>('all');
+  const [sortOption, setSortOption] = useState<SortOption>('name');
 
   const loadModpacks = useCallback(async () => {
     setLoading(true);
@@ -74,11 +104,11 @@ const ModpackListComponentInternal: React.FC<{
   const prevModpacksKeyForReloadRef = useRef<string>('');
   const loadModpacksStableRef = useRef(loadModpacks);
   loadModpacksStableRef.current = loadModpacks;
-  
+
   useEffect(() => {
     const currentKey = modpacksKey;
     const prevKey = prevModpacksKeyForReloadRef.current;
-    
+
     // Only reload if the actual list of modpack IDs changed
     if (currentKey !== prevKey && prevKey !== '') {
       loadModpacksStableRef.current();
@@ -109,19 +139,59 @@ const ModpackListComponentInternal: React.FC<{
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedId, onNavigate, onCreateWizard]);
 
+  const closeContextMenu = useCallback((restoreFocus = false) => {
+    setContextMenu(null);
+
+    if (restoreFocus && contextMenuTriggerRef.current) {
+      const trigger = contextMenuTriggerRef.current;
+      requestAnimationFrame(() => {
+        trigger.focus();
+      });
+    }
+  }, []);
+
   // Close context menu on click outside
   useEffect(() => {
-    const handleClickOutside = () => setContextMenu(null);
+    const handleClickOutside = () => closeContextMenu();
     if (contextMenu) {
       window.addEventListener('click', handleClickOutside);
       return () => window.removeEventListener('click', handleClickOutside);
     }
-  }, [contextMenu]);
+  }, [closeContextMenu, contextMenu]);
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return;
+    }
+
+    const focusFirstMenuItem = () => {
+      const firstMenuItem = contextMenuRef.current?.querySelector<HTMLButtonElement>('[role="menuitem"]');
+      firstMenuItem?.focus();
+    };
+
+    const frameId = requestAnimationFrame(focusFirstMenuItem);
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') {
+        return;
+      }
+
+      event.preventDefault();
+      closeContextMenu(true);
+    };
+
+    window.addEventListener('keydown', handleEscape);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, [closeContextMenu, contextMenu]);
 
   const handleSelect = useCallback(async (id: string) => {
     // Optimistic update: immediately update local state
     setModpacks(prev => prev.map(m => ({ ...m, selected: m.id === id })));
-    
+
     try {
       await select(id);
       await refresh();
@@ -147,7 +217,7 @@ const ModpackListComponentInternal: React.FC<{
       // Optimistic update: immediately remove from UI
       const deletedModpack = modpacks.find(m => m.id === id);
       setModpacks(prev => prev.filter(m => m.id !== id));
-      
+
       try {
         await remove(id);
         await refresh();
@@ -164,6 +234,103 @@ const ModpackListComponentInternal: React.FC<{
       }
     }
   }, [remove, refresh, loadModpacks, toast, t, confirm, modpacks]);
+
+  const handleRename = useCallback(async (id: string, currentName: string) => {
+    const nextName = await confirm.prompt({
+      title: t('modpacks.rename') || 'Переименовать',
+      message: t('modpacks.rename_prompt') || 'Введите новое название:',
+      confirmText: t('modpacks.rename') || 'Переименовать',
+      cancelText: t('general.cancel') || 'Отмена',
+      input: {
+        initialValue: currentName,
+        placeholder: currentName,
+        requireNonEmpty: true,
+      },
+    });
+    const newName = nextName?.trim();
+    if (newName && newName !== currentName) {
+      try {
+        await rename(id, newName);
+        await refresh();
+        await loadModpacks();
+      } catch (error) {
+        console.error('Error renaming modpack:', error);
+        toast.error(t('modpacks.rename_error') || 'Ошибка при переименовании');
+      }
+    }
+  }, [confirm, loadModpacks, refresh, rename, t, toast]);
+
+  const handleDuplicate = useCallback(async (id: string, currentName: string) => {
+    const suggestedName = `${currentName} - Copy`;
+    const nextName = await confirm.prompt({
+      title: t('modpacks.duplicate') || 'Дублировать',
+      message: t('modpacks.duplicate_prompt') || 'Введите название копии:',
+      confirmText: t('modpacks.duplicate') || 'Дублировать',
+      cancelText: t('general.cancel') || 'Отмена',
+      input: {
+        initialValue: suggestedName,
+        placeholder: suggestedName,
+        requireNonEmpty: true,
+      },
+    });
+    const newName = nextName?.trim();
+    if (newName) {
+      try {
+        await duplicate(id, newName);
+        await refresh();
+        await loadModpacks();
+      } catch (error) {
+        console.error('Error duplicating modpack:', error);
+        toast.error(t('modpacks.duplicate_error') || 'Ошибка при дублировании');
+      }
+    }
+  }, [confirm, duplicate, loadModpacks, refresh, t, toast]);
+
+  const filteredModpacks = useMemo(() => {
+    return modpacks.filter(m => {
+      const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesVersion = filterMCVersion === 'all' || m.metadata?.minecraftVersion === filterMCVersion;
+      const matchesLoader = filterLoader === 'all' || m.metadata?.modLoader?.type === filterLoader;
+
+      return matchesSearch && matchesVersion && matchesLoader;
+    });
+  }, [modpacks, searchQuery, filterMCVersion, filterLoader]);
+
+  const sortedModpacks = useMemo(() => {
+    return [...filteredModpacks].sort((a, b) => {
+      if (sortOption === 'created') {
+        const dateA = a.metadata?.createdAt ? new Date(a.metadata.createdAt).getTime() : 0;
+        const dateB = b.metadata?.createdAt ? new Date(b.metadata.createdAt).getTime() : 0;
+        return dateB - dateA; // Newest first
+      }
+      if (sortOption === 'updated') {
+        const dateA = a.metadata?.updatedAt ? new Date(a.metadata.updatedAt).getTime() : 0;
+        const dateB = b.metadata?.updatedAt ? new Date(b.metadata.updatedAt).getTime() : 0;
+        return dateB - dateA; // Newest first
+      }
+      // Default: name, alphabetical
+      return a.name.localeCompare(b.name);
+    });
+  }, [filteredModpacks, sortOption]);
+
+  // Derived lists for filter dropdowns
+  const availableVersions = useMemo(() => {
+    const versions = new Set(
+      modpacks
+        .map((modpack) => modpack.metadata?.minecraftVersion)
+        .filter((version): version is string => Boolean(version))
+    );
+    return Array.from(versions).sort().reverse();
+  }, [modpacks]);
+
+  const availableLoaders = useMemo(() => {
+    const loaders = new Set(
+      modpacks
+        .map((modpack) => modpack.metadata?.modLoader?.type)
+        .filter((loader): loader is ModLoaderType => Boolean(loader))
+    );
+    return Array.from(loaders).sort();
+  }, [modpacks]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -183,9 +350,9 @@ const ModpackListComponentInternal: React.FC<{
     setIsDragging(false);
 
     const files = Array.from(e.dataTransfer.files);
-    const modpackFiles = files.filter((f) => 
-      f.name.endsWith('.mrpack') || 
-      f.name.endsWith('.zip') || 
+    const modpackFiles = files.filter((f) =>
+      f.name.endsWith('.mrpack') ||
+      f.name.endsWith('.zip') ||
       f.name.endsWith('.curseforge')
     );
 
@@ -205,6 +372,21 @@ const ModpackListComponentInternal: React.FC<{
         console.error('Error importing modpack:', error);
         toast.error(t('modpacks.import_error') || `Ошибка при импорте модпака: ${file.name}`);
       }
+    }
+  }, [refresh, loadModpacks, toast, t]);
+
+  const handleImportShareCode = useCallback(async (manifest: ModpackManifest) => {
+    try {
+      setLoading(true);
+      await modpacksIPC.createFromManifest(manifest);
+      await refresh();
+      await loadModpacks();
+      toast.success(t('share.import_success') || 'Модпак успешно импортирован');
+    } catch (error) {
+      console.error('Error importing modpack from share code:', error);
+      toast.error(t('share.import_error') || 'Ошибка при импорте');
+    } finally {
+      setLoading(false);
     }
   }, [refresh, loadModpacks, toast, t]);
 
@@ -230,14 +412,31 @@ const ModpackListComponentInternal: React.FC<{
     );
   }, []);
 
+  const openContextMenu = useCallback((modpackId: string, x: number, y: number, trigger?: HTMLElement | null) => {
+    contextMenuTriggerRef.current = trigger ?? null;
+    setContextMenu({ x, y, modpackId });
+  }, []);
+
   const handleContextMenu = useCallback((e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, modpackId: id });
-  }, []);
+    openContextMenu(id, e.clientX, e.clientY);
+  }, [openContextMenu]);
+
+  const handleActionMenuOpen = useCallback((event: React.MouseEvent<HTMLButtonElement>, id: string) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = event.currentTarget.getBoundingClientRect();
+    openContextMenu(id, Math.max(12, rect.right - 192), rect.bottom + 8, event.currentTarget);
+  }, [openContextMenu]);
+
+  const handleActionMenuOpenFromKeyboard = useCallback((anchor: HTMLElement, id: string) => {
+    const rect = anchor.getBoundingClientRect();
+    openContextMenu(id, Math.max(12, rect.right - 192), rect.bottom + 8, anchor);
+  }, [openContextMenu]);
 
   // Skeleton loader для карточки модпака
   const ModpackCardSkeleton = React.memo(() => (
-    <div className="p-5 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 min-h-[200px]">
+    <div role="listitem" className="p-5 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 min-h-[200px]">
       <div className="flex items-start gap-4 mb-3">
         <SkeletonLoader variant="rounded" width={80} height={80} />
         <div className="flex-1 min-w-0 space-y-2">
@@ -261,10 +460,11 @@ const ModpackListComponentInternal: React.FC<{
     modpack: ModpackListItemWithMetadata;
     index: number;
     isSelected: boolean;
-    canDelete: boolean; // Whether delete button should be shown
+    isMenuOpen: boolean;
     onSelect: (id: string) => void;
-    onDelete: (id: string, name: string) => void;
     onShowDetails: (id: string) => void;
+    onOpenActions: (event: React.MouseEvent<HTMLButtonElement>, id: string) => void;
+    onOpenActionsFromKeyboard: (anchor: HTMLElement, id: string) => void;
     onContextMenu: (e: React.MouseEvent, id: string) => void;
   }
 
@@ -272,15 +472,18 @@ const ModpackListComponentInternal: React.FC<{
     modpack,
     index,
     isSelected,
-    canDelete,
+    isMenuOpen,
     onSelect,
-    onDelete,
     onShowDetails,
+    onOpenActions,
+    onOpenActionsFromKeyboard,
     onContextMenu,
   }) => {
     const { t, getAccentStyles, getAccentHex } = useSettings();
     const iconSrc = useMemo(() => getModpackIcon(modpack), [modpack]);
     const sourceBadge = useMemo(() => getModpackSourceBadge(modpack.metadata?.source), [modpack.metadata?.source]);
+    const actionMenuId = `modpack-actions-menu-${modpack.id}`;
+    const actionMenuLabel = `${t('modpacks.settings_title') || 'More actions'}: ${modpack.name}`;
 
     return (
       <div
@@ -289,6 +492,7 @@ const ModpackListComponentInternal: React.FC<{
           'transform hover:scale-[1.02] hover:shadow-lg',
           'hover:-translate-y-1',
           'animate-fade-in-up',
+          'focus-within:ring-2 focus-within:ring-zinc-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-zinc-900',
           isSelected
             ? cn('border-opacity-100 shadow-lg scale-[1.02]', getAccentStyles('border').className)
             : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
@@ -297,16 +501,41 @@ const ModpackListComponentInternal: React.FC<{
           animationDelay: `${index * 50}ms`,
           ...(isSelected
             ? {
-                borderColor: getAccentHex(),
-                boxShadow: `0 4px 12px ${getAccentHex()}30`,
-              }
+              borderColor: getAccentHex(),
+              boxShadow: `0 4px 12px ${getAccentHex()}30`,
+            }
             : undefined),
         }}
+        role="listitem"
         onClick={() => onSelect(modpack.id)}
         onContextMenu={(e) => onContextMenu(e, modpack.id)}
       >
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label={modpack.name}
+          aria-pressed={isSelected}
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect(modpack.id);
+          }}
+          onKeyDown={(event) => {
+            if (isActivationKey(event.key)) {
+              event.preventDefault();
+              onSelect(modpack.id);
+              return;
+            }
+
+            if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+              event.preventDefault();
+              onOpenActionsFromKeyboard(event.currentTarget, modpack.id);
+            }
+          }}
+          className="absolute inset-0 rounded-xl focus:outline-none"
+        />
+
         {/* Icon */}
-        <div className="flex items-start gap-4 mb-3">
+        <div className="relative z-10 flex items-start gap-4 mb-3">
           <div className="w-20 h-20 flex-shrink-0">
             <LazyImage
               src={iconSrc}
@@ -355,7 +584,7 @@ const ModpackListComponentInternal: React.FC<{
         )}
 
         {/* Actions - всегда снизу */}
-        <div className="flex flex-wrap gap-2 mt-auto pt-1" onClick={(e) => e.stopPropagation()}>
+        <div className="relative z-10 flex flex-wrap gap-2 mt-auto pt-1" onClick={(e) => e.stopPropagation()}>
           <Button
             variant={isSelected ? 'secondary' : 'primary'}
             size="md"
@@ -378,16 +607,19 @@ const ModpackListComponentInternal: React.FC<{
           >
             {t('general.settings')}
           </Button>
-          {canDelete && (
-            <Button
-              variant="danger"
-              size="md"
-              onClick={() => onDelete(modpack.id, modpack.name)}
-              className="shrink-0 transition-all duration-200"
-            >
-              {t('modpacks.delete')}
-            </Button>
-          )}
+          <Button
+            variant="secondary"
+            size="md"
+            onClick={(event) => onOpenActions(event, modpack.id)}
+            aria-haspopup="menu"
+            aria-expanded={isMenuOpen}
+            aria-controls={isMenuOpen ? actionMenuId : undefined}
+            aria-label={actionMenuLabel}
+            className="shrink-0 px-3 transition-all duration-200"
+            title={t('modpacks.settings_title') || 'More actions'}
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </Button>
         </div>
       </div>
     );
@@ -397,7 +629,7 @@ const ModpackListComponentInternal: React.FC<{
       prevProps.modpack.id === nextProps.modpack.id &&
       prevProps.modpack.selected === nextProps.modpack.selected &&
       prevProps.isSelected === nextProps.isSelected &&
-      prevProps.canDelete === nextProps.canDelete &&
+      prevProps.isMenuOpen === nextProps.isMenuOpen &&
       prevProps.modpack.name === nextProps.modpack.name &&
       prevProps.modpack.metadata?.version === nextProps.modpack.metadata?.version &&
       prevProps.modpack.metadata?.minecraftVersion === nextProps.modpack.metadata?.minecraftVersion &&
@@ -420,7 +652,7 @@ const ModpackListComponentInternal: React.FC<{
         onDrop={handleDrop}
       >
         {/* Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white mb-1">
               {t('modpacks.title')}
@@ -430,6 +662,15 @@ const ModpackListComponentInternal: React.FC<{
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button
+              variant="secondary"
+              onClick={() => setImportShareModalOpen(true)}
+              className="w-full sm:w-auto"
+              title={t('share.import_title') || 'Импорт по коду'}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              {t('share.import_btn') || 'Импорт'}
+            </Button>
             <Button
               variant="secondary"
               onClick={() => onCreateWizard?.()}
@@ -445,6 +686,57 @@ const ModpackListComponentInternal: React.FC<{
             >
               {t('modpacks.browser')}
             </Button>
+          </div>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('modpacks.search_placeholder') || 'Поиск модпаков...'}
+            aria-label={t('modpacks.search_placeholder') || 'Search modpacks'}
+            className="flex-1"
+          />
+          <div className="flex gap-2">
+            <Select
+              value={sortOption}
+              onChange={(e) => {
+                const nextSortOption = e.target.value;
+                if (SORT_OPTIONS.includes(nextSortOption as SortOption)) {
+                  setSortOption(nextSortOption as SortOption);
+                }
+              }}
+              aria-label={t('modpacks.sort_name') || 'Sort modpacks'}
+              className="w-[140px]"
+            >
+              <option value="name">{t('modpacks.sort_name') || 'По имени'}</option>
+              <option value="created">{t('modpacks.sort_created') || 'По дате создания'}</option>
+              <option value="updated">{t('modpacks.sort_updated') || 'По обновлению'}</option>
+            </Select>
+            <div className="w-px bg-zinc-200 dark:bg-zinc-700 mx-1" />
+            <Select
+              value={filterMCVersion}
+              onChange={(e) => setFilterMCVersion(e.target.value)}
+              aria-label={t('modpacks.filter_all_versions') || 'Filter by Minecraft version'}
+              className="w-[140px]"
+            >
+              <option value="all">{t('modpacks.filter_all_versions') || 'Все версии'}</option>
+              {availableVersions.map(v => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </Select>
+            <Select
+              value={filterLoader}
+              onChange={(e) => setFilterLoader(e.target.value)}
+              aria-label={t('modpacks.filter_all_loaders') || 'Filter by modloader'}
+              className="w-[140px]"
+            >
+              <option value="all">{t('modpacks.filter_all_loaders') || 'Все лоадеры'}</option>
+              {availableLoaders.map(l => (
+                <option key={l} value={l}>{l}</option>
+              ))}
+            </Select>
           </div>
         </div>
 
@@ -464,83 +756,185 @@ const ModpackListComponentInternal: React.FC<{
 
         {/* Modpacks Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-5" role="list" aria-label={t('modpacks.title') || 'Modpacks'}>
             {Array.from({ length: 6 }).map((_, index) => (
               <ModpackCardSkeleton key={index} />
             ))}
           </div>
-        ) : modpacks.length === 0 ? (
+        ) : filteredModpacks.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400 py-12 px-4">
             <div className="text-6xl mb-4 opacity-50">📦</div>
             <h3 className="text-xl font-bold text-zinc-700 dark:text-zinc-300 mb-2">
-              {t('modpacks.no_modpacks_title') || 'Нет модпаков'}
+              {searchQuery || filterMCVersion !== 'all' || filterLoader !== 'all'
+                ? (t('modpacks.no_results') || 'Ничего не найдено')
+                : (t('modpacks.no_modpacks_title') || 'Нет модпаков')}
             </h3>
             <p className="text-sm mb-2 text-center max-w-md">
-              {t('modpacks.no_modpacks_desc') || 'Начните с выбора модпака из браузера или создайте свой собственный'}
+              {searchQuery || filterMCVersion !== 'all' || filterLoader !== 'all'
+                ? (t('modpacks.try_changing_filters') || 'Попробуйте изменить параметры поиска')
+                : (t('modpacks.no_modpacks_desc') || 'Начните с выбора модпака из браузера или создайте свой собственный')}
             </p>
-            <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center">
-              {t('modpacks.drag_drop_hint') || 'Или перетащите файл модпака (.mrpack, .zip, .curseforge) в это окно'}
-            </p>
+            {!searchQuery && filterMCVersion === 'all' && filterLoader === 'all' && (
+              <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center">
+                {t('modpacks.drag_drop_hint') || 'Или перетащите файл модпака (.mrpack, .zip, .curseforge) в это окно'}
+              </p>
+            )}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-5">
-            {modpacks.map((modpack, index) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-5" role="list" aria-label={t('modpacks.title') || 'Modpacks'}>
+            {sortedModpacks.map((modpack, index) => (
               <ModpackCard
                 key={modpack.id}
                 modpack={modpack}
                 index={index}
                 isSelected={modpack.id === selectedId}
-                canDelete={true}
+                isMenuOpen={contextMenu?.modpackId === modpack.id}
                 onSelect={handleSelect}
-                onDelete={handleDelete}
                 onShowDetails={(id) => onNavigate?.({ type: 'details', modpackId: id })}
+                onOpenActions={handleActionMenuOpen}
+                onOpenActionsFromKeyboard={handleActionMenuOpenFromKeyboard}
                 onContextMenu={handleContextMenu}
               />
             ))}
           </div>
         )}
-      </div>
+      </div >
 
-      
+
       {/* Context Menu */}
-      {contextMenu && (
-        <div
-          className="fixed z-50 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[150px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-            onClick={() => {
-              handleSelect(contextMenu.modpackId);
-              setContextMenu(null);
-            }}
+      {
+        contextMenu && (
+          <div
+            ref={contextMenuRef}
+            id={`modpack-actions-menu-${contextMenu.modpackId}`}
+            role="menu"
+            aria-label={`${t('modpacks.settings_title') || 'More actions'}: ${modpacks.find((modpack) => modpack.id === contextMenu.modpackId)?.name || contextMenu.modpackId}`}
+            className="fixed z-50 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[150px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
           >
-            {t('modpacks.select')}
-          </button>
-          <button
-            className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-            onClick={() => {
-              onNavigate?.({ type: 'details', modpackId: contextMenu.modpackId });
-              setContextMenu(null);
-            }}
-          >
-            {t('general.settings')}
-          </button>
-          <button
-            className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-            onClick={() => {
-              const modpack = modpacks.find((m) => m.id === contextMenu.modpackId);
-              if (modpack) {
-                handleDelete(contextMenu.modpackId, modpack.name);
-              }
-              setContextMenu(null);
-            }}
-          >
-            {t('modpacks.delete')}
-          </button>
-        </div>
+            <button
+              type="button"
+              role="menuitem"
+              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              onClick={() => {
+                handleSelect(contextMenu!.modpackId);
+                closeContextMenu();
+              }}
+            >
+              {t('modpacks.select')}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              onClick={() => {
+                // Same as clicking "Play" but from context menu we just select for now or maybe implement Launch later
+                // For now, let's just Select + Settings like the card buttons
+                handleSelect(contextMenu!.modpackId);
+                closeContextMenu();
+              }}
+            >
+              {/* TODO: Implement direct launch action if possible */}
+              {t('general.play') || 'Играть'}
+            </button>
+            <div className="h-px bg-zinc-200 dark:bg-zinc-700 my-1" />
+            <button
+              type="button"
+              role="menuitem"
+              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              onClick={() => {
+                onNavigate?.({ type: 'details', modpackId: contextMenu!.modpackId });
+                closeContextMenu();
+              }}
+            >
+              {t('general.settings')}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center"
+              onClick={() => {
+                setShareModpackId(contextMenu!.modpackId);
+                setShareModalOpen(true);
+                closeContextMenu();
+              }}
+            >
+              <Share2 className="w-4 h-4 mr-2" />
+              {t('share.context_btn') || 'Поделиться'}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              onClick={() => {
+                onNavigate?.({ type: 'export', modpackId: contextMenu!.modpackId });
+                closeContextMenu();
+              }}
+            >
+              {t('modpacks.export') || 'Экспорт'}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              onClick={() => {
+                const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
+                if (modpack) {
+                  handleRename(contextMenu!.modpackId, modpack.name);
+                }
+                closeContextMenu();
+              }}
+            >
+              {t('modpacks.rename') || 'Переименовать'}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              onClick={() => {
+                const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
+                if (modpack) {
+                  handleDuplicate(contextMenu!.modpackId, modpack.name);
+                }
+                closeContextMenu();
+              }}
+            >
+              {t('modpacks.duplicate') || 'Дублировать'}
+            </button>
+            <div className="h-px bg-zinc-200 dark:bg-zinc-700 my-1" />
+            <button
+              type="button"
+              role="menuitem"
+              className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              onClick={() => {
+                const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
+                if (modpack) {
+                  handleDelete(contextMenu!.modpackId, modpack.name);
+                }
+                closeContextMenu();
+              }}
+            >
+              {t('modpacks.delete')}
+            </button>
+          </div>
+        )
+      }
+
+      {/* Share Modals */}
+      {shareModpackId && (
+        <ShareModal
+          isOpen={shareModalOpen}
+          onClose={() => setShareModalOpen(false)}
+          modpackId={shareModpackId}
+        />
       )}
+
+      <ImportShareModal
+        isOpen={importShareModalOpen}
+        onClose={() => setImportShareModalOpen(false)}
+        onImport={handleImportShareCode}
+      />
     </>
   );
 };
@@ -552,7 +946,7 @@ const MemoizedModpackListInternal = React.memo(ModpackListComponentInternal);
 
 // Wrapper component that extracts values from context
 const ModpackListComponent: React.FC<{
-  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string }) => void;
+  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string } | { type: 'export'; modpackId: string }) => void;
   onCreateWizard?: () => void;
 }> = ({ onNavigate, onCreateWizard }) => {
   const values = useModpackListValues();
@@ -562,6 +956,8 @@ const ModpackListComponent: React.FC<{
     selectedId={values.selectedId}
     select={values.select}
     remove={values.remove}
+    rename={values.rename}
+    duplicate={values.duplicate}
     refresh={values.refresh}
     modpacksKey={values.modpacksKey}
     onNavigate={onNavigate}

@@ -1,9 +1,10 @@
 import React from 'react';
 import { cn } from '../../../utils/cn';
+import { LazyImage } from '../../ui/LazyImage';
 import type { ModpackConfig } from '../../../contexts/ModpackContext';
 import type { ModpackMetadata } from '@shared/types/modpack';
 
-export type ModpackDetailsTab = 'info' | 'mods' | 'settings';
+export type ModpackDetailsTab = 'info' | 'mods' | 'resourcepacks' | 'shaders' | 'worlds' | 'screenshots' | 'settings';
 
 export interface ModpackDetailsHeaderProps {
   modpackName: string;
@@ -32,15 +33,11 @@ export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
   <div className="flex-shrink-0 px-6 pt-6 pb-0">
     <div className="flex items-start gap-4 mb-6 pb-4 border-b border-zinc-200 dark:border-zinc-700">
       {metadata?.iconUrl && (
-        <img
+        <LazyImage
           src={metadata.iconUrl}
           alt={modpackName}
           className="w-20 h-20 rounded-lg object-cover border border-zinc-200 dark:border-zinc-700"
-          onError={(e) => {
-            if (e.currentTarget.src !== '/icon.png') {
-              e.currentTarget.src = '/icon.png';
-            }
-          }}
+          fallback="/icon.png"
         />
       )}
       <div className="flex-1 min-w-0">
@@ -75,28 +72,34 @@ export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
       </div>
     </div>
 
-    <div className="flex gap-2 mb-4 border-b border-zinc-200 dark:border-zinc-700">
-      {(['info', 'mods', 'settings'] as const)
+    <div className="flex gap-2 mb-4 border-b border-zinc-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide">
+      {(['info', 'mods', 'resourcepacks', 'shaders', 'worlds', 'screenshots', 'settings'] as const)
         .filter((tab) => {
           if (tab !== 'mods') return true;
           const loaderType = effectiveConfig?.runtime?.modLoader?.type ?? metadata?.modLoader?.type;
-          return loaderType && loaderType !== 'vanilla';
+          return !!loaderType && loaderType !== 'vanilla';
         })
         .map((tab) => (
-        <button
-          key={tab}
-          onClick={() => onTabChange(tab)}
-          className={cn(
-            'px-4 py-2 text-sm font-medium transition-colors border-b-2',
-            activeTab === tab
-              ? cn('border-opacity-100', getAccentStyles('border').className)
-              : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'
-          )}
-          style={activeTab === tab ? { borderColor: getAccentHex() } : undefined}
-        >
-          {tab === 'info' ? (t('modpacks.tab_info') || 'Информация') : tab === 'mods' ? (t('modpacks.tab_mods') || 'Моды') : (t('modpacks.tab_settings') || 'Настройки')}
-        </button>
-      ))}
+          <button
+            key={tab}
+            onClick={() => onTabChange(tab)}
+            className={cn(
+              'px-4 py-2 text-sm font-medium transition-colors border-b-2 whitespace-nowrap',
+              activeTab === tab
+                ? cn('border-opacity-100', getAccentStyles('border').className)
+                : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'
+            )}
+            style={activeTab === tab ? { borderColor: getAccentHex() } : undefined}
+          >
+            {tab === 'info' ? (t('modpacks.tab_info') || 'Информация') :
+              tab === 'mods' ? (t('modpacks.tab_mods') || 'Моды') :
+                tab === 'resourcepacks' ? (t('modpacks.tab_resourcepacks') || 'Ресурспаки') :
+                  tab === 'shaders' ? (t('modpacks.tab_shaders') || 'Шейдеры') :
+                    tab === 'worlds' ? (t('modpacks.tab_worlds') || 'Миры') :
+                      tab === 'screenshots' ? (t('modpacks.tab_screenshots') || 'Скриншоты') :
+                        (t('modpacks.tab_settings') || 'Настройки')}
+          </button>
+        ))}
     </div>
   </div>
 );

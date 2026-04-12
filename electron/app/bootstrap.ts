@@ -1,4 +1,4 @@
-import { app } from 'electron';
+import { app, ipcMain, BrowserWindow } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -6,7 +6,7 @@ import { AuthServer } from '../auth/server';
 import { LauncherManager } from '../services/launcher/orchestrator';
 import { SelfUpdater } from '../services/updater/appUpdater';
 import { IPCManager } from '../ipc/ipcManager';
-import { createMainWindow } from '../window/windowManager';
+import { createMainWindow, createConsoleWindow } from '../window/windowManager';
 import { createTray } from '../tray/trayManager';
 import { registerLifecycleHandlers } from './lifecycle';
 import { ModPlatformService } from '../services/mods/platform/modPlatformService';
@@ -14,6 +14,11 @@ import { ModpackService } from '../services/modpacks/modpackService';
 import { NetworkService } from '../services/network/networkService';
 import { NetworkManager } from '../services/network/networkManager';
 import { runFullInstallationTest } from './fullInstallationTest';
+import { ContentManager } from '../services/content/contentManager';
+import { AccountService } from '../services/account/accountService';
+import { MirrorsService } from '../services/mirrors/mirrorsService';
+import { StatisticsService } from '../services/stats/statisticsService';
+import { ShareService } from '../services/sharing/shareService';
 
 function configureAppRoot() {
   const __filename = fileURLToPath(import.meta.url);
@@ -28,7 +33,7 @@ function configureAppRoot() {
 function loadTestConfig(): { enabled: boolean; stage?: string; provider?: string; limit?: string; only?: string } | null {
   const appRoot = process.env.APP_ROOT!;
   const testConfigPath = path.join(appRoot, '..', '.test-config.json');
-  
+
   try {
     if (fs.existsSync(testConfigPath)) {
       const content = fs.readFileSync(testConfigPath, 'utf-8');
@@ -37,7 +42,7 @@ function loadTestConfig(): { enabled: boolean; stage?: string; provider?: string
   } catch {
     // Ignore errors, return null
   }
-  
+
   return null;
 }
 
@@ -95,18 +100,22 @@ function startAuthServer(): { url: string } {
   return { url };
 }
 
-function createServices(deps: { authServerUrl: string }) {
-  const modpacks = new ModpackService();
+function createServices(deps: { authServerUrl: string; accountService: AccountService; mirrorsService: MirrorsService; statisticsService: StatisticsService }) {
+  const modpacks = new ModpackService(new ContentManager(app.getPath('userData')));
   const networkManager = new NetworkManager();
 
   const launcherManager = new LauncherManager({
     instances: modpacks,
     networkManager,
     authServerUrl: deps.authServerUrl,
+    accountService: deps.accountService,
+    mirrorsService: deps.mirrorsService,
+    statisticsService: deps.statisticsService,
   });
 
   const modPlatforms = new ModPlatformService();
   const networkService = new NetworkService(networkManager);
+  const shareService = new ShareService(modpacks);
 
   return {
     modpacks,
@@ -114,6 +123,7 @@ function createServices(deps: { authServerUrl: string }) {
     launcherManager,
     modPlatforms,
     networkService,
+    shareService,
   };
 }
 
@@ -122,7 +132,7 @@ export function bootstrapMain() {
   // This ensures the userData folder uses the correct name
   app.setName('.fmcl');
   app.setAppUserModelId('com.friendlauncher.app');
-  
+
   configureAppRoot();
   const paths = resolveRuntimePaths();
   configureMultiInstanceSupport(paths.rendererDevUrl);
@@ -135,7 +145,8 @@ export function bootstrapMain() {
       rendererDevUrl: paths.rendererDevUrl,
       rendererDist: paths.rendererDist,
       vitePublicPath: paths.vitePublicPath,
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any);
     winRef = win;
     // Initialize auto-updater once the window exists.
     new SelfUpdater(win);
@@ -173,7 +184,10 @@ export function bootstrapMain() {
       },
     });
 
-    const { modpacks, launcherManager, modPlatforms, networkService } = createServices({ authServerUrl });
+    const accountService = new AccountService(app.getPath('userData'));
+    const mirrorsService = new MirrorsService();
+    const statisticsService = new StatisticsService();
+    const { modpacks, launcherManager, modPlatforms, networkService, shareService } = createServices({ authServerUrl, accountService, mirrorsService, statisticsService });
 
     // --- Register IPC Handlers ---
     IPCManager.registerAllHandlers({
@@ -182,7 +196,37 @@ export function bootstrapMain() {
       modPlatforms,
       networkService,
       modpacks,
+      accountService,
+      mirrorsService,
+      statisticsService,
+      shareService,
+    });
+
+    let consoleWinRef: BrowserWindow | null = null;
+    ipcMain.handle('window:openConsole', () => {
+      if (consoleWinRef && !consoleWinRef.isDestroyed()) {
+        consoleWinRef.show();
+        consoleWinRef.focus();
+        return;
+      }
+
+      consoleWinRef = createConsoleWindow({
+        preloadPath: path.join(paths.mainDist, 'preload.cjs'),
+        rendererDevUrl: paths.rendererDevUrl,
+        rendererDist: paths.rendererDist,
+        vitePublicPath: paths.vitePublicPath,
+      });
+
+      consoleWinRef.on('closed', () => {
+        consoleWinRef = null;
+      });
+    });
+
+    ipcMain.handle('window:closeConsole', () => {
+      if (consoleWinRef && !consoleWinRef.isDestroyed()) {
+        consoleWinRef.close();
+      }
+      consoleWinRef = null;
     });
   });
 }
-

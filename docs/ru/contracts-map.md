@@ -1,252 +1,295 @@
 ## Карта публичных контрактов (Русский)
 
-Цель: держать стабильную публичную поверхность, чтобы рефакторинги не ломали приложение.
+Цель: зафиксировать живую поверхность IPC, preload и renderer-контрактов для shipped-релиза FMCL.
 
 **Источники истины**
 
 - Регистрация IPC: `electron/ipc/ipcManager.ts` + `electron/ipc/handlers/*`
 - Preload surface: `electron/preload.ts` + `electron/preload/bridges/*`
-- Типы `window.*` в renderer: `src/vite-env.d.ts`
-- Использование в UI: поиск по `src/**` на `window.` (предпочтительно использовать `src/services/ipc/*`)
+- Allowlist: `shared/contracts/ipcChannels.ts`
+- Тип объединённого renderer API: `shared/contracts/windowApi.ts`
+- Renderer-обёртки: `src/services/ipc/*`
 
-Дата снимка: **2026-01-26**
-
----
-
-## 1) IPC контракты
-
-### 1.1 `ipcMain.handle(...)` (renderer → main)
-
-- **window**
-  - `window:minimize`
-  - `window:close`
-
-- **launcher**
-  - `launcher:launch`
-  - `launcher:getVersionList`
-  - `launcher:getForgeSupportedVersions`
-  - `launcher:getFabricSupportedVersions`
-  - `launcher:getOptiFineSupportedVersions`
-  - `launcher:getNeoForgeSupportedVersions`
-  - `launcher:clearCache`
-  - `launcher:reload`
-
-- **mods**
-  - `mods:searchMods`
-  - `mods:getModVersions`
-  - `mods:installModFile`
-
-- **modpacks**
-  - `modpacks:list`
-  - `modpacks:listWithMetadata`
-  - `modpacks:bootstrap`
-  - `modpacks:getSelected`
-  - `modpacks:setSelected`
-  - `modpacks:create`
-  - `modpacks:rename`
-  - `modpacks:duplicate`
-  - `modpacks:delete`
-  - `modpacks:getConfig`
-  - `modpacks:saveConfig`
-  - `modpacks:getMetadata`
-  - `modpacks:updateMetadata`
-  - `modpacks:searchCurseForge`
-  - `modpacks:searchModrinth`
-  - `modpacks:getCurseForgeVersions`
-  - `modpacks:getModrinthVersions`
-  - `modpacks:installCurseForge`
-  - `modpacks:installModrinth`
-  - `modpacks:exportFromInstance` (Фаза 4)
-  - `modpacks:createLocal` (Фаза 4)
-  - `modpacks:export` (Фаза 4)
-  - `modpacks:import` (Фаза 4)
-  - `modpacks:addMod` (Фаза 4)
-  - `modpacks:removeMod` (Фаза 4)
-  - `modpacks:updateOverrides` (Фаза 4)
-  - `modpacks:getModpackInfoFromFile`
-  - `modpacks:getMods`
-  - `modpacks:backup`
-
-- **network**
-  - `network:host`
-  - `network:join`
-  - `network:stop`
-  - `network:getMode`
-  - `network:setMode`
-  - `network:ping`
-  - `network:lanStart`
-  - `network:lanStop`
-  - `network:lanBroadcast`
-  - `network:upnpMapTcp`
-  - `network:upnpUnmapTcp`
-
-- **settings**
-  - `settings:selectMinecraftPath`
-  - `settings:openMinecraftPath`
-  - `settings:getDefaultMinecraftPath`
-
-- **assets**
-  - `assets:getIconPath`
-
-- **dialog**
-  - `dialog:showOpenDialog`
-  - `dialog:showSaveDialog`
-
-- **instances**
-  - `instances:list`
-  - `instances:bootstrap`
-  - `instances:getSelected`
-  - `instances:setSelected`
-  - `instances:create`
-  - `instances:rename`
-  - `instances:duplicate`
-  - `instances:delete`
-  - `instances:getConfig`
-  - `instances:saveConfig`
-
-### 1.2 `webContents.send(...)` (main → renderer, события)
-
-- **launcher**
-  - `launcher:log`
-  - `launcher:progress`
-  - `launcher:close`
-
-- **network**
-  - `network:lan-discover` (LAN discovery events)
-
-- **modpacks**
-  - `modpacks:updateProgress` (события прогресса установки/обновления модпака)
+Дата снимка: **2026-04-12**
 
 ---
 
-## 2) Публичное `window.*` (preload)
+## 1) Preload surface
 
-### 2.1 Высокоуровневые API (предпочтительно)
+### 1.1 Legacy globals, которые реально экспонируются в `electron/preload.ts`
 
-- **`window.networkAPI`**
-  - calls → `ipcRenderer.invoke(...)`:
-    - `network:host`, `network:join`, `network:stop`
-    - `network:getMode`, `network:setMode`
-    - `network:ping`
-    - `network:lanStart`, `network:lanStop`, `network:lanBroadcast`
-    - `network:upnpMapTcp`, `network:upnpUnmapTcp`
-  - events:
-    - `onLanDiscover(cb)` ← `network:lan-discover`
+- `window.networkAPI`
+- `window.ipcRenderer`
+- `window.launcher`
+- `window.modpacks`
+- `window.mods`
+- `window.updater`
+- `window.appUpdater`
+- `window.windowControls`
+- `window.cache`
+- `window.settings`
+- `window.assets`
+- `window.screenshots`
+- `window.account`
+- `window.mirrors`
+- `window.share`
+- `window.externalLinks`
 
-- **`window.launcher`**
-  - calls → `ipcRenderer.invoke(...)`:
-    - `launcher:launch`
-    - `launcher:getVersionList`
-    - `launcher:getForgeSupportedVersions`
-    - `launcher:getFabricSupportedVersions`
-    - `launcher:getOptiFineSupportedVersions`
-    - `launcher:getNeoForgeSupportedVersions`
-    - (legacy alias) `mods:*`, `modpacks:*` — см. `window.mods` и `window.modpacks`
-  - events:
-    - `onLog(cb)` ← `launcher:log`
-    - `onProgress(cb)` ← `launcher:progress`
-    - `onClose(cb)` ← `launcher:close`
+Примечания:
 
-- **`window.modpacks`**
-  - calls → `ipcRenderer.invoke(...)`:
-    - `modpacks:list`, `modpacks:listWithMetadata`, `modpacks:bootstrap`
-    - `modpacks:getSelected`, `modpacks:setSelected`
-    - `modpacks:create`, `modpacks:rename`, `modpacks:duplicate`, `modpacks:delete`
-    - `modpacks:getConfig`, `modpacks:saveConfig`
-    - `modpacks:getMetadata`, `modpacks:updateMetadata`
-    - `modpacks:searchCurseForge`, `modpacks:searchModrinth`
-    - `modpacks:getCurseForgeVersions`, `modpacks:getModrinthVersions`
-    - `modpacks:installCurseForge`, `modpacks:installModrinth`
-    - `modpacks:exportFromInstance`, `modpacks:createLocal` (Фаза 4)
-    - `modpacks:export`, `modpacks:import` (Фаза 4)
-    - `modpacks:addMod`, `modpacks:removeMod`, `modpacks:updateOverrides` (Фаза 4)
+- `window.screenshots` — это живой legacy bridge из preload, который используется через `src/services/ipc/screenshotsIPC.ts`.
+- Статистика доступна только через namespaced API: используй `window.api.statistics`. Top-level `window.statistics` в preload нет.
 
-- **`window.mods`**
-  - calls → `ipcRenderer.invoke(...)`:
-    - `mods:searchMods`, `mods:getModVersions`, `mods:installModFile`
+### 1.2 Поддерживаемый namespaced API для renderer-кода
 
-- **`window.windowControls`**
-  - `minimize()` → `window:minimize`
-  - `close()` → `window:close`
+`window.api` содержит:
 
-- **`window.cache`**
-  - `clear()` → `launcher:clearCache`
-  - `reload()` → `launcher:reload`
+- `window.api.launcher`
+- `window.api.modpacks`
+- `window.api.mods`
+- `window.api.updater`
+- `window.api.appUpdater`
+- `window.api.windowControls`
+- `window.api.network`
+- `window.api.cache`
+- `window.api.settings`
+- `window.api.assets`
+- `window.api.ipcRenderer`
+- `window.api.account`
+- `window.api.mirrors`
+- `window.api.statistics`
+- `window.api.share`
+- `window.api.externalLinks`
 
-- **`window.settings`**
-  - `selectMinecraftPath()` → `settings:selectMinecraftPath`
-  - `openMinecraftPath(path?)` → `settings:openMinecraftPath`
-  - `getDefaultMinecraftPath()` → `settings:getDefaultMinecraftPath`
-
-- **`window.assets`**
-  - `getIconPath()` → `assets:getIconPath`
-
-### 2.2 Updater API
-
-IPC handlers регистрируются в `electron/ipc/ipcManager.ts`, а события обновления прокидываются из `electron/services/updater/appUpdater.ts`.
-
-- **`window.updater`**
-  - `sync(manifestUrl, optionsOrRootPath?)` → `updater:sync`
-  - `onProgress(cb)` ← `updater:progress`
-
-- **`window.appUpdater`**
-  - `check()` → `app-updater:check`
-  - `quitAndInstall()` → `app-updater:quit-and-install`
-  - events:
-    - `app-updater:status`
-    - `app-updater:available`
-    - `app-updater:not-available`
-    - `app-updater:error`
-    - `app-updater:progress`
-    - `app-updater:downloaded`
-
-### 2.3 Unified namespace (предпочтительно для нового кода)
-
-- **`window.api`**
-  - Объединенный namespace со всеми доменными API
-  - `window.api.launcher` → `window.launcher`
-  - `window.api.modpacks` → `window.modpacks`
-  - `window.api.mods` → `window.mods`
-  - `window.api.network` → `window.networkAPI`
-  - `window.api.updater` → `window.updater`
-  - `window.api.appUpdater` → `window.appUpdater`
-  - `window.api.windowControls` → `window.windowControls`
-  - `window.api.cache` → `window.cache`
-  - `window.api.settings` → `window.settings`
-  - `window.api.assets` → `window.assets`
-  - `window.api.ipcRenderer` → `window.ipcRenderer`
-  - **Рекомендация:** В новом коде используй `window.api.*` вместо прямых `window.*` глобалов
-
-### 2.4 Raw bridge (escape hatch)
-
-- **`window.ipcRenderer`**
-  - `on/off/send/invoke`
-  - Ограничение: каналы ограничены allowlist’ом (см. `shared/contracts/ipcChannels.ts`), но всё равно избегай в пользу `src/services/ipc/*` и доменных `window.*`.
+Предпочтительное правило: новый renderer-код должен использовать `window.api.*` или типизированные обёртки из `src/services/ipc/*`, а не raw `window.*`.
 
 ---
 
-## 3) Карта использования в renderer (`src/`)
+## 2) Renderer-обёртки
 
-### 3.1 Клиенты preload (`window.<bridge>.*` или `window.api.*`)
+### 2.1 Базовые обёртки
 
-- `src/services/ipc/settingsIPC.ts` → `window.api.settings.*` (или `window.settings.*`)
-- `src/services/ipc/cacheIPC.ts` → `window.api.cache.*` (или `window.cache.*`)
-- `src/services/ipc/assetsIPC.ts` → `window.api.assets.*` (или `window.assets.*`)
-- `src/services/ipc/networkIPC.ts` → `window.api.network.*` (или `window.networkAPI.*`)
-- `src/services/ipc/launcherIPC.ts` → `window.api.launcher.*` (или `window.launcher.*`)
-- `src/services/ipc/modpacksIPC.ts` → `window.api.modpacks.*` (или `window.modpacks.*`, fallback: `window.launcher.*`)
-  - Использует методы: `list`, `bootstrap`, `getSelected`, `setSelected`, `create`, `rename`, `duplicate`, `remove`, `getConfig`, `saveConfig`
-  - Новые методы: `searchCurseForge`, `searchModrinth`, `getCurseForgeVersions`, `getModrinthVersions`, `installCurseForge`, `installModrinth`
-- `src/services/ipc/appUpdaterIPC.ts` → `window.api.appUpdater.*` (или `window.appUpdater.*`)
-- `src/services/ipc/windowControlsIPC.ts` → `window.api.windowControls.*` (или `window.windowControls.*`)
+- `src/services/ipc/launcherIPC.ts` → `window.api.launcher`
+- `src/services/ipc/modpacksIPC.ts` → `window.api.modpacks`
+- `src/services/ipc/networkIPC.ts` → `window.api.network`
+- `src/services/ipc/settingsIPC.ts` → `window.api.settings`
+- `src/services/ipc/cacheIPC.ts` → `window.api.cache`
+- `src/services/ipc/assetsIPC.ts` → `window.api.assets`
+- `src/services/ipc/appUpdaterIPC.ts` → `window.api.appUpdater`
+- `src/services/ipc/windowControlsIPC.ts` → `window.api.windowControls`
 
-### 3.2 Нативный браузерный `window.*` (НЕ preload contracts)
+### 2.2 Release-critical typed wrappers из поздних фаз
 
-Это стандартные браузерные API (без Electron bridge):
+- `src/services/ipc/accountIPC.ts` → `window.api.account`
+- `src/services/ipc/mirrorsIPC.ts` → `window.api.mirrors`
+- `src/services/ipc/statisticsIPC.ts` → `window.api.statistics`
+- `src/services/ipc/shareIPC.ts` → `window.api.share`
+- `src/services/ipc/externalLinksIPC.ts` → `window.api.externalLinks`
+- `src/services/ipc/screenshotsIPC.ts` → `window.screenshots`
 
-- `src/App.tsx`: `window.addEventListener/removeEventListener`
-- `src/components/ui/Modal.tsx`: `window.addEventListener/removeEventListener`
-- `src/components/Sidebar.tsx`: `window.location.reload()`
-- `src/components/ErrorBoundary.tsx`: `window.location.reload()`
-- `src/components/SettingsPage.tsx`: `window.confirm(...)`
+### 2.3 Нативный браузерный `window.*` (не Electron contracts)
 
+- `window.addEventListener` / `window.removeEventListener`
+- `window.location.reload()`
+- `window.confirm(...)`
+- `window.matchMedia(...)`
+
+---
+
+## 3) Снимок allowlist IPC-каналов
+
+### 3.1 Window
+
+- `window:minimize`
+- `window:close`
+- `window:openConsole`
+- `window:closeConsole`
+
+### 3.2 Launcher
+
+- `launcher:launch`
+- `launcher:getVersionList`
+- `launcher:getForgeSupportedVersions`
+- `launcher:getFabricSupportedVersions`
+- `launcher:getOptiFineSupportedVersions`
+- `launcher:getNeoForgeSupportedVersions`
+- `launcher:clearCache`
+- `launcher:reload`
+- `launcher:killAndRestart`
+- `launcher:stdin`
+- `launcher:log`
+- `launcher:progress`
+- `launcher:close`
+
+### 3.3 Mods
+
+- `mods:searchMods`
+- `mods:getModVersions`
+- `mods:installModFile`
+
+### 3.4 Instances
+
+- `instances:list`
+- `instances:bootstrap`
+- `instances:getSelected`
+- `instances:setSelected`
+- `instances:create`
+- `instances:rename`
+- `instances:duplicate`
+- `instances:delete`
+- `instances:getConfig`
+- `instances:saveConfig`
+
+### 3.5 Network
+
+- `network:host`
+- `network:join`
+- `network:stop`
+- `network:getMode`
+- `network:setMode`
+- `network:ping`
+- `network:lanStart`
+- `network:lanStop`
+- `network:lanBroadcast`
+- `network:upnpMapTcp`
+- `network:upnpUnmapTcp`
+- `network:lan-discover`
+
+### 3.6 Settings и dialogs
+
+- `settings:selectMinecraftPath`
+- `settings:openMinecraftPath`
+- `settings:getDefaultMinecraftPath`
+- `dialog:showSaveDialog`
+- `dialog:showOpenDialog`
+- `dialog:getDesktopPath`
+
+### 3.7 Assets и cache
+
+- `assets:getIconPath`
+- `cache:getImageState`
+- `cache:setImageLimit`
+- `cache:cleanupImage`
+- `cache:resolveImage`
+
+### 3.8 Updaters
+
+- `updater:sync`
+- `updater:progress`
+- `app-updater:check`
+- `app-updater:quit-and-install`
+- `app-updater:status`
+- `app-updater:available`
+- `app-updater:not-available`
+- `app-updater:error`
+- `app-updater:progress`
+- `app-updater:downloaded`
+
+### 3.9 Modpacks
+
+- `modpacks:list`
+- `modpacks:listWithMetadata`
+- `modpacks:bootstrap`
+- `modpacks:getSelected`
+- `modpacks:setSelected`
+- `modpacks:create`
+- `modpacks:rename`
+- `modpacks:duplicate`
+- `modpacks:delete`
+- `modpacks:getConfig`
+- `modpacks:saveConfig`
+- `modpacks:getMetadata`
+- `modpacks:updateMetadata`
+- `modpacks:searchCurseForge`
+- `modpacks:searchModrinth`
+- `modpacks:getCurseForgeVersions`
+- `modpacks:getModrinthVersions`
+- `modpacks:installCurseForge`
+- `modpacks:installModrinth`
+- `modpacks:exportFromInstance`
+- `modpacks:createLocal`
+- `modpacks:export`
+- `modpacks:getModpackInfoFromFile`
+- `modpacks:import`
+- `modpacks:addMod`
+- `modpacks:removeMod`
+- `modpacks:setModEnabled`
+- `modpacks:updateOverrides`
+- `modpacks:getMods`
+- `modpacks:backup`
+- `modpacks:createFromManifest`
+- `modpacks:cleanupContent`
+- `modpacks:getContentStats`
+- `modpacks:resolvePath`
+- `modpacks:scanJava`
+- `modpacks:updateProgress`
+
+### 3.10 Ресурспаки, шейдеры, миры, датапаки
+
+- `resourcePacks:list`
+- `resourcePacks:enable`
+- `resourcePacks:disable`
+- `resourcePacks:reorder`
+- `resourcePacks:import`
+- `resourcePacks:delete`
+- `resourcePacks:openFolder`
+- `resourcePacks:add`
+- `shaders:list`
+- `shaders:setActive`
+- `shaders:disable`
+- `shaders:delete`
+- `shaders:openFolder`
+- `shaders:add`
+- `worlds:list`
+- `worlds:delete`
+- `worlds:backup`
+- `worlds:duplicate`
+- `worlds:openFolder`
+- `datapacks:list`
+- `datapacks:enable`
+- `datapacks:disable`
+- `datapacks:delete`
+- `datapacks:search`
+- `datapacks:install`
+- `datapacks:getVersions`
+
+### 3.11 App, account, mirrors, screenshots
+
+- `app:saveFile`
+- `account:getAccounts`
+- `account:getSelectedAccount`
+- `account:addOffline`
+- `account:addThirdParty`
+- `account:getSkinState`
+- `account:refreshSkinState`
+- `account:removeAccount`
+- `account:selectAccount`
+- `mirrors:getMirrors`
+- `mirrors:getSelectedMirror`
+- `mirrors:addCustomMirror`
+- `mirrors:removeMirror`
+- `mirrors:selectMirror`
+- `mirrors:moveMirror`
+- `mirrors:testSpeed`
+- `mirrors:setAutoSelect`
+- `mirrors:isAutoSelectEnabled`
+- `screenshots:list`
+- `screenshots:delete`
+- `screenshots:rename`
+- `screenshots:openFolder`
+
+### 3.12 Share, statistics, external links
+
+- `share:generateCode`
+- `share:importCode`
+- `stats:get`
+- `stats:export`
+- `externalLinks:open`
+
+---
+
+## 4) Release notes для контрактных потребителей
+
+- По возможности используй типизированные обёртки из `src/services/ipc/*`.
+- Держи синхронными `shared/contracts/ipcChannels.ts`, этот документ и `docs/en/contracts-map.md`.
+- Если добавляешь или удаляешь preload globals, обновляй `electron/preload.ts` и всю историю типизации renderer-поверхности (`shared/contracts/*`, `src/vite-env.d.ts` или локальную аугментацию в wrapper-файле) в том же изменении.

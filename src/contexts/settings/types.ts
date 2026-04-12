@@ -20,5 +20,33 @@ export type AccentStyleType =
   | 'soft-bg'
   | 'soft-border';
 
-export type AccentStyleResult = { className?: string; style?: React.CSSProperties };
+export type CustomThemeConfig = {
+  colors?: {
+    background?: string;
+    card?: string;
+    textMain?: string;
+    textSecondary?: string;
+    border?: string;
+    error?: string;
+  };
+  background?: {
+    image?: string; // URL or base64
+    blur?: number;
+    opacity?: number;
+    type?: 'image' | 'video' | 'particles';
+    position?: 'center' | 'cover' | 'contain' | 'repeat';
+    video?: {
+      url?: string;
+      volume?: number;
+      loop?: boolean;
+      autoPause?: boolean;
+    };
+    particles?: {
+      type?: 'snow' | 'rain' | 'stars';
+      intensity?: number;
+      speed?: number;
+    };
+  };
+};
 
+export type AccentStyleResult = { className?: string; style?: React.CSSProperties };

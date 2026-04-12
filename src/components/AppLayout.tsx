@@ -4,7 +4,7 @@ import TitleBar from './TitleBar';
 import Sidebar from './Sidebar';
 import { UpdateNotification } from './UpdateNotification';
 import { ModpackUpdateNotification } from './modpacks/ModpackUpdateNotification';
-import { ConsoleView } from './layout/ConsoleView';
+
 import { ModpackRouter } from './modpacks/ModpackRouter';
 import type { UpdateInfo, UpdateStatus } from '../features/updater/hooks/useAppUpdater';
 import type { ModpackUpdateInfo } from '../features/modpacks/hooks/useModpackUpdates';
@@ -16,6 +16,8 @@ import type { VersionHint } from '../utils/minecraftVersions';
 // SettingsPage is imported directly to avoid loading delay
 import SettingsPage from './SettingsPage';
 import MultiplayerPage from './MultiplayerPage';
+import { cn } from '../utils/cn';
+import { useSettings } from '../contexts/SettingsContext';
 
 export type AppLayoutProps = {
   theme: 'light' | 'dark';
@@ -79,16 +81,23 @@ export type AppLayoutProps = {
   };
 };
 
+import { BackgroundLayer } from './layout/BackgroundLayer';
+
 export function AppLayout(props: AppLayoutProps) {
   const { theme, updates, modpackUpdates, modpackOnLaunch, overlays, actions, launch, runtime } = props;
 
   // Memoize modpackUpdates check to prevent unnecessary re-renders
   const hasModpackUpdates = useMemo(() => modpackUpdates && modpackUpdates.updates.length > 0, [modpackUpdates]);
   const { uiMode } = useUIMode();
+  const { sidebarPosition } = useSettings();
+
+  // ... global hotkeys ...
 
   return (
     <div className={theme === 'dark' ? 'dark h-full w-full' : 'h-full w-full'}>
-      <div className="flex flex-col h-screen w-full bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-900 dark:to-zinc-950 text-zinc-900 dark:text-zinc-100 overflow-hidden font-sans border border-zinc-200 dark:border-zinc-800 shadow-2xl">
+      <BackgroundLayer />
+      <div className="relative flex flex-col h-screen w-full bg-background text-foreground overflow-hidden font-sans border border-border shadow-2xl transition-colors duration-300">
+        {/* ... UpdateNotification and TitleBar ... */}
         <UpdateNotification status={updates.status} updateInfo={updates.info} onInstall={updates.onInstall} />
         {hasModpackUpdates && modpackUpdates && <ModpackUpdateNotification updates={modpackUpdates.updates} onDismiss={modpackUpdates.onDismiss} />}
         <TitleBar />
@@ -100,18 +109,19 @@ export function AppLayout(props: AppLayoutProps) {
           <MultiplayerPage onBack={overlays.onBackFromMultiplayer} />
         )}
 
-        <div className="flex flex-1 overflow-hidden relative">
+        <div className={cn(
+          "flex flex-1 overflow-hidden relative",
+          sidebarPosition === 'right' ? "flex-row-reverse" : "flex-row"
+        )}>
           <Sidebar
             launch={launch}
             runtime={runtime}
             actions={actions}
           />
 
-          <div className="flex-1 flex flex-col bg-gradient-to-br from-zinc-50/50 to-white dark:from-zinc-950 dark:to-zinc-900 min-w-0 transition-all duration-300 overflow-hidden">
+          <div className="flex-1 flex flex-col bg-background min-w-0 transition-all duration-300 overflow-hidden">
             <div key={uiMode} className="flex-1 flex flex-col mode-switch-enter min-h-0">
-              {runtime.showConsole ? (
-                <ConsoleView logs={runtime.logs} logEndRef={runtime.logEndRef} onCopyLogs={runtime.onCopyLogs} />
-              ) : uiMode === 'modpacks' ? (
+              {uiMode === 'modpacks' ? (
                 <ModpackRouter onLaunch={modpackOnLaunch ?? runtime.onLaunch} />
               ) : (
                 <SimplePlayDashboard launch={launch} runtime={runtime} actions={actions} />

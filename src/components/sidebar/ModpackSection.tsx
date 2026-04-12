@@ -6,12 +6,14 @@ import { ModpackBrowser } from '../modpacks/ModpackBrowser';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { cn } from '../../utils/cn';
+import { DEFAULT_MODPACK_BROWSER_STATE, type ModpackBrowserState } from '../../features/modpacks/hooks/useModpackNavigation';
 
 export function ModpackSection() {
   const { t, getAccentStyles, minecraftPath } = useSettings();
   const { selectedId, modpacks } = useModpack();
   const [metadata, setMetadata] = useState<ModpackMetadata | null>(null);
   const [showBrowser, setShowBrowser] = useState(false);
+  const [browserState, setBrowserState] = useState<ModpackBrowserState>(DEFAULT_MODPACK_BROWSER_STATE);
 
   useEffect(() => {
     const loadMetadata = async () => {
@@ -51,8 +53,10 @@ export function ModpackSection() {
         </div>
         {showBrowser && (
           <ModpackBrowser
+            initialState={browserState}
             onBack={() => setShowBrowser(false)}
             onNavigate={() => setShowBrowser(false)}
+            onStateChange={setBrowserState}
           />
         )}
       </>
@@ -103,8 +107,10 @@ export function ModpackSection() {
       </div>
       {showBrowser && (
         <ModpackBrowser
+          initialState={browserState}
           onBack={() => setShowBrowser(false)}
           onNavigate={() => setShowBrowser(false)}
+          onStateChange={setBrowserState}
         />
       )}
     </>

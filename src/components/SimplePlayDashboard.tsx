@@ -1,15 +1,17 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useSettings, useUIMode } from '../contexts/SettingsContext';
 import { useModpack } from '../contexts/ModpackContext';
-import { useConfirm } from '../contexts/ConfirmContext';
-import { useToast } from '../contexts/ToastContext';
 import { modpacksIPC } from '../services/ipc/modpacksIPC';
-import { AddModModal } from './modpacks/AddModModal';
+import { resourcePacksIPC } from '../services/ipc/resourcePacksIPC';
+import { shadersIPC } from '../services/ipc/shadersIPC';
+import { ModsTab } from './modpacks/details/ModsTab';
 import { Button } from './ui/Button';
 import { CollapsibleSection } from './ui/CollapsibleSection';
 import { GameTab } from './settings/tabs/GameTab';
+import { ResourcePacksTab } from './modpacks/details/ResourcePacksTab';
+import { ShadersTab } from './modpacks/details/ShadersTab';
+import { WorldsTab } from './modpacks/details/WorldsTab';
 import { cn } from '../utils/cn';
-import { modNameToSlug } from '../utils/modSlug';
 
 interface Particle {
   id: string;
@@ -61,23 +63,49 @@ function generateParticles(baseId: number): Particle[] {
   return out;
 }
 
-export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDashboardProps) {
-  const { t, getAccentStyles, getAccentHex, minecraftPath } = useSettings();
+export function SimplePlayDashboard({ launch, runtime: _runtime, actions: _actions }: SimplePlayDashboardProps) {
+  const { t, getAccentStyles, getAccentHex, minecraftPath, disableAnimations } = useSettings();
   const { setMode } = useUIMode();
   const {
     effectiveModpackId,
     config: modpackConfig,
     setMemoryGb,
+    setMinMemoryGb,
     setJavaPath,
     setVmOptions,
     setGameExtraArgs,
     setGameResolution,
     setAutoConnectServer,
+    modpacks, // Use modpacks to find the path
   } = useModpack(); // в Classic — classic config и setters
   const modpackId = effectiveModpackId;
+  const currentModpack = modpacks.find((m) => m.id === modpackId);
+  const targetPath = currentModpack?.path || minecraftPath || undefined;
+
+  const [resolvedPath, setResolvedPath] = useState<string>('');
+
+  useEffect(() => {
+    if (!targetPath && modpackId) {
+      modpacksIPC.resolvePath(modpackId)
+        .then((path: string) => {
+          console.log('[SimplePlayDashboard] Resolved path via IPC:', path);
+          setResolvedPath(path);
+        })
+        .catch((err: Error) => console.error('Failed to resolve path:', err));
+    }
+  }, [targetPath, modpackId]);
+
+  const effectivePath = targetPath || resolvedPath || undefined;
+
+  // Debug logs removed
+
 
   const [showEasterEgg, setShowEasterEgg] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(() => {
+    return localStorage.getItem('simple_play_welcome_dismissed') !== 'true';
+  });
   const [particles, setParticles] = useState<Particle[]>([]);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const clickTimestampsRef = useRef<number[]>([]);
   const easterEggTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const particleIdCounterRef = useRef(0);
@@ -88,17 +116,53 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
   const accentHex = getAccentHex();
   const loaderLabel = LOADER_LABELS[launch.loaderType] ?? launch.loaderType;
   const showMods = launch.loaderType !== 'vanilla';
+  const reducedMotion = disableAnimations || prefersReducedMotion;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updatePreference = () => {
+      setPrefersReducedMotion(mediaQuery.matches);
+    };
+
+    updatePreference();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updatePreference);
+    } else {
+      mediaQuery.addListener(updatePreference);
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', updatePreference);
+      } else {
+        mediaQuery.removeListener(updatePreference);
+      }
+    };
+  }, []);
 
   const launchFireworks = useCallback(() => {
+    if (reducedMotion) {
+      return;
+    }
+
     const waveId = particleIdCounterRef.current++;
     const next = generateParticles(waveId);
     setParticles((prev) => [...prev, ...next].slice(-60));
     setTimeout(() => {
       setParticles((prev) => prev.filter((p) => !p.id.startsWith(`particle-${waveId}-`)));
     }, 2000);
-  }, []);
+  }, [reducedMotion]);
 
   const handleLogoClick = useCallback(() => {
+    if (reducedMotion) {
+      return;
+    }
+
     const now = Date.now();
     clickTimestampsRef.current.push(now);
     lastClickTimeRef.current = now;
@@ -120,7 +184,12 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
         clickTimestampsRef.current = [];
       }
     }, 2000);
-  }, [showEasterEgg, launchFireworks]);
+  }, [showEasterEgg, launchFireworks, reducedMotion]);
+
+  const handleDismissWelcome = useCallback(() => {
+    setShowWelcome(false);
+    localStorage.setItem('simple_play_welcome_dismissed', 'true');
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -128,23 +197,72 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
     };
   }, []);
 
+  useEffect(() => {
+    if (!reducedMotion) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setShowEasterEgg(false);
+      setParticles([]);
+      clickTimestampsRef.current = [];
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [reducedMotion]);
+
   return (
-    <div className="h-full w-full flex flex-col items-center px-4 py-6 md:px-6 overflow-y-auto overflow-x-hidden animate-fade-in-up">
+    <div className={cn(
+      'h-full w-full flex flex-col items-center px-4 py-6 md:px-6 overflow-y-auto overflow-x-hidden',
+      !reducedMotion && 'animate-fade-in-up'
+    )}>
+      {/* Welcome Banner */}
+      {showWelcome && (
+        <div className={cn(
+          'w-full max-w-2xl mb-6 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 flex flex-col sm:flex-row items-center gap-4 relative',
+          !reducedMotion && 'animate-in fade-in slide-in-from-top-4'
+        )}>
+          <div className="text-3xl">👋</div>
+          <div className="flex-1 text-center sm:text-left">
+            <h3 className="text-lg font-bold text-indigo-900 dark:text-indigo-100">
+              {t('dashboard.welcome_title') || 'Welcome!'}
+            </h3>
+            <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">
+              {t('dashboard.welcome_desc') || 'This is Simple Play mode...'}
+            </p>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleDismissWelcome}
+            className="shrink-0"
+          >
+            {t('dashboard.dismiss') || 'Dismiss'}
+          </Button>
+        </div>
+      )}
+
       {/* Logo + easter egg — на фоне, без жёсткого бокса */}
       <div className="relative flex flex-col items-center gap-2 mb-6 overflow-visible w-full">
-        <div
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           onClick={handleLogoClick}
-          onKeyDown={(e) => e.key === 'Enter' && handleLogoClick()}
-          className="logo-container relative w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-visible cursor-pointer transition-all duration-300 ease-out hover:scale-110 active:scale-105"
+          aria-label="FriendLauncher logo"
+          className={cn(
+            'logo-container motion-safe-transform relative w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-visible cursor-pointer',
+            reducedMotion
+              ? 'transition-none'
+              : 'transition-all duration-300 ease-out hover:scale-110 active:scale-105'
+          )}
           style={{ filter: `drop-shadow(0 0 24px ${accentHex}50) drop-shadow(0 0 48px ${accentHex}30)` }}
         >
           <div
             className="absolute -inset-6 rounded-full animate-pulse-slow pointer-events-none"
             style={{
               background: `radial-gradient(circle, ${accentHex}20 0%, transparent 60%)`,
-              animation: showEasterEgg ? 'easter-egg-glow 0.5s ease-in-out infinite' : 'none',
+              animation: !reducedMotion && showEasterEgg ? 'easter-egg-glow 0.5s ease-in-out infinite' : 'none',
             }}
           />
           <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-black/20 border border-zinc-200/60 dark:border-zinc-700/60 bg-zinc-900/80 flex items-center justify-center backdrop-blur-sm">
@@ -153,28 +271,28 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
               alt="FriendLauncher"
               className="w-16 h-16 md:w-20 md:h-20 object-contain transition-transform duration-300"
               style={{
-                transform: showEasterEgg ? 'rotate(360deg) scale(1.2)' : 'none',
-                filter: showEasterEgg ? `drop-shadow(0 0 15px ${accentHex})` : 'none',
+                transform: !reducedMotion && showEasterEgg ? 'rotate(360deg) scale(1.2)' : 'none',
+                filter: !reducedMotion && showEasterEgg ? `drop-shadow(0 0 15px ${accentHex})` : 'none',
               }}
             />
           </div>
-        </div>
+        </button>
         <h1
           className={cn(
             'text-2xl md:text-3xl font-black tracking-tight drop-shadow-sm transition-all duration-300 relative z-10',
             accent.className,
-            showEasterEgg && 'animate-pulse scale-110'
+            !reducedMotion && showEasterEgg && 'animate-pulse scale-110'
           )}
           style={{
             ...(accent.style ?? {}),
-            textShadow: showEasterEgg
+            textShadow: !reducedMotion && showEasterEgg
               ? `0 0 20px ${accentHex}, 0 0 40px ${accentHex}, 0 4px 14px ${accentHex}80`
               : `0 4px 14px ${accentHex}40`,
           }}
         >
           FriendLauncher
         </h1>
-        {particles.map((p) => {
+        {!reducedMotion && particles.map((p) => {
           const ar = (p.angle * Math.PI) / 180;
           const x = Math.cos(ar) * p.distance;
           const y = Math.sin(ar) * p.distance;
@@ -224,7 +342,7 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
           }
           .firework-particle { animation: firework-particle var(--particle-duration) ease-out var(--particle-delay) forwards; will-change: transform, opacity; }
           .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
-          .logo-container:hover { filter: drop-shadow(0 0 30px ${accentHex}80) drop-shadow(0 0 60px ${accentHex}60) !important; }
+          .logo-container:hover { filter: ${reducedMotion ? `drop-shadow(0 0 24px ${accentHex}50) drop-shadow(0 0 48px ${accentHex}30)` : `drop-shadow(0 0 30px ${accentHex}80) drop-shadow(0 0 60px ${accentHex}60)`} !important; }
         `}</style>
       </div>
 
@@ -254,19 +372,6 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
         </div>
       </section>
 
-      {/* Mods (when modloader selected) - с кнопкой добавить для Classic */}
-      {showMods && (
-        <ModsSection
-          modpackId={modpackId}
-          minecraftPath={minecraftPath || undefined}
-          t={t}
-          getAccentStyles={getAccentStyles}
-          showAddButton
-          defaultMCVersion={launch.version}
-          defaultLoader={launch.loaderType}
-        />
-      )}
-
       {/* Настройки игры для Classic — свой конфиг, отдельно от модпаков */}
       <CollapsibleSection
         title={t('dashboard.advanced_settings') || 'Расширенные настройки'}
@@ -277,6 +382,7 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
         <GameTab
           modpackConfig={modpackConfig}
           setMemoryGb={setMemoryGb}
+          setMinMemoryGb={setMinMemoryGb}
           setJavaPath={setJavaPath}
           setVmOptions={setVmOptions}
           setGameExtraArgs={setGameExtraArgs}
@@ -284,6 +390,23 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
           setAutoConnectServer={setAutoConnectServer}
           t={t}
           getAccentStyles={getAccentStyles}
+        />
+      </CollapsibleSection>
+
+      {/* Контент: Моды, Ресурспаки, Шейдеры, Миры */}
+      <CollapsibleSection
+        title={t('dashboard.content') || 'Контент'}
+        defaultExpanded={false}
+        storageKey="classic_content_expanded"
+        className="w-full max-w-2xl mt-4"
+      >
+        <ContentManagerSection
+          minecraftPath={effectivePath}
+          t={t}
+          showMods={showMods}
+          modpackId={modpackId}
+          defaultMCVersion={launch.version}
+          defaultLoader={launch.loaderType}
         />
       </CollapsibleSection>
 
@@ -299,225 +422,7 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
   );
 }
 
-type ModEntry = {
-  id: string;
-  name: string;
-  version: string;
-  loaders: string[];
-  file: { path: string; name: string; size: number; mtimeMs: number };
-  enabled?: boolean;
-};
 
-function ModsSection({
-  modpackId,
-  minecraftPath,
-  t,
-  getAccentStyles,
-  showAddButton = false,
-  defaultMCVersion,
-  defaultLoader,
-}: {
-  modpackId: string;
-  minecraftPath?: string;
-  t: (k: string) => string;
-  getAccentStyles?: (type: 'bg' | 'text') => { className?: string; style?: React.CSSProperties };
-  showAddButton?: boolean;
-  defaultMCVersion?: string;
-  defaultLoader?: string;
-}) {
-  const [mods, setMods] = useState<ModEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddModModal, setShowAddModModal] = useState(false);
-  const confirm = useConfirm();
-  const toast = useToast();
-
-  const loadMods = useCallback(() => {
-    setLoading(true);
-    modpacksIPC
-      .getMods(modpackId, minecraftPath)
-      .then((list) => {
-        const withEnabled = (list ?? []).map((m: ModEntry) => ({
-          ...m,
-          enabled: !m.file.name.endsWith('.disabled'),
-        }));
-        setMods(withEnabled);
-      })
-      .catch(() => setMods([]))
-      .finally(() => setLoading(false));
-  }, [modpackId, minecraftPath]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    modpacksIPC
-      .getMods(modpackId, minecraftPath)
-      .then((list) => {
-        const withEnabled = (list ?? []).map((m: ModEntry) => ({
-          ...m,
-          enabled: !m.file.name.endsWith('.disabled'),
-        }));
-        if (!cancelled) setMods(withEnabled);
-      })
-      .catch(() => {
-        if (!cancelled) setMods([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [modpackId, minecraftPath]);
-
-  const handleRemoveMod = useCallback(
-    async (mod: ModEntry) => {
-      const confirmed = await confirm.confirm({
-        title: t('modpacks.remove') || 'Remove mod',
-        message:
-          t('modpacks.remove_mod_confirm')?.replace('{{name}}', mod.name) || `Remove mod "${mod.name}"?`,
-        variant: 'danger',
-        confirmText: t('modpacks.remove') || 'Remove',
-        cancelText: t('general.cancel') || 'Cancel',
-      });
-      if (confirmed) {
-        try {
-          await modpacksIPC.removeMod(modpackId, mod.file.name, minecraftPath);
-          loadMods();
-        } catch (error) {
-          console.error('Error removing mod:', error);
-          toast.error(t('modpacks.remove_mod_error') || 'Failed to remove mod');
-        }
-      }
-    },
-    [modpackId, minecraftPath, confirm, t, loadMods, toast]
-  );
-
-  const handleModToggle = useCallback(
-    async (mod: ModEntry) => {
-      const enabled = !(mod.enabled ?? true);
-      setMods((prev) =>
-        prev.map((m) => (m.id === mod.id ? { ...m, enabled } : m))
-      );
-      try {
-        await modpacksIPC.setModEnabled(modpackId, mod.file.name, enabled, minecraftPath);
-      } catch (error) {
-        setMods((prev) =>
-          prev.map((m) => (m.id === mod.id ? { ...m, enabled: !enabled } : m))
-        );
-        console.error('Error toggling mod:', error);
-        toast.error(t('modpacks.mod_toggle_error') || 'Failed to toggle mod');
-      }
-    },
-    [modpackId, minecraftPath, t, toast]
-  );
-
-  const accentStyle = getAccentStyles?.('bg').style ?? {};
-
-  return (
-    <section className="w-full max-w-2xl mt-6" aria-label={t('modpacks.tab_mods') || 'Mods'}>
-      <div className="flex items-center justify-between gap-2 mb-3">
-        <h2 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-          {t('modpacks.tab_mods') || 'Mods'} {!loading && `(${mods.length})`}
-        </h2>
-        {showAddButton && !loading && (
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowAddModModal(true)}
-            style={accentStyle}
-          >
-            {t('modpacks.add') || 'Add'}
-          </Button>
-        )}
-      </div>
-      {loading ? (
-        <div className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-          {t('modpacks.loading') || 'Loading...'}
-        </div>
-      ) : mods.length === 0 ? (
-        <div className="py-6 text-center text-sm text-zinc-500 dark:text-zinc-400 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-900/30">
-          {t('modpacks.no_mods') || 'No mods in modpack'}
-        </div>
-      ) : (
-        <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white/60 dark:bg-zinc-800/60 p-3">
-          {mods.map((mod) => (
-            <div
-              key={mod.id}
-              className={cn(
-                'flex items-start gap-3 py-2 px-3 rounded-lg border transition-all',
-                mod.enabled ?? true
-                  ? 'bg-zinc-100/80 dark:bg-zinc-900/40 border-zinc-200/60 dark:border-zinc-700/60'
-                  : 'bg-zinc-100/50 dark:bg-zinc-800/40 border-zinc-300 dark:border-zinc-600 opacity-60'
-              )}
-            >
-              <input
-                type="checkbox"
-                checked={mod.enabled ?? true}
-                onChange={() => handleModToggle(mod)}
-                className="mt-1 w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 focus:ring-2 focus:ring-zinc-500 dark:focus:ring-zinc-400"
-              />
-              <div className="min-w-0 flex-1">
-                <p
-                  className={cn(
-                    'font-medium truncate',
-                    mod.enabled ?? true ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'
-                  )}
-                >
-                  {mod.name}
-                </p>
-                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {t('modpacks.version')}: {mod.version}
-                  </span>
-                  {mod.loaders.length > 0 && (
-                    <span className="text-xs px-2 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-700 dark:text-zinc-300">
-                      {mod.loaders.join(', ')}
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5 truncate">{mod.file.name}</p>
-                <div className="flex gap-2 mt-1.5">
-                  <a
-                    href={`https://modrinth.com/mod/${modNameToSlug(mod.name)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Modrinth
-                  </a>
-                  <a
-                    href={`https://www.curseforge.com/minecraft/mc-mods/${modNameToSlug(mod.name)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-orange-600 dark:text-orange-400 hover:underline"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    CurseForge
-                  </a>
-                </div>
-              </div>
-              <Button variant="danger" size="sm" onClick={() => handleRemoveMod(mod)}>
-                {t('modpacks.remove') || 'Remove'}
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-      {showAddButton && (
-        <AddModModal
-          modpackId={modpackId}
-          isOpen={showAddModModal}
-          onClose={() => setShowAddModModal(false)}
-          onAdded={() => {
-            loadMods();
-            setShowAddModModal(false);
-          }}
-          defaultMCVersion={defaultMCVersion}
-          defaultLoader={defaultLoader}
-        />
-      )}
-    </section>
-  );
-}
 
 function InfoCard({
   label,
@@ -546,3 +451,115 @@ function InfoCard({
   );
 }
 
+type ContentTab = 'mods' | 'resourcepacks' | 'shaders' | 'worlds';
+
+function ContentManagerSection({
+  minecraftPath,
+  t,
+  showMods = false,
+  modpackId,
+  defaultMCVersion,
+  defaultLoader,
+}: {
+  minecraftPath?: string;
+  t: (k: string) => string;
+  showMods?: boolean;
+  modpackId?: string;
+  defaultMCVersion?: string;
+  defaultLoader?: string;
+}) {
+  const { getAccentHex } = useSettings();
+  const accentHex = getAccentHex();
+  const [activeTab, setActiveTab] = useState<ContentTab>(showMods ? 'mods' : 'resourcepacks');
+  const instancePath = minecraftPath || '';
+
+  const [rpUpdateKey, setRpUpdateKey] = useState(0);
+  const [shUpdateKey, setShUpdateKey] = useState(0);
+
+  const onAddRP = useCallback(async () => {
+    if (!instancePath) return;
+    await resourcePacksIPC.add(instancePath);
+    setRpUpdateKey(k => k + 1);
+  }, [instancePath]);
+
+  const onAddSH = useCallback(async () => {
+    if (!instancePath) return;
+    await shadersIPC.add(instancePath);
+    setShUpdateKey(k => k + 1);
+  }, [instancePath]);
+
+  if (!instancePath) {
+    return (
+      <div className="text-center py-4 text-zinc-500 text-sm">
+        {t('dashboard.no_minecraft_path') || 'Minecraft path not set'}
+      </div>
+    );
+  }
+
+  const tabs: { key: ContentTab; label: string }[] = [
+    ...(showMods ? [{ key: 'mods' as ContentTab, label: t('modpacks.tab_mods') || 'Моды' }] : []),
+    { key: 'resourcepacks', label: t('modpacks.tab_resourcepacks') || 'Ресурспаки' },
+    { key: 'shaders', label: t('modpacks.tab_shaders') || 'Шейдеры' },
+    { key: 'worlds', label: t('modpacks.tab_worlds') || 'Миры' },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Tab buttons */}
+      <div
+        className="flex gap-2 border-b border-zinc-200 dark:border-zinc-700 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: 'none' }}
+        onWheel={(e) => {
+          if (e.deltaY !== 0) {
+            e.currentTarget.scrollLeft += e.deltaY;
+            e.preventDefault();
+          }
+        }}
+      >
+        {tabs.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={cn(
+              'px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap',
+              activeTab !== tab.key && 'border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+            )}
+            style={activeTab === tab.key ? {
+              borderColor: accentHex,
+              color: accentHex
+            } : undefined}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      {/* Tab content */}
+      <div className="w-full">
+        {activeTab === 'mods' && modpackId && (
+          <ModsTab
+            modpackId={modpackId}
+            instancePath={instancePath}
+            showAddButton={true}
+            defaultMCVersion={defaultMCVersion}
+            defaultLoader={defaultLoader}
+          />
+        )}
+        {activeTab === 'resourcepacks' && (
+          <ResourcePacksTab
+            key={rpUpdateKey}
+            instancePath={instancePath}
+            onAddResourcePack={onAddRP}
+          />
+        )}
+        {activeTab === 'shaders' && (
+          <ShadersTab
+            key={shUpdateKey}
+            instancePath={instancePath}
+            onAddShader={onAddSH}
+          />
+        )}
+        {activeTab === 'worlds' && <WorldsTab instancePath={instancePath} mcVersion={defaultMCVersion} />}
+      </div>
+    </div>
+  );
+}

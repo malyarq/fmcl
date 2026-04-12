@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSettings } from '../../../contexts/SettingsContext';
 import {
   getCachedModSupportedVersions,
   setCachedFabricSupportedVersions,
@@ -21,7 +20,6 @@ export function useModSupportedVersions() {
   const [optiFineVersions, setOptiFineVersions] = useState<string[]>([]);
   const [neoForgeVersions, setNeoForgeVersions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { downloadProvider } = useSettings();
   const fetchingRef = useRef(false);
 
   useEffect(() => {
@@ -102,10 +100,10 @@ export function useModSupportedVersions() {
         const startTime = Date.now();
 
         const [forge, fabric, optiFine, neoForge] = await Promise.allSettled([
-          fetchForgeSupportedVersions(downloadProvider),
+          fetchForgeSupportedVersions(),
           fetchFabricSupportedVersions(),
           fetchOptiFineSupportedVersions(),
-          fetchNeoForgeSupportedVersions(downloadProvider),
+          fetchNeoForgeSupportedVersions(),
         ]);
 
         const elapsed = Date.now() - startTime;
@@ -171,8 +169,7 @@ export function useModSupportedVersions() {
     return () => {
       fetchingRef.current = false;
     };
-  }, [downloadProvider]);
+  }, []);
 
   return { forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions, isLoading };
 }
-

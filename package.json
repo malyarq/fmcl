@@ -1,10 +1,11 @@
 {
   "name": "friend-launcher",
   "private": true,
-  "version": "0.0.10",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "test": "vitest run",
     "test:full": "node scripts/test-full.js",
     "test:full:vanilla": "node scripts/test-full.js --stage=vanilla",
     "test:full:forge": "node scripts/test-full.js --stage=forge",
@@ -19,6 +20,8 @@
     "postinstall": "node scripts/postinstall-fix-xmcl-bytebuffer.cjs"
   },
   "dependencies": {
+    "@tsparticles/react": "^3.0.0",
+    "@tsparticles/slim": "^3.9.1",
     "@types/adm-zip": "^0.5.7",
     "@xmcl/client": "^3.2.0",
     "@xmcl/core": "^2.15.1",
@@ -35,9 +38,11 @@
     "clsx": "^2.1.1",
     "electron-updater": "^6.7.3",
     "hyperswarm": "^4.16.0",
+    "lucide-react": "^0.563.0",
     "pump": "^3.0.3",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-virtuoso": "^4.18.1",
     "tailwind-merge": "^3.4.0",
     "tree-kill": "^1.2.2",
     "undici": "^6.19.3"
@@ -45,6 +50,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@tailwindcss/postcss": "^4.1.18",
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^25.0.10",
     "@types/pump": "^1.1.3",
     "@types/react": "^19.2.3",
@@ -59,12 +65,14 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.26",
     "globals": "^17.1.0",
+    "jsdom": "^29.0.2",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
     "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6"
+    "vite-plugin-electron-renderer": "^0.14.6",
+    "vitest": "^4.1.4"
   },
   "main": "dist-electron/main.js"
 }

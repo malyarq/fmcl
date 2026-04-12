@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { cn } from '../../utils/cn';
 import { Button } from './Button';
+import { Input } from './Input';
 
 export interface ConfirmDialogProps {
     isOpen: boolean;
@@ -11,6 +12,11 @@ export interface ConfirmDialogProps {
     onConfirm: () => void;
     onCancel: () => void;
     variant?: 'default' | 'danger';
+    showInput?: boolean;
+    inputValue?: string;
+    inputPlaceholder?: string;
+    onInputChange?: (value: string) => void;
+    confirmDisabled?: boolean;
 }
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
@@ -22,18 +28,27 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     onConfirm,
     onCancel,
     variant = 'default',
+    showInput = false,
+    inputValue = '',
+    inputPlaceholder,
+    onInputChange,
+    confirmDisabled = false,
 }) => {
     useEffect(() => {
         const handleEsc = (e: KeyboardEvent) => {
             if (e.key === 'Escape' && isOpen) {
                 onCancel();
             }
+
+            if (e.key === 'Enter' && isOpen && !confirmDisabled) {
+                onConfirm();
+            }
         };
         if (isOpen) {
             window.addEventListener('keydown', handleEsc);
         }
         return () => window.removeEventListener('keydown', handleEsc);
-    }, [isOpen, onCancel]);
+    }, [confirmDisabled, isOpen, onCancel, onConfirm]);
 
     if (!isOpen) return null;
 
@@ -71,11 +86,26 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                         {message}
                     </p>
 
+                    {showInput && (
+                        <div className="mb-6">
+                            <Input
+                                autoFocus
+                                value={inputValue}
+                                onChange={(event) => onInputChange?.(event.target.value)}
+                                placeholder={inputPlaceholder}
+                            />
+                        </div>
+                    )}
+
                     <div className="flex gap-3 justify-end">
                         <Button variant="secondary" onClick={onCancel}>
                             {cancelText}
                         </Button>
-                        <Button variant={variant === 'danger' ? 'danger' : 'primary'} onClick={onConfirm}>
+                        <Button
+                            variant={variant === 'danger' ? 'danger' : 'primary'}
+                            onClick={onConfirm}
+                            disabled={confirmDisabled}
+                        >
                             {confirmText}
                         </Button>
                     </div>

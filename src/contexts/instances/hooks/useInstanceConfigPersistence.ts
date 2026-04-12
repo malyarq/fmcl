@@ -8,6 +8,7 @@ import {
   withGameResolution,
   withModpackJavaPath,
   withModpackMemoryGb,
+  withModpackMinMemoryGb,
   withNetworkMode,
   withRuntimeLoader,
   withRuntimeMinecraft,
@@ -77,6 +78,18 @@ export function useInstanceConfigPersistence(params: {
       setConfig((prev) => {
         if (!prev) return prev;
         const next = withModpackMemoryGb(prev, gb);
+        scheduleSave(next);
+        return next;
+      });
+    },
+    [scheduleSave, setConfig]
+  );
+
+  const setMinMemoryGb = useCallback(
+    (gb: number) => {
+      setConfig((prev) => {
+        if (!prev) return prev;
+        const next = withModpackMinMemoryGb(prev, gb);
         scheduleSave(next);
         return next;
       });
@@ -184,6 +197,7 @@ export function useInstanceConfigPersistence(params: {
     saveConfig,
     patchConfig,
     setMemoryGb,
+    setMinMemoryGb,
     setJavaPath,
     setRuntimeMinecraft,
     setRuntimeLoader,

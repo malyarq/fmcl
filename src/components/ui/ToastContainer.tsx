@@ -6,6 +6,7 @@ export interface ToastData {
     message: string;
     type: ToastType;
     duration?: number;
+    count?: number;
 }
 
 interface ToastContainerProps {
@@ -29,6 +30,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemove
                         message={toast.message}
                         type={toast.type}
                         duration={toast.duration}
+                        count={toast.count}
                         onClose={onRemove}
                     />
                 </div>

@@ -43,5 +43,13 @@ export function useLauncherIPC(params: {
       unsubClose();
     };
   }, [t, onAppendLog, onSetProgress, onSetStatusText, onSetLaunching]);
+
+  const sendStdin = async (data: string) => {
+    if (launcherIPC.isAvailable() && launcherIPC.has('sendStdin')) {
+      await launcherIPC.sendStdin(data);
+    }
+  };
+
+  return { sendStdin };
 }
 

@@ -1,4 +1,4 @@
-import type { BrowserWindow } from 'electron'
+import { BrowserWindow } from 'electron'
 
 export type LogSender = (msg: string) => void
 
@@ -9,7 +9,7 @@ export type LogSender = (msg: string) => void
  *
  * Invariants: channel name and log payload are unchanged (string).
  */
-export function createThrottledLauncherLogSender(window: BrowserWindow): LogSender {
+export function createThrottledLauncherLogSender(): LogSender {
   const formatTimestamp = () => {
     const d = new Date()
     const pad = (n: number) => String(n).padStart(2, '0')
@@ -23,7 +23,7 @@ export function createThrottledLauncherLogSender(window: BrowserWindow): LogSend
   }
 
   /**
-   * Avoid spamming the renderer with ultra-high-frequency progress logs.
+   * Avoid spamming the renderer with ultra-high-frequency progress lines.
    * Keep important logs (errors, failures, state transitions) intact.
    */
   const LOG_PROGRESS_THROTTLE_MS = 1000
@@ -85,9 +85,16 @@ export function createThrottledLauncherLogSender(window: BrowserWindow): LogSend
     return noTs.replace(/\d+(?:\.\d+)?/g, '#').replace(/\s+/g, ' ').slice(0, 220)
   }
 
-  return (msg: string) => {
-    if (window.isDestroyed()) return
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const broadcast = (channel: string, payload: any) => {
+    BrowserWindow.getAllWindows().forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send(channel, payload)
+      }
+    })
+  }
 
+  return (msg: string) => {
     const raw = msg ?? ''
     if (raw && isLikelyProgressLog(raw)) {
       const now = Date.now()
@@ -109,7 +116,7 @@ export function createThrottledLauncherLogSender(window: BrowserWindow): LogSend
           const summary =
             `[Download] (suppressed ${next.suppressed} noisy progress lines) ` +
             (next.sample ? `e.g. ${next.sample}` : '')
-          window.webContents.send('launcher:log', withTimestamp(summary.trim()))
+          broadcast('launcher:log', withTimestamp(summary.trim()))
           next.suppressed = 0
           next.sample = undefined
         }
@@ -128,7 +135,7 @@ export function createThrottledLauncherLogSender(window: BrowserWindow): LogSend
       logBuckets.set(signature, next)
     }
 
-    window.webContents.send('launcher:log', withTimestamp(raw))
+    broadcast('launcher:log', withTimestamp(raw))
   }
 }
 

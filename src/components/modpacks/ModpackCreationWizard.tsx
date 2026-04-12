@@ -16,6 +16,7 @@ import { ModloaderSection } from '../sidebar/ModloaderSection';
 import { OptifineToggle } from '../sidebar/OptifineToggle';
 import { AddModModal } from './AddModModal';
 import { ModpackDetailsModsTab, type ModpackModEntry } from './details';
+import { Breadcrumbs } from '../ui/Breadcrumbs';
 import { cn } from '../../utils/cn';
 
 interface ModpackDraft {
@@ -114,7 +115,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
 
   const [nameError, setNameError] = useState<string | null>(null);
 
-  const validateName = (value: string): string | null => {
+  const validateName = useCallback((value: string): string | null => {
     if (!value.trim()) {
       return t('modpacks.name_required') || 'Имя модпака обязательно';
     }
@@ -125,7 +126,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
       return t('validation.name_too_long') || 'Имя не должно превышать 50 символов';
     }
     return null;
-  };
+  }, [t]);
 
   const isOptiFineSupported = optiFineVersions.includes(draft.minecraftVersion);
 
@@ -157,6 +158,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
       await modpacksIPC.updateMetadata(result.id, { description: draft.description.trim() }, minecraftPath);
     }
     return result?.id ?? null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.name, draft.version, draft.minecraftVersion, draft.description, modLoaderType, minecraftPath]);
 
   const loadStep3Mods = useCallback(async () => {
@@ -446,116 +448,124 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header with back button */}
-      <div className="flex items-center gap-4 p-6 border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={handleClose}
-          className="flex items-center gap-2"
-        >
-          <span>←</span>
-          {t('general.back') || 'Назад'}
-        </Button>
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex-1">
-          {t('modpacks.create_new') || 'Создать новый модпак'}
-        </h2>
+      <div className="flex flex-col border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40 px-6 py-4 gap-4">
+        <Breadcrumbs
+          items={[
+            { label: t('modpacks.title') || 'Modpacks', onClick: handleClose },
+            { label: t('modpacks.create_new') || 'Create New', active: true }
+          ]}
+        />
+        <div className="flex items-center gap-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={handleClose}
+            className="flex items-center gap-2"
+          >
+            <span>←</span>
+            {t('general.back') || 'Назад'}
+          </Button>
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex-1">
+            {t('modpacks.create_new') || 'Создать новый модпак'}
+          </h2>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 min-h-0">
         <div className="max-w-2xl mx-auto space-y-6">
-        {/* Progress indicator */}
-        <div className="flex items-center justify-between">
-          {[1, 2, 3].map((step) => (
-            <React.Fragment key={step}>
-              <div className="flex flex-col items-center flex-1">
-                <div
-                  className={cn(
-                    'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all',
-                    currentStep === step
-                      ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                      : currentStep > step
-                      ? 'bg-emerald-500 text-white'
-                      : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
-                  )}
-                  style={
-                    currentStep === step
-                      ? getAccentStyles('bg').style
-                      : undefined
-                  }
-                >
-                  {currentStep > step ? '✓' : step}
+          {/* Progress indicator */}
+          <div className="flex items-center justify-between">
+            {[1, 2, 3].map((step) => (
+              <React.Fragment key={step}>
+                <div className="flex flex-col items-center flex-1">
+                  <div
+                    className={cn(
+                      'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all',
+                      currentStep === step
+                        ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
+                        : currentStep > step
+                          ? 'bg-emerald-500 text-white'
+                          : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
+                    )}
+                    style={
+                      currentStep === step
+                        ? getAccentStyles('bg').style
+                        : undefined
+                    }
+                  >
+                    {currentStep > step ? '✓' : step}
+                  </div>
+                  <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 text-center leading-tight max-w-[4.5rem] mx-auto">
+                    {step === 1
+                      ? t('wizard.step1_title') || 'Basic Info'
+                      : step === 2
+                        ? t('wizard.step2_title') || 'Version & Loader'
+                        : t('wizard.step3_title') || 'Add mods to the pack'}
+                  </div>
                 </div>
-                <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 text-center leading-tight max-w-[4.5rem] mx-auto">
-                  {step === 1
-                    ? t('wizard.step1_title') || 'Basic Info'
-                    : step === 2
-                    ? t('wizard.step2_title') || 'Version & Loader'
-                    : t('wizard.step3_title') || 'Add mods to the pack'}
-                </div>
-              </div>
-              {step < 3 && (
-                <div
-                  className={cn(
-                    'h-0.5 flex-1 mx-2 transition-all',
-                    currentStep > step
-                      ? 'bg-emerald-500'
-                      : 'bg-zinc-200 dark:bg-zinc-700'
-                  )}
-                />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
+                {step < 3 && (
+                  <div
+                    className={cn(
+                      'h-0.5 flex-1 mx-2 transition-all',
+                      currentStep > step
+                        ? 'bg-emerald-500'
+                        : 'bg-zinc-200 dark:bg-zinc-700'
+                    )}
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
 
-        {/* Step content */}
-        <div className="min-h-[300px]">
-          {currentStep === 1 && renderStep1()}
-          {currentStep === 2 && renderStep2()}
-          {currentStep === 3 && renderStep3()}
-        </div>
+          {/* Step content */}
+          <div className="min-h-[300px]">
+            {currentStep === 1 && renderStep1()}
+            {currentStep === 2 && renderStep2()}
+            {currentStep === 3 && renderStep3()}
+          </div>
 
-        {error && !nameError && (
-          <ErrorMessage message={error} />
-        )}
-
-        {/* Navigation buttons */}
-        <div className="flex gap-2 pt-4">
-          {currentStep > 1 && (
-            <Button variant="secondary" onClick={handleBack}>
-              {t('wizard.back') || 'Back'}
-            </Button>
+          {error && !nameError && (
+            <ErrorMessage message={error} />
           )}
-          <div className="flex-1" />
-          {currentStep < 3 ? (
-            <Button
-              variant="primary"
-              onClick={() => void handleNext()}
-              disabled={
-                creating ||
-                (currentStep === 1 && !canProceedFromStep1) ||
-                (currentStep === 2 && !canProceedFromStep2) ||
-                (currentStep === 3 && !canProceedFromStep3)
-              }
-              style={getAccentStyles('bg').style}
-              isLoading={creating && currentStep === 2}
-            >
-              {t('wizard.next') || 'Next'}
+
+          {/* Navigation buttons */}
+          <div className="flex gap-2 pt-4">
+            {currentStep > 1 && (
+              <Button variant="secondary" onClick={handleBack}>
+                {t('wizard.back') || 'Back'}
+              </Button>
+            )}
+            <div className="flex-1" />
+            {currentStep < 3 ? (
+              <Button
+                variant="primary"
+                onClick={() => void handleNext()}
+                disabled={
+                  creating ||
+                  (currentStep === 1 && !canProceedFromStep1) ||
+                  (currentStep === 2 && !canProceedFromStep2) ||
+                  (currentStep === 3 && !canProceedFromStep3)
+                }
+                style={getAccentStyles('bg').style}
+                isLoading={creating && currentStep === 2}
+              >
+                {t('wizard.next') || 'Next'}
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                onClick={handleCreate}
+                disabled={creating || !draft.name.trim() || !!nameError}
+                style={getAccentStyles('bg').style}
+                isLoading={creating}
+              >
+                {creating ? t('modpacks.creating') || 'Создание...' : t('modpacks.create')}
+              </Button>
+            )}
+            <Button variant="secondary" onClick={handleClose}>
+              {t('general.cancel')}
             </Button>
-          ) : (
-            <Button
-              variant="primary"
-              onClick={handleCreate}
-              disabled={creating || !draft.name.trim() || !!nameError}
-              style={getAccentStyles('bg').style}
-              isLoading={creating}
-            >
-              {creating ? t('modpacks.creating') || 'Создание...' : t('modpacks.create')}
-            </Button>
-          )}
-          <Button variant="secondary" onClick={handleClose}>
-            {t('general.cancel')}
-          </Button>
-        </div>
+          </div>
         </div>
       </div>
     </div>

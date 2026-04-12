@@ -25,6 +25,10 @@ export interface ModpackConfig {
      * Max memory in MB (matches LauncherManager.launchGame current API).
      */
     maxMb: number;
+    /**
+     * Min memory in MB (Xms).
+     */
+    minMb?: number;
   };
   vmOptions?: string[];
   game?: {

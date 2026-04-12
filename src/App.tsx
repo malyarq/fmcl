@@ -1,10 +1,11 @@
-import { useCallback, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { ErrorBoundaryWrapper } from './components/ErrorBoundaryWrapper';
 import { useAppIcon } from './app/hooks/useAppIcon';
 import { useAppOverlays } from './app/hooks/useAppOverlays';
 import { useLaunchHandler } from './app/hooks/useLaunchHandler';
 import { useOnboarding } from './app/hooks/useOnboarding';
-import { getInstanceRamGb, useModpack } from './contexts/ModpackContext';
+import { useModpack } from './contexts/ModpackContext';
+import { getInstanceRamGb } from './contexts/instances/utils/memory';
 import { useSettings } from './contexts/SettingsContext';
 import { useLaunchState } from './features/launch/hooks/useLaunchState';
 import { useLauncher } from './features/launcher/hooks/useLauncher';
@@ -17,7 +18,9 @@ import { useModpackUpdates } from './features/modpacks/hooks/useModpackUpdates';
 import { WelcomePage } from './components/onboarding/WelcomePage';
 import { OnboardingTour, type TourStep } from './components/onboarding/OnboardingTour';
 
-function AppRoot() {
+import { ConsoleWindow } from './components/ConsoleWindow';
+
+function MainApp() {
   const { config: modpackConfig } = useModpack();
   const { showSettings, showMultiplayer, openSettings, closeSettings, openMultiplayer, closeMultiplayer } = useAppOverlays();
   const { iconPath } = useAppIcon();
@@ -39,7 +42,7 @@ function AppRoot() {
 
   // App updater with auto-check on mount
   const { status: updateStatus, updateInfo, installUpdate } = useAppUpdater(true);
-  
+
   // Modpack updates checker
   const { updates: modpackUpdates } = useModpackUpdates(true);
 
@@ -73,7 +76,10 @@ function AppRoot() {
 
   // Stable ref so ModpackRouter doesn't re-render when handleLaunch changes during downloads
   const onLaunchRef = useRef(handleLaunch);
-  onLaunchRef.current = handleLaunch;
+
+  useEffect(() => {
+    onLaunchRef.current = handleLaunch;
+  });
   const stableOnLaunch = useCallback(() => onLaunchRef.current(), []);
 
   const currentHint = useMemo(
@@ -220,6 +226,15 @@ function AppRoot() {
       />
     </>
   );
+}
+
+function AppRoot() {
+  // If we are in the console window, render only that.
+  if (window.location.hash === '#console') {
+    return <ConsoleWindow />;
+  }
+
+  return <MainApp />;
 }
 
 export default function App() {

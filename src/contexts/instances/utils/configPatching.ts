@@ -9,7 +9,16 @@ export function withModpackMemoryGb(prev: ModpackConfig, gb: number): ModpackCon
   const nextGb = clamp(gb, 1, 64);
   return {
     ...prev,
-    memory: { maxMb: toMbFromGb(nextGb) },
+    memory: { ...prev.memory, maxMb: toMbFromGb(nextGb) },
+  };
+}
+
+export function withModpackMinMemoryGb(prev: ModpackConfig, gb: number): ModpackConfig {
+  const nextGb = clamp(gb, 0.5, 64);
+  const baseMemory = prev.memory || { maxMb: 4096 };
+  return {
+    ...prev,
+    memory: { ...baseMemory, minMb: toMbFromGb(nextGb) },
   };
 }
 

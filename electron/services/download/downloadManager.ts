@@ -25,6 +25,22 @@ type DownloadSingleOptions = {
   dispatcher?: Dispatcher;
 };
 
+const CORRUPTION_MESSAGE_PATTERNS = [
+  'checksum',
+  'sha1',
+  'hash',
+  'empty',
+  '0 bytes',
+  'File size mismatch',
+  'Downloaded HTML challenge',
+  'Mirror returned HTML challenge',
+  'Invalid ZIP',
+];
+
+function isCorruptedDownloadError(message: string): boolean {
+  return CORRUPTION_MESSAGE_PATTERNS.some((pattern) => message.includes(pattern));
+}
+
 export class DownloadManager {
   /**
    * Download a single file from URL to destination.
@@ -181,8 +197,7 @@ export class DownloadManager {
         (e as Error & { url?: string }).url = candidate;
         
         // Check if error is related to checksum validation or empty file
-        const isChecksumError = e.message.includes('checksum') || e.message.includes('sha1') || e.message.includes('hash');
-        const isEmptyFileError = e.message.includes('empty') || e.message.includes('0 bytes');
+        const isCorruptedCandidate = isCorruptedDownloadError(e.message);
         
         // Add file size info to error message if file exists
         try {
@@ -191,11 +206,11 @@ export class DownloadManager {
             const sizeInfo = stats.size > 0 ? ` (file size: ${stats.size} bytes)` : ' (file is empty)';
             e.message = `${e.message}${sizeInfo}`;
             
-            // If file is empty or has checksum error, it's corrupted and should be deleted
-            if (isEmptyFileError || isChecksumError || stats.size === 0) {
+            // Corrupted or truncated candidates should never survive into later fallback attempts.
+            if (isCorruptedCandidate || stats.size === 0) {
               try {
                 fs.unlinkSync(dest);
-                e.message = `${e.message} [corrupted file deleted]`;
+                e.message = `${e.message} [corrupted candidate rejected]`;
               } catch {
                 // Ignore deletion errors
               }
@@ -227,4 +242,3 @@ export class DownloadManager {
     throw errors[0];
   }
 }
-

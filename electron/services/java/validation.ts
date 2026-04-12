@@ -36,10 +36,16 @@ export async function getJavaVersion(javaPath: string): Promise<number> {
         reject(new Error(`Failed to get Java version: exit code ${code}`));
         return;
       }
-      // Parse version from output like: openjdk version "21.0.1"
-      const versionMatch = output.match(/version ["']?(\d+)/);
+      // Parse version from output like:
+      // - Modern: openjdk version "21.0.1" or "17.0.2"
+      // - Legacy: java version "1.8.0_392" (where 8 is the actual major version)
+      const versionMatch = output.match(/version ["']?(\d+)(?:\.(\d+))?/);
       if (versionMatch) {
-        const majorVersion = parseInt(versionMatch[1], 10);
+        const first = parseInt(versionMatch[1], 10);
+        const second = versionMatch[2] ? parseInt(versionMatch[2], 10) : 0;
+        // For legacy Java (1.x format), the second number is the actual major version
+        // e.g., "1.8.0" means Java 8, "1.7.0" means Java 7
+        const majorVersion = first === 1 ? second : first;
         resolve(majorVersion);
       } else {
         reject(new Error(`Could not parse Java version from output: ${output}`));
@@ -57,4 +63,3 @@ export async function validateJavaPath(javaPath: string): Promise<boolean> {
     return false;
   }
 }
-

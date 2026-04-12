@@ -52,6 +52,18 @@ export const cacheIPC = {
   reload(): ReturnType<CacheApi['reload']> {
     return call('reload', () => requireCache('reload').reload());
   },
+  getImageCacheState(): ReturnType<CacheApi['getImageCacheState']> {
+    return call('getImageCacheState', () => requireCache('getImageCacheState').getImageCacheState());
+  },
+  setImageCacheLimit(maxSizeBytes: number): ReturnType<CacheApi['setImageCacheLimit']> {
+    return call('setImageCacheLimit', () => requireCache('setImageCacheLimit').setImageCacheLimit(maxSizeBytes));
+  },
+  cleanupImageCache(): ReturnType<CacheApi['cleanupImageCache']> {
+    return call('cleanupImageCache', () => requireCache('cleanupImageCache').cleanupImageCache());
+  },
+  resolveImage(sourceUrl: string): ReturnType<CacheApi['resolveImage']> {
+    return call('resolveImage', () => requireCache('resolveImage').resolveImage(sourceUrl));
+  },
 };
 
 export type CacheIPC = typeof cacheIPC;

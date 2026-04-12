@@ -36,8 +36,8 @@ export const ExportModpackModal: React.FC<ExportModpackModalProps> = ({
     return 'zip';
   };
 
-  const getDefaultFileName = (fmt: 'curseforge' | 'modrinth' | 'zip' = format) =>
-    `${modpackName}.${getFileExtension(fmt)}`;
+  const getDefaultFileName = React.useCallback((fmt: 'curseforge' | 'modrinth' | 'zip' = format) =>
+    `${modpackName}.${getFileExtension(fmt)}`, [modpackName, format]);
 
   const [desktopPath, setDesktopPath] = useState<string | null>(null);
 
@@ -55,7 +55,7 @@ export const ExportModpackModal: React.FC<ExportModpackModalProps> = ({
           setDesktopPath(null);
         });
     }
-  }, [isOpen, desktopPath]);
+  }, [isOpen, desktopPath, getDefaultFileName]);
 
   const getDesktopPath = (fmt: 'curseforge' | 'modrinth' | 'zip' = format): string => {
     if (desktopPath) {
@@ -90,17 +90,17 @@ export const ExportModpackModal: React.FC<ExportModpackModalProps> = ({
     setError(null);
     setOutputPathError(null);
 
-      try {
-        await modpacksIPC.export(modpackId, format, outputPath, minecraftPath);
-        onExported?.();
-        onClose();
-        // Сбрасываем на Desktop путь для следующего открытия
-        if (desktopPath) {
-          setOutputPath(`${desktopPath}\\${getDefaultFileName()}`);
-        } else {
-          setOutputPath(getDefaultFileName());
-        }
-      } catch (err) {
+    try {
+      await modpacksIPC.export(modpackId, format, outputPath, minecraftPath);
+      onExported?.();
+      onClose();
+      // Сбрасываем на Desktop путь для следующего открытия
+      if (desktopPath) {
+        setOutputPath(`${desktopPath}\\${getDefaultFileName()}`);
+      } else {
+        setOutputPath(getDefaultFileName());
+      }
+    } catch (err) {
       console.error('Error exporting modpack:', err);
       const errorMessage = t('modpacks.export_error') || 'Ошибка при экспорте модпака';
       setError(errorMessage);

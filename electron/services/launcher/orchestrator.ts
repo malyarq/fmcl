@@ -1,5 +1,8 @@
 import { DefaultRangePolicy } from '@xmcl/file-transfer';
 import type { DownloadProviderId } from '../mirrors/providers';
+import type { AccountService } from '../account/accountService';
+import type { MirrorsService } from '../mirrors/mirrorsService';
+import type { StatisticsService } from '../stats/statisticsService';
 import { JavaManager } from '../java/provisioning';
 import { NetworkManager } from '../network/networkManager';
 import { createDispatcher, resolveDownloadConcurrency } from '../runtime/http';
@@ -17,6 +20,7 @@ import type { TaskProgressData, VersionEntry } from './types';
 import type { LaunchGameOptions } from './orchestratorTypes';
 import { prepareLaunchContext, ensureAuthInjector, createOfflineSession } from './preLaunchSetup';
 import { installModLoaderIfNeeded } from './modLoaderInstaller';
+import { app } from 'electron';
 import type { ChildProcess } from 'child_process';
 import kill from 'tree-kill';
 import { spawnMinecraft } from './launchFlow/spawnMinecraft';
@@ -34,7 +38,11 @@ export class LauncherManager {
   private readonly vanilla: VanillaService;
   private readonly instances: ModpackService;
   private readonly mods: ModsService;
+
   private readonly authServerUrl: string;
+  private readonly accountService?: AccountService;
+  private readonly mirrorsService?: MirrorsService;
+  private readonly statisticsService?: StatisticsService;
 
   constructor(deps?: {
     javaManager?: JavaManager;
@@ -45,18 +53,28 @@ export class LauncherManager {
     vanilla?: VanillaService;
     instances?: ModpackService;
     mods?: ModsService;
+
     authServerUrl?: string;
+    accountService?: AccountService;
+    mirrorsService?: MirrorsService;
+    statisticsService?: StatisticsService;
   }) {
     patchUndiciThrowOnError();
     this.javaManager = deps?.javaManager ?? new JavaManager();
     this.networkManager = deps?.networkManager ?? new NetworkManager();
-    this.downloads = deps?.downloads ?? new RuntimeDownloadService();
+
+    this.mirrorsService = deps?.mirrorsService;
+    this.downloads = deps?.downloads ?? new RuntimeDownloadService(this.mirrorsService);
+
     this.versionLists = deps?.versionLists ?? new VersionListService(this.downloads);
     this.tasks = deps?.tasks ?? new TaskRunner(this.downloads);
     this.vanilla = deps?.vanilla ?? new VanillaService(this.downloads, this.tasks);
     this.instances = deps?.instances ?? new ModpackService();
     this.mods = deps?.mods ?? new ModsService();
+
     this.authServerUrl = deps?.authServerUrl ?? 'http://127.0.0.1:25530';
+    this.accountService = deps?.accountService;
+    this.statisticsService = deps?.statisticsService;
   }
 
   public async getVersionList(providerId?: DownloadProviderId) {
@@ -112,6 +130,7 @@ export class LauncherManager {
       effectiveMcArgs,
       effectiveResolution,
       effectiveServer,
+      minRamGb,
     } = effective;
 
     const { isNeoForge, isForge, isFabric, mcVersion } = parseRequestedVersion(requestedVersion);
@@ -183,11 +202,30 @@ export class LauncherManager {
       maxSockets,
       onLog,
     });
-    const offlineUser = createOfflineSession(options.nickname);
+
+    let resolvedAuthServerUrl = this.authServerUrl;
+    let accessToken: string;
+    let gameProfile: { id: string; name: string };
+
+    const activeAccount = await this.accountService?.ensureActiveAccountValid();
+
+    if (activeAccount?.type === 'third-party' && activeAccount.authServerUrl) {
+      resolvedAuthServerUrl = activeAccount.authServerUrl;
+      accessToken = activeAccount.accessToken!;
+      gameProfile = { id: activeAccount.id, name: activeAccount.name };
+      onLog(`[AUTH] Using Third-Party Account: ${activeAccount.name} (${activeAccount.authServerUrl})`);
+    } else {
+      // Offline (either explicit account or fallback nickname)
+      const nickname = activeAccount?.name ?? options.nickname;
+      const offlineUser = createOfflineSession(nickname);
+      accessToken = offlineUser.accessToken;
+      gameProfile = offlineUser.selectedProfile;
+      onLog(`[AUTH] Using Offline Account: ${nickname}`);
+    }
 
     onLog(`[LAUNCH] Launching Minecraft ${launchVersion}...`);
     onLog(`[LAUNCH] Java: ${javaPath}`);
-    onLog(`[LAUNCH] RAM: ${ramGb}GB`);
+    onLog(`[LAUNCH] RAM: Max ${ramGb}GB${minRamGb ? `, Min ${minRamGb}GB` : ''}`);
 
     const proc = await spawnMinecraft({
       requiredJava,
@@ -200,29 +238,55 @@ export class LauncherManager {
         resourcePath: rootPath,
         javaPath,
         version: launchVersion,
-        gameProfile: offlineUser.selectedProfile,
-        accessToken: offlineUser.accessToken,
+        gameProfile: gameProfile,
+        accessToken: accessToken,
         userType: 'legacy',
         properties: {},
         resolution: effectiveResolution,
         server: effectiveServer,
-        minMemory: 1024,
+        minMemory: minRamGb ? minRamGb * 1024 : 1024,
         maxMemory: ramGb * 1024,
         extraMCArgs: effectiveMcArgs,
         ignorePatchDiscrepancies: true,
         ignoreInvalidMinecraftCertificates: true,
         yggdrasilAgent: {
           jar: destInjectorPath,
-          server: this.authServerUrl,
+          server: resolvedAuthServerUrl,
         },
         launcherName: 'FriendLauncher',
         launcherBrand: 'FriendLauncher',
       },
     });
 
+
+
+    // Record launch statistics
+    if (this.statisticsService) {
+      try {
+        const rootPath = app.getPath('userData');
+        const name = (await this.instances.getModpackMetadata(rootPath, instanceId || ''))?.name
+        this.statisticsService.recordLaunch(instanceId, name);
+      } catch (e) {
+        console.error('Failed to record launch stats:', e);
+      }
+    }
+    const startTime = Date.now();
+
     this.currentGameProcess = proc;
-    proc.on('close', () => {
+    proc.on('close', (code) => {
       this.currentGameProcess = null;
+
+      // Record play time statistics
+      if (this.statisticsService) {
+        try {
+          const duration = Date.now() - startTime;
+          this.statisticsService.recordPlayTime(duration, instanceId);
+        } catch (e) {
+          console.error('Failed to record play time stats:', e);
+        }
+      }
+
+      onClose(code ?? 0);
     });
   }
 
@@ -244,6 +308,12 @@ export class LauncherManager {
         resolve();
       });
     });
+  }
+  /** Writes data to the game process stdin if available. */
+  public writeToGameStdin(data: string): void {
+    if (this.currentGameProcess && this.currentGameProcess.stdin) {
+      this.currentGameProcess.stdin.write(data);
+    }
   }
 }
 

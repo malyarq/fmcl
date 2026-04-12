@@ -1,26 +1,70 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useState } from 'react';
+import type { ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts/modpacks';
 
-export type ModpackView = 
+export type ModpackPlatform = 'curseforge' | 'modrinth';
+export type ModpackBrowserSortOption = 'popularity' | 'date' | 'alphabetical';
+export type ModpackBrowserFilterValue = string | 'all';
+
+export interface ModpackBrowserState {
+  platform: ModpackPlatform;
+  query: string;
+  sortBy: ModpackBrowserSortOption;
+  filterMCVersion: ModpackBrowserFilterValue;
+  filterLoader: ModpackBrowserFilterValue;
+  currentPage: number;
+  itemsPerPage: number;
+  showHistory: boolean;
+}
+
+export const DEFAULT_MODPACK_BROWSER_STATE: ModpackBrowserState = {
+  platform: 'modrinth',
+  query: '',
+  sortBy: 'popularity',
+  filterMCVersion: 'all',
+  filterLoader: 'all',
+  currentPage: 1,
+  itemsPerPage: 12,
+  showHistory: false,
+};
+
+export type ModpackView =
   | { type: 'list' }
-  | { type: 'browser' }
+  | { type: 'browser'; state: ModpackBrowserState }
   | { type: 'details'; modpackId: string }
   | { type: 'addMod'; modpackId: string }
+  | { type: 'addResourcePack'; modpackId: string }
+  | { type: 'addShader'; modpackId: string }
   | { type: 'export'; modpackId: string }
-  | { type: 'install'; modpack: any; versions: any[]; platform: 'curseforge' | 'modrinth' }
+  | { type: 'install'; modpack: ModpackSearchResultItem; versions: ModpackVersionDescriptor[]; platform: ModpackPlatform }
   | { type: 'importPreview'; filePath: string }
   | { type: 'create' };
+
+function normalizeView(view: ModpackView): ModpackView {
+  if (view.type !== 'browser') {
+    return view;
+  }
+
+  return {
+    type: 'browser',
+    state: {
+      ...DEFAULT_MODPACK_BROWSER_STATE,
+      ...view.state,
+    },
+  };
+}
 
 export function useModpackNavigation() {
   const [view, setView] = useState<ModpackView>({ type: 'list' });
   const [history, setHistory] = useState<ModpackView[]>([{ type: 'list' }]);
 
   const navigate = useCallback((newView: ModpackView) => {
-    setView(newView);
-    setHistory(prev => [...prev, newView]);
+    const normalizedView = normalizeView(newView);
+    setView(normalizedView);
+    setHistory((prev) => [...prev, normalizedView]);
   }, []);
 
   const goBack = useCallback(() => {
-    setHistory(prev => {
+    setHistory((prev) => {
       if (prev.length <= 1) {
         // Если только один элемент в истории, возвращаемся к списку
         setView({ type: 'list' });
@@ -34,8 +78,21 @@ export function useModpackNavigation() {
   }, []);
 
   const goTo = useCallback((targetView: ModpackView) => {
-    setView(targetView);
-    setHistory(prev => [...prev, targetView]);
+    const normalizedView = normalizeView(targetView);
+    setView(normalizedView);
+    setHistory((prev) => [...prev, normalizedView]);
+  }, []);
+
+  const replace = useCallback((targetView: ModpackView) => {
+    const normalizedView = normalizeView(targetView);
+    setView(normalizedView);
+    setHistory((prev) => {
+      if (prev.length === 0) {
+        return [normalizedView];
+      }
+
+      return [...prev.slice(0, -1), normalizedView];
+    });
   }, []);
 
   const reset = useCallback(() => {
@@ -48,6 +105,7 @@ export function useModpackNavigation() {
     navigate,
     goBack,
     goTo,
+    replace,
     reset,
     canGoBack: history.length > 1,
   };

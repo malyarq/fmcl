@@ -11,3 +11,6 @@ export {
   type VersionOption,
 } from './ModpackDetailsSettingsTab';
 export { ModpackDetailsActions, type ModpackDetailsActionsProps } from './ModpackDetailsActions';
+export { ResourcePacksTab } from './ResourcePacksTab';
+export { ShadersTab } from './ShadersTab';
+export { WorldsTab } from './WorldsTab';
