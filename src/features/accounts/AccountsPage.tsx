@@ -3,7 +3,7 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { Account } from '@shared/types';
 import { Button } from '../../components/ui/Button';
 import { AddAccountDialog } from './AddAccountDialog';
-import { User, Check, Trash2, Plus, Server } from 'lucide-react';
+import { User, Check, Trash2, Plus, Server, ShieldCheck } from 'lucide-react';
 import clsx from 'clsx';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { accountIPC } from '../../services/ipc/accountIPC';
@@ -114,12 +114,18 @@ export const AccountsPage: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-2xl font-bold text-foreground">{t('accounts.title')}</h2>
-                    <p className="text-secondary">{t('accounts.description')}</p>
+            <div className="surface-card flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="space-y-2">
+                    <div className="kicker-label flex items-center gap-2">
+                        <ShieldCheck size={14} />
+                        {t('accounts.providerSupportHint') || 'Blessing Skin and LittleSkin are supported for provider-aware skin management.'}
+                    </div>
+                    <div>
+                        <h2 className="text-2xl font-bold text-foreground">{t('accounts.title')}</h2>
+                        <p className="mt-1 max-w-2xl text-sm leading-6 text-secondary">{t('accounts.description')}</p>
+                    </div>
                 </div>
-                <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2">
+                <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 self-start">
                     <Plus size={18} />
                     {t('accounts.addAccount')}
                 </Button>
@@ -140,17 +146,21 @@ export const AccountsPage: React.FC = () => {
                         key={account.id}
                         role="listitem"
                         className={clsx(
-                            "p-4 rounded-xl border transition-all flex items-center justify-between gap-4 group",
+                            "surface-card group flex items-center justify-between gap-4 p-4 transition-all",
                             account.isDisabled
                                 ? "bg-amber-500/10 border-amber-500/30"
                                 : selectedId === account.id
-                                ? "bg-emerald-500/10 border-emerald-500/50"
-                                : "bg-card/80 border-border hover:border-border-active hover:bg-card"
+                                ? "border-border-active bg-card/96"
+                                : "hover:border-border-active hover:bg-card"
                         )}
+                        style={selectedId === account.id && !account.isDisabled ? {
+                            borderColor: 'rgb(var(--accent-main) / 0.35)',
+                            backgroundColor: 'rgb(var(--accent-main) / 0.1)',
+                        } : undefined}
                     >
                         {account.isDisabled ? (
                             <div className="flex flex-1 items-center gap-4 min-w-0">
-                                <div className="p-3 rounded-lg bg-amber-500/20 text-amber-300">
+                                <div className="surface-muted flex h-12 w-12 items-center justify-center bg-amber-500/15 text-amber-700 dark:text-amber-300">
                                     <User size={24} />
                                 </div>
                                 <div className="min-w-0">
@@ -159,7 +169,7 @@ export const AccountsPage: React.FC = () => {
                                         {account.type === 'third-party' && (
                                             <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 flex items-center gap-1">
                                                 <Server size={10} />
-                                                Third Party
+                                                {t('accounts.typeThirdParty')}
                                             </span>
                                         )}
                                         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
@@ -178,13 +188,13 @@ export const AccountsPage: React.FC = () => {
                                 type="button"
                                 onClick={() => void handleSelect(account.id)}
                                 aria-pressed={selectedId === account.id}
-                                className="flex flex-1 items-center gap-4 min-w-0 rounded-lg text-left focus-visible:outline-none"
+                                className="flex min-w-0 flex-1 items-center gap-4 rounded-2xl text-left focus-visible:outline-none"
                             >
                                 <div className={clsx(
-                                    "p-3 rounded-lg",
+                                    "surface-muted flex h-12 w-12 items-center justify-center",
                                     selectedId === account.id
-                                        ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"
+                                        ? "text-foreground"
+                                        : "text-secondary"
                                 )}>
                                     <User size={24} />
                                 </div>
@@ -194,12 +204,12 @@ export const AccountsPage: React.FC = () => {
                                         {account.type === 'third-party' && (
                                             <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 flex items-center gap-1">
                                                 <Server size={10} />
-                                                Third Party
+                                                {t('accounts.typeThirdParty')}
                                             </span>
                                         )}
                                     </div>
                                     <div className="text-sm text-secondary truncate">
-                                        {account.type === 'offline' ? 'Offline' : account.user?.id ?? account.id}
+                                        {account.type === 'offline' ? t('accounts.typeOffline') : account.user?.id ?? account.id}
                                     </div>
                                 </div>
                             </button>
@@ -229,7 +239,7 @@ export const AccountsPage: React.FC = () => {
                 ))}
 
                 {accounts.length === 0 && (
-                    <div className="text-center py-12 text-secondary bg-card/40 rounded-xl border border-dashed border-border">
+                    <div className="surface-muted border-dashed py-12 text-center text-secondary">
                         <User size={48} className="mx-auto mb-4 opacity-50" />
                         <p>{t('accounts.noAccounts')}</p>
                     </div>

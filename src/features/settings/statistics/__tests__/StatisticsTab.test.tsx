@@ -89,6 +89,7 @@ describe('StatisticsTab', () => {
   it('renders popular modpacks and usage trends from the typed statistics IPC seam', async () => {
     render(<StatisticsTab />);
 
+    await screen.findByText('stats.description');
     await screen.findByText('stats.popular_modpacks');
     await screen.findByText('Alpha Pack');
     await screen.findByText('stats.usage_trend');

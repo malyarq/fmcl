@@ -154,15 +154,16 @@ export const Tooltip: React.FC<TooltipProps> = ({
         <div
           ref={tooltipRef}
           className={cn(
-            'fixed z-[100] px-3 py-2 text-sm font-medium text-white bg-zinc-900 dark:bg-zinc-700 rounded-lg shadow-lg pointer-events-none',
+            'surface-inline fixed z-[100] px-3 py-2 text-sm font-medium text-foreground shadow-[0_18px_40px_rgba(0,0,0,0.18)] pointer-events-none',
             'transition-opacity duration-200 ease-out',
-            'before:content-[""] before:absolute before:w-2 before:h-2 before:bg-zinc-900 dark:before:bg-zinc-700 before:rotate-45',
+            'before:absolute before:h-2 before:w-2 before:rotate-45 before:border-b before:border-r before:border-border/60 before:bg-card/90 before:content-[""]',
             position === 'top' && 'before:bottom-[-4px] before:left-1/2 before:-translate-x-1/2',
             position === 'bottom' && 'before:top-[-4px] before:left-1/2 before:-translate-x-1/2',
             position === 'left' && 'before:right-[-4px] before:top-1/2 before:-translate-y-1/2',
             position === 'right' && 'before:left-[-4px] before:top-1/2 before:-translate-y-1/2',
             className
           )}
+          role="tooltip"
           style={
             tooltipPosition
               ? {

@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useToast } from '../../../contexts/ToastContext';
-import { useSettings } from '../../../contexts/SettingsContext';
-import { shadersIPC } from '../../../services/ipc/shadersIPC';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { RefreshCw, Sparkles, Trash2, Wand2 } from 'lucide-react';
 import type { ShaderPack } from '@shared/contracts/shaders';
-import { Button } from '../../ui/Button';
+import { useConfirm } from '../../../contexts/ConfirmContext';
+import { useSettings } from '../../../contexts/SettingsContext';
+import { useToast } from '../../../contexts/ToastContext';
+import { shadersIPC } from '../../../services/ipc/shadersIPC';
 import { cn } from '../../../utils/cn';
+import { Button } from '../../ui/Button';
+import { LoadingSpinner } from '../../ui/LoadingSpinner';
 
 interface ShadersTabProps {
     instancePath: string;
@@ -14,11 +17,11 @@ interface ShadersTabProps {
 
 export function ShadersTab({ instancePath, onUpdate, onAddShader }: ShadersTabProps) {
     const { t } = useSettings();
+    const confirm = useConfirm();
     const [packs, setPacks] = useState<ShaderPack[]>([]);
     const [loading, setLoading] = useState(true);
     const toast = useToast();
 
-    // Load shaders
     const loadPacks = useCallback(async () => {
         setLoading(true);
         try {
@@ -26,110 +29,150 @@ export function ShadersTab({ instancePath, onUpdate, onAddShader }: ShadersTabPr
             setPacks(list);
         } catch (err) {
             console.error(err);
-            toast.error(t('modpacks.shader_load_error') || 'Failed to load shader packs');
+            toast.error(t('modpacks.shader_load_error'));
         } finally {
             setLoading(false);
         }
-    }, [instancePath, toast, t]);
+    }, [instancePath, t, toast]);
 
     useEffect(() => {
-        loadPacks();
+        void loadPacks();
     }, [loadPacks]);
 
-    const handleSetActive = async (pack: ShaderPack) => {
-        try {
-            await shadersIPC.setActive(pack.fileName, instancePath);
-            await loadPacks();
-            onUpdate?.();
-            toast.success(t('modpacks.shader_active_success', { name: pack.name }) || `Shader "${pack.name}" activated`);
-        } catch {
-            toast.error(t('modpacks.shader_set_error') || 'Failed to set active shader');
-        }
-    };
+    const handleSetActive = useCallback(
+        async (pack: ShaderPack) => {
+            try {
+                await shadersIPC.setActive(pack.fileName, instancePath);
+                await loadPacks();
+                onUpdate?.();
+                toast.success(t('modpacks.shader_active_success', { name: pack.name }));
+            } catch {
+                toast.error(t('modpacks.shader_set_error'));
+            }
+        },
+        [instancePath, loadPacks, onUpdate, t, toast]
+    );
 
-    const handleDisable = async () => {
+    const handleDisable = useCallback(async () => {
         try {
             await shadersIPC.disable(instancePath);
             await loadPacks();
             onUpdate?.();
-            toast.success(t('modpacks.shader_disable_success') || 'Shaders disabled');
+            toast.success(t('modpacks.shader_disable_success'));
         } catch {
-            toast.error(t('modpacks.shader_disable_error') || 'Failed to disable shaders');
+            toast.error(t('modpacks.shader_disable_error'));
         }
-    };
+    }, [instancePath, loadPacks, onUpdate, t, toast]);
 
-    const handleDelete = async (pack: ShaderPack) => {
-        if (!confirm(t('modpacks.shader_delete_confirm', { name: pack.name }) || `Delete ${pack.name}?`)) return;
-        try {
-            await shadersIPC.delete(pack.fileName, instancePath);
-            await loadPacks();
-            onUpdate?.();
-        } catch {
-            toast.error(t('modpacks.shader_delete_error') || 'Failed to delete shader');
-        }
-    };
+    const handleDelete = useCallback(
+        async (pack: ShaderPack) => {
+            const confirmed = await confirm.confirm({
+                title: t('modpacks.installed_shaders'),
+                message: t('modpacks.shader_delete_confirm', { name: pack.name }),
+                variant: 'danger',
+                confirmText: t('modpacks.delete'),
+                cancelText: t('general.cancel'),
+            });
 
-    const activeShader = packs.find(p => p.isActive);
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                await shadersIPC.delete(pack.fileName, instancePath);
+                await loadPacks();
+                onUpdate?.();
+            } catch {
+                toast.error(t('modpacks.shader_delete_error'));
+            }
+        },
+        [confirm, instancePath, loadPacks, onUpdate, t, toast]
+    );
+
+    const activeShader = useMemo(() => packs.find((pack) => pack.isActive), [packs]);
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold dark:text-gray-200">{t('modpacks.installed_shaders') || 'Installed Shader Packs'}</h3>
-                <div className="flex gap-2">
-                    {onAddShader && (
-                        <Button onClick={onAddShader} variant="primary" size="sm">{t('modpacks.add_shader_btn') || '+ Add Shader'}</Button>
-                    )}
-                    <Button onClick={loadPacks} variant="secondary" size="sm">{t('modpacks.update') || 'Refresh'}</Button>
+            <div className="surface-card space-y-4 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                        <div className="kicker-label">{t('modpacks.tab_shaders')}</div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-foreground">{t('modpacks.installed_shaders')}</h3>
+                            <p className="text-sm text-secondary">{t('modpacks.shaders_description')}</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {onAddShader && (
+                            <Button onClick={onAddShader} variant="primary" size="sm">
+                                <Sparkles className="h-4 w-4" />
+                                {t('modpacks.add_shader_btn')}
+                            </Button>
+                        )}
+                        <Button onClick={() => void loadPacks()} variant="secondary" size="sm">
+                            <RefreshCw className="h-4 w-4" />
+                            {t('modpacks.update')}
+                        </Button>
+                    </div>
                 </div>
-            </div>
 
-            {/* Active shader indicator */}
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-                {t('modpacks.shader_active') || 'Active'}: <span className="font-medium">{activeShader?.name ?? (t('modpacks.shader_active_none') || '(None - Internal)')}</span>
-                {activeShader && (
-                    <Button onClick={handleDisable} variant="ghost" size="sm" className="ml-2">
-                        {t('modpacks.shader_disable') || 'Disable'}
-                    </Button>
-                )}
+                <div className="surface-inline flex flex-wrap items-center gap-3 p-3 text-sm text-secondary">
+                    <span>{t('modpacks.active_shader_summary')}</span>
+                    <span className="text-foreground">{activeShader?.name ?? t('modpacks.shader_active_none')}</span>
+                    {activeShader && (
+                        <Button variant="ghost" size="sm" onClick={() => void handleDisable()}>
+                            {t('modpacks.shader_disable')}
+                        </Button>
+                    )}
+                </div>
             </div>
 
             {loading ? (
-                <div className="text-center py-8 text-gray-500">{t('modpacks.loading') || 'Loading...'}</div>
+                <div className="surface-inline flex items-center justify-center gap-3 p-6 text-sm text-secondary" role="status">
+                    <LoadingSpinner size="sm" variant="accent" />
+                    {t('modpacks.loading')}
+                </div>
             ) : packs.length === 0 ? (
-                <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl">
-                    <p className="text-gray-500">{t('modpacks.no_shaders_installed') || 'No shader packs installed'}</p>
+                <div className="surface-muted flex flex-col items-center gap-2 p-8 text-center">
+                    <p className="text-base font-semibold text-foreground">{t('modpacks.no_shaders_installed')}</p>
+                    <p className="max-w-xl text-sm text-secondary">{t('modpacks.shaders_empty_hint')}</p>
                 </div>
             ) : (
-                <div className="grid gap-2">
+                <div className="space-y-3" role="list" aria-label={t('modpacks.installed_shaders')}>
                     {packs.map((pack) => (
                         <div
                             key={pack.fileName}
+                            role="listitem"
                             className={cn(
-                                "flex items-center gap-4 p-3 rounded-lg border transition-all",
-                                pack.isActive
-                                    ? "bg-green-50 dark:bg-green-900/20 border-green-300 dark:border-green-700 shadow-sm"
-                                    : "bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:border-zinc-300"
+                                'surface-card flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between',
+                                pack.isActive && 'border-emerald-500/40 bg-emerald-500/8'
                             )}
                         >
-                            <div className="w-10 h-10 flex-shrink-0 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center text-white text-lg">
-                                ✦
+                            <div className="flex min-w-0 flex-1 items-center gap-4">
+                                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-background/70 text-[rgb(var(--accent-main))]">
+                                    <Wand2 className="h-6 w-6" />
+                                </div>
+                                <div className="min-w-0 space-y-1">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <h4 className="truncate text-base font-semibold text-foreground">{pack.name}</h4>
+                                        {pack.isActive && (
+                                            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/12 px-2 py-0.5 text-xs font-medium text-emerald-400">
+                                                {t('modpacks.shader_active')}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="truncate text-sm text-secondary">{pack.fileName}</p>
+                                </div>
                             </div>
 
-                            <div className="flex-1 min-w-0">
-                                <h4 className="font-medium truncate text-gray-900 dark:text-gray-100">{pack.name}</h4>
-                                <p className="text-xs text-gray-500 truncate">{pack.fileName}</p>
-                            </div>
-
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                                 {pack.isActive ? (
-                                    <span className="text-green-600 dark:text-green-400 font-medium text-sm">{t('modpacks.shader_active') || 'Active'}</span>
+                                    <Button variant="secondary" size="sm" onClick={() => void handleDisable()}>
+                                        {t('modpacks.shader_disable')}
+                                    </Button>
                                 ) : (
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() => handleSetActive(pack)}
-                                    >
-                                        {t('modpacks.shader_activate') || 'Activate'}
+                                    <Button variant="primary" size="sm" onClick={() => void handleSetActive(pack)}>
+                                        {t('modpacks.shader_activate')}
                                     </Button>
                                 )}
 
@@ -137,9 +180,10 @@ export function ShadersTab({ instancePath, onUpdate, onAddShader }: ShadersTabPr
                                     variant="ghost"
                                     size="sm"
                                     className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                    onClick={() => handleDelete(pack)}
+                                    onClick={() => void handleDelete(pack)}
+                                    aria-label={t('modpacks.shader_delete_confirm', { name: pack.name })}
                                 >
-                                    ✕
+                                    <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>

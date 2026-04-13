@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { Download, Paintbrush2, Sparkles, Upload } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { CollapsibleSection } from '../../ui/CollapsibleSection';
@@ -25,6 +26,37 @@ type BackgroundPosition = NonNullable<BackgroundConfig['position']>;
 const BACKGROUND_TYPES: readonly BackgroundType[] = ['image', 'video', 'particles'];
 const BACKGROUND_POSITIONS: readonly BackgroundPosition[] = ['cover', 'contain', 'center', 'repeat'];
 const BACKGROUND_PARTICLE_TYPES: readonly BackgroundParticleType[] = ['stars', 'snow', 'rain'];
+
+function ToggleRow(props: {
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  const { label, checked, onToggle } = props;
+
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="text-sm font-medium text-foreground">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={onToggle}
+        className={cn(
+          'relative h-6 w-11 rounded-full border border-border/60 transition-colors',
+          checked ? 'bg-[rgb(var(--accent-main))]' : 'bg-background/90'
+        )}
+      >
+        <span
+          className={cn(
+            'absolute top-0.5 h-[18px] w-[18px] rounded-full bg-white shadow-sm transition-transform',
+            checked ? 'translate-x-5' : 'translate-x-0.5'
+          )}
+        />
+      </button>
+    </div>
+  );
+}
 
 export const AppearanceTab: React.FC = () => {
   const {
@@ -125,10 +157,18 @@ export const AppearanceTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Main Appearance Settings */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-3">
-          <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-2 block">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="surface-card space-y-3 p-5">
+          <div className="flex items-center gap-2">
+            <Paintbrush2 className="h-4 w-4 text-secondary" />
+            <label className="text-sm font-medium text-foreground">
+              {t('settings.appearance_branding') || t('settings.accent')}
+            </label>
+          </div>
+          <p className="text-sm text-secondary">
+            {t('settings.appearance_branding_desc') || 'Set the accent tone used across launch buttons, highlights, and active controls.'}
+          </p>
+          <label className="text-sm font-medium text-foreground mb-2 block">
             {t('settings.accent')}
           </label>
           <div className="flex gap-3 flex-wrap items-center">
@@ -164,23 +204,33 @@ export const AppearanceTab: React.FC = () => {
                 value={isCustom ? accentColor : '#10b981'}
                 onChange={(e) => setAccentColor(e.target.value)}
                 className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                title="Custom Color"
+                title={t('settings.custom_color') || 'Custom Color'}
               />
             </div>
           </div>
         </div>
 
-        <div className="space-y-3">
-          <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-2 block">
+        <div className="surface-card space-y-3 p-5">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-secondary" />
+            <label className="text-sm font-medium text-foreground">
+              {t('settings.theme')}
+            </label>
+          </div>
+          <p className="text-sm text-secondary">
+            {t('settings.theme_desc') || 'Choose the base mood of the launcher, then fine-tune the rest below.'}
+          </p>
+          <label className="text-sm font-medium text-foreground mb-2 block">
             {t('settings.theme')}
           </label>
-          <div className="flex bg-zinc-100/80 dark:bg-zinc-900/50 backdrop-blur-sm p-1 rounded-xl border border-border shadow-inner">
+          <div className="flex rounded-[20px] border border-border/60 bg-background/84 p-1 shadow-inner">
             {(['light', 'dark'] as const).map((m) => (
               <button
+                type="button"
                 key={m}
                 onClick={() => setTheme(m)}
                 className={cn(
-                  'flex-1 py-1.5 text-xs font-bold uppercase rounded-lg transition-all',
+                  'flex-1 rounded-2xl py-2 text-xs font-bold uppercase transition-all',
                   theme === m
                     ? 'bg-card text-foreground shadow-md'
                     : 'text-muted hover:text-foreground',
@@ -194,24 +244,28 @@ export const AppearanceTab: React.FC = () => {
       </div>
 
       {/* Presets & Management */}
-      <div className="space-y-3">
-        <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-2 block">
-          Theme Presets
+      <div className="surface-card space-y-3 p-5">
+        <label className="text-sm font-medium text-foreground mb-2 block">
+          {t('settings.theme_presets') || 'Theme Presets'}
         </label>
+        <p className="text-sm text-secondary">
+          {t('settings.theme_presets_desc') || 'Apply a ready-made visual profile, or import/export your own configuration.'}
+        </p>
         <div className="flex gap-2">
           <Select
             onChange={(e) => applyPreset(e.target.value)}
             className="flex-1"
             defaultValue=""
           >
-            <option value="" disabled>Select a Preset...</option>
+            <option value="" disabled>{t('settings.theme_presets_placeholder') || 'Select a preset...'}</option>
             {THEME_PRESETS.map(preset => (
               <option key={preset.id} value={preset.id}>{preset.name}</option>
             ))}
           </Select>
 
           <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-            Import
+            <Upload className="h-4 w-4" />
+            {t('settings.import_theme') || 'Import'}
           </Button>
           <input
             ref={fileInputRef}
@@ -222,22 +276,24 @@ export const AppearanceTab: React.FC = () => {
           />
 
           <Button variant="secondary" onClick={handleExportTheme}>
-            Export
+            <Download className="h-4 w-4" />
+            {t('settings.export_theme') || 'Export'}
           </Button>
         </div>
       </div>
 
-      <div className="space-y-3">
-        <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-2 block">
+      <div className="surface-card space-y-3 p-5">
+        <label className="text-sm font-medium text-foreground mb-2 block">
           {t('settings.language')}
         </label>
-        <div className="flex bg-zinc-100 dark:bg-zinc-900/50 p-1 rounded-lg border border-border">
+        <div className="flex rounded-[20px] border border-border/60 bg-background/84 p-1 shadow-inner">
           {(['en', 'ru'] as const).map((lang) => (
             <button
+              type="button"
               key={lang}
               onClick={() => setLanguage(lang)}
               className={cn(
-                'flex-1 py-1.5 text-xs font-bold uppercase rounded-lg transition-all',
+                'flex-1 rounded-2xl py-2 text-xs font-bold uppercase transition-all',
                 language === lang
                   ? 'bg-card text-foreground shadow-md'
                   : 'text-muted hover:text-foreground',
@@ -250,10 +306,10 @@ export const AppearanceTab: React.FC = () => {
       </div>
 
       <CollapsibleSection title={t('settings.advanced_appearance') || 'Advanced Appearance'} defaultExpanded={false}>
-        <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-900/30 rounded-lg border border-border">
+        <div className="surface-muted space-y-4 p-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-medium text-zinc-500 uppercase">Background Color</label>
+              <label className="text-xs font-medium text-secondary uppercase">{t('settings.background_color') || 'Background Color'}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -261,11 +317,11 @@ export const AppearanceTab: React.FC = () => {
                   onChange={(e) => updateCustomColor('background', e.target.value)}
                   className="h-8 w-12 cursor-pointer bg-transparent border-none p-0"
                 />
-                <span className="text-xs text-zinc-500">{customTheme.colors?.background || 'Default'}</span>
+                <span className="text-xs text-secondary">{customTheme.colors?.background || (t('settings.default_value') || 'Default')}</span>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-zinc-500 uppercase">Card Color</label>
+              <label className="text-xs font-medium text-secondary uppercase">{t('settings.card_color') || 'Card Color'}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -273,11 +329,11 @@ export const AppearanceTab: React.FC = () => {
                   onChange={(e) => updateCustomColor('card', e.target.value)}
                   className="h-8 w-12 cursor-pointer bg-transparent border-none p-0"
                 />
-                <span className="text-xs text-zinc-500">{customTheme.colors?.card || 'Default'}</span>
+                <span className="text-xs text-secondary">{customTheme.colors?.card || (t('settings.default_value') || 'Default')}</span>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-zinc-500 uppercase">Text Main</label>
+              <label className="text-xs font-medium text-secondary uppercase">{t('settings.text_main') || 'Text Main'}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -285,11 +341,11 @@ export const AppearanceTab: React.FC = () => {
                   onChange={(e) => updateCustomColor('textMain', e.target.value)}
                   className="h-8 w-12 cursor-pointer bg-transparent border-none p-0"
                 />
-                <span className="text-xs text-zinc-500">{customTheme.colors?.textMain || 'Default'}</span>
+                <span className="text-xs text-secondary">{customTheme.colors?.textMain || (t('settings.default_value') || 'Default')}</span>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-zinc-500 uppercase">Border Color</label>
+              <label className="text-xs font-medium text-secondary uppercase">{t('settings.border_color') || 'Border Color'}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -297,11 +353,11 @@ export const AppearanceTab: React.FC = () => {
                   onChange={(e) => updateCustomColor('border', e.target.value)}
                   className="h-8 w-12 cursor-pointer bg-transparent border-none p-0"
                 />
-                <span className="text-xs text-zinc-500">{customTheme.colors?.border || 'Default'}</span>
+                <span className="text-xs text-secondary">{customTheme.colors?.border || (t('settings.default_value') || 'Default')}</span>
               </div>
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-medium text-zinc-500 uppercase">Error Color</label>
+              <label className="text-xs font-medium text-secondary uppercase">{t('settings.error_color') || 'Error Color'}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="color"
@@ -309,7 +365,7 @@ export const AppearanceTab: React.FC = () => {
                   onChange={(e) => updateCustomColor('error', e.target.value)}
                   className="h-8 w-12 cursor-pointer bg-transparent border-none p-0"
                 />
-                <span className="text-xs text-zinc-500">{customTheme.colors?.error || 'Default'}</span>
+                <span className="text-xs text-secondary">{customTheme.colors?.error || (t('settings.default_value') || 'Default')}</span>
               </div>
             </div>
           </div>
@@ -317,11 +373,11 @@ export const AppearanceTab: React.FC = () => {
       </CollapsibleSection>
 
       <CollapsibleSection title={t('settings.background_effects') || 'Background Effects'} defaultExpanded={false}>
-        <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-900/30 rounded-lg border border-border">
+        <div className="surface-muted space-y-4 p-4">
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-              Background Type
+            <label className="text-sm font-medium text-foreground">
+              {t('settings.background_type') || 'Background Type'}
             </label>
             <Select
               value={customTheme.background?.type || 'image'}
@@ -332,32 +388,32 @@ export const AppearanceTab: React.FC = () => {
                 }
               }}
             >
-              <option value="image">Image</option>
-              <option value="video">Video</option>
-              <option value="particles">Particles</option>
+              <option value="image">{t('settings.background_type_image') || 'Image'}</option>
+              <option value="video">{t('settings.background_type_video') || 'Video'}</option>
+              <option value="particles">{t('settings.background_type_particles') || 'Particles'}</option>
             </Select>
           </div>
 
           {(!customTheme.background?.type || customTheme.background.type === 'image') && (
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                Background Image URL
+              <label className="text-sm font-medium text-foreground">
+                {t('settings.background_image_url') || 'Background Image URL'}
               </label>
               <Input
                 value={customTheme.background?.image || ''}
                 onChange={(e) => updateBackground('image', e.target.value)}
-                placeholder="https://example.com/image.jpg"
+                placeholder={t('settings.background_image_url_placeholder') || 'https://example.com/image.jpg'}
                 className="w-full"
               />
-              <p className="text-xs text-zinc-500">Enter a URL to an image or leave empty to disable.</p>
+              <p className="text-xs text-secondary">{t('settings.background_image_url_hint') || 'Enter a URL to an image or leave empty to disable.'}</p>
             </div>
           )}
 
           {customTheme.background?.type === 'video' && (
             <div className="space-y-4 border-t border-border pt-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                  Video URL (MP4/WebM)
+                <label className="text-sm font-medium text-foreground">
+                  {t('settings.background_video_url') || 'Video URL (MP4/WebM)'}
                 </label>
                 <Input
                   value={customTheme.background?.video?.url || ''}
@@ -368,15 +424,15 @@ export const AppearanceTab: React.FC = () => {
                       background: { ...customTheme.background, video: { ...customTheme.background?.video, url: val } }
                     });
                   }}
-                  placeholder="https://example.com/video.mp4"
+                  placeholder={t('settings.background_video_url_placeholder') || 'https://example.com/video.mp4'}
                   className="w-full"
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200 flex justify-between">
-                    <span>Volume</span>
+                  <label className="flex justify-between text-sm font-medium text-foreground">
+                    <span>{t('settings.background_volume') || 'Volume'}</span>
                     <span>{Math.round((customTheme.background?.video?.volume ?? 0) * 100)}%</span>
                   </label>
                   <input
@@ -395,27 +451,17 @@ export const AppearanceTab: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex items-center justify-between pt-6">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                    Auto-Pause (Inactive)
-                  </label>
-                  <div
-                    className={cn(
-                      "w-11 h-6 bg-zinc-200 rounded-full relative cursor-pointer transition-colors dark:bg-zinc-700",
-                      customTheme.background?.video?.autoPause ? "bg-emerald-500" : ""
-                    )}
-                    onClick={() => {
+                <div className="pt-6">
+                  <ToggleRow
+                    label={t('settings.background_autopause') || 'Auto-Pause (Inactive)'}
+                    checked={Boolean(customTheme.background?.video?.autoPause)}
+                    onToggle={() => {
                       setCustomTheme({
                         ...customTheme,
                         background: { ...customTheme.background, video: { ...customTheme.background?.video, autoPause: !customTheme.background?.video?.autoPause } }
                       });
                     }}
-                  >
-                    <div className={cn(
-                      "w-4 h-4 bg-white rounded-full absolute top-1 transition-transform",
-                      customTheme.background?.video?.autoPause ? "left-6" : "left-1"
-                    )} />
-                  </div>
+                  />
                 </div>
               </div>
             </div>
@@ -424,8 +470,8 @@ export const AppearanceTab: React.FC = () => {
           {customTheme.background?.type === 'particles' && (
             <div className="space-y-4 border-t border-border pt-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                  Particle Type
+                <label className="text-sm font-medium text-foreground">
+                  {t('settings.background_particle_type') || 'Particle Type'}
                 </label>
                 <Select
                   value={customTheme.background?.particles?.type || 'stars'}
@@ -444,15 +490,15 @@ export const AppearanceTab: React.FC = () => {
                     });
                   }}
                 >
-                  <option value="stars">Stars</option>
-                  <option value="snow">Snow</option>
-                  <option value="rain">Rain</option>
+                  <option value="stars">{t('settings.background_particle_type_stars') || 'Stars'}</option>
+                  <option value="snow">{t('settings.background_particle_type_snow') || 'Snow'}</option>
+                  <option value="rain">{t('settings.background_particle_type_rain') || 'Rain'}</option>
                 </Select>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200 flex justify-between">
-                    <span>Intensity</span>
+                  <label className="flex justify-between text-sm font-medium text-foreground">
+                    <span>{t('settings.background_intensity') || 'Intensity'}</span>
                     <span>{customTheme.background?.particles?.intensity || 50}</span>
                   </label>
                   <input
@@ -470,8 +516,8 @@ export const AppearanceTab: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200 flex justify-between">
-                    <span>Speed</span>
+                  <label className="flex justify-between text-sm font-medium text-foreground">
+                    <span>{t('settings.background_speed') || 'Speed'}</span>
                     <span>{customTheme.background?.particles?.speed || 2}</span>
                   </label>
                   <input
@@ -495,8 +541,8 @@ export const AppearanceTab: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-border">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200 flex justify-between">
-                <span>Blur</span>
+              <label className="flex justify-between text-sm font-medium text-foreground">
+                <span>{t('settings.background_blur') || 'Blur'}</span>
                 <span>{customTheme.background?.blur || 0}px</span>
               </label>
               <input
@@ -509,8 +555,8 @@ export const AppearanceTab: React.FC = () => {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200 flex justify-between">
-                <span>Opacity</span>
+              <label className="flex justify-between text-sm font-medium text-foreground">
+                <span>{t('settings.background_opacity') || 'Opacity'}</span>
                 <span>{Math.round((customTheme.background?.opacity ?? 1) * 100)}%</span>
               </label>
               <input
@@ -525,8 +571,8 @@ export const AppearanceTab: React.FC = () => {
             </div>
             {(!customTheme.background?.type || customTheme.background?.type === 'image') && (
               <div className="space-y-2">
-                <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-                  Background Position
+                <label className="text-sm font-medium text-foreground">
+                  {t('settings.background_position') || 'Background Position'}
                 </label>
                 <Select
                   value={customTheme.background?.position || 'cover'}
@@ -537,10 +583,10 @@ export const AppearanceTab: React.FC = () => {
                     }
                   }}
                 >
-                  <option value="cover">Cover (Stretch)</option>
-                  <option value="contain">Contain (Fit)</option>
-                  <option value="center">Center</option>
-                  <option value="repeat">Tile (Repeat)</option>
+                  <option value="cover">{t('settings.background_position_cover') || 'Cover (Stretch)'}</option>
+                  <option value="contain">{t('settings.background_position_contain') || 'Contain (Fit)'}</option>
+                  <option value="center">{t('settings.background_position_center') || 'Center'}</option>
+                  <option value="repeat">{t('settings.background_position_repeat') || 'Tile (Repeat)'}</option>
                 </Select>
               </div>
             )}
@@ -549,10 +595,10 @@ export const AppearanceTab: React.FC = () => {
       </CollapsibleSection>
 
       <CollapsibleSection title={t('settings.ui_scalability') || 'UI Scalability'} defaultExpanded={false}>
-        <div className="space-y-4 p-4 bg-zinc-50 dark:bg-zinc-900/30 rounded-lg border border-border">
+        <div className="surface-muted space-y-4 p-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200 flex justify-between">
-              <span>Interface Zoom</span>
+            <label className="flex justify-between text-sm font-medium text-foreground">
+              <span>{t('settings.ui_zoom') || 'Interface Zoom'}</span>
               <span>{uiScale}%</span>
             </label>
             <div className="flex items-center gap-2">
@@ -566,69 +612,47 @@ export const AppearanceTab: React.FC = () => {
                 className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 flex-1"
               />
               <Button size="sm" variant="secondary" onClick={() => setUiScale(100)} disabled={uiScale === 100}>
-                Reset
+                {t('settings.reset') || 'Reset'}
               </Button>
             </div>
-            <p className="text-xs text-zinc-500">Adjust the size of the interface elements.</p>
+            <p className="text-xs text-secondary">{t('settings.ui_zoom_desc') || 'Adjust the size of the interface elements.'}</p>
           </div>
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-              Enable Animations
-            </label>
-            <div
-              className={cn(
-                "w-11 h-6 bg-zinc-200 rounded-full relative cursor-pointer transition-colors dark:bg-zinc-700",
-                !disableAnimations ? "bg-emerald-500" : ""
-              )}
-              onClick={() => setDisableAnimations(!disableAnimations)}
-            >
-              <div className={cn(
-                "w-4 h-4 bg-white rounded-full absolute top-1 transition-transform",
-                !disableAnimations ? "left-6" : "left-1"
-              )} />
-            </div>
-          </div>
+          <ToggleRow
+            label={t('settings.animations') || 'Enable Animations'}
+            checked={!disableAnimations}
+            onToggle={() => setDisableAnimations(!disableAnimations)}
+          />
 
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-              Compact Mode
-            </label>
-            <div
-              className={cn(
-                "w-11 h-6 bg-zinc-200 rounded-full relative cursor-pointer transition-colors dark:bg-zinc-700",
-                compactMode ? "bg-emerald-500" : ""
-              )}
-              onClick={() => setCompactMode(!compactMode)}
-            >
-              <div className={cn(
-                "w-4 h-4 bg-white rounded-full absolute top-1 transition-transform",
-                compactMode ? "left-6" : "left-1"
-              )} />
-            </div>
-          </div>
+          <ToggleRow
+            label={t('settings.compact_mode') || 'Compact Mode'}
+            checked={compactMode}
+            onToggle={() => setCompactMode(!compactMode)}
+          />
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-700 dark:text-zinc-200">
-              Sidebar Position
+            <label className="text-sm font-medium text-foreground">
+              {t('settings.sidebar_position') || 'Sidebar Position'}
             </label>
-            <div className="flex bg-zinc-200 dark:bg-zinc-700 p-1 rounded-lg">
+            <div className="flex rounded-[20px] border border-border/60 bg-background/84 p-1 shadow-inner">
               <button
+                type="button"
                 onClick={() => setSidebarPosition('left')}
                 className={cn(
-                  "flex-1 py-1 text-xs font-medium rounded-md transition-all",
-                  sidebarPosition === 'left' ? "bg-white dark:bg-zinc-600 shadow" : "text-zinc-500"
+                  'flex-1 rounded-2xl py-2 text-xs font-medium transition-all',
+                  sidebarPosition === 'left' ? 'bg-card text-foreground shadow' : 'text-secondary'
                 )}
               >
-                Left
+                {t('settings.sidebar_position_left') || 'Left'}
               </button>
               <button
+                type="button"
                 onClick={() => setSidebarPosition('right')}
                 className={cn(
-                  "flex-1 py-1 text-xs font-medium rounded-md transition-all",
-                  sidebarPosition === 'right' ? "bg-white dark:bg-zinc-600 shadow" : "text-zinc-500"
+                  'flex-1 rounded-2xl py-2 text-xs font-medium transition-all',
+                  sidebarPosition === 'right' ? 'bg-card text-foreground shadow' : 'text-secondary'
                 )}
               >
-                Right
+                {t('settings.sidebar_position_right') || 'Right'}
               </button>
             </div>
           </div>
@@ -638,7 +662,7 @@ export const AppearanceTab: React.FC = () => {
       {(customTheme.colors || customTheme.background) && (
         <div className="flex justify-end">
           <Button variant="danger" onClick={resetCustomTheme} size="sm">
-            Reset Custom Theme
+            {t('settings.reset_custom_theme') || 'Reset Custom Theme'}
           </Button>
         </div>
       )}

@@ -44,13 +44,13 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   return (
     <div className={cn('space-y-2', className)}>
       {(label || valueLabel) && (
-        <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
+        <div className="flex justify-between text-xs text-secondary">
           {label && <span>{label}</span>}
           {valueLabel && <span>{valueLabel}</span>}
         </div>
       )}
       <div className={cn(
-        'w-full bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden relative',
+        'relative w-full overflow-hidden rounded-full bg-background/90 border border-border/60',
         heightClasses[height]
       )}>
         <div
@@ -69,7 +69,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           )}
         </div>
         {showPercentage && clampedValue > 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-zinc-900 dark:text-white">
+          <div className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-foreground">
             {Math.round(clampedValue)}%
           </div>
         )}

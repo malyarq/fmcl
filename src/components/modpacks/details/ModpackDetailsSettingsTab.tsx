@@ -44,16 +44,24 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
 }) => {
   if (!effectiveConfig) {
     return (
-      <div className="flex flex-col items-center justify-center py-8 gap-3">
-        <LoadingSpinner size="md" />
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">{t('modpacks.loading')}</p>
+      <div className="surface-inline flex flex-col items-center justify-center gap-3 p-6 text-sm text-secondary" role="status">
+        <LoadingSpinner size="md" variant="accent" />
+        <p>{t('modpacks.loading')}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <div className="bg-white/60 dark:bg-zinc-900/40 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 p-3 space-y-3">
+      <div className="surface-card space-y-4 p-4">
+        <div className="space-y-2">
+          <div className="kicker-label">{t('modpacks.tab_settings')}</div>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">{t('modpacks.tab_settings')}</h3>
+            <p className="text-sm text-secondary">{t('modpacks.runtime_settings_description')}</p>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Select
             label={t('modpacks.minecraft_version')}
@@ -96,18 +104,20 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
         />
       </div>
 
-      <GameTab
-        modpackConfig={effectiveConfig}
-        setMemoryGb={(gb) => setters.setMemoryGb(gb)}
-        setMinMemoryGb={(gb) => setters.setMinMemoryGb(gb)}
-        setJavaPath={(path) => setters.setJavaPath(path)}
-        setVmOptions={(options) => setters.setVmOptions(options)}
-        setGameExtraArgs={(args) => setters.setGameExtraArgs(args)}
-        setGameResolution={setters.setGameResolution}
-        setAutoConnectServer={setters.setAutoConnectServer}
-        t={t}
-        getAccentStyles={getAccentStyles}
-      />
+      <div className="surface-card p-1">
+        <GameTab
+          modpackConfig={effectiveConfig}
+          setMemoryGb={(gb) => setters.setMemoryGb(gb)}
+          setMinMemoryGb={(gb) => setters.setMinMemoryGb(gb)}
+          setJavaPath={(path) => setters.setJavaPath(path)}
+          setVmOptions={(options) => setters.setVmOptions(options)}
+          setGameExtraArgs={(args) => setters.setGameExtraArgs(args)}
+          setGameResolution={setters.setGameResolution}
+          setAutoConnectServer={setters.setAutoConnectServer}
+          t={t}
+          getAccentStyles={getAccentStyles}
+        />
+      </div>
     </div>
   );
 };

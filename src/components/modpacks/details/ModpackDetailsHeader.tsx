@@ -31,39 +31,39 @@ export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
   getAccentHex,
 }) => (
   <div className="flex-shrink-0 px-6 pt-6 pb-0">
-    <div className="flex items-start gap-4 mb-6 pb-4 border-b border-zinc-200 dark:border-zinc-700">
+    <div className="surface-card mb-6 flex items-start gap-4 p-5">
       {metadata?.iconUrl && (
         <LazyImage
           src={metadata.iconUrl}
           alt={modpackName}
-          className="w-20 h-20 rounded-lg object-cover border border-zinc-200 dark:border-zinc-700"
+          className="h-20 w-20 rounded-2xl border border-border/70 object-cover"
           fallback="/icon.png"
         />
       )}
       <div className="flex-1 min-w-0">
-        <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2">{modpackName}</h3>
+        <h3 className="mb-2 text-xl font-bold text-foreground">{modpackName}</h3>
         {metadata && (
           <div className="space-y-1 text-sm">
             {metadata.version && (
-              <p className="text-zinc-600 dark:text-zinc-400">
+              <p className="text-secondary">
                 {t('modpacks.version')}: {metadata.version}
               </p>
             )}
             {(effectiveConfig || metadata.minecraftVersion) && (
-              <p className="text-zinc-600 dark:text-zinc-400">
+              <p className="text-secondary">
                 {t('modpacks.minecraft_version')}:{' '}
                 {effectiveConfig?.runtime.minecraft ?? metadata.minecraftVersion}
               </p>
             )}
             {(effectiveConfig?.runtime.modLoader || metadata.modLoader) && (
-              <p className="text-zinc-600 dark:text-zinc-400">
+              <p className="text-secondary">
                 {t('modpacks.loader')}:{' '}
                 {(effectiveConfig?.runtime.modLoader?.type ?? metadata.modLoader?.type) || ''}
                 {metadata.modLoader?.version && ` ${metadata.modLoader.version}`}
               </p>
             )}
             {metadata.author && (
-              <p className="text-zinc-600 dark:text-zinc-400">
+              <p className="text-secondary">
                 {t('modpacks.author')}: {metadata.author}
               </p>
             )}
@@ -72,7 +72,7 @@ export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
       </div>
     </div>
 
-    <div className="flex gap-2 mb-4 border-b border-zinc-200 dark:border-zinc-700 overflow-x-auto scrollbar-hide">
+    <div className="mb-4 flex gap-2 overflow-x-auto border-b border-border/70 scrollbar-hide" role="tablist" aria-label={t('modpacks.details_title') || 'Modpack details'}>
       {(['info', 'mods', 'resourcepacks', 'shaders', 'worlds', 'screenshots', 'settings'] as const)
         .filter((tab) => {
           if (tab !== 'mods') return true;
@@ -83,11 +83,13 @@ export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
           <button
             key={tab}
             onClick={() => onTabChange(tab)}
+            role="tab"
+            aria-selected={activeTab === tab}
             className={cn(
               'px-4 py-2 text-sm font-medium transition-colors border-b-2 whitespace-nowrap',
               activeTab === tab
                 ? cn('border-opacity-100', getAccentStyles('border').className)
-                : 'border-transparent text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300'
+                : 'border-transparent text-secondary hover:text-foreground'
             )}
             style={activeTab === tab ? { borderColor: getAccentHex() } : undefined}
           >

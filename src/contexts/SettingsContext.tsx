@@ -99,8 +99,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
 
     useEffect(() => {
-        applyThemeToDocument(theme, customTheme);
-    }, [theme, customTheme]);
+        applyThemeToDocument(theme, accentColor, customTheme);
+    }, [theme, accentColor, customTheme]);
 
     useEffect(() => {
         if (legacyDownloadProvider !== 'auto') {

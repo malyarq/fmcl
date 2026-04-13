@@ -1,12 +1,14 @@
-
-import { useState, useEffect, useCallback } from 'react';
-import { useToast } from '../../../contexts/ToastContext';
-import { useSettings } from '../../../contexts/SettingsContext';
-import { resourcePacksIPC } from '../../../services/ipc/resourcePacksIPC';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ArrowDown, ArrowUp, ImagePlus, RefreshCw, Trash2 } from 'lucide-react';
 import type { ResourcePack } from '@shared/types/resourcePack';
+import { useConfirm } from '../../../contexts/ConfirmContext';
+import { useSettings } from '../../../contexts/SettingsContext';
+import { useToast } from '../../../contexts/ToastContext';
+import { resourcePacksIPC } from '../../../services/ipc/resourcePacksIPC';
+import { cn } from '../../../utils/cn';
 import { Button } from '../../ui/Button';
 import { LazyImage } from '../../ui/LazyImage';
-import { cn } from '../../../utils/cn';
+import { LoadingSpinner } from '../../ui/LoadingSpinner';
 
 interface ResourcePacksTabProps {
     instancePath: string;
@@ -16,11 +18,11 @@ interface ResourcePacksTabProps {
 
 export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: ResourcePacksTabProps) {
     const { t } = useSettings();
+    const confirm = useConfirm();
     const [packs, setPacks] = useState<ResourcePack[]>([]);
     const [loading, setLoading] = useState(true);
     const toast = useToast();
 
-    // Load packs
     const loadPacks = useCallback(async () => {
         setLoading(true);
         try {
@@ -28,155 +30,214 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
             setPacks(list);
         } catch (err) {
             console.error(err);
-            toast.error(t('modpacks.resourcepack_load_error') || 'Failed to load resource packs');
+            toast.error(t('modpacks.resourcepack_load_error'));
         } finally {
             setLoading(false);
         }
-    }, [instancePath, toast, t]);
+    }, [instancePath, t, toast]);
 
     useEffect(() => {
-        loadPacks();
+        void loadPacks();
     }, [loadPacks]);
 
-    const handleToggle = async (pack: ResourcePack) => {
-        try {
-            if (pack.isEnabled) {
-                await resourcePacksIPC.disable(pack.fileName, instancePath);
-            } else {
-                await resourcePacksIPC.enable(pack.fileName, instancePath);
+    const handleToggle = useCallback(
+        async (pack: ResourcePack) => {
+            try {
+                if (pack.isEnabled) {
+                    await resourcePacksIPC.disable(pack.fileName, instancePath);
+                } else {
+                    await resourcePacksIPC.enable(pack.fileName, instancePath);
+                }
+                await loadPacks();
+                onUpdate?.();
+            } catch {
+                toast.error(t('modpacks.resourcepack_toggle_error'));
             }
-            await loadPacks();
-            onUpdate?.();
-        } catch {
-            toast.error(t('modpacks.resourcepack_toggle_error') || 'Failed to toggle pack');
-        }
-    };
+        },
+        [instancePath, loadPacks, onUpdate, t, toast]
+    );
 
-    const handleDelete = async (pack: ResourcePack) => {
-        if (!confirm(t('modpacks.resourcepack_delete_confirm', { name: pack.name }) || `Delete ${pack.name}?`)) return;
-        try {
-            await resourcePacksIPC.delete(pack.fileName, instancePath);
-            await loadPacks();
-            onUpdate?.();
-        } catch {
-            toast.error(t('modpacks.resourcepack_delete_error') || 'Failed to delete pack');
-        }
-    };
+    const handleDelete = useCallback(
+        async (pack: ResourcePack) => {
+            const confirmed = await confirm.confirm({
+                title: t('modpacks.installed_resourcepacks'),
+                message: t('modpacks.resourcepack_delete_confirm', { name: pack.name }),
+                variant: 'danger',
+                confirmText: t('modpacks.delete'),
+                cancelText: t('general.cancel'),
+            });
 
-    const handleMove = async (pack: ResourcePack, direction: 'up' | 'down') => {
-        // UI list: Top = High Priority.
-        // Array order in `packs` should reflect UI order.
-        // We only reorder ENABLED packs.
+            if (!confirmed) {
+                return;
+            }
 
-        const enabledPacks = packs.filter(p => p.isEnabled);
-        const currentIndex = enabledPacks.findIndex(p => p.fileName === pack.fileName);
-        if (currentIndex === -1) return;
+            try {
+                await resourcePacksIPC.delete(pack.fileName, instancePath);
+                await loadPacks();
+                onUpdate?.();
+            } catch {
+                toast.error(t('modpacks.resourcepack_delete_error'));
+            }
+        },
+        [confirm, instancePath, loadPacks, onUpdate, t, toast]
+    );
 
-        const newPacks = [...enabledPacks];
-        if (direction === 'up') {
-            if (currentIndex === 0) return;
-            [newPacks[currentIndex - 1], newPacks[currentIndex]] = [newPacks[currentIndex], newPacks[currentIndex - 1]];
-        } else {
-            if (currentIndex === enabledPacks.length - 1) return;
-            [newPacks[currentIndex], newPacks[currentIndex + 1]] = [newPacks[currentIndex + 1], newPacks[currentIndex]];
-        }
+    const enabledPacks = useMemo(() => packs.filter((pack) => pack.isEnabled), [packs]);
 
-        // Send filenames in UI order (Top to Bottom)
-        const fileNames = newPacks.map(p => p.fileName);
+    const handleMove = useCallback(
+        async (pack: ResourcePack, direction: 'up' | 'down') => {
+            const currentIndex = enabledPacks.findIndex((entry) => entry.fileName === pack.fileName);
+            if (currentIndex === -1) {
+                return;
+            }
 
-        try {
-            await resourcePacksIPC.reorder(fileNames, instancePath);
-            await loadPacks();
-        } catch {
-            toast.error(t('modpacks.resourcepack_reorder_error') || 'Failed to reorder packs');
-        }
-    };
+            const reordered = [...enabledPacks];
+            if (direction === 'up') {
+                if (currentIndex === 0) {
+                    return;
+                }
+                [reordered[currentIndex - 1], reordered[currentIndex]] = [reordered[currentIndex], reordered[currentIndex - 1]];
+            } else {
+                if (currentIndex === enabledPacks.length - 1) {
+                    return;
+                }
+                [reordered[currentIndex], reordered[currentIndex + 1]] = [reordered[currentIndex + 1], reordered[currentIndex]];
+            }
 
-    // Drag and drop logic can be complex, for now we stick to simple Up/Down buttons if list is not massive.
-    // Or we can revisit Drag&Drop later.
+            try {
+                await resourcePacksIPC.reorder(
+                    reordered.map((entry) => entry.fileName),
+                    instancePath
+                );
+                await loadPacks();
+            } catch {
+                toast.error(t('modpacks.resourcepack_reorder_error'));
+            }
+        },
+        [enabledPacks, instancePath, loadPacks, t, toast]
+    );
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold dark:text-gray-200">{t('modpacks.installed_resourcepacks') || 'Installed Resource Packs'}</h3>
-                <div className="flex gap-2">
-                    {onAddResourcePack && (
-                        <Button onClick={onAddResourcePack} variant="primary" size="sm">{t('modpacks.add_resourcepack_btn') || '+ Add Resource Pack'}</Button>
-                    )}
-                    <Button onClick={loadPacks} variant="secondary" size="sm">{t('modpacks.update') || 'Refresh'}</Button>
+            <div className="surface-card space-y-4 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                        <div className="kicker-label">{t('modpacks.tab_resourcepacks')}</div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-foreground">{t('modpacks.installed_resourcepacks')}</h3>
+                            <p className="text-sm text-secondary">{t('modpacks.resourcepacks_description')}</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {onAddResourcePack && (
+                            <Button onClick={onAddResourcePack} variant="primary" size="sm">
+                                <ImagePlus className="h-4 w-4" />
+                                {t('modpacks.add_resourcepack_btn')}
+                            </Button>
+                        )}
+                        <Button onClick={() => void loadPacks()} variant="secondary" size="sm">
+                            <RefreshCw className="h-4 w-4" />
+                            {t('modpacks.update')}
+                        </Button>
+                    </div>
+                </div>
+
+                <div className="surface-inline flex flex-wrap items-center gap-3 p-3 text-sm text-secondary">
+                    <span>{t('modpacks.resourcepacks_priority_hint')}</span>
+                    <span className="text-foreground">
+                        {enabledPacks.length} / {packs.length}
+                    </span>
                 </div>
             </div>
 
             {loading ? (
-                <div className="text-center py-8 text-gray-500">{t('modpacks.loading') || 'Loading...'}</div>
+                <div className="surface-inline flex items-center justify-center gap-3 p-6 text-sm text-secondary" role="status">
+                    <LoadingSpinner size="sm" variant="accent" />
+                    {t('modpacks.loading')}
+                </div>
             ) : packs.length === 0 ? (
-                <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl">
-                    <p className="text-gray-500 mb-4">{t('modpacks.no_resourcepacks_installed') || 'No resource packs installed'}</p>
+                <div className="surface-muted flex flex-col items-center gap-2 p-8 text-center">
+                    <p className="text-base font-semibold text-foreground">{t('modpacks.no_resourcepacks_installed')}</p>
+                    <p className="max-w-xl text-sm text-secondary">{t('modpacks.resourcepacks_empty_hint')}</p>
                 </div>
             ) : (
-                <div className="grid gap-2">
-                    {packs.map((pack, index) => (
-                        <div
-                            key={pack.fileName}
-                            className={cn(
-                                "flex items-center gap-4 p-3 rounded-lg border transition-all",
-                                pack.isEnabled
-                                    ? "bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 shadow-sm"
-                                    : "bg-gray-50 dark:bg-zinc-900/50 border-transparent opacity-70 hover:opacity-100"
-                            )}
-                        >
-                            <div className="w-12 h-12 flex-shrink-0">
-                                <LazyImage
-                                    src={pack.iconUrl}
-                                    fallback="/icon.png" // default pack icon
-                                    className={cn("w-full h-full object-cover rounded", !pack.isEnabled && "grayscale")}
-                                />
-                            </div>
+                <div className="space-y-3" role="list" aria-label={t('modpacks.installed_resourcepacks')}>
+                    {packs.map((pack) => {
+                        const enabledIndex = enabledPacks.findIndex((entry) => entry.fileName === pack.fileName);
+                        const canMoveUp = pack.isEnabled && enabledIndex > 0;
+                        const canMoveDown = pack.isEnabled && enabledIndex !== -1 && enabledIndex < enabledPacks.length - 1;
 
-                            <div className="flex-1 min-w-0">
-                                <h4 className="font-medium truncate text-gray-900 dark:text-gray-100">{pack.name}</h4>
-                                <p className="text-xs text-gray-500 truncate">{pack.description || pack.fileName}</p>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                {pack.isEnabled && (
-                                    <div className="flex flex-col gap-1 mr-2">
-                                        <button
-                                            onClick={() => handleMove(pack, 'up')}
-                                            disabled={index === 0 || !packs[index - 1].isEnabled} // Only move up if prev is enabled
-                                            className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded disabled:opacity-30"
-                                        >
-                                            ▲
-                                        </button>
-                                        <button
-                                            onClick={() => handleMove(pack, 'down')}
-                                            disabled={index === packs.filter(p => p.isEnabled).length - 1}
-                                            className="p-1 hover:bg-gray-100 dark:hover:bg-zinc-700 rounded disabled:opacity-30"
-                                        >
-                                            ▼
-                                        </button>
+                        return (
+                            <div
+                                key={pack.fileName}
+                                role="listitem"
+                                className={cn('surface-card flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between', !pack.isEnabled && 'opacity-75')}
+                            >
+                                <div className="flex min-w-0 flex-1 items-center gap-4">
+                                    <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-2xl border border-border/70 bg-background/70">
+                                        <LazyImage
+                                            src={pack.iconUrl}
+                                            fallback="/icon.png"
+                                            className={cn('h-full w-full object-cover', !pack.isEnabled && 'grayscale')}
+                                        />
                                     </div>
-                                )}
 
-                                <Button
-                                    variant={pack.isEnabled ? "primary" : "secondary"}
-                                    size="sm"
-                                    onClick={() => handleToggle(pack)}
-                                >
-                                    {pack.isEnabled ? (t('modpacks.resourcepack_enable') || "Enabled") : (t('modpacks.resourcepack_disable') || "Disabled")}
-                                </Button>
+                                    <div className="min-w-0 space-y-1">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h4 className="truncate text-base font-semibold text-foreground">{pack.name}</h4>
+                                            <span className="rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-xs font-medium text-secondary">
+                                                {pack.isEnabled ? t('modpacks.filter_enabled') : t('modpacks.filter_disabled')}
+                                            </span>
+                                        </div>
+                                        <p className="truncate text-sm text-secondary">{pack.description || pack.fileName}</p>
+                                    </div>
+                                </div>
 
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                    onClick={() => handleDelete(pack)}
-                                >
-                                    ✕
-                                </Button>
+                                <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                                    {pack.isEnabled && (
+                                        <div className="flex items-center gap-2">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => void handleMove(pack, 'up')}
+                                                disabled={!canMoveUp}
+                                                aria-label={t('modpacks.reorder_up')}
+                                            >
+                                                <ArrowUp className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => void handleMove(pack, 'down')}
+                                                disabled={!canMoveDown}
+                                                aria-label={t('modpacks.reorder_down')}
+                                            >
+                                                <ArrowDown className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    )}
+
+                                    <Button
+                                        variant={pack.isEnabled ? 'primary' : 'secondary'}
+                                        size="sm"
+                                        onClick={() => void handleToggle(pack)}
+                                    >
+                                        {pack.isEnabled ? t('general.disable') : t('general.enable')}
+                                    </Button>
+
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                        onClick={() => void handleDelete(pack)}
+                                        aria-label={t('modpacks.resourcepack_delete_confirm', { name: pack.name })}
+                                    >
+                                        <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

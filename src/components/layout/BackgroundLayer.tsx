@@ -156,15 +156,26 @@ export const BackgroundLayer = () => {
     if (!config) return null;
 
     const style: React.CSSProperties = {};
+    const renderStaticBackdrop = (imageLayerStyle?: React.CSSProperties) => (
+        <div
+            className="fixed inset-0 -z-10 overflow-hidden bg-background pointer-events-none"
+            aria-hidden="true"
+            data-testid="background-static-fallback"
+        >
+            {imageLayerStyle && (
+                <div
+                    className="absolute inset-0 bg-cover bg-center"
+                    style={imageLayerStyle}
+                />
+            )}
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(var(--accent-main),0.18),transparent_42%),radial-gradient(circle_at_bottom_left,rgba(var(--accent-main),0.08),transparent_36%)]" />
+            <div className="absolute inset-0 bg-background/40" />
+        </div>
+    );
 
     if (config.type === 'video' && config.video?.url) {
         if (reducedMotion) {
-            return (
-                <div
-                    className="fixed inset-0 -z-10 bg-background"
-                    aria-hidden="true"
-                />
-            );
+            return renderStaticBackdrop();
         }
 
         return (
@@ -178,19 +189,15 @@ export const BackgroundLayer = () => {
                     className="absolute inset-0 w-full h-full object-cover"
                     style={{ opacity: config.opacity ?? 1, filter: `blur(${config.blur || 0}px)` }}
                 />
-                <div className="absolute inset-0 bg-background/50" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(var(--accent-main),0.16),transparent_42%),radial-gradient(circle_at_bottom_left,rgba(var(--accent-main),0.08),transparent_36%)]" />
+                <div className="absolute inset-0 bg-background/56" />
             </div>
         );
     }
 
     if (config.type === 'particles') {
         if (reducedMotion || !init) {
-            return (
-                <div
-                    className="fixed inset-0 -z-10 bg-background"
-                    aria-hidden="true"
-                />
-            );
+            return renderStaticBackdrop();
         }
 
         return (
@@ -200,6 +207,8 @@ export const BackgroundLayer = () => {
                     options={particleOptions}
                     className="absolute inset-0"
                 />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(var(--accent-main),0.14),transparent_44%),radial-gradient(circle_at_bottom_left,rgba(var(--accent-main),0.08),transparent_38%)]" />
+                <div className="absolute inset-0 bg-background/30" />
             </div>
         );
     }
@@ -237,11 +246,5 @@ export const BackgroundLayer = () => {
         style.opacity = config.opacity;
     }
 
-    return (
-        <div
-            className="fixed inset-0 -z-10 bg-cover bg-center transition-all duration-300 pointer-events-none"
-            style={style}
-            aria-hidden="true"
-        />
-    );
+    return renderStaticBackdrop(style);
 };

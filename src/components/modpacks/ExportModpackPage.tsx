@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../ui/Button';
@@ -8,11 +8,14 @@ import { Breadcrumbs } from '../ui/Breadcrumbs';
 import { ErrorMessage } from '../ui/ErrorMessage';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import { dialogIPC } from '../../services/ipc/dialogIPC';
+import { ArrowLeft } from 'lucide-react';
 
 interface ExportModpackPageProps {
   modpackId: string;
   onBack: () => void;
 }
+
+type ExportFormat = 'curseforge' | 'modrinth' | 'zip' | 'multimc';
 
 export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
   modpackId,
@@ -21,12 +24,13 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
   const { t, getAccentStyles, minecraftPath } = useSettings();
   const toast = useToast();
   const [modpackName, setModpackName] = useState('');
-  const [format, setFormat] = useState<'curseforge' | 'modrinth' | 'zip' | 'multimc'>('multimc');
+  const [format, setFormat] = useState<ExportFormat>('multimc');
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [desktopPath, setDesktopPath] = useState<string | null>(null);
   const [outputPath, setOutputPath] = useState('');
   const [outputPathError, setOutputPathError] = useState<string | null>(null);
+  const lastAutoOutputPathRef = useRef('');
 
   // Export Options
   const [includeSaves, setIncludeSaves] = useState(false);
@@ -47,29 +51,43 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
     loadModpackName();
   }, [modpackId, minecraftPath]);
 
-  useEffect(() => {
-    if (!desktopPath) {
-      dialogIPC.getDesktopPath()
-        .then(path => {
-          setDesktopPath(path);
-          const fileName = `${modpackName || 'modpack'}.${getFileExtension(format)}`;
-          setOutputPath(`${path}\\${fileName}`);
-        })
-        .catch(err => {
-          console.error('Failed to get desktop path:', err);
-        });
-    }
-  }, [desktopPath, modpackName, format]);
-
-  const getFileExtension = (fmt: string): string => {
+  const getFileExtension = (fmt: ExportFormat): string => {
     if (fmt === 'modrinth') return 'mrpack';
     if (fmt === 'curseforge') return 'zip';
     if (fmt === 'multimc') return 'zip';
     return 'zip';
   };
 
-  const getDefaultFileName = (fmt = format) =>
-    `${modpackName || 'modpack'}.${getFileExtension(fmt)}`;
+  const getDefaultFileName = useCallback((fmt: ExportFormat = format) =>
+    `${modpackName || 'modpack'}.${getFileExtension(fmt)}`, [format, modpackName]);
+
+  const buildDefaultOutputPath = useCallback((fmt: ExportFormat = format, basePath: string | null = desktopPath) => {
+    const fileName = getDefaultFileName(fmt);
+    return basePath ? `${basePath}\\${fileName}` : fileName;
+  }, [desktopPath, format, getDefaultFileName]);
+
+  useEffect(() => {
+    if (desktopPath) {
+      return;
+    }
+
+    dialogIPC.getDesktopPath()
+      .then(path => {
+        setDesktopPath(path);
+      })
+      .catch(err => {
+        console.error('Failed to get desktop path:', err);
+      });
+  }, [desktopPath]);
+
+  useEffect(() => {
+    const nextDefaultPath = buildDefaultOutputPath();
+
+    if (!outputPath || outputPath === lastAutoOutputPathRef.current) {
+      lastAutoOutputPathRef.current = nextDefaultPath;
+      setOutputPath(nextDefaultPath);
+    }
+  }, [buildDefaultOutputPath, outputPath]);
 
   const validateOutputPath = (value: string): string | null => {
     if (!value.trim()) {
@@ -139,8 +157,7 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Header with back button */}
-      <div className="flex flex-col border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40 px-6 py-4 gap-4">
+      <div className="flex flex-col gap-4 border-b border-border/70 bg-card/78 px-6 py-4 backdrop-blur-md">
         <Breadcrumbs
           items={[
             { label: t('modpacks.title') || 'Modpacks', onClick: onBack },
@@ -155,19 +172,22 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
             className="flex items-center gap-2"
             disabled={exporting}
           >
-            <span>←</span>
+            <ArrowLeft className="h-4 w-4" />
             {t('general.back') || 'Назад'}
           </Button>
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex-1">
-            {t('modpacks.export_title') || 'Экспорт модпака'}
-          </h2>
+          <div className="min-w-0 flex-1">
+            <div className="kicker-label">{t('modpacks.title') || 'Modpacks'}</div>
+            <h2 className="text-xl font-bold text-foreground">
+              {t('modpacks.export_title') || 'Экспорт модпака'}
+            </h2>
+          </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 min-h-0">
         <div className="space-y-6 max-w-2xl mx-auto">
-          <div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
+          <div className="surface-muted p-4">
+            <p className="text-sm text-secondary">
               {t('modpacks.export_desc')?.replace('{{name}}', modpackName) || `Экспортировать модпак "${modpackName}" в выбранном формате.`}
             </p>
           </div>
@@ -176,25 +196,22 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
             label={t('modpacks.export_format') || 'Формат экспорта'}
             value={format}
             onChange={(e) => {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const newFormat = e.target.value as any;
+              const newFormat = e.target.value as ExportFormat;
               setFormat(newFormat);
-              if (desktopPath) {
-                setOutputPath(`${desktopPath}\\${getDefaultFileName(newFormat)}`);
-              } else {
-                setOutputPath(getDefaultFileName(newFormat));
-              }
+              const nextOutputPath = buildDefaultOutputPath(newFormat);
+              lastAutoOutputPathRef.current = nextOutputPath;
+              setOutputPath(nextOutputPath);
             }}
           >
-            <option value="multimc">MultiMC / Prism Launcher / FriendLauncher (.zip)</option>
-            <option value="zip">Raw ZIP Archive (Instance Copy)</option>
-            <option value="modrinth">Modrinth (.mrpack) - Manifest Only</option>
-            <option value="curseforge">CurseForge (.zip) - Manifest Only</option>
+            <option value="multimc">{t('modpacks.export_format_multimc') || 'MultiMC / Prism Launcher / FriendLauncher (.zip)'}</option>
+            <option value="zip">{t('modpacks.export_format_zip') || 'Raw ZIP Archive (Instance Copy)'}</option>
+            <option value="modrinth">{t('modpacks.export_format_modrinth') || 'Modrinth (.mrpack) - Manifest Only'}</option>
+            <option value="curseforge">{t('modpacks.export_format_curseforge') || 'CurseForge (.zip) - Manifest Only'}</option>
           </Select>
 
           {(format === 'multimc' || format === 'zip') && (
-            <div className="space-y-3 p-4 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg border border-zinc-200 dark:border-zinc-700">
-              <h4 className="text-sm font-semibold text-zinc-900 dark:text-white mb-2">
+            <div className="surface-card space-y-3 p-4">
+              <h4 className="mb-2 text-sm font-semibold text-foreground">
                 {t('modpacks.export_options') || 'Опции экспорта'}
               </h4>
 
@@ -206,7 +223,7 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
                   onChange={e => setIncludeSaves(e.target.checked)}
                   className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor="includeSaves" className="text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer select-none">
+                <label htmlFor="includeSaves" className="cursor-pointer select-none text-sm text-secondary">
                   {t('modpacks.include_saves') || 'Включить сохранения миров (saves)'}
                 </label>
               </div>
@@ -219,7 +236,7 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
                   onChange={e => setIncludeScreenshots(e.target.checked)}
                   className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor="includeScreenshots" className="text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer select-none">
+                <label htmlFor="includeScreenshots" className="cursor-pointer select-none text-sm text-secondary">
                   {t('modpacks.include_screenshots') || 'Включить скриншоты'}
                 </label>
               </div>
@@ -232,7 +249,7 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
                   onChange={e => setIncludeResourcePacks(e.target.checked)}
                   className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor="includeResourcePacks" className="text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer select-none">
+                <label htmlFor="includeResourcePacks" className="cursor-pointer select-none text-sm text-secondary">
                   {t('modpacks.include_resourcepacks') || 'Включить ресурспаки'}
                 </label>
               </div>
@@ -245,7 +262,7 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
                   onChange={e => setIncludeShaders(e.target.checked)}
                   className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor="includeShaders" className="text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer select-none">
+                <label htmlFor="includeShaders" className="cursor-pointer select-none text-sm text-secondary">
                   {t('modpacks.include_shaders') || 'Включить шейдеры'}
                 </label>
               </div>
@@ -258,7 +275,7 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
                   onChange={e => setIncludeMods(e.target.checked)}
                   className="rounded border-zinc-300 text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor="includeMods" className="text-sm text-zinc-700 dark:text-zinc-300 cursor-pointer select-none">
+                <label htmlFor="includeMods" className="cursor-pointer select-none text-sm text-secondary">
                   {t('modpacks.include_mods') || 'Включить моды (JAR файлы)'}
                 </label>
               </div>
@@ -300,7 +317,7 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({
             <ErrorMessage message={error} />
           )}
 
-          <div className="flex gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+          <div className="surface-inline flex gap-2 pt-4">
             <Button
               variant="primary"
               onClick={handleExport}

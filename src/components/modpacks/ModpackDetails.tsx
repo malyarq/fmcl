@@ -26,6 +26,8 @@ import {
 import { ScreenshotsTab } from '../../features/screenshots/components/ScreenshotsTab';
 import { useVersions } from '../../features/launcher/hooks/useVersions';
 import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
+import { cn } from '../../utils/cn';
+import { ArrowLeft } from 'lucide-react';
 
 interface ModpackDetailsProps {
   modpackId: string;
@@ -60,6 +62,12 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
 
   const loaderType = effectiveConfig?.runtime?.modLoader?.type ?? metadata?.modLoader?.type;
   const hasModloader = !!loaderType && loaderType !== 'vanilla';
+  const secondarySurfaceTab =
+    activeTab === 'mods' ||
+    activeTab === 'resourcepacks' ||
+    activeTab === 'shaders' ||
+    activeTab === 'worlds' ||
+    activeTab === 'settings';
 
   useEffect(() => {
     loadModpackConfig();
@@ -270,7 +278,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
 
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      <div className="flex flex-col border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40 px-6 py-4 gap-4 flex-shrink-0">
+      <div className="flex flex-col border-b border-border/70 bg-card/78 px-6 py-4 gap-4 backdrop-blur-md flex-shrink-0">
         <Breadcrumbs
           items={[
             { label: t('modpacks.title') || 'Modpacks', onClick: onBack },
@@ -279,12 +287,15 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
         />
         <div className="flex items-center gap-4">
           <Button variant="secondary" size="sm" onClick={onBack} className="flex items-center gap-2">
-            <span>←</span>
+            <ArrowLeft className="h-4 w-4" />
             {t('general.back') || 'Назад'}
           </Button>
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
-            {t('modpacks.settings_title') || t('modpacks.tab_settings') || 'Modpack settings'}
-          </h2>
+          <div className="min-w-0">
+            <div className="kicker-label">{t('modpacks.details_title') || 'Modpack details'}</div>
+            <h2 className="text-xl font-bold text-foreground">
+              {t('modpacks.details_title') || 'Modpack details'}
+            </h2>
+          </div>
         </div>
       </div>
 
@@ -310,81 +321,83 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
             <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
               <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
                 <div className="p-6 pb-4 min-h-0 min-w-0">
-                  {activeTab === 'info' && (
-                    <ModpackDetailsInfoTab
-                      descriptionDraft={descriptionDraft}
-                      onDescriptionChange={setDescriptionDraft}
-                      onSaveDescription={handleSaveDescription}
-                      metadata={metadata}
-                      t={t}
-                    />
-                  )}
+                  <div className={cn(secondarySurfaceTab && 'surface-panel p-4')}>
+                    {activeTab === 'info' && (
+                      <ModpackDetailsInfoTab
+                        descriptionDraft={descriptionDraft}
+                        onDescriptionChange={setDescriptionDraft}
+                        onSaveDescription={handleSaveDescription}
+                        metadata={metadata}
+                        t={t}
+                      />
+                    )}
 
-                  {activeTab === 'mods' && hasModloader && (
-                    <ModpackDetailsModsTab
-                      mods={mods}
-                      loadingMods={loadingMods}
-                      modSearchQuery={modSearchQuery}
-                      onModSearchQueryChange={setModSearchQuery}
-                      modFilterStatus={modFilterStatus}
-                      onModFilterStatusChange={setModFilterStatus}
-                      onAddMod={() => onNavigate({ type: 'addMod', modpackId })}
-                      onRemoveMod={handleRemoveMod}
-                      onModToggle={handleModToggle}
-                      onRefresh={loadMods}
-                      t={t}
-                      getAccentStyles={getAccentStyles}
-                    />
-                  )}
+                    {activeTab === 'mods' && hasModloader && (
+                      <ModpackDetailsModsTab
+                        mods={mods}
+                        loadingMods={loadingMods}
+                        modSearchQuery={modSearchQuery}
+                        onModSearchQueryChange={setModSearchQuery}
+                        modFilterStatus={modFilterStatus}
+                        onModFilterStatusChange={setModFilterStatus}
+                        onAddMod={() => onNavigate({ type: 'addMod', modpackId })}
+                        onRemoveMod={handleRemoveMod}
+                        onModToggle={handleModToggle}
+                        onRefresh={loadMods}
+                        t={t}
+                        getAccentStyles={getAccentStyles}
+                      />
+                    )}
 
-                  {activeTab === 'resourcepacks' && modpack && (
-                    <ResourcePacksTab
-                      instancePath={modpack.path}
-                      onUpdate={refresh}
-                      onAddResourcePack={() => onNavigate({ type: 'addResourcePack', modpackId })}
-                    />
-                  )}
+                    {activeTab === 'resourcepacks' && modpack && (
+                      <ResourcePacksTab
+                        instancePath={modpack.path}
+                        onUpdate={refresh}
+                        onAddResourcePack={() => onNavigate({ type: 'addResourcePack', modpackId })}
+                      />
+                    )}
 
-                  {activeTab === 'shaders' && modpack && (
-                    <ShadersTab
-                      instancePath={modpack.path}
-                      onUpdate={refresh}
-                      onAddShader={() => onNavigate({ type: 'addShader', modpackId })}
-                    />
-                  )}
+                    {activeTab === 'shaders' && modpack && (
+                      <ShadersTab
+                        instancePath={modpack.path}
+                        onUpdate={refresh}
+                        onAddShader={() => onNavigate({ type: 'addShader', modpackId })}
+                      />
+                    )}
 
-                  {activeTab === 'worlds' && modpack && (
-                    <WorldsTab
-                      instancePath={modpack.path}
-                      mcVersion={effectiveConfig?.runtime?.minecraft}
-                      onUpdate={refresh}
-                    />
-                  )}
+                    {activeTab === 'worlds' && modpack && (
+                      <WorldsTab
+                        instancePath={modpack.path}
+                        mcVersion={effectiveConfig?.runtime?.minecraft}
+                        onUpdate={refresh}
+                      />
+                    )}
 
-                  {activeTab === 'screenshots' && modpack && (
-                    <ScreenshotsTab
-                      instancePath={modpack.path}
-                    />
-                  )}
+                    {activeTab === 'screenshots' && modpack && (
+                      <ScreenshotsTab
+                        instancePath={modpack.path}
+                      />
+                    )}
 
-                  {activeTab === 'settings' && (
-                    <ModpackDetailsSettingsTab
-                      effectiveConfig={effectiveConfig}
-                      setters={setters}
-                      versions={versions}
-                      forgeVersions={forgeVersions}
-                      fabricVersions={fabricVersions}
-                      neoForgeVersions={neoForgeVersions}
-                      optiFineVersions={optiFineVersions}
-                      onRefresh={async () => {
-                        await refresh();
-                        await loadModpackConfig();
-                      }}
-                      minecraftPath={minecraftPath}
-                      t={t}
-                      getAccentStyles={getAccentStyles}
-                    />
-                  )}
+                    {activeTab === 'settings' && (
+                      <ModpackDetailsSettingsTab
+                        effectiveConfig={effectiveConfig}
+                        setters={setters}
+                        versions={versions}
+                        forgeVersions={forgeVersions}
+                        fabricVersions={fabricVersions}
+                        neoForgeVersions={neoForgeVersions}
+                        optiFineVersions={optiFineVersions}
+                        onRefresh={async () => {
+                          await refresh();
+                          await loadModpackConfig();
+                        }}
+                        minecraftPath={minecraftPath}
+                        t={t}
+                        getAccentStyles={getAccentStyles}
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
 

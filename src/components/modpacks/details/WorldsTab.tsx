@@ -1,9 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useToast } from '../../../contexts/ToastContext';
-import { useSettings } from '../../../contexts/SettingsContext';
-import { worldsIPC, openWorldFolder } from '../../../services/ipc/worldsIPC';
+import { useCallback, useEffect, useState } from 'react';
+import { Archive, Copy, FolderOpen, Globe2, Package, RefreshCw, Trash2 } from 'lucide-react';
 import type { WorldInfo } from '@shared/contracts/worlds';
+import { useConfirm } from '../../../contexts/ConfirmContext';
+import { useSettings } from '../../../contexts/SettingsContext';
+import { useToast } from '../../../contexts/ToastContext';
+import { openWorldFolder, worldsIPC } from '../../../services/ipc/worldsIPC';
+import { formatDate, formatSize } from '../../../utils/format';
 import { Button } from '../../ui/Button';
+import { LoadingSpinner } from '../../ui/LoadingSpinner';
+import { WorldDatapacksModal } from './WorldDatapacksModal';
 
 interface WorldsTabProps {
     instancePath: string;
@@ -11,29 +16,27 @@ interface WorldsTabProps {
     onUpdate?: () => void;
 }
 
-/** Check if MC version supports datapacks (1.13+) */
 function supportsDatapacks(version?: string): boolean {
-    if (!version) return true; // If unknown, allow
+    if (!version) {
+        return true;
+    }
+
     const match = version.match(/^1\.(\d+)/);
-    if (!match) return true;
-    const minor = parseInt(match[1], 10);
-    return minor >= 13;
+    if (!match) {
+        return true;
+    }
+
+    return Number.parseInt(match[1], 10) >= 13;
 }
-
-import { formatSize, formatDate } from '../../../utils/format';
-
-import { WorldDatapacksModal } from './WorldDatapacksModal';
 
 export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps) {
     const { t } = useSettings();
+    const confirm = useConfirm();
     const [worlds, setWorlds] = useState<WorldInfo[]>([]);
     const [loading, setLoading] = useState(true);
+    const [datapacksModalWorld, setDatapacksModalWorld] = useState<WorldInfo | null>(null);
     const toast = useToast();
 
-    // Datapacks Modal State
-    const [datapacksModalWorld, setDatapacksModalWorld] = useState<WorldInfo | null>(null);
-
-    // Load worlds
     const loadWorlds = useCallback(async () => {
         setLoading(true);
         try {
@@ -41,130 +44,154 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
             setWorlds(list);
         } catch (err) {
             console.error(err);
-            toast.error(t('modpacks.world_load_error') || 'Failed to load worlds');
+            toast.error(t('modpacks.world_load_error'));
         } finally {
             setLoading(false);
         }
-    }, [instancePath, toast, t]);
+    }, [instancePath, t, toast]);
 
     useEffect(() => {
-        loadWorlds();
+        void loadWorlds();
     }, [loadWorlds]);
 
-    const handleBackup = async (world: WorldInfo) => {
-        try {
-            const backupPath = await worldsIPC.backup(world.folderName, instancePath);
-            const fileName = backupPath.split(/[/\\]/).pop() || 'backup';
-            toast.success(t('modpacks.world_backup_success', { file: fileName }) || `Backup created: ${fileName}`);
-        } catch {
-            toast.error(t('modpacks.world_backup_error') || 'Failed to create backup');
-        }
-    };
+    const handleBackup = useCallback(
+        async (world: WorldInfo) => {
+            try {
+                const backupPath = await worldsIPC.backup(world.folderName, instancePath);
+                const fileName = backupPath.split(/[/\\]/).pop() || 'backup';
+                toast.success(t('modpacks.world_backup_success', { file: fileName }));
+            } catch {
+                toast.error(t('modpacks.world_backup_error'));
+            }
+        },
+        [instancePath, t, toast]
+    );
 
-    const handleDuplicate = async (world: WorldInfo) => {
-        try {
-            const newName = await worldsIPC.duplicate(world.folderName, instancePath);
-            await loadWorlds();
-            onUpdate?.();
-            toast.success(t('modpacks.world_duplicate_success', { name: newName }) || `World duplicated as "${newName}"`);
-        } catch {
-            toast.error(t('modpacks.world_duplicate_error') || 'Failed to duplicate world');
-        }
-    };
+    const handleDuplicate = useCallback(
+        async (world: WorldInfo) => {
+            try {
+                const newName = await worldsIPC.duplicate(world.folderName, instancePath);
+                await loadWorlds();
+                onUpdate?.();
+                toast.success(t('modpacks.world_duplicate_success', { name: newName }));
+            } catch {
+                toast.error(t('modpacks.world_duplicate_error'));
+            }
+        },
+        [instancePath, loadWorlds, onUpdate, t, toast]
+    );
 
-    const handleDelete = async (world: WorldInfo) => {
-        if (!confirm(t('modpacks.world_delete_confirm', { name: world.name }) || `Delete world "${world.name}"? This cannot be undone!`)) return;
-        try {
-            await worldsIPC.delete(world.folderName, instancePath);
-            await loadWorlds();
-            onUpdate?.();
-            toast.success(t('modpacks.world_delete_success') || 'World deleted');
-        } catch {
-            toast.error(t('modpacks.world_delete_error') || 'Failed to delete world');
-        }
-    };
+    const handleDelete = useCallback(
+        async (world: WorldInfo) => {
+            const confirmed = await confirm.confirm({
+                title: t('modpacks.saved_worlds'),
+                message: t('modpacks.world_delete_confirm', { name: world.name }),
+                variant: 'danger',
+                confirmText: t('modpacks.delete'),
+                cancelText: t('general.cancel'),
+            });
 
-    const handleOpenFolder = (world: WorldInfo) => {
-        openWorldFolder(world.folderName, instancePath);
-    };
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                await worldsIPC.delete(world.folderName, instancePath);
+                await loadWorlds();
+                onUpdate?.();
+                toast.success(t('modpacks.world_delete_success'));
+            } catch {
+                toast.error(t('modpacks.world_delete_error'));
+            }
+        },
+        [confirm, instancePath, loadWorlds, onUpdate, t, toast]
+    );
 
     return (
         <div className="space-y-4">
-            <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold dark:text-gray-200">{t('modpacks.saved_worlds') || 'Saved Worlds'}</h3>
-                <Button onClick={loadWorlds} variant="secondary" size="sm">{t('modpacks.world_refresh') || 'Refresh'}</Button>
+            <div className="surface-card space-y-4 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                        <div className="kicker-label">{t('modpacks.tab_worlds')}</div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-foreground">{t('modpacks.saved_worlds')}</h3>
+                            <p className="text-sm text-secondary">{t('modpacks.worlds_description')}</p>
+                        </div>
+                    </div>
+                    <Button onClick={() => void loadWorlds()} variant="secondary" size="sm">
+                        <RefreshCw className="h-4 w-4" />
+                        {t('modpacks.world_refresh')}
+                    </Button>
+                </div>
+
+                <div className="surface-inline flex flex-wrap items-center gap-3 p-3 text-sm text-secondary">
+                    <span>{t('modpacks.worlds_manage_hint')}</span>
+                    <span className="text-foreground">{worlds.length}</span>
+                </div>
             </div>
 
             {loading ? (
-                <div className="text-center py-8 text-gray-500">{t('modpacks.loading') || 'Loading...'}</div>
+                <div className="surface-inline flex items-center justify-center gap-3 p-6 text-sm text-secondary" role="status">
+                    <LoadingSpinner size="sm" variant="accent" />
+                    {t('modpacks.loading')}
+                </div>
             ) : worlds.length === 0 ? (
-                <div className="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl">
-                    <p className="text-gray-500 mb-2">{t('modpacks.no_worlds_found') || 'No worlds found'}</p>
-                    <p className="text-gray-400 text-sm">{t('modpacks.play_to_create_world') || 'Play the game to create your first world!'}</p>
+                <div className="surface-muted flex flex-col items-center gap-2 p-8 text-center">
+                    <p className="text-base font-semibold text-foreground">{t('modpacks.no_worlds_found')}</p>
+                    <p className="max-w-xl text-sm text-secondary">{t('modpacks.play_to_create_world')}</p>
                 </div>
             ) : (
-                <div className="grid gap-2">
+                <div className="space-y-3" role="list" aria-label={t('modpacks.saved_worlds')}>
                     {worlds.map((world) => (
                         <div
                             key={world.folderName}
-                            className="flex items-center gap-4 p-3 rounded-lg border bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 shadow-sm"
+                            role="listitem"
+                            className="surface-card flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between"
                         >
-                            <div className="w-12 h-12 flex-shrink-0 bg-gradient-to-br from-green-500 to-emerald-600 rounded-lg flex items-center justify-center text-white text-2xl">
-                                🌍
-                            </div>
-
-                            <div className="flex-1 min-w-0">
-                                <h4 className="font-medium truncate text-gray-900 dark:text-gray-100">{world.name}</h4>
-                                <div className="flex gap-3 text-xs text-gray-500">
-                                    <span>{formatSize(world.sizeBytes)}</span>
-                                    <span>{t('modpacks.last_played', { date: formatDate(world.lastPlayed, t('general.unknown')) }) || `Last played: ${formatDate(world.lastPlayed, 'Unknown')}`}</span>
+                            <div className="flex min-w-0 flex-1 items-center gap-4">
+                                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl border border-border/70 bg-background/70 text-[rgb(var(--accent-main))]">
+                                    <Globe2 className="h-6 w-6" />
+                                </div>
+                                <div className="min-w-0 space-y-1">
+                                    <h4 className="truncate text-base font-semibold text-foreground">{world.name}</h4>
+                                    <div className="flex flex-wrap gap-3 text-sm text-secondary">
+                                        <span>{formatSize(world.sizeBytes)}</span>
+                                        <span>{t('modpacks.last_played', { date: formatDate(world.lastPlayed, t('general.unknown')) })}</span>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-1">
+                            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                                 {supportsDatapacks(mcVersion) && (
                                     <Button
                                         variant="secondary"
                                         size="sm"
                                         onClick={() => setDatapacksModalWorld(world)}
-                                        title={t('modpacks.manage_datapacks') || 'Manage Datapacks'}
-                                        className="mr-2"
                                     >
-                                        📦 {t('modpacks.datapacks') || 'Datapacks'}
+                                        <Package className="h-4 w-4" />
+                                        {t('modpacks.datapacks')}
                                     </Button>
                                 )}
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleOpenFolder(world)}
-                                    title={t('settings.open_folder') || 'Open folder'}
-                                >
-                                    📁
+                                <Button variant="ghost" size="sm" onClick={() => openWorldFolder(world.folderName, instancePath)}>
+                                    <FolderOpen className="h-4 w-4" />
+                                    {t('settings.open_folder')}
                                 </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleBackup(world)}
-                                    title={t('modpacks.backup') || 'Backup'}
-                                >
-                                    💾
+                                <Button variant="ghost" size="sm" onClick={() => void handleBackup(world)}>
+                                    <Archive className="h-4 w-4" />
+                                    {t('modpacks.backup')}
                                 </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => handleDuplicate(world)}
-                                    title={t('modpacks.duplicate') || 'Duplicate'}
-                                >
-                                    📋
+                                <Button variant="ghost" size="sm" onClick={() => void handleDuplicate(world)}>
+                                    <Copy className="h-4 w-4" />
+                                    {t('modpacks.duplicate')}
                                 </Button>
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                    onClick={() => handleDelete(world)}
-                                    title={t('modpacks.delete') || 'Delete'}
+                                    onClick={() => void handleDelete(world)}
+                                    aria-label={t('modpacks.world_delete_confirm', { name: world.name })}
                                 >
-                                    ✕
+                                    <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>
@@ -174,7 +201,7 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
 
             {datapacksModalWorld && (
                 <WorldDatapacksModal
-                    isOpen={!!datapacksModalWorld}
+                    isOpen={Boolean(datapacksModalWorld)}
                     onClose={() => setDatapacksModalWorld(null)}
                     instancePath={instancePath}
                     worldFolder={datapacksModalWorld.folderName}

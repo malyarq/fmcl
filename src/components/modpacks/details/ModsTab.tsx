@@ -1,13 +1,16 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ExternalLink, PackagePlus, RefreshCw, Trash2 } from 'lucide-react';
+import type { ModEntry as SharedModEntry } from '@shared/types/mods';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { useToast } from '../../../contexts/ToastContext';
+import { externalLinksIPC } from '../../../services/ipc/externalLinksIPC';
 import { modpacksIPC } from '../../../services/ipc/modpacksIPC';
-import { Button } from '../../ui/Button';
-import { AddModModal } from '../AddModModal';
 import { cn } from '../../../utils/cn';
 import { modNameToSlug } from '../../../utils/modSlug';
-import { externalLinksIPC } from '../../../services/ipc/externalLinksIPC';
+import { AddModModal } from '../AddModModal';
+import { Button } from '../../ui/Button';
+import { LoadingSpinner } from '../../ui/LoadingSpinner';
 
 export interface ModsTabProps {
     modpackId: string;
@@ -16,18 +19,16 @@ export interface ModsTabProps {
     defaultMCVersion?: string;
     defaultLoader?: string;
     onUpdate?: () => void;
-    // This prop allows optional accent styling similar to other tabs if needed, 
-    // though we mostly rely on standardized UI components now.
     className?: string;
 }
 
-interface ModEntry {
-    id: string;
-    name: string;
-    version: string;
-    loaders: string[];
-    file: { path: string; name: string; size: number; mtimeMs: number };
-    enabled?: boolean;
+type ModEntry = SharedModEntry & { enabled: boolean };
+
+function normalizeMods(list: SharedModEntry[]): ModEntry[] {
+    return list.map((entry) => ({
+        ...entry,
+        enabled: !entry.file.name.endsWith('.disabled'),
+    }));
 }
 
 export function ModsTab({
@@ -46,88 +47,64 @@ export function ModsTab({
     const confirm = useConfirm();
     const toast = useToast();
 
-    const loadMods = useCallback(() => {
+    const loadMods = useCallback(async () => {
         setLoading(true);
-        modpacksIPC
-            .getMods(modpackId, instancePath)
-            .then((list) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const withEnabled = (list ?? []).map((m: any) => ({
-                    ...m,
-                    enabled: !m.file.name.endsWith('.disabled'),
-                }));
-                setMods(withEnabled);
-                onUpdate?.();
-            })
-            .catch((err) => {
-                console.error('Failed to load mods:', err);
-                setMods([]);
-            })
-            .finally(() => setLoading(false));
-    }, [modpackId, instancePath, onUpdate]);
+        try {
+            const list = (await modpacksIPC.getMods(modpackId, instancePath)) as unknown as SharedModEntry[];
+            setMods(normalizeMods(list ?? []));
+            onUpdate?.();
+        } catch (err) {
+            console.error('Failed to load mods:', err);
+            setMods([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [instancePath, modpackId, onUpdate]);
 
     useEffect(() => {
-        let cancelled = false;
-
-        modpacksIPC
-            .getMods(modpackId, instancePath)
-            .then((list) => {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const withEnabled = (list ?? []).map((m: any) => ({
-                    ...m,
-                    enabled: !m.file.name.endsWith('.disabled'),
-                }));
-                if (!cancelled) setMods(withEnabled);
-            })
-            .catch((err) => {
-                console.error('Failed to load mods:', err);
-                if (!cancelled) setMods([]);
-            })
-            .finally(() => {
-                if (!cancelled) setLoading(false);
-            });
-        return () => { cancelled = true; };
-    }, [modpackId, instancePath]);
+        void loadMods();
+    }, [loadMods]);
 
     const handleRemoveMod = useCallback(
         async (mod: ModEntry) => {
             const confirmed = await confirm.confirm({
-                title: t('modpacks.remove_mod_title') || 'Remove mod',
-                message: t('modpacks.remove_mod_confirm', { name: mod.name }) || `Remove mod "${mod.name}"?`,
+                title: t('modpacks.remove_mod_title'),
+                message: t('modpacks.remove_mod_confirm', { name: mod.name }),
                 variant: 'danger',
-                confirmText: t('modpacks.remove') || 'Remove',
-                cancelText: t('general.cancel') || 'Cancel',
+                confirmText: t('modpacks.remove'),
+                cancelText: t('general.cancel'),
             });
-            if (confirmed) {
-                try {
-                    await modpacksIPC.removeMod(modpackId, mod.file.name, instancePath);
-                    loadMods();
-                } catch (error) {
-                    console.error('Error removing mod:', error);
-                    toast.error(t('modpacks.remove_mod_error') || 'Failed to remove mod');
-                }
+
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                await modpacksIPC.removeMod(modpackId, mod.file.name, instancePath);
+                await loadMods();
+            } catch (error) {
+                console.error('Error removing mod:', error);
+                toast.error(t('modpacks.remove_mod_error'));
             }
         },
-        [modpackId, instancePath, confirm, loadMods, toast, t]
+        [confirm, instancePath, loadMods, modpackId, t, toast]
     );
 
     const handleModToggle = useCallback(
         async (mod: ModEntry) => {
-            const enabled = !(mod.enabled ?? true);
-            setMods((prev) =>
-                prev.map((m) => (m.id === mod.id ? { ...m, enabled } : m))
-            );
+            const enabled = !mod.enabled;
+
+            setMods((prev) => prev.map((entry) => (entry.id === mod.id ? { ...entry, enabled } : entry)));
+
             try {
                 await modpacksIPC.setModEnabled(modpackId, mod.file.name, enabled, instancePath);
             } catch (error) {
-                setMods((prev) =>
-                    prev.map((m) => (m.id === mod.id ? { ...m, enabled: !enabled } : m))
-                );
                 console.error('Error toggling mod:', error);
-                toast.error(t('modpacks.mod_toggle_error') || 'Failed to toggle mod');
+                setMods((prev) => prev.map((entry) => (entry.id === mod.id ? { ...entry, enabled: !enabled } : entry)));
+                toast.error(t('modpacks.mod_toggle_error'));
             }
         },
-        [modpackId, instancePath, toast, t]
+        [instancePath, modpackId, t, toast]
     );
 
     const handleOpenExternalLink = useCallback((url: string, context: string) => {
@@ -136,128 +113,143 @@ export function ModsTab({
         });
     }, []);
 
+    const enabledCount = useMemo(() => mods.filter((mod) => mod.enabled).length, [mods]);
+
     return (
-        <div className={cn("space-y-4", className)}>
-            <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold dark:text-gray-200">
-                    {t('modpacks.installed_mods') || 'Installed Mods'} {!loading && `(${mods.length})`}
-                </h3>
-                <div className="flex gap-2">
-                    {showAddButton && (
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => setShowAddModModal(true)}
-                            disabled={loading}
-                        >
-                            {t('modpacks.add_mod_btn') || '+ Add Mod'}
+        <div className={cn('space-y-4', className)}>
+            <div className="surface-card space-y-4 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="space-y-2">
+                        <div className="kicker-label">{t('modpacks.tab_mods')}</div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-foreground">
+                                {t('modpacks.installed_mods')} {!loading && <span className="text-secondary">({mods.length})</span>}
+                            </h3>
+                            <p className="text-sm text-secondary">{t('modpacks.mods_description')}</p>
+                        </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        {showAddButton && (
+                            <Button variant="primary" size="sm" onClick={() => setShowAddModModal(true)} disabled={loading}>
+                                <PackagePlus className="h-4 w-4" />
+                                {t('modpacks.add_mod_btn')}
+                            </Button>
+                        )}
+                        <Button onClick={() => void loadMods()} variant="secondary" size="sm" disabled={loading}>
+                            <RefreshCw className="h-4 w-4" />
+                            {t('modpacks.update')}
                         </Button>
-                    )}
-                    <Button
-                        onClick={loadMods}
-                        variant="secondary"
-                        size="sm"
-                        disabled={loading}
-                    >
-                        {t('modpacks.update') || 'Refresh'}
-                    </Button>
+                    </div>
                 </div>
+
+                {!loading && mods.length > 0 && (
+                    <div className="surface-inline flex flex-wrap items-center gap-3 p-3 text-sm text-secondary">
+                        <span>{t('modpacks.mods_manage_hint')}</span>
+                        <span className="text-foreground">
+                            {enabledCount} {t('modpacks.enabled').toLowerCase()} / {mods.length}
+                        </span>
+                    </div>
+                )}
             </div>
 
             {loading ? (
-                <div className="py-8 text-center text-zinc-500 dark:text-zinc-400">
-                    {t('modpacks.loading') || 'Loading...'}
+                <div className="surface-inline flex items-center justify-center gap-3 p-6 text-sm text-secondary" role="status">
+                    <LoadingSpinner size="sm" variant="accent" />
+                    {t('modpacks.loading')}
                 </div>
             ) : mods.length === 0 ? (
-                <div className="py-12 text-center text-gray-500 dark:text-gray-400 rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700">
-                    {t('modpacks.no_mods_installed') || 'No mods installed'}
+                <div className="surface-muted flex flex-col items-center gap-2 p-8 text-center">
+                    <p className="text-base font-semibold text-foreground">{t('modpacks.no_mods_installed')}</p>
+                    <p className="max-w-xl text-sm text-secondary">{t('modpacks.mods_empty_hint')}</p>
                 </div>
             ) : (
-                <div className="grid gap-2">
+                <div className="space-y-3" role="list" aria-label={t('modpacks.installed_mods')}>
                     {mods.map((mod) => (
                         <div
                             key={mod.id}
+                            role="listitem"
                             className={cn(
-                                "flex items-center gap-4 p-3 rounded-lg border transition-all",
-                                (mod.enabled ?? true)
-                                    ? "bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 shadow-sm"
-                                    : "bg-gray-50 dark:bg-zinc-900/50 border-transparent opacity-70 hover:opacity-100"
+                                'surface-card flex flex-col gap-4 p-4 lg:flex-row lg:items-start lg:justify-between',
+                                !mod.enabled && 'opacity-75'
                             )}
                         >
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <h4 className="font-medium truncate text-gray-900 dark:text-gray-100">{mod.name}</h4>
-                                    <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                            <div className="min-w-0 flex-1 space-y-3">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h4 className="truncate text-base font-semibold text-foreground">{mod.name}</h4>
+                                    <span className="rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-xs font-medium text-secondary">
                                         {mod.version}
                                     </span>
-                                </div>
-                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                                     {mod.loaders.length > 0 && (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-600">
+                                        <span className="rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-xs font-medium text-secondary">
                                             {mod.loaders.join(', ')}
                                         </span>
                                     )}
-                                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{mod.file.name}</p>
                                 </div>
-                                <div className="flex gap-3 mt-1.5">
-                                    <button
-                                        type="button"
-                                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                                        onClick={(event) => {
-                                            event.stopPropagation();
+
+                                <p className="truncate text-sm text-secondary">{mod.file.name}</p>
+
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="justify-start"
+                                        onClick={() =>
                                             handleOpenExternalLink(
                                                 `https://modrinth.com/mod/${modNameToSlug(mod.name)}`,
                                                 `${mod.name} on Modrinth`,
-                                            );
-                                        }}
+                                            )
+                                        }
                                     >
-                                        Modrinth
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="text-xs text-orange-600 dark:text-orange-400 hover:underline"
-                                        onClick={(event) => {
-                                            event.stopPropagation();
+                                        <ExternalLink className="h-4 w-4" />
+                                        {t('modpacks.open_modrinth')}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="justify-start"
+                                        onClick={() =>
                                             handleOpenExternalLink(
                                                 `https://www.curseforge.com/minecraft/mc-mods/${modNameToSlug(mod.name)}`,
                                                 `${mod.name} on CurseForge`,
-                                            );
-                                        }}
+                                            )
+                                        }
                                     >
-                                        CurseForge
-                                    </button>
+                                        <ExternalLink className="h-4 w-4" />
+                                        {t('modpacks.open_curseforge')}
+                                    </Button>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                                 <Button
-                                    variant={(mod.enabled ?? true) ? "primary" : "secondary"}
+                                    variant={mod.enabled ? 'primary' : 'secondary'}
                                     size="sm"
-                                    onClick={() => handleModToggle(mod)}
+                                    onClick={() => void handleModToggle(mod)}
                                 >
-                                    {(mod.enabled ?? true) ? (t('modpacks.resourcepack_enable') || "Enabled") : (t('modpacks.resourcepack_disable') || "Disabled")}
+                                    {mod.enabled ? t('general.disable') : t('general.enable')}
                                 </Button>
-
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                    onClick={() => handleRemoveMod(mod)}
+                                    onClick={() => void handleRemoveMod(mod)}
+                                    aria-label={t('modpacks.remove_mod_confirm', { name: mod.name })}
                                 >
-                                    ✕
+                                    <Trash2 className="h-4 w-4" />
                                 </Button>
                             </div>
                         </div>
                     ))}
                 </div>
             )}
+
             {showAddButton && (
                 <AddModModal
                     modpackId={modpackId}
                     isOpen={showAddModModal}
                     onClose={() => setShowAddModModal(false)}
                     onAdded={() => {
-                        loadMods();
+                        void loadMods();
                         setShowAddModModal(false);
                     }}
                     defaultMCVersion={defaultMCVersion}

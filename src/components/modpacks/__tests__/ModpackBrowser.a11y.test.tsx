@@ -1,18 +1,20 @@
 // @vitest-environment jsdom
 
 import type { ComponentProps } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModpackBrowser } from '../ModpackBrowser';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
+import { createTranslator } from '../../../contexts/settings/i18n';
 
 const searchModrinthMock = vi.fn();
 const getCurseForgeVersionsMock = vi.fn();
 const getModrinthVersionsMock = vi.fn();
+const t = createTranslator('en');
 
 vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
-    t: (key: string) => key,
+    t,
     getAccentStyles: () => ({ className: '', style: undefined }),
   }),
 }));
@@ -52,6 +54,7 @@ function renderBrowser(overrides: Partial<ComponentProps<typeof ModpackBrowser>>
 
 describe('ModpackBrowser accessibility', () => {
   beforeEach(() => {
+    cleanup();
     localStorage.clear();
     searchModrinthMock.mockReset();
     getCurseForgeVersionsMock.mockReset();
@@ -78,11 +81,11 @@ describe('ModpackBrowser accessibility', () => {
   it('exposes accessible search, favorite, and result activation controls', async () => {
     const { onNavigate } = renderBrowser();
 
-    await screen.findByRole('search', { name: 'modpacks.search_placeholder' });
+    await screen.findByRole('search', { name: 'Enter modpack name...' });
 
     const resultButton = await screen.findByRole('button', { name: 'Alpha Pack' });
-    const favoriteButton = screen.getByRole('button', { name: 'modpacks.add_favorite: Alpha Pack' });
-    const historyButton = screen.getByRole('button', { name: 'modpacks.history' });
+    const favoriteButton = screen.getByRole('button', { name: 'Add to favorites: Alpha Pack' });
+    const historyButton = screen.getByRole('button', { name: 'History' });
 
     expect(historyButton.getAttribute('aria-pressed')).toBe('false');
     expect(favoriteButton.getAttribute('aria-pressed')).toBe('false');
@@ -90,7 +93,7 @@ describe('ModpackBrowser accessibility', () => {
     fireEvent.click(favoriteButton);
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'modpacks.remove_favorite: Alpha Pack' }).getAttribute('aria-pressed')).toBe('true');
+      expect(screen.getByRole('button', { name: 'Remove from favorites: Alpha Pack' }).getAttribute('aria-pressed')).toBe('true');
     });
 
     fireEvent.keyDown(resultButton, { key: 'Enter' });

@@ -48,6 +48,10 @@ export const AccountSkinPanel: React.FC<AccountSkinPanelProps> = ({ account }) =
   }, [loadSkinState])
 
   const handleRefresh = useCallback(async () => {
+    if (account.type !== 'third-party' || !skinState?.supported) {
+      return
+    }
+
     setBusy(true)
     try {
       const nextState = await accountIPC.refreshSkinState(account.id)
@@ -61,7 +65,7 @@ export const AccountSkinPanel: React.FC<AccountSkinPanelProps> = ({ account }) =
     } finally {
       setBusy(false)
     }
-  }, [account.id, t, toast])
+  }, [account.id, account.type, skinState?.supported, t, toast])
 
   const handleOpenProvider = useCallback(async () => {
     if (!skinState?.manageUrl) {
@@ -90,58 +94,76 @@ export const AccountSkinPanel: React.FC<AccountSkinPanelProps> = ({ account }) =
       ? (t('accounts.skinProviderLittleSkin') || 'LittleSkin')
       : (t('accounts.skinProviderBlessing') || 'Blessing Skin'))
   const avatarUrl = skinState?.avatarUrl ?? account.avatar
+  const isSupported = Boolean(skinState?.supported)
+  const canRefreshSkin = account.type === 'third-party' && isSupported && !loading
+  const canOpenProvider = Boolean(isSupported && skinState?.manageUrl)
 
   return (
-    <div className="rounded-xl border border-zinc-700/50 bg-zinc-900/40 p-4 space-y-4">
-      <div>
-        <h3 className="text-lg font-semibold text-white">{t('accounts.skinTitle') || 'Skin Management'}</h3>
-        <p className="text-sm text-zinc-400">
+    <div className="surface-card space-y-4 p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-foreground">{t('accounts.skinTitle') || 'Skin Management'}</h3>
+          <p className="mt-1 text-sm leading-6 text-secondary">
           {t('accounts.skinDescription') || 'Preview the current skin and jump directly to the provider skin page.'}
         </p>
+        </div>
+        {isSupported && (
+          <span className="kicker-label rounded-full border border-border/60 bg-background/72 px-3 py-1">
+            {providerName}
+          </span>
+        )}
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
           {error}
         </div>
       )}
 
-      <div className="flex flex-col md:flex-row gap-4 md:items-center">
-        <div className="w-20 h-20 rounded-xl overflow-hidden border border-zinc-700 bg-zinc-800/80">
-          <LazyImage
-            src={avatarUrl}
-            alt={t('accounts.skinPreviewAlt') || 'Skin preview'}
-            fallback="/icon.png"
-            className="w-full h-full object-cover"
-          />
+      <div className="surface-muted flex flex-col gap-4 p-4 md:flex-row md:items-center">
+        <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-border/60 bg-background/75 p-1">
+          <div className="h-full w-full overflow-hidden rounded-xl bg-card/82">
+            <LazyImage
+              src={avatarUrl}
+              alt={t('accounts.skinPreviewAlt') || 'Skin preview'}
+              fallback="/icon.png"
+              className="h-full w-full object-cover"
+            />
+          </div>
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-white">
+          <p className="text-sm font-semibold text-foreground">
             {loading
               ? (t('accounts.skinLoading') || 'Loading skin information...')
-              : skinState?.supported
+              : isSupported
                 ? providerName
                 : skinState?.reason === 'offline'
                   ? (t('accounts.skinUnsupportedOffline') || 'Offline accounts do not have a provider skin page.')
                   : (t('accounts.skinUnsupportedProvider') || 'This account provider does not expose a supported skin page yet.')}
           </p>
-          <p className="text-xs text-zinc-500 mt-1">
-            {skinState?.supported
+          <p className="mt-1 text-sm leading-6 text-secondary">
+            {isSupported
               ? (t('accounts.skinManageHint') || 'Refresh the preview or open the provider site to change skins.')
               : (t('accounts.skinUnsupportedHint') || 'Supported providers in this release: Blessing Skin and LittleSkin.')}
           </p>
         </div>
 
-        <div className="flex gap-2">
-          <Button type="button" variant="secondary" onClick={handleRefresh} isLoading={busy} disabled={loading}>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleRefresh}
+            isLoading={busy}
+            disabled={!canRefreshSkin || busy}
+          >
             {t('accounts.skinRefresh') || 'Refresh Preview'}
           </Button>
           <Button
             type="button"
-            variant="secondary"
+            variant="primary"
             onClick={handleOpenProvider}
-            disabled={!skinState?.supported || !skinState.manageUrl}
+            disabled={!canOpenProvider}
           >
             {t('accounts.skinOpenProvider') || 'Open Skin Site'}
           </Button>

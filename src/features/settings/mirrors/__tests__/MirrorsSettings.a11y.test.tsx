@@ -80,7 +80,9 @@ describe('MirrorsSettings accessibility', () => {
   it('renders labeled mirror controls and exposes the add-dialog semantics', async () => {
     render(<MirrorsSettings />);
 
+    expect(await screen.findByRole('heading', { name: 'mirrors.sectionTitle' })).toBeTruthy();
     expect(await screen.findByRole('list', { name: 'mirrors.description' })).toBeTruthy();
+    expect(screen.getByText('mirrors.priorityHint')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'mirrors.testSpeed: Primary Mirror' })).toBeTruthy();
     expect(screen.getByRole('checkbox', { name: 'mirrors.autoSelect' })).toBeTruthy();
 

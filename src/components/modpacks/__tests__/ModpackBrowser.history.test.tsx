@@ -1,19 +1,21 @@
 // @vitest-environment jsdom
 
 import type { ComponentProps } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ModpackSearchResultItem } from '@shared/contracts/modpacks';
 import { ModpackBrowser } from '../ModpackBrowser';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
+import { createTranslator } from '../../../contexts/settings/i18n';
 
 const searchModrinthMock = vi.fn();
 const getCurseForgeVersionsMock = vi.fn();
 const getModrinthVersionsMock = vi.fn();
+const t = createTranslator('en');
 
 vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
-    t: (key: string) => key,
+    t,
     getAccentStyles: () => ({ className: '', style: undefined }),
   }),
 }));
@@ -58,6 +60,7 @@ function seedHistory(modpacks: ModpackSearchResultItem[]) {
 
 describe('ModpackBrowser history flow', () => {
   beforeEach(() => {
+    cleanup();
     localStorage.clear();
     searchModrinthMock.mockReset();
     getCurseForgeVersionsMock.mockReset();
@@ -143,14 +146,14 @@ describe('ModpackBrowser history flow', () => {
     });
 
     await screen.findByText('Modrinth Pack');
-    const favoriteButtons = screen.getAllByTitle('modpacks.add_favorite');
+    const favoriteButtons = screen.getAllByTitle('Add to favorites');
 
     fireEvent.click(favoriteButtons[0]);
 
     await waitFor(() => {
-      expect(screen.getByTitle('modpacks.remove_favorite')).toBeTruthy();
+      expect(screen.getByTitle('Remove from favorites')).toBeTruthy();
     });
-    expect(screen.getByTitle('modpacks.add_favorite')).toBeTruthy();
+    expect(screen.getByTitle('Add to favorites')).toBeTruthy();
     expect(JSON.parse(localStorage.getItem('modpack-favorites') ?? '[]')).toEqual(['modrinth:42']);
   });
 });

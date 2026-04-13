@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import React, { useMemo } from 'react';
+import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { launcherIPC } from '../../services/ipc/launcherIPC';
 import { cn } from '../../utils/cn';
@@ -28,7 +29,7 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
       isCollapsed ? "mt-auto pb-2" : "space-y-4 mt-8 pb-4 pt-6"
     )}>
       {!isCollapsed && (
-        <div className="text-center text-xs font-medium text-zinc-500 dark:text-zinc-400 min-h-[1.25rem]">
+        <div className="min-h-[1.25rem] text-center text-xs font-medium text-secondary">
           {statusText ? (
             <span className="animate-pulse">{statusText}</span>
           ) : lastLaunch ? (
@@ -61,14 +62,14 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
               ? {
                   ...accentStyle,
                   boxShadow: `0 12px 40px ${accentHex}50, 0 0 30px ${accentHex}30`,
-                  borderRadius: isCollapsed ? '9999px' : '0.5rem',
+                  borderRadius: isCollapsed ? '9999px' : '1rem',
                   transition: isCollapsed 
                     ? 'width 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94), height 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94), padding 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94), border-radius 800ms cubic-bezier(0.25, 0.46, 0.45, 0.94), transform 200ms ease-out, box-shadow 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94)'
                     : 'width 600ms cubic-bezier(0.34, 1.56, 0.64, 1), height 600ms cubic-bezier(0.34, 1.56, 0.64, 1), padding 600ms cubic-bezier(0.34, 1.56, 0.64, 1), border-radius 700ms cubic-bezier(0.34, 1.56, 0.64, 1), transform 200ms ease-out, box-shadow 600ms cubic-bezier(0.34, 1.56, 0.64, 1)',
                   willChange: 'border-radius, width, height, padding',
                 }
               : {
-                  borderRadius: isCollapsed ? '9999px' : '0.5rem',
+                  borderRadius: isCollapsed ? '9999px' : '1rem',
                   transition: isCollapsed
                     ? 'width 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94), height 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94), padding 500ms cubic-bezier(0.25, 0.46, 0.45, 0.94), border-radius 800ms cubic-bezier(0.25, 0.46, 0.45, 0.94)'
                     : 'width 600ms cubic-bezier(0.34, 1.56, 0.64, 1), height 600ms cubic-bezier(0.34, 1.56, 0.64, 1), padding 600ms cubic-bezier(0.34, 1.56, 0.64, 1), border-radius 700ms cubic-bezier(0.34, 1.56, 0.64, 1)',
@@ -78,10 +79,7 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
           progress={isLaunching ? progress : undefined}
           title={isCollapsed ? (isLaunching ? t('general.running') : t('general.play')) : undefined}
         >
-          <span className={cn(
-            'transition-all duration-500 ease-out',
-            isCollapsed ? 'text-xl ml-1' : 'text-2xl mr-2'
-          )}>▶</span>
+          <Play className={cn('transition-all duration-500 ease-out', isCollapsed ? 'ml-0.5 h-5 w-5' : 'mr-1 h-5 w-5')} fill="currentColor" />
           <span className={cn(
             "transition-all duration-500 ease-out inline-block overflow-hidden",
             isCollapsed 
@@ -103,11 +101,11 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
             className="px-3"
             title="Force Restart"
           >
-            ✕
+            <RotateCcw className="h-4 w-4" />
+            <span className="sr-only">{t('general.cancel') || 'Restart'}</span>
           </Button>
         )}
       </div>
     </div>
   );
 });
-

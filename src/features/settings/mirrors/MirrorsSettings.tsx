@@ -7,6 +7,7 @@ import clsx from 'clsx';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { mirrorsIPC } from '../../../services/ipc/mirrorsIPC';
+import { Input } from '../../../components/ui/Input';
 
 export const MirrorsSettings: React.FC = () => {
     const { t } = useSettings();
@@ -79,10 +80,10 @@ export const MirrorsSettings: React.FC = () => {
 
     const handleRemoveMirror = async (id: string) => {
         const confirmed = await confirm.confirm({
-            title: t('common.remove') || 'Remove',
+            title: t('common.remove'),
             message: t('mirrors.confirmRemove'),
-            confirmText: t('common.remove') || 'Remove',
-            cancelText: t('common.cancel') || 'Cancel',
+            confirmText: t('common.remove'),
+            cancelText: t('general.cancel'),
             variant: 'danger',
         });
 
@@ -126,24 +127,29 @@ export const MirrorsSettings: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <div>
-                    <h2 className="text-xl font-bold text-foreground">{t('settings.downloads')}</h2>
-                    <p className="text-sm text-secondary mt-1">
+            <div className="surface-card flex flex-col gap-4 p-4 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-2">
+                    <div className="kicker-label">{t('mirrors.sectionTitle')}</div>
+                    <h2 className="text-lg font-bold text-foreground">{t('mirrors.sectionTitle')}</h2>
+                    <p className="text-sm text-secondary">
                         {t('mirrors.description')}
                     </p>
+                    <p id="mirrors-auto-select-hint" className="text-xs text-muted">
+                        {t('mirrors.priorityHint')}
+                    </p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <label className="flex items-center gap-2 text-sm text-secondary cursor-pointer select-none hover:text-foreground transition-colors">
                         <input
                             type="checkbox"
                             checked={autoSelect}
                             onChange={(e) => handleAutoSelectChange(e.target.checked)}
-                            className="w-4 h-4 rounded border-border bg-card text-emerald-500 focus:ring-emerald-500 focus:ring-offset-background cursor-pointer"
+                            aria-describedby="mirrors-auto-select-hint"
+                            className="h-4 w-4 cursor-pointer rounded border-border bg-card text-[rgb(var(--accent-main))] focus:ring-[rgb(var(--accent-main))] focus:ring-offset-background"
                         />
                         {t('mirrors.autoSelect')}
                     </label>
-                    <Button onClick={() => setIsDialogOpen(true)} className="gap-2">
+                    <Button onClick={() => setIsDialogOpen(true)} variant="secondary" className="gap-2">
                         <Plus size={18} />
                         {t('mirrors.addCustom')}
                     </Button>
@@ -156,12 +162,12 @@ export const MirrorsSettings: React.FC = () => {
                         key={mirror.id}
                         role="listitem"
                         className={clsx(
-                            "group relative p-4 rounded-xl border transition-all duration-200",
+                            "surface-card group relative p-4 transition-all duration-200",
                             mirror.isDisabled
-                                ? "bg-amber-500/10 border-amber-500/30"
+                                ? "border-amber-500/30 bg-amber-500/10"
                                 : mirror.isActive
-                                ? "bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
-                                : "bg-card/80 border-border hover:border-border-active hover:bg-card"
+                                ? "border-emerald-500/50 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                                : "hover:border-border-active"
                         )}
                     >
                         <div className="flex items-start justify-between">
@@ -172,14 +178,14 @@ export const MirrorsSettings: React.FC = () => {
                                         ? "bg-amber-500/20 text-amber-300"
                                         : mirror.isActive
                                             ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                                            : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300"
+                                            : "bg-background/80 text-secondary"
                                 )}>
                                     <Globe size={24} />
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
                                         <h3 className="font-semibold text-foreground">{mirror.name}</h3>
-                                        <span className="px-2 py-0.5 text-xs font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 rounded-full border border-zinc-200 dark:border-zinc-700">
+                                        <span className="rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-xs font-medium text-secondary">
                                             {mirror.isActive
                                                 ? t('mirrors.priorityPrimary')
                                                 : t('mirrors.priorityFallback', { priority: mirror.priority })}
@@ -191,7 +197,7 @@ export const MirrorsSettings: React.FC = () => {
                                         )}
                                         {mirror.type === 'official' && (
                                             <span className="px-2 py-0.5 text-xs font-medium bg-blue-500/20 text-blue-400 rounded-full border border-blue-500/20">
-                                                Official
+                                                {t('mirrors.official')}
                                             </span>
                                         )}
                                         {mirror.isDisabled && (
@@ -231,7 +237,7 @@ export const MirrorsSettings: React.FC = () => {
                                             disabled={isTesting[mirror.id] || mirror.isDisabled}
                                             aria-busy={isTesting[mirror.id] || undefined}
                                             aria-label={`${t('mirrors.testSpeed')}: ${mirror.name}`}
-                                            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors flex items-center gap-1 disabled:text-zinc-400 dark:disabled:text-zinc-500"
+                                            className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-blue-600 transition-colors hover:bg-blue-500/10 hover:text-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:text-zinc-400 dark:text-blue-400 dark:hover:text-blue-300 dark:disabled:text-zinc-500"
                                         >
                                             {mirror.isDisabled ? (
                                                 t('mirrors.disabledBadge')
@@ -289,7 +295,7 @@ export const MirrorsSettings: React.FC = () => {
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => handleRemoveMirror(mirror.id)}
-                                        aria-label={`${t('common.remove') || 'Remove'}: ${mirror.name}`}
+                                        aria-label={`${t('common.remove')}: ${mirror.name}`}
                                         className={clsx(
                                             "text-red-400 hover:text-red-300 hover:bg-red-400/10",
                                             mirror.isDisabled && "opacity-100",
@@ -311,39 +317,29 @@ export const MirrorsSettings: React.FC = () => {
                 className="max-w-md"
             >
                 <div className="space-y-4">
-                    <div>
-                        <label htmlFor="custom-mirror-name" className="block text-sm font-medium text-secondary mb-1">
-                            {t('mirrors.name')}
-                        </label>
-                        <input
-                            id="custom-mirror-name"
-                            type="text"
-                            value={newMirrorName}
-                            onChange={(e) => setNewMirrorName(e.target.value)}
-                            className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-foreground focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="My Custom Mirror"
-                        />
-                    </div>
-                    <div>
-                        <label htmlFor="custom-mirror-url" className="block text-sm font-medium text-secondary mb-1">
-                            {t('mirrors.rootUrl')}
-                        </label>
-                        <input
-                            id="custom-mirror-url"
-                            type="text"
+                    <Input
+                        label={t('mirrors.name')}
+                        aria-label={t('mirrors.name')}
+                        value={newMirrorName}
+                        onChange={(e) => setNewMirrorName(e.target.value)}
+                        placeholder={t('mirrors.namePlaceholder')}
+                    />
+                    <div className="space-y-2">
+                        <Input
+                            label={t('mirrors.rootUrl')}
+                            aria-label={t('mirrors.rootUrl')}
                             value={newMirrorUrl}
                             onChange={(e) => setNewMirrorUrl(e.target.value)}
-                            className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-300 dark:border-zinc-700 rounded-lg px-3 py-2 text-foreground focus:ring-2 focus:ring-blue-500 outline-none"
-                            placeholder="https://bmclapi2.bangbang93.com"
+                            placeholder={t('mirrors.rootUrlPlaceholder')}
                         />
-                        <p className="text-xs text-secondary mt-1">
-                            Must be a BMCLAPI-compatible mirror URL.
+                        <p className="text-xs text-secondary">
+                            {t('mirrors.customHint')}
                         </p>
                     </div>
                 </div>
                 <div className="flex justify-end gap-3 mt-6">
                     <Button variant="ghost" onClick={() => setIsDialogOpen(false)}>
-                        {t('common.cancel')}
+                        {t('general.cancel')}
                     </Button>
                     <Button onClick={handleAddMirror} disabled={!newMirrorName || !newMirrorUrl}>
                         {t('common.add')}

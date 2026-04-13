@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { Globe2, Menu, PanelsTopLeft, Settings2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import type { UIMode } from '../../contexts/settings/types';
@@ -34,8 +35,9 @@ export function SidebarHeader(props: {
       {onToggleCollapse && (
         <button 
           onClick={onToggleCollapse} 
+          aria-label={t('sidebar.expand') || 'Expand sidebar'}
           className={cn(
-            "px-2 py-1 text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-100/50 dark:hover:bg-zinc-800/50 rounded transition-all duration-300 ease-out",
+            'mx-auto flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-card/78 text-secondary transition-all duration-300 ease-out hover:bg-card/96 hover:text-foreground',
             isCollapsed 
               ? "mx-auto block" 
               : "absolute top-0 right-0 opacity-0 pointer-events-none"
@@ -45,7 +47,7 @@ export function SidebarHeader(props: {
             transform: isCollapsed ? 'scale(1)' : 'scale(0.8)',
           }}
         >
-          <span className="text-lg">☰</span>
+          <Menu className="h-4 w-4" />
         </button>
       )}
 
@@ -54,7 +56,7 @@ export function SidebarHeader(props: {
         "transition-all duration-300 ease-out",
         isCollapsed ? "opacity-0 h-0 overflow-hidden" : "opacity-100"
       )}>
-        <div className="flex justify-between items-start mb-2">
+        <div className="mb-2 flex items-start justify-between">
           <div>
             <h1
               className={cn('text-2xl font-black tracking-tighter drop-shadow-sm', getAccentStyles('text').className)}
@@ -65,7 +67,7 @@ export function SidebarHeader(props: {
             >
               FriendLauncher
             </h1>
-            <p className="text-[10px] text-zinc-500 font-mono mt-1 opacity-70">BUILD v{appVersion}</p>
+            <p className="mt-1 font-mono text-[10px] text-muted opacity-70">BUILD v{appVersion}</p>
           </div>
           <div className={cn(
             "flex gap-1 transition-all duration-500 ease-out",
@@ -81,7 +83,7 @@ export function SidebarHeader(props: {
               className="px-2 transition-all duration-500 ease-out" 
               title={t('multiplayer.title') || 'Multiplayer'}
             >
-              <span className="text-lg">🌐</span>
+              <Globe2 className="h-4 w-4" />
             </Button>
             <Button 
               variant="ghost" 
@@ -91,7 +93,7 @@ export function SidebarHeader(props: {
               className="px-2 transition-all duration-500 ease-out" 
               title={t('general.settings') || 'Settings'}
             >
-              <span className="text-lg">⚙️</span>
+              <Settings2 className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -99,7 +101,7 @@ export function SidebarHeader(props: {
 
       {/* Mode switcher - трансформируется */}
       <div className={cn(
-        "mt-3 rounded-full bg-zinc-200/60 dark:bg-zinc-800/80 shadow-inner transition-all duration-500 ease-out",
+        'mt-3 rounded-[20px] border border-border/60 bg-background/84 shadow-inner transition-all duration-500 ease-out',
         isCollapsed 
           ? "flex flex-col w-full gap-0.5 p-0.5" 
           : "flex w-full p-1"
@@ -114,17 +116,18 @@ export function SidebarHeader(props: {
               ? 'px-2 py-1.5 flex-none' 
               : 'flex-1 px-3 py-1',
             uiMode === 'simple'
-              ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white'
-              : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-secondary hover:text-foreground'
           )}
           title={isCollapsed ? (t('ui_mode.simple') || 'Classic') : undefined}
         >
-          <span className={cn(
-            "transition-all duration-500 ease-out inline-block",
-            isCollapsed ? "text-[9px] opacity-100" : "text-[11px] opacity-100"
-          )}>
-            {isCollapsed ? (t('ui_mode.simple')?.charAt(0) || 'C') : t('ui_mode.simple') || 'Classic'}
-          </span>
+          {isCollapsed ? (
+            <PanelsTopLeft className="h-3.5 w-3.5" />
+          ) : (
+            <span className="inline-block text-[11px] transition-all duration-500 ease-out">
+              {t('ui_mode.simple') || 'Classic'}
+            </span>
+          )}
         </button>
         <button
           type="button"
@@ -136,8 +139,8 @@ export function SidebarHeader(props: {
               ? 'px-2 py-1.5 flex-none' 
               : 'flex-1 px-3 py-1',
             uiMode === 'modpacks'
-              ? 'bg-white text-zinc-900 shadow-sm dark:bg-zinc-900 dark:text-white'
-              : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200'
+              ? 'bg-card text-foreground shadow-sm'
+              : 'text-secondary hover:text-foreground'
           )}
           title={isCollapsed ? (t('ui_mode.modpacks') || 'Modpacks') : undefined}
         >
@@ -152,4 +155,3 @@ export function SidebarHeader(props: {
     </div>
   );
 }
-

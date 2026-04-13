@@ -54,9 +54,8 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
     return (
         <>
-            {/* Background overlay — затемнение без блюра */}
             <div 
-                className="fixed inset-0 z-[100] bg-black/70 animate-in fade-in duration-200 pointer-events-auto" 
+                className="fixed inset-0 z-[100] animate-in fade-in bg-background/72 backdrop-blur-sm duration-200 pointer-events-auto" 
                 onClick={onCancel}
                 style={{ isolation: 'isolate' }}
             />
@@ -66,7 +65,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             >
                 <div
                     className={cn(
-                        'bg-white dark:bg-zinc-800 border border-zinc-200/50 dark:border-zinc-700/50 w-full max-w-md rounded-2xl shadow-2xl shadow-black/30 dark:shadow-black/50 overflow-hidden animate-in zoom-in-95 duration-200 pointer-events-auto'
+                        'surface-panel w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 pointer-events-auto'
                     )}
                     onClick={(e) => e.stopPropagation()}
                     role="dialog"
@@ -75,14 +74,14 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                     aria-describedby="confirm-dialog-message"
                     style={{ isolation: 'isolate' }}
                 >
-                <div className="px-6 py-4 border-b border-zinc-200/50 dark:border-zinc-700/50 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900">
-                    <h3 id="confirm-dialog-title" className="text-lg font-bold text-zinc-900 dark:text-white">
+                <div className="flex items-center justify-between border-b border-border/70 bg-card/88 px-6 py-4">
+                    <h3 id="confirm-dialog-title" className="text-lg font-bold text-foreground">
                         {title}
                     </h3>
                 </div>
 
                 <div className="p-6">
-                    <p id="confirm-dialog-message" className="text-zinc-700 dark:text-zinc-300 mb-6">
+                    <p id="confirm-dialog-message" className="mb-6 text-secondary">
                         {message}
                     </p>
 

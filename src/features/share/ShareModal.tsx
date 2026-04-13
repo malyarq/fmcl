@@ -6,6 +6,8 @@ import { Input } from '../../components/ui/Input';
 import { Share2, Copy, Check } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { shareIPC } from '../../services/ipc/shareIPC';
+import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
+import { useToast } from '../../contexts/ToastContext';
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -15,6 +17,7 @@ interface ShareModalProps {
 
 export function ShareModal({ isOpen, onClose, modpackId }: ShareModalProps) {
     const { t } = useSettings();
+    const toast = useToast();
     const [code, setCode] = useState<string>('');
     const [copied, setCopied] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -46,7 +49,7 @@ export function ShareModal({ isOpen, onClose, modpackId }: ShareModalProps) {
 
                     console.error(err);
                     setCode('');
-                    setError(err instanceof Error ? err.message : (t('share.generateError') || t('share.error_desc') || 'Ошибка генерации кода'));
+                    setError(err instanceof Error ? err.message : t('share.generateError'));
                     setLoadedForId(modpackId);
                 })
         ;
@@ -64,11 +67,18 @@ export function ShareModal({ isOpen, onClose, modpackId }: ShareModalProps) {
         onClose();
     };
 
-    const handleCopy = () => {
-        if (code) {
-            navigator.clipboard.writeText(code);
+    const handleCopy = async () => {
+        if (!code) {
+            return;
+        }
+
+        try {
+            await navigator.clipboard.writeText(code);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error(err);
+            toast.error(t('share.copyError'));
         }
     };
 
@@ -84,49 +94,68 @@ export function ShareModal({ isOpen, onClose, modpackId }: ShareModalProps) {
             }
         >
 
-            <div className="space-y-4 py-4">
-                <p className="text-sm text-zinc-400">
-                    {t('share.desc')}
-                </p>
+            <div className="space-y-5 py-2">
+                <div className="space-y-2">
+                    <p className="text-sm text-secondary">
+                        {t('share.desc')}
+                    </p>
+                    <p className="text-xs text-muted">
+                        {t('share.hint')}
+                    </p>
+                </div>
 
-                {loading ? (
-                    <div className="flex justify-center p-4">
-                        <span className="loading loading-spinner loading-md"></span>
+                <div className="surface-muted space-y-3 rounded-2xl p-4">
+                    <div className="flex items-center justify-between gap-3">
+                        <div>
+                            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                                {t('share.codeLabel')}
+                            </p>
+                            <p className="text-sm text-secondary">
+                                {t('share.codeHelp')}
+                            </p>
+                        </div>
                     </div>
-                ) : error ? (
-                    <div className="p-4 bg-red-900/20 text-red-400 rounded-md text-sm border border-red-900/50">
-                        {error}
-                    </div>
-                ) : (
-                    <div className="flex gap-2">
-                        <Input
-                            readOnly
-                            value={code}
-                            className="font-mono text-xs bg-zinc-950 border-zinc-800"
-                            onClick={(e) => e.currentTarget.select()}
-                        />
-                        <Button
-                            onClick={handleCopy}
-                            variant="secondary"
-                            className={cn(
-                                "min-w-[100px] transition-all duration-200",
-                                copied ? "bg-green-600 hover:bg-green-700 text-white" : ""
-                            )}
-                        >
-                            {copied ? (
-                                <>
-                                    <Check className="w-4 h-4 mr-2" />
-                                    {t('error.copied')}
-                                </>
-                            ) : (
-                                <>
-                                    <Copy className="w-4 h-4 mr-2" />
-                                    {t('share.copy')}
-                                </>
-                            )}
-                        </Button>
-                    </div>
-                )}
+
+                    {loading ? (
+                        <div className="flex min-h-24 items-center justify-center rounded-2xl border border-border/60 bg-background/70">
+                            <LoadingSpinner variant="accent" />
+                        </div>
+                    ) : error ? (
+                        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200" role="alert">
+                            {error}
+                        </div>
+                    ) : (
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                            <Input
+                                readOnly
+                                value={code}
+                                aria-label={t('share.codeLabel')}
+                                className="font-mono text-xs"
+                                onClick={(e) => e.currentTarget.select()}
+                            />
+                            <Button
+                                onClick={() => {
+                                    void handleCopy();
+                                }}
+                                variant={copied ? 'primary' : 'secondary'}
+                                className={cn('min-w-[140px] sm:self-start', copied && 'shadow-[0_14px_34px_rgba(16,185,129,0.28)]')}
+                            >
+                                {copied ? (
+                                    <>
+                                        <Check className="h-4 w-4" />
+                                        {t('error.copied')}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Copy className="h-4 w-4" />
+                                        {t('share.copy')}
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    )}
+                </div>
+
             </div>
         </Modal>
     );

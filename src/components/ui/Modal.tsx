@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 interface ModalProps {
@@ -203,7 +204,7 @@ export const Modal: React.FC<ModalProps> = ({
         <>
             <div
                 className={cn(
-                    'fixed inset-0 z-50 bg-black/70 pointer-events-auto',
+                    'fixed inset-0 z-50 bg-background/70 backdrop-blur-sm pointer-events-auto',
                     animationClasses.overlay
                 )}
                 onClick={requestClose}
@@ -220,7 +221,7 @@ export const Modal: React.FC<ModalProps> = ({
                 <div
                     ref={dialogRef}
                     className={cn(
-                        'bg-white dark:bg-zinc-800 border border-zinc-200/50 dark:border-zinc-700/50 w-full max-w-lg rounded-xl sm:rounded-2xl shadow-2xl shadow-black/30 dark:shadow-black/50 overflow-hidden pointer-events-auto',
+                        'surface-panel w-full max-w-lg rounded-[28px] overflow-hidden pointer-events-auto',
                         'max-h-[95vh] sm:max-h-[90vh] md:max-h-[85vh]',
                         animationClasses.dialog,
                         className
@@ -233,10 +234,10 @@ export const Modal: React.FC<ModalProps> = ({
                     tabIndex={-1}
                     style={{ isolation: 'isolate' }}
                 >
-                    <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-zinc-200/50 dark:border-zinc-700/50 flex justify-between items-center bg-zinc-50 dark:bg-zinc-900">
+                    <div className="flex items-center justify-between border-b border-border/70 bg-card/88 px-4 py-3 sm:px-6 sm:py-4">
                         <h3
                             id={titleId}
-                            className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white truncate pr-2"
+                            className="truncate pr-2 text-base font-bold text-foreground sm:text-lg"
                         >
                             {title}
                         </h3>
@@ -244,9 +245,9 @@ export const Modal: React.FC<ModalProps> = ({
                             type="button"
                             onClick={requestClose}
                             aria-label="Close dialog"
-                            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-all duration-200 ease-out hover:scale-110 active:scale-95 flex-shrink-0"
+                            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 ease-out hover:scale-105 hover:bg-background/70 hover:text-foreground active:scale-95"
                         >
-                            ✕
+                            <X className="h-4 w-4" />
                         </button>
                     </div>
 

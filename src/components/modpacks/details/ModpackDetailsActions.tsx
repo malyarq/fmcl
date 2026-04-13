@@ -30,7 +30,7 @@ export const ModpackDetailsActions: React.FC<ModpackDetailsActionsProps> = ({
   t,
   getAccentStyles,
 }) => (
-  <div className="flex-shrink-0 flex gap-2 px-6 pt-4 pb-4 border-t border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-sm">
+  <div className="surface-inline mx-6 mb-6 flex flex-shrink-0 flex-wrap gap-2 px-4 py-4">
     <Button variant="primary" onClick={onLaunch} className="flex-1" style={getAccentStyles('bg').style}>
       {t('general.play')}
     </Button>

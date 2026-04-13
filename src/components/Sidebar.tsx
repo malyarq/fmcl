@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import { Globe2, PanelLeftClose, Settings2 } from 'lucide-react';
 import pkg from '../../package.json';
 import { useSettings, useUIMode } from '../contexts/SettingsContext';
 import { useModpack } from '../contexts/ModpackContext';
@@ -91,7 +92,7 @@ const Sidebar = ({
         <aside
             aria-label="FriendLauncher sidebar"
             className={cn(
-            "flex flex-col bg-sidebar backdrop-blur-sm border-r border-border shadow-2xl shadow-black/10 dark:shadow-black/30 z-10 relative transition-all duration-300 ease-out",
+            'relative z-10 flex flex-col border-r border-border bg-sidebar/86 shadow-[0_24px_80px_rgba(0,0,0,0.16)] backdrop-blur-xl transition-all duration-300 ease-out',
             isCollapsed ? "w-16 p-2" : (compactMode ? "w-64 p-4" : "w-80 p-6"),
             sidebarPosition === 'right' ? "border-l border-r-0 order-last" : "border-r border-l-0"
         )}
@@ -103,9 +104,9 @@ const Sidebar = ({
                     onClick={() => setIsCollapsed(!isCollapsed)}
                     aria-controls={sidebarContentId}
                     aria-expanded={!isCollapsed}
-                    className="absolute top-0 left-0 right-0 h-6 text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors flex items-center justify-center gap-1 border-b border-border/50"
+                    className="absolute left-0 right-0 top-0 flex h-7 items-center justify-center gap-1 border-b border-border/50 text-[10px] text-secondary transition-colors hover:bg-background/60 hover:text-foreground"
                 >
-                    <span className="text-xs">◀</span>
+                    <PanelLeftClose className="h-3 w-3" />
                     <span>{t('sidebar.collapse') || 'Collapse sidebar'}</span>
                 </button>
             )}
@@ -216,7 +217,7 @@ const Sidebar = ({
                         }}
                         title={t('multiplayer.title') || 'Multiplayer'}
                     >
-                        <span className="text-xl">🌐</span>
+                        <Globe2 className="h-5 w-5" />
                     </Button>
                     <Tooltip content={<span>{t('general.settings')} <span className="text-zinc-400 text-xs ml-1">Ctrl+,</span></span>} position="right">
                         <Button
@@ -230,7 +231,7 @@ const Sidebar = ({
                                 transitionDelay: '200ms',
                             }}
                         >
-                            <span className="text-xl">⚙️</span>
+                            <Settings2 className="h-5 w-5" />
                         </Button>
                     </Tooltip>
                 </div>

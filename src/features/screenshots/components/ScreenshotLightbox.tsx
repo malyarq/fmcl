@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
-// import { X, ChevronLeft, ChevronRight, Trash2, ExternalLink } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight, ClipboardCopy, FolderOpen, PencilLine, Trash2 } from 'lucide-react';
+import { Modal } from '../../../components/ui/Modal';
+import { Button } from '../../../components/ui/Button';
+import { useSettings } from '../../../contexts/SettingsContext';
+import { useToast } from '../../../contexts/ToastContext';
+import { useConfirm } from '../../../contexts/ConfirmContext';
 import type { Screenshot } from '../../../../electron/services/screenshots/screenshotService';
 import { screenshotsIPC } from '../../../services/ipc/screenshotsIPC';
 
@@ -9,152 +13,214 @@ interface ScreenshotLightboxProps {
     initialIndex: number;
     instancePath: string;
     onClose: () => void;
-    onDelete?: (screenshot: Screenshot) => void;
+    onDelete?: (screenshot: Screenshot) => Promise<boolean> | boolean;
     onOpenFolder?: () => void;
     onRename?: (screenshot: Screenshot, newName: string) => void;
 }
 
-export function ScreenshotLightbox({ screenshots, initialIndex, instancePath, onClose, onDelete, onOpenFolder, onRename }: ScreenshotLightboxProps) {
+export function ScreenshotLightbox({
+    screenshots,
+    initialIndex,
+    instancePath,
+    onClose,
+    onDelete,
+    onOpenFolder,
+    onRename,
+}: ScreenshotLightboxProps) {
+    const { t } = useSettings();
+    const toast = useToast();
+    const confirm = useConfirm();
     const [index, setIndex] = useState(initialIndex);
-    const [isRenaming, setIsRenaming] = useState(false);
-    const [renameValue, setRenameValue] = useState('');
-    const current = screenshots[index];
 
     useEffect(() => {
-        if (isRenaming) return; // Disable navigation while renaming
+        if (screenshots.length === 0) {
+            onClose();
+            return;
+        }
 
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onClose();
-            if (e.key === 'ArrowLeft') setIndex(i => (i > 0 ? i - 1 : screenshots.length - 1));
-            if (e.key === 'ArrowRight') setIndex(i => (i < screenshots.length - 1 ? i + 1 : 0));
+        setIndex((currentIndex) => Math.min(currentIndex, screenshots.length - 1));
+    }, [onClose, screenshots.length]);
+
+    const current = screenshots[index];
+
+    const goPrevious = useCallback(() => {
+        setIndex((currentIndex) => (currentIndex > 0 ? currentIndex - 1 : screenshots.length - 1));
+    }, [screenshots.length]);
+
+    const goNext = useCallback(() => {
+        setIndex((currentIndex) => (currentIndex < screenshots.length - 1 ? currentIndex + 1 : 0));
+    }, [screenshots.length]);
+
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                goPrevious();
+            }
+
+            if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                goNext();
+            }
         };
+
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [onClose, screenshots.length, isRenaming]);
+    }, [goNext, goPrevious]);
 
-    const handleRenameSubmit = async () => {
-        if (!renameValue.trim() || renameValue === current.name) {
-            setIsRenaming(false);
+    const imagePosition = useMemo(() => (
+        t('screenshots.position', { current: index + 1, total: screenshots.length })
+    ), [index, screenshots.length, t]);
+
+    const handleCopy = useCallback(async () => {
+        if (!current) {
             return;
         }
 
         try {
-            await screenshotsIPC.rename(current.name, renameValue, instancePath);
-            onRename?.(current, renameValue);
-            setIsRenaming(false);
-        } catch (e) {
-            console.error('Failed to rename', e);
-            alert('Failed to rename screenshot');
+            const response = await fetch(current.url);
+            const blob = await response.blob();
+            const ClipboardItemConstructor = window.ClipboardItem;
+
+            if (!navigator.clipboard?.write || typeof ClipboardItemConstructor === 'undefined') {
+                throw new Error('Clipboard image API is not available');
+            }
+
+            await navigator.clipboard.write([
+                new ClipboardItemConstructor({ [blob.type || 'image/png']: blob }),
+            ]);
+            toast.success(t('screenshots.copySuccess'));
+        } catch (error) {
+            console.error('Failed to copy screenshot:', error);
+            toast.error(t('screenshots.copyError'));
         }
-    };
+    }, [current, t, toast]);
 
-    if (!current) return null;
+    const handleRename = useCallback(async () => {
+        if (!current) {
+            return;
+        }
 
-    return createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm animate-in fade-in duration-200">
-            {/* Toolbar */}
-            <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center bg-gradient-to-b from-black/50 to-transparent">
-                <div className="text-white text-sm font-medium drop-shadow-md flex items-center gap-2">
-                    {isRenaming ? (
-                        <div className="flex gap-2">
-                            <input
-                                autoFocus
-                                value={renameValue}
-                                onChange={(e) => setRenameValue(e.target.value)}
-                                className="bg-black/50 border border-white/20 rounded px-2 py-1 text-white text-sm"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleRenameSubmit();
-                                    if (e.key === 'Escape') setIsRenaming(false);
-                                }}
-                            />
-                            <button onClick={handleRenameSubmit} className="text-green-400 hover:text-green-300">✓</button>
-                            <button onClick={() => setIsRenaming(false)} className="text-red-400 hover:text-red-300">✕</button>
-                        </div>
-                    ) : (
-                        <>
-                            <span
-                                onClick={() => {
-                                    setRenameValue(current.name);
-                                    setIsRenaming(true);
-                                }}
-                                className="cursor-pointer hover:underline decoration-dashed underline-offset-4"
-                                title="Click to rename"
-                            >
-                                {current.name}
-                            </span>
-                            <span className="text-white/60 ml-2">({index + 1} / {screenshots.length})</span>
-                        </>
-                    )}
+        const nextName = await confirm.prompt({
+            title: t('screenshots.renameTitle'),
+            message: t('screenshots.renamePrompt'),
+            confirmText: t('general.save'),
+            cancelText: t('general.cancel'),
+            input: {
+                initialValue: current.name,
+                placeholder: current.name,
+                requireNonEmpty: true,
+            },
+        });
+
+        const normalizedName = nextName?.trim();
+        if (!normalizedName || normalizedName === current.name) {
+            return;
+        }
+
+        try {
+            await screenshotsIPC.rename(current.name, normalizedName, instancePath);
+            onRename?.(current, normalizedName);
+            toast.success(t('screenshots.renameSuccess'));
+        } catch (error) {
+            console.error('Failed to rename screenshot:', error);
+            toast.error(t('screenshots.renameError'));
+        }
+    }, [confirm, current, instancePath, onRename, t, toast]);
+
+    const handleDelete = useCallback(async () => {
+        if (!current || !onDelete) {
+            return;
+        }
+
+        const deleted = await onDelete(current);
+        if (!deleted) {
+            return;
+        }
+
+        if (screenshots.length <= 1) {
+            onClose();
+            return;
+        }
+
+        if (index === screenshots.length - 1) {
+            setIndex((currentIndex) => Math.max(0, currentIndex - 1));
+        }
+    }, [current, index, onClose, onDelete, screenshots.length]);
+
+    if (!current) {
+        return null;
+    }
+
+    return (
+        <Modal
+            isOpen={true}
+            onClose={onClose}
+            title={
+                <div className="flex min-w-0 items-center gap-3">
+                    <span className="truncate">{current.name}</span>
+                    <span className="shrink-0 text-xs font-medium text-muted">{imagePosition}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={async () => {
-                            try {
-                                const response = await fetch(current.url);
-                                const blob = await response.blob();
-                                await navigator.clipboard.write([
-                                    new ClipboardItem({ 'image/png': blob })
-                                ]);
-                            } catch (e) {
-                                console.error('Failed to copy', e);
-                            }
-                        }}
-                        className="p-2 rounded-full hover:bg-white/10 text-white transition-colors"
-                        title="Copy to Clipboard"
-                    >
-                        <span className="text-xl">📋</span>
-                    </button>
-                    {onOpenFolder && (
-                        <button onClick={onOpenFolder} className="p-2 rounded-full hover:bg-white/10 text-white transition-colors" title="Open Folder">
-                            <span className="text-xl">📂</span>
-                        </button>
-                    )}
-                    {onDelete && (
+            }
+            className="max-w-[min(96vw,1200px)]"
+        >
+            <div className="space-y-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <p className="text-sm text-secondary">{t('screenshots.lightboxHint')}</p>
+                    <div className="flex flex-wrap gap-2">
+                        <Button variant="secondary" size="sm" onClick={() => void handleRename()}>
+                            <PencilLine className="h-4 w-4" />
+                            {t('screenshots.rename')}
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={() => void handleCopy()}>
+                            <ClipboardCopy className="h-4 w-4" />
+                            {t('screenshots.copy')}
+                        </Button>
+                        {onOpenFolder && (
+                            <Button variant="secondary" size="sm" onClick={onOpenFolder}>
+                                <FolderOpen className="h-4 w-4" />
+                                {t('screenshots.openFolder')}
+                            </Button>
+                        )}
+                        {onDelete && (
+                            <Button variant="danger" size="sm" onClick={() => void handleDelete()}>
+                                <Trash2 className="h-4 w-4" />
+                                {t('common.remove')}
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-background/80 p-3 shadow-[0_26px_60px_rgba(0,0,0,0.28)]">
+                    {screenshots.length > 1 && (
                         <button
-                            onClick={() => {
-                                onDelete(current);
-                                if (screenshots.length <= 1) onClose();
-                                else if (index === screenshots.length - 1) setIndex(index - 1);
-                            }}
-                            className="p-2 rounded-full hover:bg-white/10 text-white hover:text-red-400 transition-colors"
-                            title="Delete"
+                            type="button"
+                            className="absolute left-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-background/88 text-secondary shadow-[0_10px_24px_rgba(0,0,0,0.18)] transition-all duration-200 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                            aria-label={t('screenshots.previous')}
+                            onClick={goPrevious}
                         >
-                            <span className="text-xl">🗑️</span>
+                            <ChevronLeft className="h-5 w-5" />
                         </button>
                     )}
-                    <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-white transition-colors">
-                        <span className="text-xl">✕</span>
-                    </button>
+
+                    <img
+                        src={current.url}
+                        alt={current.name}
+                        className="max-h-[70vh] w-full rounded-[22px] object-contain"
+                    />
+
+                    {screenshots.length > 1 && (
+                        <button
+                            type="button"
+                            className="absolute right-4 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-border/60 bg-background/88 text-secondary shadow-[0_10px_24px_rgba(0,0,0,0.18)] transition-all duration-200 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                            aria-label={t('screenshots.next')}
+                            onClick={goNext}
+                        >
+                            <ChevronRight className="h-5 w-5" />
+                        </button>
+                    )}
                 </div>
             </div>
-
-            {/* Navigation Left */}
-            {!isRenaming && (
-                <button
-                    onClick={() => setIndex(i => (i > 0 ? i - 1 : screenshots.length - 1))}
-                    className="absolute left-4 p-3 rounded-full hover:bg-white/10 text-white transition-colors hidden md:block"
-                >
-                    <span className="text-2xl">‹</span>
-                </button>
-            )}
-
-            {/* Image */}
-            <img
-                src={current.url}
-                alt={current.name}
-                className="max-h-[85vh] max-w-[90vw] object-contain shadow-2xl rounded-sm"
-            />
-
-            {/* Navigation Right */}
-            {!isRenaming && (
-                <button
-                    onClick={() => setIndex(i => (i < screenshots.length - 1 ? i + 1 : 0))}
-                    className="absolute right-4 p-3 rounded-full hover:bg-white/10 text-white transition-colors hidden md:block"
-                >
-                    <span className="text-2xl">›</span>
-                </button>
-            )}
-        </div>,
-        document.body
+        </Modal>
     );
 }

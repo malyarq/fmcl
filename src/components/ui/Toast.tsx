@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 export type ToastType = 'success' | 'error' | 'warning' | 'info';
@@ -13,17 +14,17 @@ export interface ToastProps {
 }
 
 const toastStyles = {
-    success: 'bg-green-500/90 dark:bg-green-600/90 text-white border-green-600/50 dark:border-green-500/50',
-    error: 'bg-red-500/90 dark:bg-red-600/90 text-white border-red-600/50 dark:border-red-500/50',
-    warning: 'bg-yellow-500/90 dark:bg-yellow-600/90 text-white border-yellow-600/50 dark:border-yellow-500/50',
-    info: 'bg-blue-500/90 dark:bg-blue-600/90 text-white border-blue-600/50 dark:border-blue-500/50',
+    success: 'border-green-500/25 bg-green-500/14 text-foreground',
+    error: 'border-red-500/25 bg-red-500/14 text-foreground',
+    warning: 'border-amber-500/25 bg-amber-500/14 text-foreground',
+    info: 'border-blue-500/25 bg-blue-500/14 text-foreground',
 };
 
 const toastIcons = {
-    success: '✓',
-    error: '✕',
-    warning: '⚠',
-    info: 'ℹ',
+    success: CheckCircle2,
+    error: XCircle,
+    warning: AlertTriangle,
+    info: Info,
 };
 
 export const Toast: React.FC<ToastProps> = ({
@@ -36,6 +37,7 @@ export const Toast: React.FC<ToastProps> = ({
 }) => {
     const [isVisible, setIsVisible] = useState(true);
     const [isExiting, setIsExiting] = useState(false);
+    const Icon = toastIcons[type];
 
     useEffect(() => {
         if (duration > 0) {
@@ -64,7 +66,7 @@ export const Toast: React.FC<ToastProps> = ({
     return (
         <div
             className={cn(
-                'flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg backdrop-blur-sm border min-w-[300px] max-w-md',
+                'flex min-w-[300px] max-w-md items-center gap-3 rounded-2xl border px-4 py-3 shadow-[0_18px_48px_rgba(0,0,0,0.18)] backdrop-blur-xl',
                 'animate-in slide-in-from-right-full duration-300',
                 isExiting && 'animate-out slide-out-to-right-full duration-200',
                 toastStyles[type]
@@ -72,21 +74,23 @@ export const Toast: React.FC<ToastProps> = ({
             role="alert"
             aria-live="polite"
         >
-            <span className="text-lg font-bold flex-shrink-0">{toastIcons[type]}</span>
+            <span className="flex-shrink-0 text-lg font-bold">
+                <Icon className="h-5 w-5" />
+            </span>
             <p className="flex-1 text-sm font-medium">
                 {message}
                 {count > 1 && (
-                    <span className="ml-2 px-1.5 py-0.5 text-xs font-bold rounded-full bg-white/20 text-white inline-block align-middle">
+                    <span className="ml-2 inline-block rounded-full bg-background/80 px-1.5 py-0.5 align-middle text-xs font-bold text-foreground">
                         x{count}
                     </span>
                 )}
             </p>
             <button
                 onClick={handleClose}
-                className="flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors text-white/80 hover:text-white"
+                className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-secondary transition-colors hover:bg-background/70 hover:text-foreground"
                 aria-label="Close notification"
             >
-                ✕
+                <X className="h-4 w-4" />
             </button>
         </div>
     );

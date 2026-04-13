@@ -8,6 +8,7 @@ import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
 import type { ModpackSearchResultItem, ModpackVersionDescriptor, ModpackInstallProgress } from '@shared/contracts';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import { ArrowLeft } from 'lucide-react';
 
 interface InstallModpackPageProps {
   modpack: ModpackSearchResultItem;
@@ -90,39 +91,43 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Header with back button */}
-      <div className="flex items-center gap-4 p-6 border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40">
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={onBack}
-          className="flex items-center gap-2"
-          disabled={installing}
-        >
-          <span>←</span>
-          {t('general.back') || 'Назад'}
-        </Button>
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex-1">
-          {t('modpacks.install') || 'Установить модпак'}
-        </h2>
+      <div className="border-b border-border/70 bg-card/78 px-6 py-4 backdrop-blur-md">
+        <div className="flex flex-wrap items-center gap-4">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onBack}
+            className="flex items-center gap-2"
+            disabled={installing}
+          >
+            <ArrowLeft className="h-4 w-4" />
+            {t('general.back') || 'Назад'}
+          </Button>
+          <div className="min-w-0 flex-1">
+            <div className="kicker-label">{t('modpacks.browser')}</div>
+            <h2 className="text-xl font-bold text-foreground">
+              {t('modpacks.install') || 'Установить модпак'}
+            </h2>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 min-h-0">
         <div className="space-y-4 max-w-2xl mx-auto">
           {/* Modpack Info */}
-          <div className="flex gap-4 p-4 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-200 dark:border-zinc-700">
+          <div className="surface-card flex gap-4 p-5">
             {modpack.iconUrl && (
               <LazyImage
                 src={modpack.iconUrl}
                 alt={modpack.title}
-                className="w-20 h-20 rounded-lg object-cover"
+                className="h-20 w-20 rounded-2xl border border-border/70 object-cover"
                 fallback="/icon.png"
               />
             )}
             <div className="flex-1">
-              <h3 className="font-bold text-lg text-zinc-900 dark:text-white">{modpack.title}</h3>
+              <h3 className="text-lg font-bold text-foreground">{modpack.title}</h3>
               {modpack.description && (
-                <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 line-clamp-2">
+                <p className="mt-1 line-clamp-2 text-sm text-secondary">
                   {modpack.description}
                 </p>
               )}
@@ -150,20 +155,20 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
 
           {/* Version Info */}
           {selectedVersion && (
-            <div className="grid grid-cols-2 gap-4 p-4 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-200 dark:border-zinc-700">
+            <div className="surface-muted grid grid-cols-2 gap-4 p-4">
               <div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                <p className="mb-1 text-xs text-secondary">
                   {t('modpacks.minecraft_version')}
                 </p>
-                <p className="font-mono font-bold text-sm text-zinc-900 dark:text-white">
+                <p className="font-mono text-sm font-bold text-foreground">
                   {selectedVersion.mcVersions[0] || '—'}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                <p className="mb-1 text-xs text-secondary">
                   {t('modpacks.loader')}
                 </p>
-                <p className="font-mono font-bold text-sm text-zinc-900 dark:text-white">
+                <p className="font-mono text-sm font-bold text-foreground">
                   {selectedVersion.loaders.join(', ') || '—'}
                 </p>
               </div>
@@ -182,8 +187,8 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
 
           {/* Success Message */}
           {success && (
-            <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-              <p className="text-sm text-green-700 dark:text-green-300">
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3">
+              <p className="text-sm text-emerald-700 dark:text-emerald-300">
                 {t('modpacks.install_success')}
               </p>
             </div>
@@ -191,13 +196,13 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
 
           {/* Error Message */}
           {error && (
-            <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3">
               <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
             </div>
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-2">
+          <div className="surface-inline flex gap-3 pt-2">
             <Button
               onClick={onBack}
               variant="secondary"

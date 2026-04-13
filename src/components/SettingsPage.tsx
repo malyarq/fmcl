@@ -19,11 +19,12 @@ import { StatisticsTab } from '../features/settings/statistics/StatisticsTab';
 
 interface SettingsPageProps {
     onClose: () => void;
+    initialTab?: SettingsTabId;
 }
 
 // Settings modal for appearance and launcher preferences.
-const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
-    const [activeTab, setActiveTab] = useState<SettingsTabId>('appearance');
+const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appearance' }) => {
+    const [activeTab, setActiveTab] = useState<SettingsTabId>(initialTab);
     const [showUpdateModal, setShowUpdateModal] = useState(false);
     const {
         hideLauncher, setHideLauncher,
@@ -47,6 +48,30 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
             return () => clearTimeout(timer);
         }
     }, [status]);
+
+    const getPanelHint = () => {
+        if (activeTab === 'accounts') {
+            return t('accounts.description');
+        }
+
+        if (activeTab === 'downloads') {
+            return t('settings.downloadsHint');
+        }
+
+        if (activeTab === 'launcher') {
+            return t('settings.launcherHint');
+        }
+
+        if (activeTab === 'storage') {
+            return t('settings.storage.description');
+        }
+
+        if (activeTab === 'statistics') {
+            return t('stats.description');
+        }
+
+        return t('settings.doneHint');
+    };
 
     const renderActiveTab = () => {
         if (activeTab === 'appearance') {
@@ -107,7 +132,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
             isOpen={true}
             onClose={onClose}
             title={t('settings.title')}
-            className="max-w-2xl"
+            className="max-w-4xl"
         >
             <div className="space-y-4">
                 <SettingsTabsHeader
@@ -122,15 +147,18 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose }) => {
                     role="tabpanel"
                     aria-labelledby={getSettingsTabId(activeTab)}
                     tabIndex={0}
-                    className="outline-none"
+                    className="surface-panel min-h-[26rem] outline-none p-4 sm:p-5"
                 >
                     {renderActiveTab()}
                 </div>
 
-                <div className="flex justify-end pt-4 border-t border-zinc-100 dark:border-zinc-800">
+                <div className="surface-inline flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-secondary">
+                        {getPanelHint()}
+                    </p>
                     <Button
                         onClick={onClose}
-                        className={cn("text-white", getAccentStyles('bg').className)}
+                        className={cn("text-white sm:min-w-[9rem]", getAccentStyles('bg').className)}
                         style={getAccentStyles('bg').style}
                     >
                         {t('settings.done')}

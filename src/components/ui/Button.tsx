@@ -20,13 +20,18 @@ export const Button: React.FC<ButtonProps> = ({
     ...props
 }) => {
     const isBusy = Boolean(isLoading);
-    const baseStyles = 'motion-safe-transform rounded-lg font-bold motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-out motion-safe:transform motion-safe:active:scale-[0.98] motion-safe:hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-zinc-900 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:hover:scale-100 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl disabled:hover:shadow-lg';
+    const baseStyles =
+        'motion-safe-transform rounded-xl font-semibold motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-out motion-safe:transform motion-safe:active:scale-[0.98] motion-safe:hover:scale-[1.01] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:hover:scale-100 flex items-center justify-center gap-2 shadow-[0_10px_28px_rgba(0,0,0,0.12)] hover:shadow-[0_14px_34px_rgba(0,0,0,0.16)] disabled:hover:shadow-[0_10px_28px_rgba(0,0,0,0.12)] border';
 
     const variants = {
-        primary: 'bg-zinc-800 text-white hover:bg-zinc-700 dark:bg-zinc-200 dark:text-black dark:hover:bg-zinc-300 shadow-zinc-900/20 dark:shadow-zinc-200/20',
-        secondary: 'bg-white/80 dark:bg-zinc-800/80 backdrop-blur-sm text-zinc-900 hover:bg-white dark:text-zinc-100 dark:hover:bg-zinc-800 border border-zinc-300/50 dark:border-zinc-700/50 shadow-zinc-900/10 dark:shadow-black/20',
-        danger: 'bg-red-500 text-white hover:bg-red-600 dark:bg-red-600 dark:hover:bg-red-700 shadow-red-500/30 dark:shadow-red-600/30',
-        ghost: 'bg-transparent text-zinc-600 hover:bg-zinc-100/80 dark:text-zinc-400 dark:hover:bg-zinc-800/50 shadow-none',
+        primary:
+            'border-transparent bg-[rgb(var(--accent-main))] text-[rgb(var(--accent-content))] hover:bg-[rgb(var(--accent-hover))]',
+        secondary:
+            'border-border/70 bg-card/82 text-foreground hover:bg-card/96 backdrop-blur-md',
+        danger:
+            'border-red-500/20 bg-red-500 text-white hover:bg-red-600 shadow-[0_10px_28px_rgba(239,68,68,0.24)] hover:shadow-[0_14px_34px_rgba(239,68,68,0.28)]',
+        ghost:
+            'border-transparent bg-transparent text-secondary hover:bg-card/72 hover:text-foreground shadow-none hover:shadow-none',
     };
 
     const sizes = {

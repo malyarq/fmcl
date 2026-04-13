@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { AccountsPage } from '../AccountsPage'
 
@@ -13,7 +13,22 @@ const openExternalMock = vi.fn()
 
 vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
-    t: (key: string) => key,
+    t: (key: string) =>
+      ({
+        'accounts.title': 'Accounts',
+        'accounts.description': 'Manage your Minecraft accounts and switch between them.',
+        'accounts.skinTitle': 'Skin Management',
+        'accounts.skinRefresh': 'Refresh Preview',
+        'accounts.skinOpenProvider': 'Open Skin Site',
+        'accounts.skinUnsupportedOffline': 'Offline accounts do not have a provider skin page.',
+        'accounts.skinUnsupportedHint': 'Supported providers in this release: Blessing Skin and LittleSkin.',
+        'accounts.skinManageHint': 'Refresh the preview or open the provider site to change skins.',
+        'accounts.skinLoading': 'Loading skin information...',
+        'accounts.typeOffline': 'Offline',
+        'accounts.typeThirdParty': 'Third Party',
+        'accounts.addAccount': 'Add Account',
+        'accounts.providerSupportHint': 'Blessing Skin and LittleSkin are supported for provider-aware skin management.',
+      }[key] ?? key),
   }),
 }))
 
@@ -53,6 +68,7 @@ vi.mock('../AddAccountDialog', () => ({
 
 describe('AccountsPage skin panel', () => {
   beforeEach(() => {
+    cleanup()
     confirmMock.mockReset()
     getAccountsMock.mockReset()
     getSelectedAccountMock.mockReset()
@@ -94,8 +110,8 @@ describe('AccountsPage skin panel', () => {
   it('shows a provider-aware skin panel for the selected account', async () => {
     render(<AccountsPage />)
 
-    await screen.findByText('accounts.skinTitle')
-    await screen.findByText('LittleSkin')
+    await screen.findByText('Skin Management')
+    expect((await screen.findAllByText('LittleSkin')).length).toBeGreaterThan(0)
 
     await waitFor(() => {
       expect(getSkinStateMock).toHaveBeenCalledWith('account-1')
@@ -105,10 +121,10 @@ describe('AccountsPage skin panel', () => {
   it('refreshes the provider preview and opens the provider page', async () => {
     render(<AccountsPage />)
 
-    await screen.findByText('LittleSkin')
-    const refreshButton = await screen.findByRole('button', { name: 'accounts.skinRefresh' })
+    expect((await screen.findAllByText('LittleSkin')).length).toBeGreaterThan(0)
+    const refreshButton = await screen.findByRole('button', { name: 'Refresh Preview' }) as HTMLButtonElement
     await waitFor(() => {
-      expect(refreshButton.hasAttribute('disabled')).toBe(false)
+      expect(refreshButton.disabled).toBe(false)
     })
     fireEvent.click(refreshButton)
 
@@ -116,13 +132,35 @@ describe('AccountsPage skin panel', () => {
       expect(refreshSkinStateMock).toHaveBeenCalledWith('account-1')
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'accounts.skinOpenProvider' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Skin Site' }))
 
     await waitFor(() => {
       expect(openExternalMock).toHaveBeenCalledWith({
         url: 'https://littleskin.cn/user',
         context: 'account-skin:account-1',
       })
+    })
+  })
+
+  it('keeps skin actions disabled for offline accounts without a provider page', async () => {
+    const offlineAccount = {
+      id: 'offline-account',
+      type: 'offline',
+      name: 'OfflineOnly',
+    }
+
+    getAccountsMock.mockResolvedValue([offlineAccount])
+    getSelectedAccountMock.mockResolvedValue(offlineAccount)
+
+    render(<AccountsPage />)
+
+    await screen.findByText('Skin Management')
+    await screen.findByText('OfflineOnly')
+    await screen.findByText('Offline accounts do not have a provider skin page.')
+
+    await waitFor(() => {
+      expect((screen.getByRole('button', { name: 'Refresh Preview' }) as HTMLButtonElement).disabled).toBe(true)
+      expect((screen.getByRole('button', { name: 'Open Skin Site' }) as HTMLButtonElement).disabled).toBe(true)
     })
   })
 })

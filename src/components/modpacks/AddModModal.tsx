@@ -13,6 +13,7 @@ import { modsIPC } from '../../services/ipc/modsIPC';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { MINECRAFT_VERSIONS } from '../../utils/minecraftVersionsList';
+import { PackagePlus } from 'lucide-react';
 
 interface AddModModalProps {
   modpackId: string;
@@ -228,33 +229,35 @@ export const AddModModal: React.FC<AddModModalProps> = ({
       onClose={onClose}
       title={
         <div className="flex items-center gap-3 flex-wrap min-w-0">
-          <span className="truncate min-w-0">{t('modpacks.add_mod') || 'Добавить мод'}</span>
+          <PackagePlus className="h-4 w-4 text-secondary" />
+          <span className="truncate min-w-0">{t('modpacks.add_mod_title') || 'Add mods'}</span>
           <div className="flex gap-2 shrink-0">
             <button
+              type="button"
               onClick={() => {
                 setPlatform('curseforge');
                 setCheckedMods(new Map());
               }}
               disabled
               className={cn(
-                "px-3 py-1.5 rounded-lg font-medium transition-colors text-xs",
-                "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-500",
+                "rounded-lg bg-background/72 px-3 py-1.5 text-xs font-medium text-muted transition-colors",
                 "cursor-not-allowed opacity-60"
               )}
               title={t('modpacks.curseforge_wip') || 'CurseForge в разработке'}
             >
-              {t('modpacks.platform_curseforge')} (WIP)
+              {t('modpacks.platform_curseforge')} ({t('modpacks.coming_soon_short') || 'Soon'})
             </button>
             <button
+              type="button"
               onClick={() => {
                 setPlatform('modrinth');
                 setCheckedMods(new Map());
               }}
               className={cn(
-                "px-3 py-1.5 rounded-lg font-medium transition-colors text-xs",
+                "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
                 platform === 'modrinth'
                   ? cn("text-white", getAccentStyles('bg').className)
-                  : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600"
+                  : "bg-background/72 text-foreground hover:bg-card"
               )}
               style={platform === 'modrinth' ? getAccentStyles('bg').style : undefined}
             >
@@ -266,8 +269,24 @@ export const AddModModal: React.FC<AddModModalProps> = ({
       className="max-w-3xl"
     >
       <div className="space-y-4">
+        <div className="surface-muted flex flex-wrap items-center gap-4 p-4 text-sm text-secondary">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs uppercase tracking-[0.18em] text-muted">
+              {modpackMetadata?.name || t('modpacks.title') || 'Modpacks'}
+            </p>
+            <p className="mt-1 text-sm text-foreground">
+              {effectiveMCVersion || t('general.unknown') || 'Unknown'} • {effectiveLoader || t('modpacks.loader_vanilla') || 'Vanilla'}
+            </p>
+          </div>
+          {total > 0 && (
+            <p className="text-xs text-secondary">
+              {total} {t('modpacks.results') || 'results'}
+            </p>
+          )}
+        </div>
+
         {/* Filters */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="surface-card flex gap-2 flex-wrap p-4">
           <Select
             value={filterMCVersion}
             onChange={(e) => setFilterMCVersion(e.target.value)}
@@ -314,7 +333,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
         {loading && (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <LoadingSpinner size="lg" />
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="text-sm text-secondary">
               {t('modpacks.loading')}
             </p>
           </div>
@@ -336,10 +355,10 @@ export const AddModModal: React.FC<AddModModalProps> = ({
                 <div
                   key={key}
                   className={cn(
-                    'p-3 border rounded-lg transition-colors flex gap-3 items-start',
+                    'surface-card flex items-start gap-3 p-3 transition-colors',
                     isChecked
-                      ? 'border-zinc-400 dark:border-zinc-500 bg-zinc-50 dark:bg-zinc-900/60'
-                      : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/50'
+                      ? 'border-border-active bg-card'
+                      : 'hover:border-border-active hover:bg-card'
                   )}
                 >
                   <input
@@ -348,32 +367,32 @@ export const AddModModal: React.FC<AddModModalProps> = ({
                     disabled={isLoading || installing}
                     onChange={(e) => handleCheckChange(mod, e.target.checked)}
                     onClick={(e) => e.stopPropagation()}
-                    className="mt-1 w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 focus:ring-2 focus:ring-zinc-500"
+                    className="mt-1 h-4 w-4 rounded border-zinc-300 text-zinc-600 focus:ring-2 focus:ring-zinc-500"
                   />
                   {mod.iconUrl && (
                     <LazyImage
                       src={mod.iconUrl}
                       alt={mod.title}
-                      className="w-12 h-12 rounded object-cover shrink-0"
+                      className="h-12 w-12 shrink-0 rounded-xl border border-border/70 object-cover"
                       fallback="/icon.png"
                     />
                   )}
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-zinc-900 dark:text-white truncate">
+                    <h4 className="truncate font-medium text-foreground">
                       {mod.title}
                     </h4>
                     {version && (
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
+                      <p className="mt-0.5 text-xs text-secondary">
                         {version.name} {version.mcVersions[0] && `(${version.mcVersions[0]})`}
                       </p>
                     )}
                     {mod.description && !version && (
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1">
+                      <p className="mt-1 line-clamp-2 text-xs text-secondary">
                         {mod.description}
                       </p>
                     )}
                     {mod.downloads !== undefined && (
-                      <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+                      <p className="mt-1 text-xs text-secondary">
                         {t('modpacks.downloads')}: {mod.downloads.toLocaleString()}
                       </p>
                     )}
@@ -390,7 +409,15 @@ export const AddModModal: React.FC<AddModModalProps> = ({
           </div>
         )}
 
-        <div className="flex gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+        {!loading && searchResults.length === 0 && (
+          <div className="surface-muted py-10 text-center text-secondary">
+            {query.trim()
+              ? t('modpacks.no_mod_results') || 'No mods found for the current filters'
+              : t('modpacks.search_mod_placeholder') || 'Search mods...'}
+          </div>
+        )}
+
+        <div className="surface-inline flex gap-2 pt-2">
           <Button
             onClick={onClose}
             variant="secondary"

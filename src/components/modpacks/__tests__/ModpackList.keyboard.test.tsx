@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModpackList } from '../ModpackList';
+import { createTranslator } from '../../../contexts/settings/i18n';
 
 const listWithMetadataMock = vi.fn();
 const selectMock = vi.fn();
 const refreshMock = vi.fn();
+const t = createTranslator('en');
 
 vi.mock('../../../contexts/ModpackContext', () => ({
   useModpackListContext: () => ({
@@ -22,15 +24,7 @@ vi.mock('../../../contexts/ModpackContext', () => ({
 
 vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
-    t: (key: string) =>
-      ({
-        'modpacks.title': 'Modpacks',
-        'modpacks.desc': 'Manage packs',
-        'modpacks.search_placeholder': 'Search modpacks',
-        'modpacks.settings_title': 'Modpack settings',
-        'modpacks.select': 'Select',
-        'general.settings': 'Settings',
-      }[key] ?? key),
+    t,
     getAccentStyles: () => ({ className: '', style: undefined }),
     getAccentHex: () => '#10b981',
     minecraftPath: '/minecraft',
@@ -67,6 +61,7 @@ vi.mock('../../../features/share/ImportShareModal', () => ({
 
 describe('ModpackList keyboard accessibility', () => {
   beforeEach(() => {
+    cleanup();
     listWithMetadataMock.mockReset();
     selectMock.mockReset();
     refreshMock.mockReset();
@@ -105,9 +100,9 @@ describe('ModpackList keyboard accessibility', () => {
     const cardButton = await screen.findByRole('button', { name: 'Alpha Pack' });
     fireEvent.keyDown(cardButton, { key: 'F10', shiftKey: true });
 
-    const menu = await screen.findByRole('menu', { name: 'Modpack settings: Alpha Pack' });
+    const menu = await screen.findByRole('menu', { name: 'More actions: Alpha Pack' });
     expect(menu).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Modpack settings: Alpha Pack' }).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('button', { name: 'More actions: Alpha Pack' }).getAttribute('aria-expanded')).toBe('true');
 
     await waitFor(() => {
       expect(document.activeElement?.getAttribute('role')).toBe('menuitem');

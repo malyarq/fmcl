@@ -62,22 +62,39 @@ export const AddAccountDialog: React.FC<AddAccountDialogProps> = ({ isOpen, onCl
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={t('accounts.addAccount')}>
-            <div className="flex gap-2 mb-6 bg-zinc-800 p-1 rounded-lg">
+            <div className="surface-muted mb-4 space-y-2 p-4">
+                <p className="kicker-label">{t('accounts.addAccount')}</p>
+                <p className="text-sm leading-6 text-secondary">
+                    {authType === 'offline'
+                        ? (t('accounts.offlineHint') || 'Use an offline profile for quick local testing without provider authentication.')
+                        : (t('accounts.thirdPartyHint') || 'Connect a Blessing Skin or LittleSkin compatible auth server over HTTPS or loopback.')}
+                </p>
+            </div>
+
+            <div
+                className="mb-6 flex gap-2 rounded-[20px] border border-border/60 bg-background/84 p-1 shadow-inner"
+                role="group"
+                aria-label={t('accounts.authMode') || 'Account type'}
+            >
                 <button
+                    type="button"
                     className={clsx(
-                        "flex-1 py-1.5 px-3 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2",
-                        authType === 'offline' ? "bg-zinc-600 text-white" : "text-zinc-400 hover:text-white"
+                        'flex flex-1 items-center justify-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium transition-colors',
+                        authType === 'offline' ? 'bg-card text-foreground shadow-sm' : 'text-secondary hover:text-foreground'
                     )}
+                    aria-pressed={authType === 'offline'}
                     onClick={() => setAuthType('offline')}
                 >
                     <User size={16} />
                     {t('accounts.typeOffline')}
                 </button>
                 <button
+                    type="button"
                     className={clsx(
-                        "flex-1 py-1.5 px-3 rounded text-sm font-medium transition-colors flex items-center justify-center gap-2",
-                        authType === 'third-party' ? "bg-zinc-600 text-white" : "text-zinc-400 hover:text-white"
+                        'flex flex-1 items-center justify-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium transition-colors',
+                        authType === 'third-party' ? 'bg-card text-foreground shadow-sm' : 'text-secondary hover:text-foreground'
                     )}
+                    aria-pressed={authType === 'third-party'}
                     onClick={() => setAuthType('third-party')}
                 >
                     <Server size={16} />
@@ -87,47 +104,50 @@ export const AddAccountDialog: React.FC<AddAccountDialogProps> = ({ isOpen, onCl
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 {authType === 'offline' ? (
-                    <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-1">{t('accounts.nickname')}</label>
+                    <div className="surface-card space-y-4 p-4">
                         <Input
+                            label={t('accounts.nickname')}
                             value={nickname}
                             onChange={(e) => setNickname(e.target.value)}
-                            placeholder="Steve"
+                            placeholder={t('accounts.nicknamePlaceholder') || 'Steve'}
                             autoFocus
+                            data-autofocus="true"
                         />
                     </div>
                 ) : (
-                    <>
+                    <div className="surface-card space-y-4 p-4">
                         <div>
-                            <label className="block text-sm font-medium text-zinc-300 mb-1">{t('accounts.serverUrl')}</label>
                             <Input
+                                label={t('accounts.serverUrl')}
                                 value={serverUrl}
                                 onChange={(e) => setServerUrl(e.target.value)}
-                                placeholder="https://auth.example.com/api/yggdrasil"
+                                placeholder={t('accounts.serverPlaceholder') || 'https://auth.example.com/api/yggdrasil'}
+                                autoFocus
+                                data-autofocus="true"
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-zinc-300 mb-1">{t('accounts.username')}</label>
                             <Input
+                                label={t('accounts.username')}
                                 value={username}
                                 onChange={(e) => setUsername(e.target.value)}
-                                placeholder="Email or Username"
+                                placeholder={t('accounts.usernamePlaceholder') || 'Email or Username'}
                             />
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-zinc-300 mb-1">{t('accounts.password')}</label>
                             <Input
+                                label={t('accounts.password')}
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Password"
+                                placeholder={t('accounts.passwordPlaceholder') || 'Password'}
                             />
                         </div>
-                    </>
+                    </div>
                 )}
 
                 {error && (
-                    <div className="text-red-400 text-sm bg-red-500/10 p-3 rounded-lg border border-red-500/20">
+                    <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-200">
                         {error}
                     </div>
                 )}

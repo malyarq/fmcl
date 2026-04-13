@@ -13,7 +13,7 @@ import type { ModpackManifest, ModpackMetadata } from '@shared/types/modpack';
 import { cn } from '../../utils/cn';
 import { ShareModal } from '../../features/share/ShareModal';
 import { ImportShareModal } from '../../features/share/ImportShareModal';
-import { Download, MoreHorizontal, Share2 } from 'lucide-react';
+import { Compass, Download, FolderOpen, MoreHorizontal, PackagePlus, Share2 } from 'lucide-react';
 import type { ModLoaderType } from '../../contexts/instances/types';
 
 interface ModpackListItemWithMetadata {
@@ -381,10 +381,10 @@ const ModpackListComponentInternal: React.FC<{
       await modpacksIPC.createFromManifest(manifest);
       await refresh();
       await loadModpacks();
-      toast.success(t('share.import_success') || 'Модпак успешно импортирован');
+      toast.success(t('share.import_success'));
     } catch (error) {
       console.error('Error importing modpack from share code:', error);
-      toast.error(t('share.import_error') || 'Ошибка при импорте');
+      toast.error(t('share.import_error'));
     } finally {
       setLoading(false);
     }
@@ -436,7 +436,7 @@ const ModpackListComponentInternal: React.FC<{
 
   // Skeleton loader для карточки модпака
   const ModpackCardSkeleton = React.memo(() => (
-    <div role="listitem" className="p-5 rounded-xl border-2 border-zinc-200 dark:border-zinc-700 min-h-[200px]">
+    <div role="listitem" className="surface-card min-h-[200px] p-5">
       <div className="flex items-start gap-4 mb-3">
         <SkeletonLoader variant="rounded" width={80} height={80} />
         <div className="flex-1 min-w-0 space-y-2">
@@ -483,19 +483,19 @@ const ModpackListComponentInternal: React.FC<{
     const iconSrc = useMemo(() => getModpackIcon(modpack), [modpack]);
     const sourceBadge = useMemo(() => getModpackSourceBadge(modpack.metadata?.source), [modpack.metadata?.source]);
     const actionMenuId = `modpack-actions-menu-${modpack.id}`;
-    const actionMenuLabel = `${t('modpacks.settings_title') || 'More actions'}: ${modpack.name}`;
+    const actionMenuLabel = `${t('modpacks.actions_title') || 'More actions'}: ${modpack.name}`;
 
     return (
       <div
         className={cn(
-          'relative p-5 rounded-xl border-2 transition-all duration-300 ease-out cursor-pointer flex flex-col min-h-[220px]',
+          'surface-card relative flex min-h-[220px] cursor-pointer flex-col p-5 transition-all duration-300 ease-out',
           'transform hover:scale-[1.02] hover:shadow-lg',
           'hover:-translate-y-1',
           'animate-fade-in-up',
           'focus-within:ring-2 focus-within:ring-zinc-500 focus-within:ring-offset-2 dark:focus-within:ring-offset-zinc-900',
           isSelected
             ? cn('border-opacity-100 shadow-lg scale-[1.02]', getAccentStyles('border').className)
-            : 'border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600'
+            : 'hover:border-border-active hover:bg-card'
         )}
         style={{
           animationDelay: `${index * 50}ms`,
@@ -540,7 +540,7 @@ const ModpackListComponentInternal: React.FC<{
             <LazyImage
               src={iconSrc}
               alt={modpack.name}
-              className="w-full h-full rounded-lg object-cover border border-zinc-200 dark:border-zinc-700"
+              className="h-full w-full rounded-2xl border border-border/70 object-cover"
               fallback="/icon.png"
               placeholder={
                 <SkeletonLoader variant="rounded" width={80} height={80} />
@@ -549,7 +549,7 @@ const ModpackListComponentInternal: React.FC<{
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-base font-semibold text-zinc-900 dark:text-white truncate flex-1 min-w-0">
+              <h3 className="min-w-0 flex-1 truncate text-base font-semibold text-foreground">
                 {modpack.name}
               </h3>
               {sourceBadge}
@@ -564,12 +564,12 @@ const ModpackListComponentInternal: React.FC<{
               )}
             </div>
             {modpack.metadata?.version && (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-secondary">
                 {t('modpacks.version')}: {modpack.metadata.version}
               </p>
             )}
             {modpack.metadata?.minecraftVersion && (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-secondary">
                 MC {modpack.metadata.minecraftVersion}
               </p>
             )}
@@ -578,7 +578,7 @@ const ModpackListComponentInternal: React.FC<{
 
         {/* Description */}
         {modpack.metadata?.description && (
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2 mb-3 flex-shrink-0">
+          <p className="mb-3 line-clamp-2 flex-shrink-0 text-sm text-secondary">
             {modpack.metadata.description}
           </p>
         )}
@@ -605,7 +605,8 @@ const ModpackListComponentInternal: React.FC<{
             onClick={() => onShowDetails(modpack.id)}
             className="shrink-0 transition-all duration-200"
           >
-            {t('general.settings')}
+            <FolderOpen className="h-4 w-4" />
+            {t('modpacks.open_details') || 'Open details'}
           </Button>
           <Button
             variant="secondary"
@@ -616,7 +617,7 @@ const ModpackListComponentInternal: React.FC<{
             aria-controls={isMenuOpen ? actionMenuId : undefined}
             aria-label={actionMenuLabel}
             className="shrink-0 px-3 transition-all duration-200"
-            title={t('modpacks.settings_title') || 'More actions'}
+            title={t('modpacks.actions_title') || 'More actions'}
           >
             <MoreHorizontal className="w-4 h-4" />
           </Button>
@@ -645,19 +646,20 @@ const ModpackListComponentInternal: React.FC<{
       <div
         className={cn(
           "flex-1 flex flex-col p-8 overflow-y-auto transition-all",
-          isDragging && "bg-zinc-100/50 dark:bg-zinc-800/50 border-2 border-dashed border-zinc-400 dark:border-zinc-600"
+          isDragging && "bg-background/60 border-2 border-dashed border-border-active"
         )}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-          <div>
-            <h2 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white mb-1">
+        <div className="surface-card mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-2">
+            <div className="kicker-label">{t('modpacks.title')}</div>
+            <h2 className="mb-1 text-xl font-bold text-foreground sm:text-2xl">
               {t('modpacks.title')}
             </h2>
-            <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-secondary">
               {t('modpacks.desc')}
             </p>
           </div>
@@ -666,16 +668,17 @@ const ModpackListComponentInternal: React.FC<{
               variant="secondary"
               onClick={() => setImportShareModalOpen(true)}
               className="w-full sm:w-auto"
-              title={t('share.import_title') || 'Импорт по коду'}
+              title={t('share.import_title')}
             >
-              <Download className="w-4 h-4 mr-2" />
-              {t('share.import_btn') || 'Импорт'}
+              <Download className="w-4 h-4" />
+              {t('modpacks.import_code_btn')}
             </Button>
             <Button
               variant="secondary"
               onClick={() => onCreateWizard?.()}
               className="w-full sm:w-auto"
             >
+              <PackagePlus className="w-4 h-4" />
               {t('modpacks.create')}
             </Button>
             <Button
@@ -684,13 +687,14 @@ const ModpackListComponentInternal: React.FC<{
               className={cn("w-full sm:w-auto", getAccentStyles('bg').className)}
               style={getAccentStyles('bg').style}
             >
+              <Compass className="w-4 h-4" />
               {t('modpacks.browser')}
             </Button>
           </div>
         </div>
 
         {/* Search and Filters */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+        <div className="surface-muted mb-6 flex flex-col gap-4 p-4 sm:flex-row">
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -714,7 +718,7 @@ const ModpackListComponentInternal: React.FC<{
               <option value="created">{t('modpacks.sort_created') || 'По дате создания'}</option>
               <option value="updated">{t('modpacks.sort_updated') || 'По обновлению'}</option>
             </Select>
-            <div className="w-px bg-zinc-200 dark:bg-zinc-700 mx-1" />
+            <div className="mx-1 hidden w-px bg-border/70 sm:block" />
             <Select
               value={filterMCVersion}
               onChange={(e) => setFilterMCVersion(e.target.value)}
@@ -742,12 +746,12 @@ const ModpackListComponentInternal: React.FC<{
 
         {/* Drag & Drop Zone */}
         {isDragging && (
-          <div className="absolute inset-0 flex items-center justify-center bg-zinc-100/90 dark:bg-zinc-800/90 backdrop-blur-sm z-50 border-2 border-dashed border-zinc-400 dark:border-zinc-600 rounded-lg">
+          <div className="surface-panel absolute inset-0 z-50 flex items-center justify-center border-2 border-dashed border-border-active bg-background/86 backdrop-blur-sm">
             <div className="text-center">
-              <p className="text-xl font-bold text-zinc-900 dark:text-white mb-2">
+              <p className="mb-2 text-xl font-bold text-foreground">
                 {t('modpacks.drop_file') || 'Перетащите файл модпака сюда'}
               </p>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="text-sm text-secondary">
                 {t('modpacks.supported_formats') || 'Поддерживаемые форматы: .mrpack, .zip, .curseforge'}
               </p>
             </div>
@@ -762,20 +766,22 @@ const ModpackListComponentInternal: React.FC<{
             ))}
           </div>
         ) : filteredModpacks.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-zinc-500 dark:text-zinc-400 py-12 px-4">
-            <div className="text-6xl mb-4 opacity-50">📦</div>
-            <h3 className="text-xl font-bold text-zinc-700 dark:text-zinc-300 mb-2">
+          <div className="surface-muted flex flex-1 flex-col items-center justify-center py-12 px-4 text-secondary">
+            <div className="mb-4 rounded-full border border-border/60 bg-background/72 p-4">
+              <Compass className="h-8 w-8" />
+            </div>
+            <h3 className="mb-2 text-xl font-bold text-foreground">
               {searchQuery || filterMCVersion !== 'all' || filterLoader !== 'all'
                 ? (t('modpacks.no_results') || 'Ничего не найдено')
                 : (t('modpacks.no_modpacks_title') || 'Нет модпаков')}
             </h3>
-            <p className="text-sm mb-2 text-center max-w-md">
+            <p className="mb-2 max-w-md text-center text-sm">
               {searchQuery || filterMCVersion !== 'all' || filterLoader !== 'all'
                 ? (t('modpacks.try_changing_filters') || 'Попробуйте изменить параметры поиска')
                 : (t('modpacks.no_modpacks_desc') || 'Начните с выбора модпака из браузера или создайте свой собственный')}
             </p>
             {!searchQuery && filterMCVersion === 'all' && filterLoader === 'all' && (
-              <p className="text-xs text-zinc-400 dark:text-zinc-500 text-center">
+              <p className="text-center text-xs text-muted">
                 {t('modpacks.drag_drop_hint') || 'Или перетащите файл модпака (.mrpack, .zip, .curseforge) в это окно'}
               </p>
             )}
@@ -808,15 +814,15 @@ const ModpackListComponentInternal: React.FC<{
             ref={contextMenuRef}
             id={`modpack-actions-menu-${contextMenu.modpackId}`}
             role="menu"
-            aria-label={`${t('modpacks.settings_title') || 'More actions'}: ${modpacks.find((modpack) => modpack.id === contextMenu.modpackId)?.name || contextMenu.modpackId}`}
-            className="fixed z-50 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg shadow-lg py-1 min-w-[150px]"
+            aria-label={`${t('modpacks.actions_title') || 'More actions'}: ${modpacks.find((modpack) => modpack.id === contextMenu.modpackId)?.name || contextMenu.modpackId}`}
+            className="surface-card fixed z-50 min-w-[176px] py-1"
             style={{ left: contextMenu.x, top: contextMenu.y }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
               type="button"
               role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
               onClick={() => {
                 handleSelect(contextMenu!.modpackId);
                 closeContextMenu();
@@ -827,33 +833,20 @@ const ModpackListComponentInternal: React.FC<{
             <button
               type="button"
               role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-              onClick={() => {
-                // Same as clicking "Play" but from context menu we just select for now or maybe implement Launch later
-                // For now, let's just Select + Settings like the card buttons
-                handleSelect(contextMenu!.modpackId);
-                closeContextMenu();
-              }}
-            >
-              {/* TODO: Implement direct launch action if possible */}
-              {t('general.play') || 'Играть'}
-            </button>
-            <div className="h-px bg-zinc-200 dark:bg-zinc-700 my-1" />
-            <button
-              type="button"
-              role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
               onClick={() => {
                 onNavigate?.({ type: 'details', modpackId: contextMenu!.modpackId });
                 closeContextMenu();
               }}
             >
-              {t('general.settings')}
+              <FolderOpen className="h-4 w-4" />
+              {t('modpacks.open_details') || 'Open details'}
             </button>
+            <div className="my-1 h-px bg-border/60" />
             <button
               type="button"
               role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center"
+              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
               onClick={() => {
                 setShareModpackId(contextMenu!.modpackId);
                 setShareModalOpen(true);
@@ -861,12 +854,12 @@ const ModpackListComponentInternal: React.FC<{
               }}
             >
               <Share2 className="w-4 h-4 mr-2" />
-              {t('share.context_btn') || 'Поделиться'}
+              {t('modpacks.share_btn')}
             </button>
             <button
               type="button"
               role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
               onClick={() => {
                 onNavigate?.({ type: 'export', modpackId: contextMenu!.modpackId });
                 closeContextMenu();
@@ -877,7 +870,7 @@ const ModpackListComponentInternal: React.FC<{
             <button
               type="button"
               role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
               onClick={() => {
                 const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
                 if (modpack) {
@@ -891,7 +884,7 @@ const ModpackListComponentInternal: React.FC<{
             <button
               type="button"
               role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-zinc-900 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
               onClick={() => {
                 const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
                 if (modpack) {
@@ -902,11 +895,11 @@ const ModpackListComponentInternal: React.FC<{
             >
               {t('modpacks.duplicate') || 'Дублировать'}
             </button>
-            <div className="h-px bg-zinc-200 dark:bg-zinc-700 my-1" />
+            <div className="my-1 h-px bg-border/60" />
             <button
               type="button"
               role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-background/70 dark:text-red-400"
               onClick={() => {
                 const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
                 if (modpack) {

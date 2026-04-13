@@ -1,9 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
+import { FolderOpen, ImageIcon, Trash2 } from 'lucide-react';
 import { useSettings } from '../../../contexts/SettingsContext';
+import { useToast } from '../../../contexts/ToastContext';
+import { useConfirm } from '../../../contexts/ConfirmContext';
 import { screenshotsIPC } from '../../../services/ipc/screenshotsIPC';
 import type { Screenshot } from '../../../../electron/services/screenshots/screenshotService';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { LazyImage } from '../../../components/ui/LazyImage';
+import { Button } from '../../../components/ui/Button';
 import { ScreenshotLightbox } from './ScreenshotLightbox';
 
 interface ScreenshotsTabProps {
@@ -12,6 +16,8 @@ interface ScreenshotsTabProps {
 
 export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
     const { t } = useSettings();
+    const toast = useToast();
+    const confirm = useConfirm();
     const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
     const [loading, setLoading] = useState(true);
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
@@ -23,95 +29,138 @@ export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
             setScreenshots(list);
         } catch (error) {
             console.error('Failed to load screenshots:', error);
+            toast.error(t('screenshots.loadError'));
         } finally {
             setLoading(false);
         }
-    }, [instancePath]);
+    }, [instancePath, t, toast]);
 
     useEffect(() => {
-        loadScreenshots();
+        void loadScreenshots();
     }, [loadScreenshots]);
 
-    const handleDelete = async (screenshot: Screenshot) => {
-        if (!confirm(t('Are you sure you want to delete this screenshot?'))) return;
+    const handleDelete = useCallback(async (screenshot: Screenshot): Promise<boolean> => {
+        const confirmed = await confirm.confirm({
+            title: t('screenshots.deleteTitle'),
+            message: t('screenshots.deleteConfirm', { name: screenshot.name }),
+            confirmText: t('common.remove'),
+            cancelText: t('general.cancel'),
+            variant: 'danger',
+        });
+
+        if (!confirmed) {
+            return false;
+        }
 
         try {
             await screenshotsIPC.delete(screenshot.name, instancePath);
-            setScreenshots(prev => prev.filter(s => s.name !== screenshot.name));
+            setScreenshots((prev) => prev.filter((item) => item.name !== screenshot.name));
+            toast.success(t('screenshots.deleteSuccess'));
+            return true;
         } catch (error) {
             console.error('Failed to delete screenshot:', error);
+            toast.error(t('screenshots.deleteError'));
+            return false;
         }
-    };
+    }, [confirm, instancePath, t, toast]);
 
-    const handleOpenFolder = async () => {
-        await screenshotsIPC.openFolder(instancePath);
-    };
+    const handleOpenFolder = useCallback(async () => {
+        try {
+            await screenshotsIPC.openFolder(instancePath);
+        } catch (error) {
+            console.error('Failed to open screenshots folder:', error);
+            toast.error(t('screenshots.folderError'));
+        }
+    }, [instancePath, t, toast]);
+
+    const handleRename = useCallback((_screenshot: Screenshot, _newName: string) => {
+        void loadScreenshots();
+    }, [loadScreenshots]);
 
     if (loading) {
-        return <div className="flex justify-center p-8"><LoadingSpinner /></div>;
+        return (
+            <div className="flex justify-center p-8">
+                <LoadingSpinner variant="accent" />
+            </div>
+        );
     }
 
     if (screenshots.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center p-12 text-center">
-                <div className="text-4xl mb-4 opacity-50">🖼️</div>
-                <h3 className="text-lg font-medium text-zinc-100 mb-2">{t('No screenshots yet')}</h3>
-                <p className="text-zinc-400 max-w-xs">{t('Take screenshots in-game using F2. They will appear here.')}</p>
-                <button
-                    onClick={handleOpenFolder}
-                    className="mt-4 text-primary text-sm hover:underline"
-                >
-                    {t('Open Screenshots Folder')}
-                </button>
+            <div className="surface-card flex flex-col items-center justify-center gap-4 p-10 text-center">
+                <div className="rounded-full border border-border/60 bg-background/78 p-4 text-secondary">
+                    <ImageIcon className="h-8 w-8" />
+                </div>
+                <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-foreground">{t('screenshots.emptyTitle')}</h3>
+                    <p className="max-w-md text-sm text-secondary">{t('screenshots.emptyDescription')}</p>
+                </div>
+                <Button variant="secondary" onClick={() => void handleOpenFolder()}>
+                    <FolderOpen className="h-4 w-4" />
+                    {t('screenshots.openFolder')}
+                </Button>
             </div>
         );
     }
 
     return (
-        <div className="p-4">
-            <div className="flex justify-between items-center mb-4">
-                <div className="text-sm text-zinc-400">
-                    {screenshots.length} {t('screenshots')}
+        <div className="space-y-4 p-4">
+            <div className="surface-muted flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="space-y-1">
+                    <div className="kicker-label">{t('modpacks.tab_screenshots')}</div>
+                    <p className="text-sm text-secondary">{t('screenshots.count', { count: screenshots.length })}</p>
                 </div>
-                <button
-                    onClick={handleOpenFolder}
-                    className="text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded transition-colors"
-                >
-                    {t('Open Folder')}
-                </button>
+                <Button variant="secondary" size="sm" onClick={() => void handleOpenFolder()}>
+                    <FolderOpen className="h-4 w-4" />
+                    {t('screenshots.openFolder')}
+                </Button>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <ul
+                className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
+                role="list"
+                aria-label={t('modpacks.tab_screenshots')}
+            >
                 {screenshots.map((screenshot, index) => (
-                    <div
-                        key={screenshot.name}
-                        className="group relative aspect-video bg-zinc-900 rounded-lg overflow-hidden border border-zinc-800 hover:border-zinc-700 transition-all cursor-pointer"
-                        onClick={() => setLightboxIndex(index)}
-                    >
-                        <LazyImage
-                            src={screenshot.url}
-                            alt={screenshot.name}
-                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                        />
-
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end justify-between p-2 opacity-0 group-hover:opacity-100">
-                            <span className="text-xs text-white truncate max-w-[70%] font-medium drop-shadow-md">
-                                {screenshot.name}
-                            </span>
+                    <li key={screenshot.name} className="group relative">
+                        <div className="surface-card overflow-hidden p-2">
                             <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDelete(screenshot);
-                                }}
-                                className="p-1.5 rounded-full bg-black/50 hover:bg-red-500/80 text-white transition-colors backdrop-blur-sm"
-                                title={t('Delete')}
+                                type="button"
+                                className="block w-full overflow-hidden rounded-2xl border border-border/70 bg-background/80 text-left transition-all duration-300 hover:border-border-active focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                                aria-haspopup="dialog"
+                                aria-label={t('screenshots.openViewer', { name: screenshot.name })}
+                                onClick={() => setLightboxIndex(index)}
                             >
-                                <span className="text-xs">🗑️</span>
+                                <div className="relative aspect-video overflow-hidden bg-background/70">
+                                    <LazyImage
+                                        src={screenshot.url}
+                                        alt={screenshot.name}
+                                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]"
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between gap-3 px-3 py-3">
+                                    <span className="truncate text-sm font-medium text-foreground">
+                                        {screenshot.name}
+                                    </span>
+                                    <span className="text-xs text-muted">
+                                        {new Date(screenshot.createdAt).toLocaleDateString()}
+                                    </span>
+                                </div>
                             </button>
                         </div>
-                    </div>
+                        <button
+                            type="button"
+                            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full border border-border/60 bg-background/88 text-secondary shadow-[0_10px_24px_rgba(0,0,0,0.18)] opacity-0 transition-all duration-200 hover:border-red-500/40 hover:bg-red-500/12 hover:text-red-200 focus:opacity-100 focus:outline-none focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-red-400/70 group-focus-within:opacity-100 group-hover:opacity-100"
+                            aria-label={t('screenshots.deleteAction', { name: screenshot.name })}
+                            onClick={() => {
+                                void handleDelete(screenshot);
+                            }}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </button>
+                    </li>
                 ))}
-            </div>
+            </ul>
 
             {lightboxIndex !== null && (
                 <ScreenshotLightbox
@@ -119,21 +168,9 @@ export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
                     initialIndex={lightboxIndex}
                     instancePath={instancePath}
                     onClose={() => setLightboxIndex(null)}
-                    onDelete={(s) => {
-                        handleDelete(s);
-                    }}
+                    onDelete={handleDelete}
                     onOpenFolder={handleOpenFolder}
-                    onRename={(s, newName) => {
-                        setScreenshots(prev => prev.map(item =>
-                            item.name === s.name
-                                ? { ...item, name: newName, url: item.url } // Update name, keep url (it might be invalid if based on path, but usually data url or blob, but here it's local protocol). Actually if url depends on name, this might be tricky. The backend returns 'atom://...' which usually includes path. If specific screenshot renamed, path changes. We might need to reload or update url manually if predictable. 
-                                // However, simple list reload is safest but might flicker. Let's try simple update first.
-                                // If URL is `atom://screenshots/${instancePath}/${name}`, then it must update.
-                                : item
-                        ));
-                        // Reload to be safe about URLs
-                        loadScreenshots();
-                    }}
+                    onRename={handleRename}
                 />
             )}
         </div>

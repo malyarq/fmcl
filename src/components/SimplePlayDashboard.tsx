@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { Boxes, Settings2, Sparkles } from 'lucide-react';
 import { useSettings, useUIMode } from '../contexts/SettingsContext';
 import { useModpack } from '../contexts/ModpackContext';
 import { modpacksIPC } from '../services/ipc/modpacksIPC';
@@ -63,7 +64,7 @@ function generateParticles(baseId: number): Particle[] {
   return out;
 }
 
-export function SimplePlayDashboard({ launch, runtime: _runtime, actions: _actions }: SimplePlayDashboardProps) {
+export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDashboardProps) {
   const { t, getAccentStyles, getAccentHex, minecraftPath, disableAnimations } = useSettings();
   const { setMode } = useUIMode();
   const {
@@ -220,28 +221,69 @@ export function SimplePlayDashboard({ launch, runtime: _runtime, actions: _actio
     )}>
       {/* Welcome Banner */}
       {showWelcome && (
-        <div className={cn(
-          'w-full max-w-2xl mb-6 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800 flex flex-col sm:flex-row items-center gap-4 relative',
-          !reducedMotion && 'animate-in fade-in slide-in-from-top-4'
-        )}>
-          <div className="text-3xl">👋</div>
-          <div className="flex-1 text-center sm:text-left">
-            <h3 className="text-lg font-bold text-indigo-900 dark:text-indigo-100">
-              {t('dashboard.welcome_title') || 'Welcome!'}
-            </h3>
-            <p className="text-sm text-indigo-700 dark:text-indigo-300 mt-1">
-              {t('dashboard.welcome_desc') || 'This is Simple Play mode...'}
-            </p>
+        <section
+          className={cn(
+            'surface-panel w-full max-w-3xl overflow-hidden mb-6',
+            !reducedMotion && 'animate-in fade-in slide-in-from-top-4'
+          )}
+          aria-label={t('dashboard.welcome') || 'Welcome'}
+        >
+          <div className="flex flex-col gap-5 p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="space-y-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {t('ui_mode.simple') || 'Classic'}
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground">
+                    {t('dashboard.welcome_title') || 'Welcome to FriendLauncher!'}
+                  </h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-secondary">
+                    {t('dashboard.welcome_desc') || 'Simple Play mode is the fastest way to launch Minecraft. For more advanced features like detailed mod management, switch to Modpacks mode.'}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDismissWelcome}
+                className="self-start"
+              >
+                {t('dashboard.dismiss') || 'Dismiss'}
+              </Button>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+              <div className="surface-muted p-4">
+                <p className="kicker-label mb-2">{t('dashboard.quick_actions') || 'Quick actions'}</p>
+                <p className="text-sm leading-6 text-secondary">
+                  {t('dashboard.welcome_cta') || 'Choose version and nickname in the sidebar, then press Play to start.'}
+                </p>
+              </div>
+              <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+                <Button
+                  variant="secondary"
+                  onClick={actions.onShowSettings}
+                  disabled={runtime.isLaunching}
+                  className="justify-center"
+                >
+                  <Settings2 className="h-4 w-4" />
+                  {t('general.settings') || 'Settings'}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setMode('modpacks')}
+                  disabled={runtime.isLaunching}
+                  className="justify-center"
+                >
+                  <Boxes className="h-4 w-4" />
+                  {t('dashboard.go_to_modpacks') || 'Go to Modpacks'}
+                </Button>
+              </div>
+            </div>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleDismissWelcome}
-            className="shrink-0"
-          >
-            {t('dashboard.dismiss') || 'Dismiss'}
-          </Button>
-        </div>
+        </section>
       )}
 
       {/* Logo + easter egg — на фоне, без жёсткого бокса */}
@@ -411,13 +453,15 @@ export function SimplePlayDashboard({ launch, runtime: _runtime, actions: _actio
       </CollapsibleSection>
 
       {/* Go to Modpacks */}
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => setMode('modpacks')}
-        className="mt-8 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 underline underline-offset-2 transition-colors"
+        className="mt-8"
       >
+        <Boxes className="h-4 w-4" />
         {t('dashboard.go_to_modpacks') || 'Go to Modpacks'}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -432,18 +476,18 @@ function InfoCard({
   return (
     <div
       className={cn(
-        'p-3 rounded-xl border bg-white/60 dark:bg-zinc-800/60 backdrop-blur-sm',
+        'surface-card p-3',
         highlight
-          ? 'border-amber-300 dark:border-amber-600/60'
-          : 'border-zinc-200/80 dark:border-zinc-700/80'
+          ? 'border-amber-500/30 bg-amber-500/10'
+          : undefined
       )}
     >
-      <p className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider truncate">
+      <p className="text-[10px] font-medium text-secondary uppercase tracking-wider truncate">
         {label}
       </p>
       <p className={cn(
-        'mt-0.5 text-sm font-semibold truncate',
-        highlight && 'text-amber-600 dark:text-amber-400'
+        'mt-0.5 text-sm font-semibold truncate text-foreground',
+        highlight && 'text-amber-700 dark:text-amber-300'
       )}>
         {value}
       </p>
@@ -490,7 +534,7 @@ function ContentManagerSection({
 
   if (!instancePath) {
     return (
-      <div className="text-center py-4 text-zinc-500 text-sm">
+      <div className="surface-muted py-4 text-center text-sm text-secondary">
         {t('dashboard.no_minecraft_path') || 'Minecraft path not set'}
       </div>
     );
@@ -505,9 +549,16 @@ function ContentManagerSection({
 
   return (
     <div className="space-y-4">
-      {/* Tab buttons */}
+      <div className="surface-card space-y-2 p-4">
+        <div className="kicker-label">{t('dashboard.content') || 'Content'}</div>
+        <h3 className="text-lg font-semibold text-foreground">{t('dashboard.content') || 'Content'}</h3>
+        <p className="text-sm text-secondary">{t('modpacks.secondary_content_description')}</p>
+      </div>
+
       <div
-        className="flex gap-2 border-b border-zinc-200 dark:border-zinc-700 overflow-x-auto overflow-y-hidden [&::-webkit-scrollbar]:hidden"
+        className="surface-inline flex gap-2 overflow-x-auto overflow-y-hidden p-2 [&::-webkit-scrollbar]:hidden"
+        role="tablist"
+        aria-label={t('dashboard.content') || 'Content'}
         style={{ scrollbarWidth: 'none' }}
         onWheel={(e) => {
           if (e.deltaY !== 0) {
@@ -516,25 +567,31 @@ function ContentManagerSection({
           }
         }}
       >
-        {tabs.map((tab) => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={cn(
-              'px-3 py-2 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap',
-              activeTab !== tab.key && 'border-transparent text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-            )}
-            style={activeTab === tab.key ? {
-              borderColor: accentHex,
-              color: accentHex
-            } : undefined}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
+
+          return (
+            <button
+              key={tab.key}
+              type="button"
+              role="tab"
+              id={`simple-content-tab-${tab.key}`}
+              aria-selected={isActive}
+              aria-controls={`simple-content-panel-${tab.key}`}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                'rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors',
+                !isActive && 'text-secondary hover:bg-card/72 hover:text-foreground'
+              )}
+              style={isActive ? { backgroundColor: accentHex, color: 'white' } : undefined}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
-      {/* Tab content */}
-      <div className="w-full">
+
+      <div className="w-full" role="tabpanel" id={`simple-content-panel-${activeTab}`} aria-labelledby={`simple-content-tab-${activeTab}`}>
         {activeTab === 'mods' && modpackId && (
           <ModsTab
             modpackId={modpackId}

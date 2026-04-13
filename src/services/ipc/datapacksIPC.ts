@@ -9,6 +9,22 @@ export interface Datapack {
     path: string;
 }
 
+export interface DatapackSearchResultItem {
+    project_id: string;
+    title: string;
+    description: string;
+    icon_url?: string | null;
+}
+
+export interface DatapackSearchResult {
+    hits: DatapackSearchResultItem[];
+    total_hits: number;
+}
+
+export interface DatapackVersion {
+    id: string;
+}
+
 export const datapacksIPC = {
     list: (instancePath: string, worldFolder: string): Promise<Datapack[]> =>
         ipc().invoke('datapacks:list', instancePath, worldFolder),
@@ -22,14 +38,12 @@ export const datapacksIPC = {
     delete: (instancePath: string, worldFolder: string, fileName: string): Promise<{ ok: boolean }> =>
         ipc().invoke('datapacks:delete', instancePath, worldFolder, fileName),
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    search: (query: string, mcVersion?: string): Promise<any> =>
+    search: (query: string, mcVersion?: string): Promise<DatapackSearchResult> =>
         ipc().invoke('datapacks:search', query, mcVersion),
 
     install: (instancePath: string, worldFolder: string, versionId: string): Promise<{ ok: boolean }> =>
         ipc().invoke('datapacks:install', instancePath, worldFolder, versionId),
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    getVersions: (projectId: string): Promise<any[]> =>
+    getVersions: (projectId: string): Promise<DatapackVersion[]> =>
         ipc().invoke('datapacks:getVersions', projectId),
 };

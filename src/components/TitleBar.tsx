@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Minus, X } from 'lucide-react';
 import { assetsIPC } from '../services/ipc/assetsIPC';
 import { windowControlsIPC } from '../services/ipc/windowControlsIPC';
 
@@ -24,8 +25,8 @@ const TitleBar = () => {
     }, []);
 
     return (
-        <div className="h-8 bg-gradient-to-r from-zinc-100/95 to-zinc-50/95 dark:from-zinc-900 dark:to-zinc-950 backdrop-blur-sm border-b border-zinc-200/50 dark:border-zinc-800/50 flex items-center justify-between select-none app-drag-region sticky top-0 z-[100] shadow-sm">
-            <div className="flex items-center px-3 space-x-2 text-xs text-zinc-600 dark:text-zinc-500 font-bold tracking-wider uppercase">
+        <div className="app-drag-region sticky top-0 z-[100] flex h-9 select-none items-center justify-between border-b border-border/70 bg-card/82 px-2 shadow-[0_6px_18px_rgba(0,0,0,0.1)] backdrop-blur-xl">
+            <div className="flex items-center gap-2 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary">
                 <img src={iconPath} alt="Icon" className="w-4 h-4 opacity-75" onError={(e) => {
                     // Fallback to default path if image fails to load
                     if (e.currentTarget.src !== '/icon.png' && !e.currentTarget.src.includes('icon.png')) {
@@ -35,18 +36,18 @@ const TitleBar = () => {
                 <span>FriendLauncher</span>
             </div>
 
-            <div className="flex h-full">
+            <div className="flex h-full items-center gap-1">
                 <button
                     onClick={() => windowControlsIPC.minimize()}
-                    className="px-4 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 transition-colors flex items-center justify-center text-xs no-drag"
+                    className="no-drag flex h-7 w-8 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-background/80 hover:text-foreground"
                 >
-                    ─
+                    <Minus className="h-4 w-4" />
                 </button>
                 <button
                     onClick={() => windowControlsIPC.close()}
-                    className="px-4 hover:bg-red-600 hover:text-white text-zinc-600 dark:text-zinc-400 transition-colors flex items-center justify-center text-xs no-drag"
+                    className="no-drag flex h-7 w-8 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-red-500 hover:text-white"
                 >
-                    ✕
+                    <X className="h-4 w-4" />
                 </button>
             </div>
         </div>

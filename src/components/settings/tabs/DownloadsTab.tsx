@@ -23,47 +23,59 @@ export const DownloadsTab: React.FC<DownloadsTabProps> = ({
 }) => {
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-3 md:col-span-2">
-          <MirrorsSettings />
-        </div>
+      <div className="surface-card space-y-2 p-4">
+        <div className="kicker-label">{t('settings.downloads')}</div>
+        <h3 className="text-lg font-bold text-foreground">{t('settings.downloads')}</h3>
+        <p className="text-sm text-secondary">{t('settings.downloadsHint')}</p>
+      </div>
 
-        <div className="space-y-3">
-          <div className="flex items-center justify-between p-3 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm hover:shadow-md transition-all">
-            <div>
-              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-200">{t('settings.download_threads_auto')}</p>
-              <p className="text-xs text-zinc-500">{t('settings.download_threads_auto_desc')}</p>
+      <MirrorsSettings />
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="surface-card p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <h4 className="text-sm font-semibold text-foreground">{t('settings.download_threads_auto')}</h4>
+              <p id="settings-auto-threads-hint" className="text-sm text-secondary">
+                {t('settings.download_threads_auto_desc')}
+              </p>
             </div>
             <input
               type="checkbox"
               checked={autoDownloadThreads}
               onChange={(e) => setAutoDownloadThreads(e.target.checked)}
-              className="w-4 h-4 rounded cursor-pointer accent-current text-zinc-800 dark:text-white"
+              aria-describedby="settings-auto-threads-hint"
+              className="mt-1 h-4 w-4 cursor-pointer rounded border-border/70 bg-card text-[rgb(var(--accent-main))] focus:ring-[rgb(var(--accent-main))] focus:ring-offset-background"
+            />
+          </div>
+        </div>
+
+        <div className="surface-card space-y-4 p-4">
+          <div className="space-y-1">
+            <h4 className="text-sm font-semibold text-foreground">{t('settings.downloadsTuningTitle')}</h4>
+            <p className="text-sm text-secondary">{t('settings.downloadsTuningHint')}</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Input
+              label={t('settings.download_threads')}
+              type="number"
+              min={1}
+              value={downloadThreads}
+              onChange={(e) => setDownloadThreads(parseInt(e.target.value || '1', 10))}
+              placeholder="8"
+              disabled={autoDownloadThreads}
+            />
+            <Input
+              label={t('settings.max_sockets')}
+              type="number"
+              min={1}
+              value={maxSockets}
+              onChange={(e) => setMaxSockets(parseInt(e.target.value || '1', 10))}
+              placeholder="64"
             />
           </div>
         </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Input
-          label={t('settings.download_threads')}
-          type="number"
-          min={1}
-          value={downloadThreads}
-          onChange={(e) => setDownloadThreads(parseInt(e.target.value || '1', 10))}
-          placeholder="8"
-          disabled={autoDownloadThreads}
-        />
-        <Input
-          label={t('settings.max_sockets')}
-          type="number"
-          min={1}
-          value={maxSockets}
-          onChange={(e) => setMaxSockets(parseInt(e.target.value || '1', 10))}
-          placeholder="64"
-        />
-      </div>
     </div>
   );
 };
-

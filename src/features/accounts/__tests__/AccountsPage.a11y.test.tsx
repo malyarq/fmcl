@@ -11,7 +11,23 @@ const selectAccountMock = vi.fn();
 
 vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
-    t: (key: string) => key,
+    t: (key: string) =>
+      ({
+        'accounts.title': 'Accounts',
+        'accounts.description': 'Manage your Minecraft accounts and switch between them.',
+        'accounts.addAccount': 'Add Account',
+        'accounts.active': 'Active',
+        'accounts.disabledBadge': 'Disabled',
+        'accounts.disabledInsecureAuthServer': 'This saved account was disabled because its auth server uses insecure remote HTTP.',
+        'accounts.disabledRecovery': 'Remove it and add it again with an HTTPS server URL or a local loopback URL.',
+        'accounts.typeOffline': 'Offline',
+        'accounts.typeThirdParty': 'Third Party',
+        'accounts.removeConfirm': 'Remove',
+        'accounts.loadError': 'Failed to load accounts.',
+        'accounts.selectError': 'Failed to select account.',
+        'accounts.providerSupportHint': 'Blessing Skin and LittleSkin are supported for provider-aware skin management.',
+        'common.remove': 'Remove',
+      }[key] ?? key),
   }),
 }));
 
@@ -69,8 +85,10 @@ describe('AccountsPage accessibility', () => {
   it('renders account cards as a labeled list with accessible selection and removal controls', async () => {
     render(<AccountsPage />);
 
-    const list = await screen.findByRole('list', { name: 'accounts.title' });
+    const list = await screen.findByRole('list', { name: 'Accounts' });
     expect(list).toBeTruthy();
+
+    expect(screen.getByText('Blessing Skin and LittleSkin are supported for provider-aware skin management.')).toBeTruthy();
 
     const accountButton = (await screen.findAllByRole('button', { name: /Player One/i }))
       .find((button) => button.getAttribute('aria-pressed') === 'true');
@@ -88,7 +106,7 @@ describe('AccountsPage accessibility', () => {
       expect(selectAccountMock).toHaveBeenCalledWith('account-1');
     });
 
-    expect(screen.getByRole('button', { name: 'accounts.removeConfirm: Player One' })).toBeTruthy();
-    expect(screen.getByText('accounts.disabledBadge')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Remove: Player One' })).toBeTruthy();
+    expect(screen.getByText('Disabled')).toBeTruthy();
   });
 });

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Box, Globe2, Paintbrush2, Settings2, Sparkles } from 'lucide-react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
@@ -11,111 +12,115 @@ interface WelcomePageProps {
 
 export const WelcomePage: React.FC<WelcomePageProps> = ({ onComplete, onSkip, onShowSettings }) => {
   const { t, getAccentStyles, getAccentHex } = useSettings();
+  const features = [
+    {
+      icon: Box,
+      title: t('onboarding.welcome.feature_modpacks.title') || 'Modpack Management',
+      description: t('onboarding.welcome.feature_modpacks.desc') || 'Import and manage modpacks from CurseForge and Modrinth',
+    },
+    {
+      icon: Globe2,
+      title: t('onboarding.welcome.feature_multiplayer.title') || 'Multiplayer Tunnel',
+      description: t('onboarding.welcome.feature_multiplayer.desc') || 'Play with friends through a secure tunnel without port forwarding',
+    },
+    {
+      icon: Paintbrush2,
+      title: t('onboarding.welcome.feature_customization.title') || 'Customization',
+      description: t('onboarding.welcome.feature_customization.desc') || 'Dark/light theme, accent colors, and more',
+    },
+  ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-zinc-50 to-zinc-100 dark:from-zinc-900 dark:to-zinc-950 p-4">
-      <div className="w-full max-w-2xl bg-white/95 dark:bg-zinc-800/95 backdrop-blur-xl border border-zinc-200/50 dark:border-zinc-700/50 rounded-2xl shadow-2xl overflow-hidden">
-        <div className="p-8 sm:p-12">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <h1
-              className={cn('text-4xl sm:text-5xl font-black mb-4', getAccentStyles('text').className)}
-              style={{
-                ...getAccentStyles('text').style,
-                textShadow: `0 2px 8px ${getAccentHex()}30`,
-              }}
-            >
-              FriendLauncher
-            </h1>
-            <p className="text-lg sm:text-xl text-zinc-600 dark:text-zinc-400">
-              {t('onboarding.welcome.title') || 'Добро пожаловать!'}
-            </p>
-          </div>
-
-          {/* Features */}
-          <div className="space-y-6 mb-8">
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center text-2xl">
-                📦
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/84 p-4 backdrop-blur-xl">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-80"
+        style={{
+          background: `radial-gradient(circle at top, ${getAccentHex()}28 0%, transparent 38%), radial-gradient(circle at bottom left, ${getAccentHex()}18 0%, transparent 26%)`,
+        }}
+      />
+      <div className="surface-panel relative w-full max-w-4xl overflow-hidden">
+        <div className="grid gap-0 lg:grid-cols-[1.25fr_0.95fr]">
+          <div className="border-b border-border/60 p-8 sm:p-10 lg:border-b-0 lg:border-r">
+            <div className="mb-8 text-left">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary">
+                <Sparkles className="h-3.5 w-3.5" />
+                {t('onboarding.welcome.badge') || 'Launcher setup'}
               </div>
-              <div>
-                <h3 className="font-bold text-zinc-900 dark:text-white mb-1">
-                  {t('onboarding.welcome.feature_modpacks.title') || 'Управление модпаками'}
-                </h3>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {t('onboarding.welcome.feature_modpacks.desc') || 'Импортируйте и управляйте модпаками из CurseForge и Modrinth'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center text-2xl">
-                🌐
-              </div>
-              <div>
-                <h3 className="font-bold text-zinc-900 dark:text-white mb-1">
-                  {t('onboarding.welcome.feature_multiplayer.title') || 'Мультиплеер туннель'}
-                </h3>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {t('onboarding.welcome.feature_multiplayer.desc') || 'Играйте с друзьями через безопасный туннель без настройки портов'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="flex-shrink-0 w-12 h-12 rounded-lg bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center text-2xl">
-                ⚙️
-              </div>
-              <div>
-                <h3 className="font-bold text-zinc-900 dark:text-white mb-1">
-                  {t('onboarding.welcome.feature_customization.title') || 'Настройка под себя'}
-                </h3>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                  {t('onboarding.welcome.feature_customization.desc') || 'Темная/светлая тема, акцентные цвета и многое другое'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Start */}
-          <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-lg p-6 mb-8">
-            <h3 className="font-bold text-zinc-900 dark:text-white mb-3">
-              {t('onboarding.welcome.quick_start.title') || 'Быстрый старт:'}
-            </h3>
-            <ol className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400 list-decimal list-inside">
-              <li>{t('onboarding.welcome.quick_start.step1') || 'Выберите или создайте модпак'}</li>
-              <li>{t('onboarding.welcome.quick_start.step2') || 'Настройте версию Minecraft и модлоадер'}</li>
-              <li>{t('onboarding.welcome.quick_start.step3') || 'Нажмите "Играть" и наслаждайтесь!'}</li>
-            </ol>
-          </div>
-
-          {/* Actions */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Button
-              variant="primary"
-              onClick={onComplete}
-              className={cn('flex-1', getAccentStyles('bg').className)}
-              style={getAccentStyles('bg').style}
-            >
-              {t('onboarding.welcome.get_started') || 'Начать'}
-            </Button>
-            {onShowSettings && (
-              <Button
-                variant="secondary"
-                onClick={onShowSettings}
-                className="flex-1 sm:flex-initial"
+              <h1
+                className={cn('text-4xl font-black tracking-tight sm:text-5xl', getAccentStyles('text').className)}
+                style={{
+                  ...getAccentStyles('text').style,
+                  textShadow: `0 2px 12px ${getAccentHex()}28`,
+                }}
               >
-                <span className="mr-2">⚙️</span>
-                {t('general.settings') || 'Настройки'}
+                FriendLauncher
+              </h1>
+              <p className="mt-4 max-w-xl text-base text-secondary sm:text-lg">
+                {t('onboarding.welcome.title') || 'Welcome!'}
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {features.map(({ icon: Icon, title, description }) => (
+                <div key={title} className="surface-card p-4">
+                  <div
+                    className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-2xl"
+                    style={{ backgroundColor: `${getAccentHex()}14`, color: getAccentHex() }}
+                  >
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <h3 className="mb-1 text-sm font-semibold text-foreground">{title}</h3>
+                  <p className="text-sm leading-6 text-secondary">{description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="p-8 sm:p-10">
+            <div className="surface-muted mb-6 p-6">
+              <p className="kicker-label mb-3">{t('onboarding.welcome.quick_start.title') || 'Quick Start:'}</p>
+              <ol className="space-y-3 text-sm leading-6 text-secondary">
+                <li>1. {t('onboarding.welcome.quick_start.step1') || 'Select or create a modpack'}</li>
+                <li>2. {t('onboarding.welcome.quick_start.step2') || 'Configure Minecraft version and modloader'}</li>
+                <li>3. {t('onboarding.welcome.quick_start.step3') || 'Click "Play" and enjoy!'}</li>
+              </ol>
+            </div>
+
+            <div className="surface-card mb-6 p-5">
+              <p className="kicker-label mb-3">{t('onboarding.welcome.customize_title') || 'Make it yours'}</p>
+              <p className="text-sm leading-6 text-secondary">
+                {t('onboarding.welcome.customize_desc') || 'Start with a clean launcher shell, then adjust theme, accent, background effects, and account setup in Settings.'}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <Button
+                variant="primary"
+                onClick={onComplete}
+                className="w-full justify-center py-3"
+              >
+                {t('onboarding.welcome.get_started') || 'Get Started'}
               </Button>
-            )}
-            <Button
-              variant="ghost"
-              onClick={onSkip ?? onComplete}
-              className="flex-1 sm:flex-initial"
-            >
-              {t('onboarding.welcome.skip') || 'Пропустить'}
-            </Button>
+              <div className="flex flex-col gap-3 sm:flex-row">
+                {onShowSettings && (
+                  <Button
+                    variant="secondary"
+                    onClick={onShowSettings}
+                    className="flex-1"
+                  >
+                    <Settings2 className="h-4 w-4" />
+                    {t('general.settings') || 'Settings'}
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  onClick={onSkip ?? onComplete}
+                  className="flex-1"
+                >
+                  {t('onboarding.welcome.skip') || 'Skip'}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
 export interface CollapsibleSectionProps {
@@ -62,20 +63,18 @@ export function CollapsibleSection({
       <button
         type="button"
         onClick={handleToggle}
-        className="flex items-center justify-between w-full text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+        className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-card/68 px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-secondary transition-colors hover:bg-card/92 hover:text-foreground"
       >
         <span>{title}</span>
-        <span
+        <ChevronDown
           className={cn(
-            'transition-transform duration-200 ease-out',
+            'h-4 w-4 transition-transform duration-200 ease-out',
             expanded ? 'rotate-180' : 'rotate-0'
           )}
-        >
-          ▼
-        </span>
+        />
       </button>
       {showHint && showHintState && hintText && (
-        <div className="text-xs text-zinc-500 dark:text-zinc-400 bg-zinc-100/50 dark:bg-zinc-800/50 rounded-lg p-2 border border-zinc-200 dark:border-zinc-700">
+        <div className="surface-inline p-2 text-xs text-secondary">
           {hintText}
         </div>
       )}

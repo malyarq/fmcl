@@ -3,6 +3,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @layer base {
+  html,
+  body,
+  #root {
+    min-height: 100%;
+    height: 100%;
+  }
+
   :root {
     /* Default Light Theme (Zinc) */
     --bg-app: 244 244 245;
@@ -67,10 +74,18 @@
     @apply bg-background text-foreground font-sans overflow-hidden transition-colors duration-300;
     font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     font-weight: 400;
+    min-height: 100%;
+    min-height: 100dvh;
+    margin: 0;
+    background:
+      radial-gradient(circle at top center, rgb(var(--accent-main) / 0.14), transparent 42%),
+      radial-gradient(circle at bottom left, rgb(var(--accent-main) / 0.08), transparent 36%),
+      rgb(var(--bg-app));
   }
 
   html {
     color-scheme: light;
+    background: rgb(var(--bg-app));
   }
 
   .dark {
@@ -91,6 +106,33 @@
     outline: 2px solid rgb(var(--accent-main));
     outline-offset: 2px;
   }
+
+  ::selection {
+    background: rgb(var(--accent-main) / 0.25);
+    color: rgb(var(--text-main));
+  }
+}
+
+@layer components {
+  .surface-panel {
+    @apply rounded-3xl border border-border/80 bg-card/92 text-foreground shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur-xl;
+  }
+
+  .surface-card {
+    @apply rounded-2xl border border-border/75 bg-card/88 text-foreground shadow-[0_14px_48px_rgba(0,0,0,0.16)] backdrop-blur-lg;
+  }
+
+  .surface-muted {
+    @apply rounded-2xl border border-border/70 bg-background/80 text-foreground backdrop-blur-md;
+  }
+
+  .surface-inline {
+    @apply rounded-xl border border-border/70 bg-card/84 text-foreground backdrop-blur-md;
+  }
+
+  .kicker-label {
+    @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-muted;
+  }
 }
 
 @layer utilities {
@@ -108,28 +150,28 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-track {
-    background: #e4e4e7;
+    background: rgb(var(--bg-card));
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #a1a1aa;
+    background: rgb(var(--border-active));
     border-radius: 3px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #71717a;
+    background: rgb(var(--text-muted));
   }
 
   .dark .custom-scrollbar::-webkit-scrollbar-track {
-    background: #18181b;
+    background: rgb(var(--bg-card));
   }
 
   .dark .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #3f3f46;
+    background: rgb(var(--border-active));
   }
 
   .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #52525b;
+    background: rgb(var(--text-muted));
   }
 }
 
