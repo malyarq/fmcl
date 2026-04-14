@@ -6,6 +6,12 @@ import { launcherIPC } from '../../../services/ipc/launcherIPC';
 import { useLauncherState } from './useLauncherState';
 import { useLauncherIPC } from './useLauncherIPC';
 import { saveLastGame } from '../../launch/services/lastGame';
+import { getLaunchStageTitle, isForceRestartAllowed, type LaunchStage } from '../services/launcherService';
+
+function translateWithFallback(t: (key: string) => string, key: string, fallback: string) {
+  const translated = t(key);
+  return translated === key ? fallback : translated;
+}
 
 interface LaunchOptions {
   nickname: string;
@@ -19,7 +25,10 @@ interface LaunchOptions {
 export interface UseLauncherResult {
   isLaunching: boolean;
   progress: number;
+  launchStage: LaunchStage;
   statusText: string;
+  statusDetail: string;
+  canForceRestart: boolean;
   logs: string[];
   logEndRef: RefObject<HTMLDivElement>;
   handleLaunch: (options: LaunchOptions) => Promise<void>;
@@ -37,7 +46,10 @@ export const useLauncher = (): UseLauncherResult => {
     onAppendLog: state.appendLog,
     onSetProgress: state.setProgress,
     onSetStatusText: state.setStatusText,
+    onSetStatusDetail: state.setStatusDetail,
+    onSetLaunchStage: state.setLaunchStage,
     onSetLaunching: state.setIsLaunching,
+    getLaunchStage: state.getLaunchStage,
   });
 
   // Auto-scroll logs view to the newest entry.
@@ -49,13 +61,17 @@ export const useLauncher = (): UseLauncherResult => {
     if (state.isLaunching) return;
     if (!launcherIPC.isAvailable()) {
       state.setStatusText('Launcher not available');
+      state.setStatusDetail('');
+      state.setLaunchStage('failed');
       state.appendLog('[SYSTEM] Launcher API not available. Is preload loaded?');
       return;
     }
 
     state.setIsLaunching(true);
     state.setProgress(0);
-    state.setStatusText(t('status.initializing'));
+    state.setLaunchStage('preparing');
+    state.setStatusText(getLaunchStageTitle('preparing', t) || t('status.initializing'));
+    state.setStatusDetail(translateWithFallback(t, 'status.preparing_detail', 'Checking runtime requirements and selected pack.'));
     state.appendLog('Starting launch sequence...');
 
     try {
@@ -88,10 +104,23 @@ export const useLauncher = (): UseLauncherResult => {
           timestamp: Date.now(),
         });
       }
+
+      state.setLaunchStage('waiting');
+      state.setStatusText(getLaunchStageTitle('waiting', t));
+      state.setStatusDetail(
+        translateWithFallback(t, 'status.waiting_detail', 'Minecraft process started. Waiting for the game window and logs.')
+      );
     } catch (e) {
       state.appendLog(`Error: ${e}`);
-      state.setStatusText('Launch Failed');
+      state.setLaunchStage('failed');
+      state.setStatusText(getLaunchStageTitle('failed', t));
+      state.setStatusDetail(
+        e instanceof Error && e.message
+          ? e.message
+          : translateWithFallback(t, 'status.failed_detail', 'Review the error and try launching again.')
+      );
       state.setIsLaunching(false);
+      state.setProgress(0);
     }
   };
 
@@ -102,7 +131,10 @@ export const useLauncher = (): UseLauncherResult => {
   return {
     isLaunching: state.isLaunching,
     progress: state.progress,
+    launchStage: state.launchStage,
     statusText: state.statusText,
+    statusDetail: state.statusDetail,
+    canForceRestart: isForceRestartAllowed(state.launchStage),
     logs: state.logs,
     logEndRef: state.logEndRef,
     handleLaunch,

@@ -70,7 +70,7 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header with back button */}
-      <div className="flex items-center gap-4 p-6 border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40">
+      <div className="flex items-center gap-4 border-b border-border/70 bg-card/78 p-6 backdrop-blur-md">
         <Button
           variant="secondary"
           size="sm"
@@ -81,7 +81,7 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
           <span>←</span>
           {t('general.back') || 'Назад'}
         </Button>
-        <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex-1">
+        <h2 className="flex-1 text-xl font-bold text-foreground">
           {t('modpacks.import_preview') || 'Предпросмотр модпака'}
         </h2>
       </div>
@@ -91,28 +91,28 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
           {loading ? (
             <div className="flex flex-col items-center justify-center py-12 gap-3">
               <LoadingSpinner size="lg" />
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="text-sm text-secondary">
                 {t('modpacks.loading')}
               </p>
             </div>
           ) : info?.error ? (
-            <div className="p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-              <p className="text-sm text-red-700 dark:text-red-300">{info.error}</p>
+            <div className="rounded-lg border border-[rgb(var(--color-error))]/25 bg-[rgb(var(--color-error))]/10 p-4">
+              <p className="text-sm text-[rgb(var(--color-error))]">{info.error}</p>
             </div>
           ) : info?.manifest ? (
             <>
-              <div className="p-4 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-200 dark:border-zinc-700">
-                <h3 className="font-bold text-lg text-zinc-900 dark:text-white mb-4">
+              <div className="surface-soft p-4">
+                <h3 className="mb-4 text-lg font-bold text-foreground">
                   {info.manifest.name || path.basename(filePath)}
                 </h3>
 
                 <div className="space-y-3">
                   {info.manifest.version && (
                     <div>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                      <p className="helper-text mb-1">
                         {t('modpacks.version')}
                       </p>
-                      <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                      <p className="text-sm font-medium text-foreground">
                         {info.manifest.version}
                       </p>
                     </div>
@@ -120,10 +120,10 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
 
                   {info.manifest.minecraft?.version && (
                     <div>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                      <p className="helper-text mb-1">
                         {t('modpacks.minecraft_version')}
                       </p>
-                      <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                      <p className="text-sm font-medium text-foreground">
                         {info.manifest.minecraft.version}
                       </p>
                     </div>
@@ -131,10 +131,10 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
 
                   {info.manifest.minecraft?.modLoaders && info.manifest.minecraft.modLoaders.length > 0 && (
                     <div>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                      <p className="helper-text mb-1">
                         {t('modpacks.loader')}
                       </p>
-                      <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                      <p className="text-sm font-medium text-foreground">
                         {info.manifest.minecraft.modLoaders
                           .map((loader) => loader.id.replace(/^(forge|fabric|quilt|neoforge)-/, ''))
                           .join(', ')}
@@ -144,10 +144,10 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
 
                   {info.manifest.author && (
                     <div>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                      <p className="helper-text mb-1">
                         {t('modpacks.author')}
                       </p>
-                      <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                      <p className="text-sm font-medium text-foreground">
                         {info.manifest.author}
                       </p>
                     </div>
@@ -155,20 +155,20 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
 
                   {info.manifest.files && info.manifest.files.length > 0 && (
                     <div>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                      <p className="helper-text mb-1">
                         {t('modpacks.mods_count')}
                       </p>
-                      <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                      <p className="text-sm font-medium text-foreground">
                         {info.manifest.files.length} {t('modpacks.mods') || 'модов'}
                       </p>
                     </div>
                   )}
 
                   <div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+                    <p className="helper-text mb-1">
                       {t('modpacks.format') || 'Формат'}
                     </p>
-                    <p className="text-sm font-medium text-zinc-900 dark:text-white capitalize">
+                    <p className="text-sm font-medium text-foreground capitalize">
                       {info.format === 'curseforge' ? t('modpacks.platform_curseforge') :
                         info.format === 'modrinth' ? t('modpacks.platform_modrinth') :
                           info.format === 'multimc' ? 'MultiMC / Prism / FriendLauncher' :
@@ -178,7 +178,7 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-700">
+              <div className="flex gap-2 border-t border-border/70 pt-2">
                 <Button
                   onClick={onBack}
                   variant="secondary"
@@ -189,7 +189,7 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
                 </Button>
                 <Button
                   onClick={handleImport}
-                  className={cn("flex-1 text-white", getAccentStyles('bg').className)}
+                  className={cn("flex-1 text-[rgb(var(--accent-content))]", getAccentStyles('bg').className)}
                   style={getAccentStyles('bg').style}
                   isLoading={importing}
                 >
@@ -198,7 +198,7 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
               </div>
             </>
           ) : (
-            <div className="text-center py-8 text-zinc-500 dark:text-zinc-400">
+            <div className="py-8 text-center text-secondary">
               <p>{t('modpacks.unable_to_load_info') || 'Не удалось загрузить информацию о модпаке'}</p>
             </div>
           )}

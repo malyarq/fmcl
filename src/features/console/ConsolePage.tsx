@@ -5,6 +5,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { cn } from '../../utils/cn';
 import { dialogIPC } from '../../services/ipc/dialogIPC';
+import type { LaunchStage } from '../launcher/services/launcherService';
 // import { ArrowLeft, ArrowUp, ArrowDown, Send, Filter, Search, RotateCcw, Copy, Trash2 } from 'lucide-react';
 
 interface LogEntry {
@@ -26,7 +27,7 @@ const COMMANDS = [
 ];
 
 export function ConsolePage() {
-    const { t } = useSettings();
+  const { t } = useSettings();
     const [logs, setLogs] = useState<LogEntry[]>([]);
     const [input, setInput] = useState('');
     const [history, setHistory] = useState<string[]>([]);
@@ -35,6 +36,7 @@ export function ConsolePage() {
     const [filterLevel, setFilterLevel] = useState<('INFO' | 'WARN' | 'ERROR' | 'DEBUG')[]>(['INFO', 'WARN', 'ERROR', 'DEBUG']);
     const [searchQuery, setSearchQuery] = useState('');
     const logEndRef = useRef<HTMLDivElement>(null);
+    const launchStageRef = useRef<LaunchStage>('idle');
 
     const [isSuggestionsDismissed, setIsSuggestionsDismissed] = useState(false);
 
@@ -68,7 +70,12 @@ export function ConsolePage() {
         },
         onSetProgress: () => { },
         onSetStatusText: () => { },
+        onSetStatusDetail: () => { },
+        onSetLaunchStage: (stage) => {
+            launchStageRef.current = stage;
+        },
         onSetLaunching: () => { },
+        getLaunchStage: () => launchStageRef.current,
     });
 
     const parseLog = (raw: string): LogEntry => {

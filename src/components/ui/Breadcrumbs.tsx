@@ -14,7 +14,7 @@ export interface BreadcrumbsProps {
 
 export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
     return (
-        <nav aria-label="Breadcrumb" className={cn("flex items-center text-sm", className)}>
+        <nav aria-label="Breadcrumb" className={cn("flex items-center text-sm text-secondary", className)}>
             <ol className="flex items-center space-x-2">
                 {items.map((item, index) => {
                     const isLast = index === items.length - 1;
@@ -22,12 +22,12 @@ export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
                     return (
                         <li key={index} className="flex items-center">
                             {index > 0 && (
-                                <span className="mx-2 text-zinc-400 dark:text-zinc-600 select-none">/</span>
+                                <span className="mx-2 select-none text-muted/70">/</span>
                             )}
                             {item.active || isLast ? (
                                 <span
                                     className={cn(
-                                        "font-medium text-zinc-900 dark:text-zinc-100",
+                                        "font-medium text-foreground",
                                         isLast && "cursor-default"
                                     )}
                                     aria-current={isLast ? "page" : undefined}
@@ -39,8 +39,8 @@ export function Breadcrumbs({ items, className }: BreadcrumbsProps) {
                                     type="button"
                                     onClick={item.onClick}
                                     className={cn(
-                                        "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors",
-                                        !item.onClick && "cursor-default hover:text-zinc-500 dark:hover:text-zinc-400"
+                                        "text-secondary transition-colors hover:text-foreground",
+                                        !item.onClick && "cursor-default hover:text-secondary"
                                     )}
                                     disabled={!item.onClick}
                                 >

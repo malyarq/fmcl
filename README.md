@@ -4,7 +4,7 @@
 
 FriendLauncher is a desktop Minecraft launcher for people who move between vanilla play, modpacks, and multiplayer with friends. It combines local instance management, modpack browsing, content tools, and FriendTunnel P2P play in one Electron application.
 
-The current `v0.2.0` UI refresh has been checked against a browser-backed manual verification seam on `2026-04-13`. The verified walkthrough covered welcome and onboarding, the dashboard and play flow, settings and accounts, modpack list and browser, modpack details and export flows, sharing, screenshots, utilities, and datapack management. The descriptions below reflect that verified launcher surface rather than old backlog plans.
+The current `v0.3.0` UX-hardening release has been checked against the browser-backed `manual-verification.html` seam on `2026-04-14`. The reviewed walkthrough covered the launcher at `1440x1100` and `900x1180`, including welcome and onboarding, dashboard and launch-state feedback, settings and accounts, create/list/browser/details/export/add-mod modpack flows, sharing, screenshots, utilities, and datapack management. The descriptions below reflect that verified launcher surface rather than old backlog plans.
 
 ## <a name="english"></a>English
 
@@ -17,12 +17,15 @@ The current `v0.2.0` UI refresh has been checked against a browser-backed manual
 - Use FriendTunnel to host and join LAN-style multiplayer sessions over the internet without extra VPN tooling.
 - Track local statistics, change themes and accents, use custom backgrounds, and adjust the launcher layout for daily use.
 
-### Refreshed UI Status
+### `v0.3.0` UX-Hardening Highlights
 
-- Shared shells, cards, dialogs, forms, and feedback states now follow one visual system instead of route-specific styling.
-- Theme and accent settings update the launcher shell and refreshed routes consistently.
-- Refreshed surfaces ship with synchronized English and Russian UI copy instead of placeholder-heavy mixes.
-- Core and secondary routes were manually walked through before release closeout instead of being declared finished from code review alone.
+- Adaptive shell, cards, controls, and overlays now stay readable across first-launch default bounds and narrower desktop widths instead of relying on one lucky window size.
+- Preset themes apply truthfully in both light and dark mode, and refreshed inputs, cards, and overlays no longer regress into unreadable white-on-white states.
+- Common settings tasks are flatter to reach, so appearance, launcher behavior, accounts, mirrors, statistics, and related actions no longer feel buried behind tab-inside-tab navigation.
+- Main play surfaces now expose explicit launch-stage feedback and busy-state truth instead of ambiguous waiting that invites repeated clicks.
+- Modpack creation, browsing, and installed-pack actions now surface runtime dependencies, clearer filtering state, and anchored quick-action menus that stay inside the current window.
+- Classic and fallback launcher surfaces now use shipped assets instead of placeholder-feeling logo leaks.
+- Release truth now includes browser-backed walkthrough evidence, not only tests and code review.
 
 ### Development
 
@@ -64,12 +67,15 @@ The project includes support for alternative authentication flows through `authl
 - FriendTunnel для LAN-подобной игры через интернет без отдельных VPN-инструментов.
 - Локальная статистика, темы и акцентные цвета, кастомные фоны и настройка вида лаунчера под повседневное использование.
 
-### Состояние UI-обновления
+### Что Улучшено В `v0.3.0`
 
-- Shell, карточки, диалоги, формы и состояния обратной связи теперь собраны в одну визуальную систему вместо разрозненных экранных стилей.
-- Настройки темы и акцента применяются ко всему shell и обновлённым маршрутам согласованно.
-- На обновлённых экранах синхронизированы английская и русская локализации без смеси плейсхолдеров и пропущенных строк.
-- Основные и вторичные сценарии были вручную пройдены через браузерный проверочный контур перед закрытием milestone, а не объявлены готовыми только по коду.
+- Адаптивный shell, карточки, контролы и overlays теперь остаются читаемыми и устойчивыми как на стартовом размере окна, так и на более узкой ширине, без расчёта на один «удачный» viewport.
+- Готовые темы применяются честно и в светлом, и в тёмном режиме, а обновлённые inputs, карточки и overlays больше не разваливаются в белый текст на белом фоне.
+- Частые настройки стали доступнее: appearance, launcher behavior, accounts, mirrors, statistics и связанные действия больше не требуют прохода через лишние вложенные панели.
+- На основном play surface теперь видны явные стадии запуска и busy-state, поэтому лаунчер не выглядит подвисшим во время подготовки или загрузки.
+- Создание, браузинг и управление установленными modpack-сборками теперь показывают runtime dependencies, более понятное состояние фильтров и anchored quick actions без выпадающих меню вне окна.
+- Классические и fallback-поверхности теперь используют shipped assets вместо ощущения «плейсхолдера вместо логотипа».
+- Truth релиза теперь опирается на browser-backed walkthrough, а не только на тесты и code review.
 
 ### Разработка
 

@@ -10,6 +10,7 @@ import { SimplePlayDashboard } from '../../components/SimplePlayDashboard';
 import { ModpackList } from '../../components/modpacks/ModpackList';
 import { ModpackBrowser } from '../../components/modpacks/ModpackBrowser';
 import { ModpackDetails } from '../../components/modpacks/ModpackDetails';
+import { CreateModpackModal } from '../../components/modpacks/CreateModpackModal';
 import { ExportModpackPage } from '../../components/modpacks/ExportModpackPage';
 import { AddModModal } from '../../components/modpacks/AddModModal';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../features/modpacks/hooks/useModpackNavigation';
@@ -165,8 +166,8 @@ function TourScenario({ onReady }: ManualVerificationScenarioProps) {
 function DashboardScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['Welcome to FriendLauncher!', 'Quick actions', 'Go to Modpacks'],
-    'Classic dashboard rendered with quick actions and current settings.',
+    ['Welcome to FriendLauncher!', 'Quick actions', 'Downloading runtime'],
+    'Classic dashboard rendered with explicit launch-stage feedback.',
   );
 
   return (
@@ -180,7 +181,11 @@ function DashboardScenario({ onReady }: ManualVerificationScenarioProps) {
           isOffline: true,
         }}
         runtime={{
-          isLaunching: false,
+          isLaunching: true,
+          progress: 68,
+          launchStage: 'downloading',
+          statusText: 'Downloading runtime',
+          statusDetail: 'Fetching client, libraries, and assets for the selected pack.',
           onLaunch: () => undefined,
         }}
         actions={{
@@ -232,6 +237,20 @@ function ModpackListScenario({ onReady }: ManualVerificationScenarioProps) {
       <div className="mx-auto max-w-6xl p-6">
         <ModpackList onNavigate={() => undefined} onCreateWizard={() => undefined} />
       </div>
+    </ModpackProviders>
+  );
+}
+
+function ModpackCreateScenario({ onReady }: ManualVerificationScenarioProps) {
+  useReadyByText(
+    onReady,
+    ['Create New Modpack', 'Runtime dependencies', 'Minecraft Version'],
+    'Create-modpack flow rendered with explicit runtime dependency summary.',
+  );
+
+  return (
+    <ModpackProviders>
+      <CreateModpackModal isOpen={true} onClose={() => undefined} />
     </ModpackProviders>
   );
 }
@@ -409,6 +428,10 @@ export function ManualVerificationScenarios(props: { view: ManualVerificationVie
 
   if (props.view === 'modpack-list') {
     return <ModpackListScenario {...scenarioProps} />;
+  }
+
+  if (props.view === 'modpack-create') {
+    return <ModpackCreateScenario {...scenarioProps} />;
   }
 
   if (props.view === 'modpack-browser') {

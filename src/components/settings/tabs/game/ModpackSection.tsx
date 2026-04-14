@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Button } from '../../../ui/Button';
 import { Input } from '../../../ui/Input';
+import { Select } from '../../../ui/Select';
 import { useToast } from '../../../../contexts/ToastContext';
 import type { ModpackConfig, ModpackListItem } from '../../../../contexts/ModpackContext';
 
@@ -36,16 +37,14 @@ export function ModpackSection(props: {
 
   return (
     <div className="space-y-3">
-      <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300 block">
+      <label className="control-label block">
         {t('modpacks.title')}
       </label>
 
-      <div className="bg-white/60 dark:bg-zinc-900/40 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 p-3 space-y-3">
+      <div className="surface-soft space-y-3 p-3">
         <div className="space-y-2">
-          <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-            {t('modpacks.selected')}
-          </label>
-          <select
+          <Select
+            label={t('modpacks.selected')}
             value={modpackId}
             onChange={async (e) => {
               const id = e.target.value;
@@ -55,18 +54,17 @@ export function ModpackSection(props: {
                 /* ignore */
               }
             }}
-            className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-zinc-300/50 dark:border-zinc-700/50 rounded-lg p-3 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 shadow-sm hover:shadow-md transition-all"
           >
             {modpackOptions.map((mp) => (
               <option key={mp.id} value={mp.id}>
                 {mp.name} ({mp.id})
               </option>
             ))}
-          </select>
+          </Select>
           <div className="flex gap-2">
             <Button
               variant="secondary"
-              className="flex-1 bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600"
+              className="flex-1"
               onClick={async () => {
                 const name = renameModpackName.trim() || t('modpacks.new_default_name');
                 try {
@@ -97,7 +95,7 @@ export function ModpackSection(props: {
           </div>
         </div>
 
-        <div className="pt-3 border-t border-zinc-200/60 dark:border-zinc-800/60 space-y-2">
+        <div className="space-y-2 border-t border-border/60 pt-3">
           <Input
             label={t('modpacks.name')}
             value={renameModpackName}
@@ -134,4 +132,3 @@ export function ModpackSection(props: {
     </div>
   );
 }
-

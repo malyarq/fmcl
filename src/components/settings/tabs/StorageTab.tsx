@@ -81,11 +81,48 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
     }
 
     return (
-        <div className="space-y-4">
-            <div className="surface-card space-y-2 p-4">
-                <div className="kicker-label">{t('settings.tab_storage')}</div>
-                <h3 className="text-lg font-bold text-foreground">{t('settings.storage.title')}</h3>
-                <p className="text-sm text-secondary">{t('settings.storage.description')}</p>
+        <div className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
+            <div className="space-y-4">
+                <div className="surface-card space-y-3 p-5">
+                    <div className="kicker-label">{t('settings.storage.title')}</div>
+                    <h3 className="text-lg font-bold text-foreground">{t('settings.storage.title')}</h3>
+                    <p className="text-sm text-secondary">{t('settings.storage.description')}</p>
+                </div>
+
+                <div className="surface-card space-y-4 p-5">
+                    {error && (
+                        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="space-y-1">
+                        <h4 className="text-sm font-semibold text-foreground">
+                            {t('settings.storage.cleanup')}
+                        </h4>
+                        <p className="text-sm text-secondary">
+                            {t('settings.storage.cleanupDesc')}
+                        </p>
+                    </div>
+
+                    <Button
+                        variant="secondary"
+                        onClick={() => void handleCleanup()}
+                        disabled={loading}
+                        isLoading={loading}
+                        className="sm:w-fit"
+                    >
+                        {t('settings.storage.cleanupBtn')}
+                    </Button>
+
+                    {cleanupResult && (
+                        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+                            {t('settings.storage.cleanupResult')
+                                .replace('{size}', formatSize(cleanupResult.freedSize))
+                                .replace('{count}', cleanupResult.deletedFiles.toString())}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {stats && (
@@ -130,42 +167,6 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
                     </div>
                 </div>
             )}
-
-            <div className="surface-inline space-y-4 p-4">
-                {error && (
-                    <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
-                        {error}
-                    </div>
-                )}
-
-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="space-y-1">
-                        <h4 className="text-sm font-semibold text-foreground">
-                            {t('settings.storage.cleanup')}
-                        </h4>
-                        <p className="text-sm text-secondary">
-                            {t('settings.storage.cleanupDesc')}
-                        </p>
-                    </div>
-
-                    <Button
-                        variant="secondary"
-                        onClick={() => void handleCleanup()}
-                        disabled={loading}
-                        isLoading={loading}
-                    >
-                        {t('settings.storage.cleanupBtn')}
-                    </Button>
-                </div>
-
-                {cleanupResult && (
-                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
-                        {t('settings.storage.cleanupResult')
-                            .replace('{size}', formatSize(cleanupResult.freedSize))
-                            .replace('{count}', cleanupResult.deletedFiles.toString())}
-                    </div>
-                )}
-            </div>
         </div>
     );
 };

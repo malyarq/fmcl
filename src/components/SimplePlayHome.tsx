@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { LAUNCHER_MARK_PATH } from '../app/assets/branding';
 import { useSettings } from '../contexts/SettingsContext';
 
 interface Particle {
@@ -113,8 +114,9 @@ export const SimplePlayHome: React.FC = () => {
   }, []);
 
   return (
-    <div className="h-full w-full flex items-center justify-center px-6 text-center animate-fade-in-up relative overflow-hidden">
-      <div className="flex flex-col items-center gap-4 relative z-10">
+    <div className="h-full w-full overflow-y-auto overflow-x-hidden">
+      <div className="launcher-content-width relative flex min-h-full items-center justify-center px-4 py-10 text-center sm:px-6">
+        <div className="relative z-10 flex flex-col items-center gap-4 animate-fade-in-up">
         <div
           onClick={handleLogoClick}
           className="logo-container relative w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-visible cursor-pointer transition-all duration-300 ease-out hover:scale-110 active:scale-105"
@@ -131,8 +133,9 @@ export const SimplePlayHome: React.FC = () => {
           />
           <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-black/30 border border-zinc-200/80 dark:border-zinc-700/80 bg-zinc-900/90 flex items-center justify-center backdrop-blur-sm">
             <img
-              src="/icon.png"
+              src={LAUNCHER_MARK_PATH}
               alt="FriendLauncher"
+              data-testid="classic-launcher-mark"
               className="w-16 h-16 md:w-20 md:h-20 object-contain transition-transform duration-300"
               style={{
                 transform: showEasterEgg ? 'rotate(360deg) scale(1.2)' : 'none',
@@ -153,7 +156,7 @@ export const SimplePlayHome: React.FC = () => {
         >
           FriendLauncher
         </h1>
-      </div>
+        </div>
 
       {/* Фейерверк из иконок */}
       {particles.map((particle) => {
@@ -187,8 +190,9 @@ export const SimplePlayHome: React.FC = () => {
             }}
           >
             <img
-              src="/icon.png"
+              src={LAUNCHER_MARK_PATH}
               alt=""
+              aria-hidden="true"
               className="w-full h-full object-contain"
               style={{
                 filter: `drop-shadow(0 0 6px ${accentHex}) drop-shadow(0 0 12px ${accentHex}60)`,
@@ -198,7 +202,7 @@ export const SimplePlayHome: React.FC = () => {
         );
       })}
 
-      <style>{`
+        <style>{`
         @keyframes pulse-slow {
           0%, 100% {
             opacity: 0.3;
@@ -252,9 +256,8 @@ export const SimplePlayHome: React.FC = () => {
           filter: drop-shadow(0 0 30px ${accentHex}80) drop-shadow(0 0 60px ${accentHex}60) !important;
         }
       `}</style>
+      </div>
     </div>
   );
 };
-
-
 

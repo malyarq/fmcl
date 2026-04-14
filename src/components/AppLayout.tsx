@@ -18,6 +18,7 @@ import SettingsPage from './SettingsPage';
 import MultiplayerPage from './MultiplayerPage';
 import { cn } from '../utils/cn';
 import { useSettings } from '../contexts/SettingsContext';
+import type { LaunchStage } from '../features/launcher/services/launcherService';
 
 export type AppLayoutProps = {
   theme: 'light' | 'dark';
@@ -71,7 +72,10 @@ export type AppLayoutProps = {
   runtime: {
     isLaunching: boolean;
     progress: number;
+    launchStage: LaunchStage;
     statusText: string;
+    statusDetail: string;
+    canForceRestart: boolean;
     onLaunch: () => void;
     showConsole: boolean;
     logs: string[];
@@ -96,36 +100,49 @@ export function AppLayout(props: AppLayoutProps) {
   return (
     <div className={theme === 'dark' ? 'dark h-full w-full' : 'h-full w-full'}>
       <BackgroundLayer />
-      <div className="relative flex flex-col h-screen w-full bg-background text-foreground overflow-hidden font-sans border border-border shadow-2xl transition-colors duration-300">
-        {/* ... UpdateNotification and TitleBar ... */}
-        <UpdateNotification status={updates.status} updateInfo={updates.info} onInstall={updates.onInstall} />
-        {hasModpackUpdates && modpackUpdates && <ModpackUpdateNotification updates={modpackUpdates.updates} onDismiss={modpackUpdates.onDismiss} />}
-        <TitleBar />
+      <div className="relative h-full w-full overflow-hidden text-foreground">
+        <div className="flex h-full w-full bg-background text-foreground sm:p-2">
+          <div
+            data-testid="app-shell-frame"
+            className="relative flex h-full w-full min-w-0 flex-col overflow-hidden border border-border shadow-2xl transition-colors duration-300 sm:rounded-[28px]"
+          >
+            {/* ... UpdateNotification and TitleBar ... */}
+            <UpdateNotification status={updates.status} updateInfo={updates.info} onInstall={updates.onInstall} />
+            {hasModpackUpdates && modpackUpdates && <ModpackUpdateNotification updates={modpackUpdates.updates} onDismiss={modpackUpdates.onDismiss} />}
+            <TitleBar />
 
-        {overlays.showSettings && (
-          <SettingsPage onClose={overlays.onCloseSettings} />
-        )}
-        {overlays.showMultiplayer && (
-          <MultiplayerPage onBack={overlays.onBackFromMultiplayer} />
-        )}
+            {overlays.showSettings && (
+              <SettingsPage onClose={overlays.onCloseSettings} />
+            )}
+            {overlays.showMultiplayer && (
+              <MultiplayerPage onBack={overlays.onBackFromMultiplayer} />
+            )}
 
-        <div className={cn(
-          "flex flex-1 overflow-hidden relative",
-          sidebarPosition === 'right' ? "flex-row-reverse" : "flex-row"
-        )}>
-          <Sidebar
-            launch={launch}
-            runtime={runtime}
-            actions={actions}
-          />
+            <div
+              data-testid="app-layout-split"
+              className={cn(
+              "relative flex min-h-0 flex-1 overflow-hidden",
+              sidebarPosition === 'right' ? "flex-row-reverse" : "flex-row"
+            )}
+            >
+              <Sidebar
+                launch={launch}
+                runtime={runtime}
+                actions={actions}
+              />
 
-          <div className="flex-1 flex flex-col bg-background min-w-0 transition-all duration-300 overflow-hidden">
-            <div key={uiMode} className="flex-1 flex flex-col mode-switch-enter min-h-0">
-              {uiMode === 'modpacks' ? (
-                <ModpackRouter onLaunch={modpackOnLaunch ?? runtime.onLaunch} />
-              ) : (
-                <SimplePlayDashboard launch={launch} runtime={runtime} actions={actions} />
-              )}
+              <div
+                data-testid="app-layout-main"
+                className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background transition-all duration-300"
+              >
+                <div key={uiMode} className="mode-switch-enter flex min-h-0 flex-1 flex-col">
+                  {uiMode === 'modpacks' ? (
+                    <ModpackRouter onLaunch={modpackOnLaunch ?? runtime.onLaunch} />
+                  ) : (
+                    <SimplePlayDashboard launch={launch} runtime={runtime} actions={actions} />
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -133,4 +150,3 @@ export function AppLayout(props: AppLayoutProps) {
     </div>
   );
 }
-

@@ -1,4 +1,5 @@
 import { useSettings } from '../../contexts/SettingsContext';
+import { LAUNCHER_MARK_PATH, isBundledAssetSource } from '../../app/assets/branding';
 
 export function EmptyStateView(props: {
   iconPath: string;
@@ -17,8 +18,8 @@ export function EmptyStateView(props: {
               filter: `drop-shadow(0 0 30px ${getAccentHex()}) drop-shadow(0 0 60px ${getAccentHex()}40)`,
             }}
             onError={(e) => {
-              if (e.currentTarget.src !== '/icon.png' && !e.currentTarget.src.includes('icon.png')) {
-                e.currentTarget.src = '/icon.png';
+              if (!isBundledAssetSource(e.currentTarget.currentSrc || e.currentTarget.src, LAUNCHER_MARK_PATH)) {
+                e.currentTarget.src = LAUNCHER_MARK_PATH;
               }
             }}
           />

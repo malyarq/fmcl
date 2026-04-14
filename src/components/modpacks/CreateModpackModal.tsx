@@ -12,6 +12,8 @@ import type { ModLoaderType } from '../../contexts/instances/types';
 import { useVersions } from '../../features/launcher/hooks/useVersions';
 import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
 import { ModloaderSection } from '../sidebar/ModloaderSection';
+import { ModpackDependencySummary } from '../sidebar/ModpackDependencySummary';
+import { buildRuntimeDependencyState } from '../sidebar/modpackRuntimeDependencies';
 import { OptifineToggle } from '../sidebar/OptifineToggle';
 
 interface CreateModpackModalProps {
@@ -47,6 +49,7 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
 
   // Определяем текущий модлоадер
   const modLoaderType: ModLoaderType = useNeoForge ? 'neoforge' : useForge ? 'forge' : useFabric ? 'fabric' : 'vanilla';
+  const runtimeDependencies = buildRuntimeDependencyState(minecraftVersion.trim(), modLoaderType);
   
   const setLoader = (loader: 'vanilla' | 'forge' | 'fabric' | 'neoforge') => {
     setUseForge(loader === 'forge');
@@ -80,15 +83,11 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
     setNameError(null);
 
     try {
-      const modLoader = modLoaderType !== 'vanilla' 
-        ? { type: modLoaderType, version: undefined }
-        : undefined;
-
       const result = await modpacksIPC.createLocal(
         name.trim(),
         version.trim(),
         minecraftVersion.trim(),
-        modLoader,
+        runtimeDependencies.modLoader,
         minecraftPath
       );
 
@@ -198,6 +197,11 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
           setUseOptiFine={setUseOptiFine}
           t={t}
           getAccentStyles={getAccentStyles}
+        />
+
+        <ModpackDependencySummary
+          runtime={runtimeDependencies}
+          t={t}
         />
 
         {error && !nameError && (

@@ -35,7 +35,18 @@ function MainApp() {
   const { hideLauncher, showConsole, getAccentStyles, t, theme } = useSettings();
   const ram = getInstanceRamGb(modpackConfig, 4);
 
-  const { isLaunching, progress, statusText, logs, logEndRef, handleLaunch: launchGame, copyLogs } = useLauncher();
+  const {
+    isLaunching,
+    progress,
+    launchStage,
+    statusText,
+    statusDetail,
+    canForceRestart,
+    logs,
+    logEndRef,
+    handleLaunch: launchGame,
+    copyLogs,
+  } = useLauncher();
 
   const { versions } = useVersions();
   const { forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions, isLoading: isModloadersLoading } = useModSupportedVersions();
@@ -215,7 +226,10 @@ function MainApp() {
         runtime={{
           isLaunching,
           progress,
+          launchStage,
           statusText,
+          statusDetail,
+          canForceRestart,
           onLaunch: handleLaunch,
           showConsole,
           logs,

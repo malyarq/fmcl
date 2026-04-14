@@ -2,23 +2,23 @@
 
 ## Current Milestone
 
-- Milestone: `v0.2.0`
-- Theme: UI System And Experience Rework
+- Milestone: `v0.3.0`
+- Theme: Adaptive UX Hardening And Launcher Ergonomics
 - Status: complete
-- Last updated: `2026-04-13`
+- Last updated: `2026-04-14`
 
 ## Why This Milestone Exists
 
-FMCL already had broad launcher functionality, but the product still looked and behaved like separate modules. The `v0.2.0` milestone focuses on turning that existing surface into one coherent launcher: consistent visuals, truthful theme behavior, synchronized English and Russian copy, smoother modpack workflows, and manual verification of the real experience before milestone closure.
+FMCL already had strong feature coverage, but everyday use still exposed trust gaps: layouts that did not adapt cleanly, preset themes that were not truthful in both modes, settings that felt over-nested, launch states that looked frozen, and modpack surfaces that still carried awkward or unstable interactions. The `v0.3.0` milestone closes those gaps without changing the core launcher architecture.
 
 ## Verified Launcher Surfaces
 
-The live walkthrough for this milestone covered:
+The live walkthrough for this milestone covered the launcher at `1440x1100` and `900x1180`:
 
 - Welcome screen and onboarding tour
-- Home dashboard and primary play flow
-- Settings, accounts, and skin-management handoff
-- Modpack list, browser, details, export, and add-mod routes
+- Home dashboard and explicit launch-state feedback
+- Settings, accounts, and skin-management continuity
+- Modpack create, list, browser, details, export, and add-mod routes
 - Share flow and import-share path
 - Screenshots gallery and lightbox
 - Utilities surfaces: mirrors and statistics
@@ -28,24 +28,28 @@ The live walkthrough for this milestone covered:
 
 | Phase | Status | Outcome |
 |-------|--------|---------|
-| 7. UI System Foundations | Complete | Shared visual primitives, shell language, icon consistency, and document-level theme behavior |
-| 8. Core Route Rollout And UI Correctness | Complete | Refreshed home, onboarding, settings/accounts, and main modpack routes with synchronized EN/RU copy |
-| 9. Secondary Surface Alignment And UX Polish | Complete | Share, screenshots, utilities, secondary content management, reduced motion, and accessibility polish |
-| 10. Manual Experience Verification And Release Truth | Complete | Recorded browser walkthrough evidence, refreshed release-facing docs, and closed the final repository gate |
+| 11. Adaptive Layout And Interaction Foundations | Complete | Responsive shell rhythm, anchored overlays, overflow-safe menus, and shipped fallback assets |
+| 12. Theme Truth And Settings IA Simplification | Complete | Truthful preset themes across light and dark modes, better contrast, and flatter settings navigation |
+| 13. Launch Trust And Modpack Workflow Ergonomics | Complete | Explicit launch stages, busy-state feedback, truthful modpack dependencies, and steadier browser or card flows |
+| 14. Manual Verification And Release Truth | Complete | Multi-size browser walkthrough evidence, bounded follow-up capture, refreshed release docs, and a green final gate |
 
-## What `v0.2.0` Delivers
+## What `v0.3.0` Delivers
 
-- One shared UI language for shells, cards, forms, dialogs, and feedback states
-- Theme and accent changes that visibly affect the launcher instead of isolated widgets
-- Refreshed core routes that no longer rely on mixed placeholders, missing icons, or legacy one-off styling
-- Secondary surfaces that feel like the same launcher instead of leftover tools
-- Manual browser verification as part of milestone truth, not optional polish
+- Adaptive layout and interaction safety across default and narrower desktop window sizes
+- Consistent sizing rhythm for primary controls, cards, and overlays on refreshed surfaces
+- Preset themes that actually repaint the launcher truthfully in light and dark mode without unreadable states
+- Flatter settings navigation for common tasks instead of deep tab-inside-tab drilling
+- Explicit launch progress and busy-state truth on the main play surface
+- More dependable modpack creation, browsing, and installed-pack quick actions
+- Placeholder and fallback asset cleanup on classic launcher surfaces
+- Manual browser verification at multiple sizes as part of release truth, not optional polish
 
 ## Next Candidates
 
-These are likely follow-ups after `v0.2.0`, not committed scope for the current milestone:
+These are likely follow-ups after `v0.3.0`, not committed scope for this milestone:
 
-- Automated visual-regression coverage for key launcher surfaces
-- Richer theme packs or layout presets
-- Additional locales beyond English and Russian
-- More launcher personalization around density and dashboard composition
+- Automated visual-regression coverage for the reusable manual-verification seam
+- Richer modpack metadata, dependency context, and changelog detail in browser and install flows
+- Dedicated activity-center UX for downloads, installs, and background tasks
+- Additional dashboard density or layout presets beyond the adaptive default shell
+- Deeper account and session conveniences, plus a final audit of lower-traffic localization and fallback seams

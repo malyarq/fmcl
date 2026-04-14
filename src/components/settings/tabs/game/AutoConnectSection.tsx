@@ -14,10 +14,10 @@ export function AutoConnectSection(props: {
 
   return (
     <>
-      <div className="flex items-center justify-between p-3 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-sm rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 shadow-sm hover:shadow-md transition-all">
+      <div className="surface-soft flex items-center justify-between gap-3 p-3 transition-colors hover:bg-card/84">
         <div>
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-200">{t('settings.autoconnect')}</p>
-          <p className="text-xs text-zinc-500">{t('settings.autoconnect_desc')}</p>
+          <p className="text-sm font-medium text-foreground">{t('settings.autoconnect')}</p>
+          <p className="helper-text">{t('settings.autoconnect_desc')}</p>
         </div>
         <input
           type="checkbox"
@@ -27,7 +27,7 @@ export function AutoConnectSection(props: {
             setAutoConnect(next);
             applyAutoConnect({ enabled: next, host: serverHost, portText: serverPort });
           }}
-          className="w-4 h-4 rounded cursor-pointer accent-current text-zinc-800 dark:text-white"
+          className="h-4 w-4 cursor-pointer rounded border-border bg-card text-[rgb(var(--accent-main))] focus:ring-2 focus:ring-[rgb(var(--accent-main))] focus:ring-offset-2 focus:ring-offset-background"
         />
       </div>
 
@@ -60,4 +60,3 @@ export function AutoConnectSection(props: {
     </>
   );
 }
-

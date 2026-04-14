@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { cn } from '../../utils/cn';
 
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -15,23 +15,27 @@ export const Textarea: React.FC<TextareaProps> = ({
     error,
     ...props
 }) => {
+    const generatedId = useId();
+    const textareaId = props.id ?? generatedId;
+
     return (
         <div className={cn("flex flex-col gap-1.5 w-full", containerClassName)}>
             {label && (
-                <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+                <label htmlFor={textareaId} className="control-label">
                     {label}
                 </label>
             )}
             <textarea
+                id={textareaId}
                 className={cn(
-                    "w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-zinc-300/50 dark:border-zinc-700/50 rounded-lg px-3 py-3 text-sm leading-normal focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 focus:border-transparent transition-all shadow-sm hover:shadow-md placeholder-zinc-400 dark:placeholder-zinc-600 text-zinc-900 dark:text-zinc-100 disabled:opacity-50 disabled:bg-zinc-100 dark:disabled:bg-zinc-800 resize-y",
-                    error && "border-red-500 focus:ring-red-500 dark:border-red-500",
+                    "control-frame min-h-24 w-full px-4 py-3 text-sm leading-normal placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:bg-card/92 disabled:bg-background/70 disabled:opacity-50 resize-y",
+                    error && "border-[rgb(var(--color-error))]/70 focus-visible:ring-[rgb(var(--color-error))]/30",
                     className
                 )}
                 {...props}
             />
             {error && (
-                <span className="text-xs text-red-500 font-medium">{error}</span>
+                <span className="text-xs font-medium text-[rgb(var(--color-error))]">{error}</span>
             )}
         </div>
     );

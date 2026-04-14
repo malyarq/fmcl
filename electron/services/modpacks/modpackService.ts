@@ -39,6 +39,63 @@ export type {
   NetworkMode,
 };
 
+type ManifestModLoader = { type: ModLoaderType; version?: string };
+
+function formatManifestModLoaderId(modLoader?: ManifestModLoader): string | null {
+  if (!modLoader) {
+    return null;
+  }
+
+  if (modLoader.type === 'vanilla') {
+    return 'vanilla';
+  }
+
+  return modLoader.version ? `${modLoader.type}-${modLoader.version}` : modLoader.type;
+}
+
+function buildManifestModLoaders(modLoader?: ManifestModLoader): Array<{ id: string; primary: boolean }> {
+  const id = formatManifestModLoaderId(modLoader);
+  return id ? [{ id, primary: true }] : [];
+}
+
+function parseManifestModLoaderId(loaderId: string): ManifestModLoader | undefined {
+  const trimmedLoaderId = loaderId.trim();
+  const normalizedLoaderId = trimmedLoaderId.toLowerCase();
+
+  if (!trimmedLoaderId) {
+    return undefined;
+  }
+
+  if (
+    normalizedLoaderId === 'vanilla' ||
+    normalizedLoaderId === 'forge' ||
+    normalizedLoaderId === 'fabric' ||
+    normalizedLoaderId === 'quilt' ||
+    normalizedLoaderId === 'neoforge'
+  ) {
+    return { type: normalizedLoaderId as ModLoaderType };
+  }
+
+  const loaderPrefixes: Array<{ prefix: string; type: ModLoaderType }> = [
+    { prefix: 'forge-', type: 'forge' },
+    { prefix: 'fabric-', type: 'fabric' },
+    { prefix: 'quilt-', type: 'quilt' },
+    { prefix: 'neoforge-', type: 'neoforge' },
+  ];
+
+  for (const loaderPrefix of loaderPrefixes) {
+    if (normalizedLoaderId.startsWith(loaderPrefix.prefix)) {
+      const version = trimmedLoaderId.slice(loaderPrefix.prefix.length).trim();
+      return {
+        type: loaderPrefix.type,
+        version: version || undefined,
+      };
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * Расширенный сервис для работы с модпаками
  * Расширяет BaseModpackService методами для работы с метаданными модпаков
@@ -244,14 +301,7 @@ export class ModpackService extends BaseModpackService {
       formatVersion: 1,
       minecraft: {
         version: minecraftVersion,
-        modLoaders: modLoader ? [{
-          id: modLoader.type === 'forge' ? `forge-${modLoader.version || ''}` :
-            modLoader.type === 'fabric' ? `fabric-${modLoader.version || ''}` :
-              modLoader.type === 'quilt' ? `quilt-${modLoader.version || ''}` :
-                modLoader.type === 'neoforge' ? `neoforge-${modLoader.version || ''}` :
-                  modLoader.type,
-          primary: true,
-        }] : [],
+        modLoaders: buildManifestModLoaders(modLoader),
       },
       name,
       version,
@@ -379,19 +429,9 @@ export class ModpackService extends BaseModpackService {
       const config = this.loadModpackConfig(safeRootPath, modpackId);
       config.runtime = {
         minecraft: manifest.minecraft.version,
-        modLoader: manifest.minecraft.modLoaders[0] ? (() => {
-          const loaderId = manifest.minecraft.modLoaders[0].id;
-          if (loaderId.startsWith('forge-')) {
-            return { type: 'forge' as ModLoaderType, version: loaderId.substring(6) };
-          } else if (loaderId.startsWith('fabric-')) {
-            return { type: 'fabric' as ModLoaderType, version: loaderId.substring(7) };
-          } else if (loaderId.startsWith('quilt-')) {
-            return { type: 'quilt' as ModLoaderType, version: loaderId.substring(6) };
-          } else if (loaderId.startsWith('neoforge-')) {
-            return { type: 'neoforge' as ModLoaderType, version: loaderId.substring(9) };
-          }
-          return undefined;
-        })() : undefined,
+        modLoader: manifest.minecraft.modLoaders[0]
+          ? parseManifestModLoaderId(manifest.minecraft.modLoaders[0].id)
+          : undefined,
       };
       this.saveModpackConfig(safeRootPath, config);
 
@@ -437,14 +477,7 @@ export class ModpackService extends BaseModpackService {
         formatVersion: 1,
         minecraft: {
           version: config.runtime.minecraft,
-          modLoaders: config.runtime.modLoader ? [{
-            id: config.runtime.modLoader.type === 'forge' ? `forge-${config.runtime.modLoader.version || ''}` :
-              config.runtime.modLoader.type === 'fabric' ? `fabric-${config.runtime.modLoader.version || ''}` :
-                config.runtime.modLoader.type === 'quilt' ? `quilt-${config.runtime.modLoader.version || ''}` :
-                  config.runtime.modLoader.type === 'neoforge' ? `neoforge-${config.runtime.modLoader.version || ''}` :
-                    config.runtime.modLoader.type,
-            primary: true,
-          }] : [],
+          modLoaders: buildManifestModLoaders(config.runtime.modLoader),
         },
         name: config.name,
         version: '1.0.0',
@@ -671,10 +704,7 @@ export class ModpackService extends BaseModpackService {
       manifest.name,
       manifest.version,
       manifest.minecraft.version,
-      modLoader ? {
-        type: modLoader.id.split('-')[0] as ModLoaderType,
-        version: modLoader.id.substring(modLoader.id.indexOf('-') + 1)
-      } : undefined
+      modLoader ? parseManifestModLoaderId(modLoader.id) : undefined
     );
 
     // 2. Установить моды

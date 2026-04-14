@@ -133,6 +133,27 @@
   .kicker-label {
     @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-muted;
   }
+
+  .control-frame {
+    @apply rounded-xl border border-border/70 bg-card/82 text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all;
+  }
+
+  .control-label {
+    @apply text-xs font-medium uppercase tracking-[0.14em] text-secondary;
+  }
+
+  .helper-text {
+    @apply text-xs text-muted;
+  }
+
+  .surface-soft {
+    @apply rounded-xl border border-border/60 bg-card/72 text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-md;
+  }
+
+  .launcher-content-width {
+    width: min(100%, 72rem);
+    margin-inline: auto;
+  }
 }
 
 @layer utilities {

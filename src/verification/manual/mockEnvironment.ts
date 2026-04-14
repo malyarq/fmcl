@@ -115,7 +115,7 @@ const modpackVersions: ModpackVersionDescriptor[] = [
     versionNumber: '1.4.2',
     mcVersions: ['1.20.1'],
     loaders: ['fabric'],
-    changelog: 'Stabilized the FMCL Phase 10 verification fixture.',
+    changelog: 'Stabilized the FMCL manual verification fixture.',
     files: [
       {
         url: 'https://example.invalid/alpha-pack-1.4.2.mrpack',
@@ -312,7 +312,20 @@ export function seedManualVerificationStorage(view: string) {
   localStorage.setItem('simple_play_welcome_dismissed', 'false');
   localStorage.setItem('onboarding_completed', simpleViews.has(view) ? 'false' : 'true');
   localStorage.setItem('first_launch', simpleViews.has(view) ? 'true' : 'false');
-  localStorage.removeItem('modpack-history');
+  if (view === 'modpack-browser') {
+    localStorage.setItem('modpack-history', JSON.stringify([
+      {
+        platform: 'curseforge',
+        projectId: '42',
+        title: 'CurseForge Pack',
+        description: 'Legacy import route preserved in history.',
+        iconUrl: ICON_PATH,
+      },
+      browserResults[0],
+    ]));
+  } else {
+    localStorage.removeItem('modpack-history');
+  }
   localStorage.removeItem('modpack-favorites');
 }
 

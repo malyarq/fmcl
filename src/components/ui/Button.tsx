@@ -21,7 +21,7 @@ export const Button: React.FC<ButtonProps> = ({
 }) => {
     const isBusy = Boolean(isLoading);
     const baseStyles =
-        'motion-safe-transform rounded-xl font-semibold motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-out motion-safe:transform motion-safe:active:scale-[0.98] motion-safe:hover:scale-[1.01] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:hover:scale-100 flex items-center justify-center gap-2 shadow-[0_10px_28px_rgba(0,0,0,0.12)] hover:shadow-[0_14px_34px_rgba(0,0,0,0.16)] disabled:hover:shadow-[0_10px_28px_rgba(0,0,0,0.12)] border';
+        'motion-safe-transform flex min-w-0 items-center justify-center gap-2 rounded-xl border font-semibold leading-none shadow-[0_10px_28px_rgba(0,0,0,0.12)] hover:shadow-[0_14px_34px_rgba(0,0,0,0.16)] disabled:hover:shadow-[0_10px_28px_rgba(0,0,0,0.12)] motion-safe:transform motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-out motion-safe:active:scale-[0.98] motion-safe:hover:scale-[1.01] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100 disabled:hover:scale-100';
 
     const variants = {
         primary:
@@ -35,9 +35,9 @@ export const Button: React.FC<ButtonProps> = ({
     };
 
     const sizes = {
-        sm: 'px-3 py-1.5 text-xs',
-        md: 'px-4 py-2 text-sm',
-        lg: 'px-6 py-3 text-base',
+        sm: 'min-h-9 px-3.5 text-sm',
+        md: 'min-h-11 px-4 text-sm',
+        lg: 'min-h-[3.25rem] px-5 text-base',
     };
 
     return (

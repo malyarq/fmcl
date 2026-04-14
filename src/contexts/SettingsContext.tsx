@@ -1,15 +1,16 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
-import type { AccentColor, AccentStyleType, DownloadProvider, Language, Theme, UIMode, CustomThemeConfig } from './settings/types';
+import type { AccentColor, AccentStyleType, DownloadProvider, Language, Theme, UIMode, CustomThemeConfig, ThemePresetId } from './settings/types';
 import {
     deserializeBoolean,
     deserializeInt,
     deserializeString,
     serializeBoolean,
-    serializeInt,
-    serializeString,
-    useLocalStorageState,
+        serializeInt,
+        serializeString,
+        useLocalStorageState,
 } from './settings/persistence';
-import { applyThemeToDocument } from './settings/theme';
+import { getThemePreset, inferThemePresetId } from './settings/theme-presets';
+import { applyThemeToDocument, resolveThemeConfig } from './settings/theme';
 import { createTranslator } from './settings/i18n';
 import { getAccentClassForColor, getAccentHexForColor, getAccentStylesForColor, getPresetAccentSafelistClassName } from './settings/accent';
 
@@ -26,6 +27,9 @@ interface SettingsState {
     setLanguage: (val: Language) => void;
     theme: Theme;
     setTheme: (val: Theme) => void;
+    themePresetId: ThemePresetId | null;
+    applyThemePreset: (presetId: ThemePresetId) => void;
+    clearThemePreset: () => void;
     downloadProvider: DownloadProvider;
     setDownloadProvider: (val: DownloadProvider) => void;
     autoDownloadThreads: boolean;
@@ -42,6 +46,7 @@ interface SettingsState {
     getAccentClass: (tailwindClasses: string) => string;
     getAccentHex: () => string;
     customTheme: CustomThemeConfig;
+    activeThemeConfig: CustomThemeConfig;
     setCustomTheme: (val: CustomThemeConfig) => void;
     uiScale: number;
     setUiScale: (val: number) => void;
@@ -63,6 +68,17 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [showConsole, setShowConsole] = useLocalStorageState('settings_showConsole', deserializeBoolean(false), serializeBoolean);
     const [language, setLanguage] = useLocalStorageState<Language>('settings_language', (raw) => (raw === 'ru' ? 'ru' : 'en'), serializeString);
     const [theme, setTheme] = useLocalStorageState<Theme>('settings_theme', (raw) => (raw === 'light' ? 'light' : 'dark'), serializeString);
+    const [themePresetId, setThemePresetIdState] = useLocalStorageState<ThemePresetId | null>(
+        'settings_themePresetId',
+        (raw) => {
+            if (!raw) {
+                return null;
+            }
+
+            return getThemePreset(raw)?.id ?? null;
+        },
+        (val) => val ?? '',
+    );
     const [legacyDownloadProvider, setDownloadProvider] = useLocalStorageState<DownloadProvider>(
         'settings_downloadProvider',
         (raw) => (raw === 'mojang' || raw === 'bmcl' ? raw : 'auto'),
@@ -73,7 +89,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [maxSockets, setMaxSockets] = useLocalStorageState('settings_maxSockets', deserializeInt(64), serializeInt);
     const downloadProvider: DownloadProvider = 'auto';
     // Custom theme configuration
-    const [customTheme, setCustomTheme] = useLocalStorageState<CustomThemeConfig>(
+    const [customTheme, setCustomThemeState] = useLocalStorageState<CustomThemeConfig>(
         'settings_customTheme',
         (raw) => {
             if (!raw) return {};
@@ -84,6 +100,27 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
         },
         (val) => JSON.stringify(val)
+    );
+    const clearThemePreset = useCallback(() => {
+        setThemePresetIdState(null);
+    }, [setThemePresetIdState]);
+    const setCustomTheme = useCallback((val: CustomThemeConfig) => {
+        clearThemePreset();
+        setCustomThemeState(val);
+    }, [clearThemePreset, setCustomThemeState]);
+    const applyThemePreset = useCallback((presetId: ThemePresetId) => {
+        const preset = getThemePreset(presetId);
+        if (!preset) {
+            return;
+        }
+
+        setThemePresetIdState(preset.id);
+        setTheme(preset.defaultTheme);
+        setCustomThemeState({});
+    }, [setCustomThemeState, setTheme, setThemePresetIdState]);
+    const activeThemeConfig = useMemo(
+        () => resolveThemeConfig(theme, themePresetId, customTheme),
+        [customTheme, theme, themePresetId],
     );
 
     const [uiScale, setUiScale] = useLocalStorageState('settings_uiScale', deserializeInt(100), serializeInt);
@@ -99,8 +136,23 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     );
 
     useEffect(() => {
-        applyThemeToDocument(theme, accentColor, customTheme);
-    }, [theme, accentColor, customTheme]);
+        applyThemeToDocument(theme, accentColor, activeThemeConfig);
+    }, [theme, accentColor, activeThemeConfig]);
+
+    useEffect(() => {
+        const persistedThemePresetId = localStorage.getItem('settings_themePresetId');
+        if (persistedThemePresetId !== null || themePresetId !== null) {
+            return;
+        }
+
+        const inferredPresetId = inferThemePresetId(theme, customTheme);
+        if (!inferredPresetId) {
+            return;
+        }
+
+        setThemePresetIdState(inferredPresetId);
+        setCustomThemeState({});
+    }, [customTheme, theme, themePresetId, setCustomThemeState, setThemePresetIdState]);
 
     useEffect(() => {
         if (legacyDownloadProvider !== 'auto') {
@@ -158,6 +210,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             showConsole, setShowConsole: setShowConsoleProxy,
             language, setLanguage,
             theme, setTheme,
+            themePresetId,
+            applyThemePreset,
+            clearThemePreset,
             downloadProvider, setDownloadProvider,
             autoDownloadThreads, setAutoDownloadThreads,
             downloadThreads, setDownloadThreads,
@@ -168,6 +223,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             getAccentClass,
             getAccentHex,
             customTheme,
+            activeThemeConfig,
             setCustomTheme,
             uiScale, setUiScale,
             disableAnimations, setDisableAnimations,

@@ -13,6 +13,8 @@ import type { ModLoaderType } from '../../contexts/instances/types';
 import { useVersions } from '../../features/launcher/hooks/useVersions';
 import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
 import { ModloaderSection } from '../sidebar/ModloaderSection';
+import { ModpackDependencySummary } from '../sidebar/ModpackDependencySummary';
+import { buildRuntimeDependencyState } from '../sidebar/modpackRuntimeDependencies';
 import { OptifineToggle } from '../sidebar/OptifineToggle';
 import { AddModModal } from './AddModModal';
 import { ModpackDetailsModsTab, type ModpackModEntry } from './details';
@@ -131,6 +133,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
   const isOptiFineSupported = optiFineVersions.includes(draft.minecraftVersion);
 
   const modLoaderType: ModLoaderType = draft.useNeoForge ? 'neoforge' : draft.useForge ? 'forge' : draft.useFabric ? 'fabric' : 'vanilla';
+  const runtimeDependencies = buildRuntimeDependencyState(draft.minecraftVersion.trim(), modLoaderType);
 
   const setLoader = (loader: 'vanilla' | 'forge' | 'fabric' | 'neoforge') => {
     setDraft((prev) => ({
@@ -144,22 +147,26 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
   const createModpackForStep3 = useCallback(async (): Promise<string | null> => {
     const nameValidation = validateName(draft.name);
     if (nameValidation) return null;
-    const modLoader = modLoaderType !== 'vanilla'
-      ? { type: modLoaderType, version: undefined }
-      : undefined;
     const result = await modpacksIPC.createLocal(
       draft.name.trim(),
       draft.version.trim(),
       draft.minecraftVersion.trim(),
-      modLoader,
+      runtimeDependencies.modLoader,
       minecraftPath
     );
     if (result?.id && draft.description.trim()) {
       await modpacksIPC.updateMetadata(result.id, { description: draft.description.trim() }, minecraftPath);
     }
     return result?.id ?? null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft.name, draft.version, draft.minecraftVersion, draft.description, modLoaderType, minecraftPath]);
+  }, [
+    draft.description,
+    draft.minecraftVersion,
+    draft.name,
+    draft.version,
+    minecraftPath,
+    runtimeDependencies.modLoader,
+    validateName,
+  ]);
 
   const loadStep3Mods = useCallback(async () => {
     if (!step3ModpackId) return;
@@ -252,15 +259,11 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     setNameError(null);
 
     try {
-      const modLoader = modLoaderType !== 'vanilla'
-        ? { type: modLoaderType, version: undefined }
-        : undefined;
-
       const result = await modpacksIPC.createLocal(
         draft.name.trim(),
         draft.version.trim(),
         draft.minecraftVersion.trim(),
-        modLoader,
+        runtimeDependencies.modLoader,
         minecraftPath
       );
 
@@ -395,6 +398,11 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
         setUseOptiFine={(val) => setDraft((prev) => ({ ...prev, useOptiFine: val }))}
         t={t}
         getAccentStyles={getAccentStyles}
+      />
+
+      <ModpackDependencySummary
+        runtime={runtimeDependencies}
+        t={t}
       />
     </div>
   );

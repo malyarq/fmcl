@@ -32,7 +32,7 @@ export const SkeletonLoader: React.FC<SkeletonLoaderProps> = ({
   animated = true,
 }) => {
   const baseStyles = cn(
-    'bg-zinc-200 dark:bg-zinc-800',
+    'bg-foreground/10',
     animated && 'animate-pulse',
     className
   );

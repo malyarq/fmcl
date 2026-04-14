@@ -2,23 +2,23 @@
 
 ## Текущий Milestone
 
-- Milestone: `v0.2.0`
-- Тема: единая UI-система и переработка пользовательского опыта
+- Milestone: `v0.3.0`
+- Тема: адаптивный UX-hardening и эргономика лаунчера
 - Статус: завершён
-- Обновлено: `2026-04-13`
+- Обновлено: `2026-04-14`
 
 ## Зачем Нужен Этот Milestone
 
-У FMCL уже был широкий набор функций, но продукт всё ещё ощущался как набор отдельных модулей. Milestone `v0.2.0` приводит существующую поверхность лаунчера к одному состоянию: единая визуальная система, честное применение темы, синхронные EN/RU тексты, более удобные сценарии работы с модпаками и ручная проверка реального опыта перед закрытием milestone.
+У FMCL уже был широкий набор функций, но в ежедневном использовании оставались дыры в доверии: неадаптивные layout-ы, готовые темы без честного применения в обоих режимах, чрезмерно вложенные settings, неочевидное состояние запуска и неудобные или нестабильные modpack-сценарии. Milestone `v0.3.0` закрывает именно эти проблемы, не меняя базовую архитектуру лаунчера.
 
 ## Проверенные Поверхности Лаунчера
 
-В live walkthrough этого milestone были пройдены:
+В live walkthrough этого milestone были пройдены поверхности лаунчера на `1440x1100` и `900x1180`:
 
 - экран приветствия и onboarding tour
-- домашний dashboard и основной play flow
-- settings, accounts и переход к управлению скинами
-- modpack list, browser, details, export и add-mod маршруты
+- домашний dashboard и явные состояния запуска
+- settings, accounts и continuity до управления скинами
+- create, list, browser, details, export и add-mod маршруты для модпаков
 - share flow и import-share сценарий
 - screenshots gallery и lightbox
 - utilities: mirrors и statistics
@@ -28,24 +28,28 @@
 
 | Фаза | Статус | Результат |
 |------|--------|-----------|
-| 7. UI System Foundations | Завершена | Общие визуальные примитивы, язык shell, согласованные иконки и document-level theme behavior |
-| 8. Core Route Rollout And UI Correctness | Завершена | Обновлённые home, onboarding, settings/accounts и основные modpack-маршруты с синхронной EN/RU локализацией |
-| 9. Secondary Surface Alignment And UX Polish | Завершена | Share, screenshots, utilities, secondary content management, reduced motion и accessibility polish |
-| 10. Manual Experience Verification And Release Truth | Завершена | Записанное browser walkthrough evidence, обновлённые release-facing docs и закрытый финальный repository gate |
+| 11. Adaptive Layout And Interaction Foundations | Завершена | Адаптивный shell rhythm, anchored overlays, безопасные относительно окна меню и shipped fallback assets |
+| 12. Theme Truth And Settings IA Simplification | Завершена | Честные preset themes в светлом и тёмном режиме, лучший contrast и более плоская навигация по settings |
+| 13. Launch Trust And Modpack Workflow Ergonomics | Завершена | Явные launch stages, busy-state feedback, truthful modpack dependencies и более устойчивые browser/card flows |
+| 14. Manual Verification And Release Truth | Завершена | Multi-size browser walkthrough evidence, bounded follow-up capture, обновлённые release docs и зелёный финальный gate |
 
-## Что Даёт `v0.2.0`
+## Что Даёт `v0.3.0`
 
-- Один общий UI-язык для shell, карточек, форм, диалогов и feedback states
-- Theme и accent changes, которые заметно применяются ко всему лаунчеру, а не к отдельным виджетам
-- Обновлённые core routes без смеси плейсхолдеров, пропавших иконок и legacy one-off styling
-- Secondary surfaces, которые ощущаются частью того же продукта, а не оставшимися утилитами
-- Manual browser verification как часть milestone truth, а не необязательный polish
+- Адаптивный layout и interaction safety на стартовом размере окна и на более узких desktop-ширинах
+- Согласованный sizing rhythm для основных контролов, карточек и overlays на обновлённых поверхностях
+- Preset themes, которые действительно перекрашивают лаунчер в light и dark mode без нечитаемых состояний
+- Более плоскую settings-навигацию для частых задач вместо глубокого tab-inside-tab drill-down
+- Явный launch progress и busy-state truth на основном play surface
+- Более надёжные create, browse и installed-modpack quick-action сценарии
+- Очистку placeholder и fallback assets на классических поверхностях лаунчера
+- Manual browser verification на нескольких размерах окна как часть release truth, а не необязательный polish
 
 ## Следующие Кандидаты
 
-Это вероятные следующие шаги после `v0.2.0`, но не зафиксированный scope текущего milestone:
+Это вероятные следующие шаги после `v0.3.0`, но не зафиксированный scope текущего milestone:
 
-- automated visual-regression coverage для ключевых поверхностей лаунчера
-- более богатые theme packs или layout presets
-- новые локали помимо английского и русского
-- дополнительная персонализация плотности интерфейса и состава dashboard
+- automated visual-regression coverage для reusable manual-verification seam
+- более богатый modpack metadata, dependency context и changelog detail в browser/install сценариях
+- отдельный activity-center UX для downloads, installs и background tasks
+- дополнительные dashboard density или layout presets сверх текущего adaptive shell
+- более глубокие account/session conveniences и финальный аудит low-traffic localization и fallback seams

@@ -105,183 +105,185 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
   }, [t, toast]);
 
   return (
-    <div className="space-y-4">
-      <div className="surface-card space-y-2 p-4">
-        <div className="kicker-label">{t('settings.tab_launcher')}</div>
-        <h3 className="text-lg font-bold text-foreground">{t('settings.tab_launcher')}</h3>
-        <p className="text-sm text-secondary">{t('settings.launcherHint')}</p>
-      </div>
+    <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+      <div className="space-y-4">
+        <div className="surface-card space-y-4 p-5">
+          <div className="space-y-2">
+            <div className="kicker-label">{t('settings.tab_launcher')}</div>
+            <h3 className="text-lg font-bold text-foreground">{t('settings.tab_launcher')}</h3>
+            <p className="text-sm text-secondary">{t('settings.launcherHint')}</p>
+          </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="surface-card p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-foreground">{t('settings.performance')}</p>
-              <p id="settings-performance-hint" className="text-sm text-secondary">{t('settings.performance_desc')}</p>
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="surface-muted p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{t('settings.performance')}</p>
+                  <p id="settings-performance-hint" className="text-sm text-secondary">{t('settings.performance_desc')}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={hideLauncher}
+                  onChange={(e) => setHideLauncher(e.target.checked)}
+                  aria-describedby="settings-performance-hint"
+                  className="mt-1 h-4 w-4 cursor-pointer rounded border-border/70 bg-card text-[rgb(var(--accent-main))] focus:ring-[rgb(var(--accent-main))] focus:ring-offset-background"
+                />
+              </div>
             </div>
-            <input
-              type="checkbox"
-              checked={hideLauncher}
-              onChange={(e) => setHideLauncher(e.target.checked)}
-              aria-describedby="settings-performance-hint"
-              className="mt-1 h-4 w-4 cursor-pointer rounded border-border/70 bg-card text-[rgb(var(--accent-main))] focus:ring-[rgb(var(--accent-main))] focus:ring-offset-background"
-            />
+
+            <div className="surface-muted p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">{t('settings.console')}</p>
+                  <p id="settings-console-hint" className="text-sm text-secondary">{t('settings.console_desc')}</p>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={showConsole}
+                  onChange={(e) => setShowConsole(e.target.checked)}
+                  aria-describedby="settings-console-hint"
+                  className="mt-1 h-4 w-4 cursor-pointer rounded border-border/70 bg-card text-[rgb(var(--accent-main))] focus:ring-[rgb(var(--accent-main))] focus:ring-offset-background"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="surface-card p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-foreground">{t('settings.console')}</p>
-              <p id="settings-console-hint" className="text-sm text-secondary">{t('settings.console_desc')}</p>
+          <MinecraftPathSection minecraftPath={minecraftPath} setMinecraftPath={setMinecraftPath} t={t} />
+        </div>
+
+        <div className="surface-card flex flex-col gap-4 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-foreground">{t('settings.updatesTitle')}</p>
+              <p className="text-sm text-secondary">{t('settings.updatesDesc')}</p>
             </div>
-            <input
-              type="checkbox"
-              checked={showConsole}
-              onChange={(e) => setShowConsole(e.target.checked)}
-              aria-describedby="settings-console-hint"
-              className="mt-1 h-4 w-4 cursor-pointer rounded border-border/70 bg-card text-[rgb(var(--accent-main))] focus:ring-[rgb(var(--accent-main))] focus:ring-offset-background"
-            />
+            {(status === 'checking' || status === 'available' || status === 'up-to-date' || status === 'error') && (
+              <div className="surface-inline px-3 py-2 text-xs">
+                {status === 'checking' && <span className="text-secondary">{t('updater.checking')}</span>}
+                {status === 'available' && updateInfo && (
+                  <span className="text-secondary">
+                    {t('updater.available')}: {updateInfo.version}
+                  </span>
+                )}
+                {status === 'up-to-date' && <span className="text-secondary">{t('updater.up_to_date')}</span>}
+                {status === 'error' && <span className="text-red-600 dark:text-red-400">{t('updater.error')}</span>}
+              </div>
+            )}
           </div>
+
+          <Button
+            onClick={async () => {
+              onBeforeCheckForUpdates();
+              await onCheckForUpdates();
+            }}
+            disabled={status === 'checking' || status === 'downloading'}
+            variant="secondary"
+            className="sm:w-fit"
+          >
+            {status === 'checking' ? t('updater.checking') : t('updater.check')}
+          </Button>
         </div>
       </div>
 
-      <div className="surface-card p-4">
-        <MinecraftPathSection minecraftPath={minecraftPath} setMinecraftPath={setMinecraftPath} t={t} />
-      </div>
+      <div className="space-y-4">
+        {imageCacheState && (
+          <div className="surface-card space-y-4 p-5">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-foreground">
+                  {t('settings.image_cache_title')}
+                </p>
+                <p className="text-sm text-secondary">
+                  {t('settings.image_cache_desc')}
+                </p>
+              </div>
+              <div className="text-right text-xs text-secondary">
+                <div>{formatSize(imageCacheState.totalSizeBytes)} / {formatSize(imageCacheState.maxSizeBytes)}</div>
+                <div>{imageCacheState.entryCount} {t('settings.image_cache_entries')}</div>
+              </div>
+            </div>
 
-      {imageCacheState && (
-        <div className="surface-card space-y-3 p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-foreground">
-                {t('settings.image_cache_title')}
-              </p>
-              <p className="text-sm text-secondary">
-                {t('settings.image_cache_desc')}
+            <div className="space-y-1">
+              <div className="h-2 overflow-hidden rounded-full bg-background/80">
+                <div
+                  className="h-full rounded-full bg-[rgb(var(--accent-main))] transition-all"
+                  style={{ width: `${imageCacheUsagePercent}%` }}
+                />
+              </div>
+              <p className="text-xs text-secondary">
+                {imageCacheUsagePercent}% {t('settings.image_cache_used')}
               </p>
             </div>
-            <div className="text-right text-xs text-secondary">
-              <div>{formatSize(imageCacheState.totalSizeBytes)} / {formatSize(imageCacheState.maxSizeBytes)}</div>
-              <div>{imageCacheState.entryCount} {t('settings.image_cache_entries')}</div>
-            </div>
-          </div>
 
-          <div className="space-y-1">
-            <div className="h-2 overflow-hidden rounded-full bg-background/80">
-              <div
-                className="h-full rounded-full bg-[rgb(var(--accent-main))] transition-all"
-                style={{ width: `${imageCacheUsagePercent}%` }}
+            <div className="flex flex-col gap-3 md:items-start">
+              <Input
+                type="number"
+                min={32}
+                step={32}
+                value={imageCacheLimitMb}
+                onChange={(event) => setImageCacheLimitMb(event.target.value)}
+                label={t('settings.image_cache_limit')}
+                containerClassName="w-full"
               />
-            </div>
-            <p className="text-xs text-secondary">
-              {imageCacheUsagePercent}% {t('settings.image_cache_used')}
-            </p>
-          </div>
-
-          <div className="flex flex-col md:flex-row gap-3 md:items-end">
-            <Input
-              type="number"
-              min={32}
-              step={32}
-              value={imageCacheLimitMb}
-              onChange={(event) => setImageCacheLimitMb(event.target.value)}
-              label={t('settings.image_cache_limit')}
-              containerClassName="md:max-w-xs"
-            />
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleSaveImageCacheLimit}
-                isLoading={isImageCacheBusy}
-              >
-                {t('settings.image_cache_save')}
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleCleanupImageCache}
-                isLoading={isImageCacheBusy}
-              >
-                {t('settings.image_cache_cleanup')}
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleSaveImageCacheLimit}
+                  isLoading={isImageCacheBusy}
+                >
+                  {t('settings.image_cache_save')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={handleCleanupImageCache}
+                  isLoading={isImageCacheBusy}
+                >
+                  {t('settings.image_cache_cleanup')}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <div className="surface-card flex flex-col gap-3 p-4">
-          <div className="space-y-1">
-            <p className="text-sm font-semibold text-foreground">{t('settings.updatesTitle')}</p>
-            <p className="text-sm text-secondary">{t('settings.updatesDesc')}</p>
-          </div>
-          <div className="mt-auto">
-            <Button
-              onClick={async () => {
-                onBeforeCheckForUpdates();
-                await onCheckForUpdates();
-              }}
-              disabled={status === 'checking' || status === 'downloading'}
-              variant="secondary"
-              className="w-full"
-            >
-              {status === 'checking' ? t('updater.checking') : t('updater.check')}
-            </Button>
-          </div>
-        </div>
-
-        <div className="surface-card flex flex-col gap-3 p-4">
+        <div className="surface-card flex flex-col gap-3 p-5">
           <div className="space-y-1">
             <p className="text-sm font-semibold text-foreground">{t('settings.clear_cache')}</p>
             <p className="text-sm text-secondary">{t('settings.clear_cache_desc')}</p>
           </div>
-          <div className="mt-auto">
-            <Button
-              onClick={async () => {
-                const confirmed = await confirm.confirm({
-                  title: t('settings.clear_cache'),
-                  message: t('settings.clear_cache_confirm'),
-                  variant: 'default',
-                  confirmText: t('settings.clear_cache'),
-                  cancelText: t('general.cancel'),
-                });
-                if (!confirmed) return;
-                try {
-                  const result = await cacheIPC.clear();
-                  if (result.success) {
-                    await cacheIPC.reload();
-                    toast.success(t('settings.clear_cache_success'));
-                  } else {
-                    toast.error(t('error.failed_clear_cache') + ': ' + (result.error || t('error.unexpected_error')));
-                  }
-                } catch (error) {
-                  const errorMessage = error instanceof Error ? error.message : String(error);
-                  toast.error(t('error.clearing_cache') + ': ' + errorMessage);
+          <Button
+            onClick={async () => {
+              const confirmed = await confirm.confirm({
+                title: t('settings.clear_cache'),
+                message: t('settings.clear_cache_confirm'),
+                variant: 'default',
+                confirmText: t('settings.clear_cache'),
+                cancelText: t('general.cancel'),
+              });
+              if (!confirmed) return;
+              try {
+                const result = await cacheIPC.clear();
+                if (result.success) {
+                  await cacheIPC.reload();
+                  toast.success(t('settings.clear_cache_success'));
+                } else {
+                  toast.error(t('error.failed_clear_cache') + ': ' + (result.error || t('error.unexpected_error')));
                 }
-              }}
-              variant="secondary"
-              className="w-full"
-            >
-              {t('settings.clear_cache')}
-            </Button>
-          </div>
+              } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                toast.error(t('error.clearing_cache') + ': ' + errorMessage);
+              }
+            }}
+            variant="secondary"
+            className="sm:w-fit"
+          >
+            {t('settings.clear_cache')}
+          </Button>
         </div>
       </div>
-
-      {(status === 'checking' || status === 'available' || status === 'up-to-date' || status === 'error') && (
-        <div className="surface-inline flex items-center justify-between p-3">
-          {status === 'checking' && <span className="text-xs text-secondary">{t('updater.checking')}</span>}
-          {status === 'available' && updateInfo && (
-            <span className="text-xs text-secondary">
-              {t('updater.available')}: {updateInfo.version}
-            </span>
-          )}
-          {status === 'up-to-date' && <span className="text-xs text-secondary">{t('updater.up_to_date')}</span>}
-          {status === 'error' && <span className="text-xs text-red-600 dark:text-red-400">{t('updater.error')}</span>}
-        </div>
-      )}
     </div>
   );
 };

@@ -3,6 +3,7 @@ import { useSettings } from '../contexts/SettingsContext';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
+import { Select } from './ui/Select';
 import { cn } from '../utils/cn';
 import { useMultiplayer } from '../features/multiplayer/hooks/useMultiplayer';
 
@@ -60,7 +61,7 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
         >
             <div className="flex flex-col gap-6">
                 {/* Mode Switcher */}
-                <div className="flex bg-zinc-100 dark:bg-zinc-900/50 p-1 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                <div className="surface-soft flex rounded-lg p-1">
                     {['host', 'join'].map((m) => (
                         <button
                             key={m}
@@ -68,8 +69,8 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                             className={cn(
                                 "flex-1 py-2 text-sm font-bold uppercase rounded-md transition-all",
                                 mode === m
-                                    ? cn("shadow-md text-white", getAccentStyles('bg').className)
-                                    : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                                    ? cn("shadow-md text-[rgb(var(--accent-content))]", getAccentStyles('bg').className)
+                                    : "text-secondary hover:text-foreground"
                             )}
                             style={mode === m ? getAccentStyles('bg').style : undefined}
                         >
@@ -79,29 +80,22 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                 </div>
 
                 {/* Network mode (per selected instance) */}
-                <div className="space-y-2">
-                    <label className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                        {t('settings.network_mode')}
-                    </label>
-                    <select
-                        value={networkMode}
-                        onChange={(e) => setNetworkMode(e.target.value as typeof networkMode)}
-                        className="w-full bg-white/80 dark:bg-zinc-900/80 backdrop-blur-sm border border-zinc-300/50 dark:border-zinc-700/50 rounded-lg p-3 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:focus:ring-zinc-600 shadow-sm hover:shadow-md transition-all"
-                    >
-                        <option value="hyperswarm">{t('settings.network_mode_hyperswarm')}</option>
-                        <option value="xmcl_lan">{t('settings.network_mode_xmcl_lan')}</option>
-                        <option value="xmcl_upnp_host">{t('settings.network_mode_xmcl_upnp_host')}</option>
-                    </select>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                        {t('settings.network_mode_desc')}
-                    </p>
-                </div>
+                <Select
+                    label={t('settings.network_mode')}
+                    description={t('settings.network_mode_desc')}
+                    value={networkMode}
+                    onChange={(e) => setNetworkMode(e.target.value as typeof networkMode)}
+                >
+                    <option value="hyperswarm">{t('settings.network_mode_hyperswarm')}</option>
+                    <option value="xmcl_lan">{t('settings.network_mode_xmcl_lan')}</option>
+                    <option value="xmcl_upnp_host">{t('settings.network_mode_xmcl_upnp_host')}</option>
+                </Select>
 
                 {/* Content Area */}
                 <div className="min-h-[250px] flex flex-col justify-center">
                     {mode === 'host' ? (
                         <div className="space-y-4">
-                            <p className="text-sm text-zinc-600 dark:text-zinc-400 text-center px-4 whitespace-pre-line">
+                            <p className="px-4 text-center text-sm whitespace-pre-line text-secondary">
                                 {t('multiplayer.host_desc')}
                             </p>
 
@@ -149,7 +143,7 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                                         }}
                                     >
                                         <p className={cn("font-bold mb-2 uppercase text-xs tracking-wider", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.room_active')}</p>
-                                        <p className="font-mono text-sm break-all text-zinc-900 dark:text-zinc-100 group-hover:scale-105 transition-transform">{roomCode}</p>
+                                        <p className="font-mono text-sm break-all text-foreground group-hover:scale-105 transition-transform">{roomCode}</p>
                                         <p className={cn("text-[10px] mt-2 opacity-70", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.click_copy')}</p>
                                     </div>
                                     <Button variant="danger" onClick={stop} className="w-full">
@@ -160,7 +154,7 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <p className="text-sm text-zinc-600 dark:text-zinc-400 text-center px-4">
+                            <p className="px-4 text-center text-sm text-secondary">
                                 {t('multiplayer.join_desc')}
                             </p>
 
@@ -203,7 +197,7 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                                         }}
                                     >
                                         <p className={cn("font-bold mb-2 uppercase text-xs tracking-wider", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.tunnel_established')}</p>
-                                        <p className="text-xl font-mono font-bold text-zinc-900 dark:text-white select-all">
+                                        <p className="text-xl font-mono font-bold text-foreground select-all">
                                             localhost:{mappedPort}
                                         </p>
                                         <p className={cn("text-xs mt-2 opacity-70", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.direct_connect')}</p>
@@ -220,7 +214,7 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                 {/* Status Message */}
                 {status && (
                     <div className="text-center">
-                        <p className="text-amber-500 text-xs font-medium animate-pulse">{status}</p>
+                        <p className="text-xs font-medium text-amber-600 animate-pulse dark:text-amber-300">{status}</p>
                     </div>
                 )}
             </div>

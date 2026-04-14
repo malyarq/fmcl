@@ -6,6 +6,7 @@ export type ManualVerificationView =
   | 'settings-accounts'
   | 'accounts'
   | 'modpack-list'
+  | 'modpack-create'
   | 'modpack-browser'
   | 'modpack-details'
   | 'modpack-export'
@@ -16,13 +17,14 @@ export type ManualVerificationView =
   | 'content';
 
 export const CORE_VIEWS: Array<{ id: ManualVerificationView; label: string; description: string }> = [
-  { id: 'overview', label: 'Overview', description: 'Manual verification hub for Phase 10 core flows.' },
+  { id: 'overview', label: 'Overview', description: 'Manual verification hub for milestone-owned v0.3.0 flows.' },
   { id: 'welcome', label: 'Welcome', description: 'First-run welcome overlay.' },
   { id: 'tour', label: 'Tour', description: 'Onboarding spotlight with stable targets.' },
   { id: 'dashboard', label: 'Dashboard', description: 'Classic play dashboard and quick actions.' },
   { id: 'settings-accounts', label: 'Settings -> Accounts', description: 'Settings shell with accounts continuity.' },
   { id: 'accounts', label: 'Accounts', description: 'Standalone account management and skin panel.' },
   { id: 'modpack-list', label: 'Modpack List', description: 'Installed modpack cards and actions.' },
+  { id: 'modpack-create', label: 'Create Modpack', description: 'Create flow with explicit runtime dependencies.' },
   { id: 'modpack-browser', label: 'Modpack Browser', description: 'Browser search, history, and results.' },
   { id: 'modpack-details', label: 'Modpack Details', description: 'Details overview and primary actions.' },
   { id: 'modpack-export', label: 'Export', description: 'Export flow on the shared page surface.' },

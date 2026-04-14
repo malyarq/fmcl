@@ -5,7 +5,12 @@ import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { cn } from '../utils/cn';
 import { SettingsTabsHeader } from './settings/SettingsTabsHeader';
-import { getSettingsPanelId, getSettingsTabId, type SettingsTabId } from './settings/settingsTabs';
+import {
+    getSettingsPanelId,
+    getSettingsTabConfig,
+    getSettingsTabLabelId,
+    type SettingsTabId,
+} from './settings/settingsTabs';
 
 // Import all tabs directly to avoid loading delay when switching tabs
 import { AppearanceTab } from './settings/tabs/AppearanceTab';
@@ -49,29 +54,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
         }
     }, [status]);
 
-    const getPanelHint = () => {
-        if (activeTab === 'accounts') {
-            return t('accounts.description');
-        }
-
-        if (activeTab === 'downloads') {
-            return t('settings.downloadsHint');
-        }
-
-        if (activeTab === 'launcher') {
-            return t('settings.launcherHint');
-        }
-
-        if (activeTab === 'storage') {
-            return t('settings.storage.description');
-        }
-
-        if (activeTab === 'statistics') {
-            return t('stats.description');
-        }
-
-        return t('settings.doneHint');
-    };
+    const activeTabConfig = getSettingsTabConfig(activeTab);
 
     const renderActiveTab = () => {
         if (activeTab === 'appearance') {
@@ -132,9 +115,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
             isOpen={true}
             onClose={onClose}
             title={t('settings.title')}
-            className="max-w-4xl"
+            className="max-w-[min(72rem,calc(100vw-1rem))]"
         >
-            <div className="space-y-4">
+            <div className="min-h-0 space-y-4">
                 <SettingsTabsHeader
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
@@ -142,23 +125,35 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
                     getAccentStyles={(type) => getAccentStyles(type)}
                 />
 
+                <div className="surface-inline flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                        <div className="kicker-label">{t(activeTabConfig.labelKey)}</div>
+                        <p className="text-sm leading-6 text-secondary">
+                            {t(activeTabConfig.descriptionKey)}
+                        </p>
+                    </div>
+                    <p className="max-w-xl text-sm leading-6 text-secondary">
+                        {t(activeTabConfig.panelHintKey)}
+                    </p>
+                </div>
+
                 <div
                     id={getSettingsPanelId(activeTab)}
                     role="tabpanel"
-                    aria-labelledby={getSettingsTabId(activeTab)}
+                    aria-labelledby={getSettingsTabLabelId(activeTab)}
                     tabIndex={0}
-                    className="surface-panel min-h-[26rem] outline-none p-4 sm:p-5"
+                    className="surface-panel min-h-[22rem] outline-none p-4 sm:p-5"
                 >
                     {renderActiveTab()}
                 </div>
 
                 <div className="surface-inline flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-secondary">
-                        {getPanelHint()}
+                        {t(activeTabConfig.panelHintKey)}
                     </p>
                     <Button
                         onClick={onClose}
-                        className={cn("text-white sm:min-w-[9rem]", getAccentStyles('bg').className)}
+                        className={cn("text-white sm:min-w-[10rem]", getAccentStyles('bg').className)}
                         style={getAccentStyles('bg').style}
                     >
                         {t('settings.done')}

@@ -28,8 +28,10 @@ vi.mock('../../contexts/SettingsContext', () => ({
         'settings.tab_statistics': 'Statistics',
         'accounts.title': 'Accounts',
         'accounts.description': 'Manage your Minecraft accounts and switch between them.',
+        'accounts.activeAccount': 'Current account',
         'accounts.addAccount': 'Add Account',
         'accounts.active': 'Active',
+        'accounts.savedCountLabel': 'Saved accounts',
         'accounts.typeThirdParty': 'Third Party',
         'accounts.skinTitle': 'Skin Management',
         'accounts.skinManageHint': 'Refresh the preview or open the provider site to change skins.',
@@ -162,6 +164,7 @@ describe('SettingsPage accounts route', () => {
     const panel = await screen.findByRole('tabpanel', { name: 'Accounts' })
     expect(panel).toBeTruthy()
     expect(await screen.findByRole('heading', { name: 'Accounts' })).toBeTruthy()
+    expect(screen.getByText('Current account')).toBeTruthy()
     expect(screen.getByText('Blessing Skin and LittleSkin are supported for provider-aware skin management.')).toBeTruthy()
     expect(await screen.findByText('Skin Management')).toBeTruthy()
 

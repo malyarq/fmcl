@@ -6,6 +6,8 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
+import { AnchoredOverlay } from '../ui/AnchoredOverlay';
+import { rectFromElement, type AnchoredAlign, type AnchoredRect } from '../ui/anchoredOverlayLayout';
 import { SkeletonLoader } from '../ui/SkeletonLoader';
 import { LazyImage } from '../ui/LazyImage';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
@@ -29,6 +31,16 @@ type SortOption = (typeof SORT_OPTIONS)[number];
 
 function isActivationKey(key: string) {
   return key === 'Enter' || key === ' ';
+}
+
+function translateWithFallback(
+  t: (key: string, params?: Record<string, string | number>) => string,
+  key: string,
+  fallback: string,
+  params?: Record<string, string | number>,
+): string {
+  const value = t(key, params);
+  return value === key ? fallback : value;
 }
 
 // Uses ModpackListContext — only updates when modpacks/selectedId change, not when config changes (downloads).
@@ -66,7 +78,11 @@ const ModpackListComponentInternal: React.FC<{
   const [modpacks, setModpacks] = useState<ModpackListItemWithMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; modpackId: string } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    anchorRect: AnchoredRect;
+    align: AnchoredAlign;
+    modpackId: string;
+  } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const contextMenuTriggerRef = useRef<HTMLElement | null>(null);
 
@@ -412,26 +428,42 @@ const ModpackListComponentInternal: React.FC<{
     );
   }, []);
 
-  const openContextMenu = useCallback((modpackId: string, x: number, y: number, trigger?: HTMLElement | null) => {
+  const openContextMenu = useCallback((
+    modpackId: string,
+    anchorRect: AnchoredRect,
+    trigger?: HTMLElement | null,
+    align: AnchoredAlign = 'end',
+  ) => {
     contextMenuTriggerRef.current = trigger ?? null;
-    setContextMenu({ x, y, modpackId });
+    setContextMenu({ anchorRect, align, modpackId });
   }, []);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    openContextMenu(id, e.clientX, e.clientY);
+    e.stopPropagation();
+    openContextMenu(
+      id,
+      {
+        top: e.clientY,
+        left: e.clientX,
+        right: e.clientX,
+        bottom: e.clientY,
+        width: 0,
+        height: 0,
+      },
+      null,
+      'start',
+    );
   }, [openContextMenu]);
 
   const handleActionMenuOpen = useCallback((event: React.MouseEvent<HTMLButtonElement>, id: string) => {
     event.preventDefault();
     event.stopPropagation();
-    const rect = event.currentTarget.getBoundingClientRect();
-    openContextMenu(id, Math.max(12, rect.right - 192), rect.bottom + 8, event.currentTarget);
+    openContextMenu(id, rectFromElement(event.currentTarget), event.currentTarget, 'end');
   }, [openContextMenu]);
 
   const handleActionMenuOpenFromKeyboard = useCallback((anchor: HTMLElement, id: string) => {
-    const rect = anchor.getBoundingClientRect();
-    openContextMenu(id, Math.max(12, rect.right - 192), rect.bottom + 8, anchor);
+    openContextMenu(id, rectFromElement(anchor), anchor, 'end');
   }, [openContextMenu]);
 
   // Skeleton loader для карточки модпака
@@ -483,7 +515,10 @@ const ModpackListComponentInternal: React.FC<{
     const iconSrc = useMemo(() => getModpackIcon(modpack), [modpack]);
     const sourceBadge = useMemo(() => getModpackSourceBadge(modpack.metadata?.source), [modpack.metadata?.source]);
     const actionMenuId = `modpack-actions-menu-${modpack.id}`;
-    const actionMenuLabel = `${t('modpacks.actions_title') || 'More actions'}: ${modpack.name}`;
+    const actionMenuLabel = `${translateWithFallback(t, 'modpacks.actions_title', 'More actions')}: ${modpack.name}`;
+    const openDetailsText = translateWithFallback(t, 'modpacks.open_details', 'Open details');
+    const makeActiveText = translateWithFallback(t, 'modpacks.make_active', 'Make active');
+    const activeNowText = translateWithFallback(t, 'modpacks.active_now', 'Active now');
 
     return (
       <div
@@ -586,7 +621,18 @@ const ModpackListComponentInternal: React.FC<{
         {/* Actions - всегда снизу */}
         <div className="relative z-10 flex flex-wrap gap-2 mt-auto pt-1" onClick={(e) => e.stopPropagation()}>
           <Button
-            variant={isSelected ? 'secondary' : 'primary'}
+            variant="primary"
+            size="md"
+            onClick={() => onShowDetails(modpack.id)}
+            className="flex-1 min-w-0 transition-all duration-200"
+            style={getAccentStyles('bg').style}
+            aria-label={`${openDetailsText}: ${modpack.name}`}
+          >
+            <FolderOpen className="h-4 w-4" />
+            {openDetailsText}
+          </Button>
+          <Button
+            variant="secondary"
             size="md"
             onClick={() => {
               if (!isSelected) {
@@ -594,19 +640,10 @@ const ModpackListComponentInternal: React.FC<{
               }
             }}
             disabled={isSelected}
-            className="flex-1 min-w-0 transition-all duration-200"
-            style={!isSelected ? getAccentStyles('bg').style : undefined}
-          >
-            {isSelected ? t('modpacks.selected') : t('modpacks.select')}
-          </Button>
-          <Button
-            variant="secondary"
-            size="md"
-            onClick={() => onShowDetails(modpack.id)}
             className="shrink-0 transition-all duration-200"
+            aria-label={`${isSelected ? activeNowText : makeActiveText}: ${modpack.name}`}
           >
-            <FolderOpen className="h-4 w-4" />
-            {t('modpacks.open_details') || 'Open details'}
+            {isSelected ? activeNowText : makeActiveText}
           </Button>
           <Button
             variant="secondary"
@@ -810,107 +847,120 @@ const ModpackListComponentInternal: React.FC<{
       {/* Context Menu */}
       {
         contextMenu && (
-          <div
-            ref={contextMenuRef}
-            id={`modpack-actions-menu-${contextMenu.modpackId}`}
-            role="menu"
-            aria-label={`${t('modpacks.actions_title') || 'More actions'}: ${modpacks.find((modpack) => modpack.id === contextMenu.modpackId)?.name || contextMenu.modpackId}`}
-            className="surface-card fixed z-50 min-w-[176px] py-1"
-            style={{ left: contextMenu.x, top: contextMenu.y }}
-            onClick={(e) => e.stopPropagation()}
+          <AnchoredOverlay
+            open={true}
+            anchorRect={contextMenu.anchorRect}
+            placement="bottom"
+            align={contextMenu.align}
+            offset={8}
+            padding={12}
+            className="z-50"
           >
-            <button
-              type="button"
-              role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
-              onClick={() => {
-                handleSelect(contextMenu!.modpackId);
-                closeContextMenu();
-              }}
+            <div
+              ref={contextMenuRef}
+              id={`modpack-actions-menu-${contextMenu.modpackId}`}
+              role="menu"
+              aria-label={`${t('modpacks.actions_title') || 'More actions'}: ${modpacks.find((modpack) => modpack.id === contextMenu.modpackId)?.name || contextMenu.modpackId}`}
+              className="surface-card min-w-[176px] py-1"
+              onClick={(e) => e.stopPropagation()}
             >
-              {t('modpacks.select')}
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
-              onClick={() => {
-                onNavigate?.({ type: 'details', modpackId: contextMenu!.modpackId });
-                closeContextMenu();
-              }}
-            >
-              <FolderOpen className="h-4 w-4" />
-              {t('modpacks.open_details') || 'Open details'}
-            </button>
-            <div className="my-1 h-px bg-border/60" />
-            <button
-              type="button"
-              role="menuitem"
-              className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
-              onClick={() => {
-                setShareModpackId(contextMenu!.modpackId);
-                setShareModalOpen(true);
-                closeContextMenu();
-              }}
-            >
-              <Share2 className="w-4 h-4 mr-2" />
-              {t('modpacks.share_btn')}
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
-              onClick={() => {
-                onNavigate?.({ type: 'export', modpackId: contextMenu!.modpackId });
-                closeContextMenu();
-              }}
-            >
-              {t('modpacks.export') || 'Экспорт'}
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
-              onClick={() => {
-                const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
-                if (modpack) {
-                  handleRename(contextMenu!.modpackId, modpack.name);
-                }
-                closeContextMenu();
-              }}
-            >
-              {t('modpacks.rename') || 'Переименовать'}
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
-              onClick={() => {
-                const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
-                if (modpack) {
-                  handleDuplicate(contextMenu!.modpackId, modpack.name);
-                }
-                closeContextMenu();
-              }}
-            >
-              {t('modpacks.duplicate') || 'Дублировать'}
-            </button>
-            <div className="my-1 h-px bg-border/60" />
-            <button
-              type="button"
-              role="menuitem"
-              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-background/70 dark:text-red-400"
-              onClick={() => {
-                const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
-                if (modpack) {
-                  handleDelete(contextMenu!.modpackId, modpack.name);
-                }
-                closeContextMenu();
-              }}
-            >
-              {t('modpacks.delete')}
-            </button>
-          </div>
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
+                onClick={() => {
+                  onNavigate?.({ type: 'details', modpackId: contextMenu!.modpackId });
+                  closeContextMenu();
+                }}
+              >
+                <FolderOpen className="h-4 w-4" />
+                {translateWithFallback(t, 'modpacks.open_details', 'Open details')}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
+                disabled={selectedId === contextMenu.modpackId}
+                aria-disabled={selectedId === contextMenu.modpackId}
+                onClick={() => {
+                  handleSelect(contextMenu!.modpackId);
+                  closeContextMenu();
+                }}
+              >
+                {selectedId === contextMenu.modpackId
+                  ? translateWithFallback(t, 'modpacks.active_now', 'Active now')
+                  : translateWithFallback(t, 'modpacks.make_active', 'Make active')}
+              </button>
+              <div className="my-1 h-px bg-border/60" />
+              <button
+                type="button"
+                role="menuitem"
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
+                onClick={() => {
+                  setShareModpackId(contextMenu!.modpackId);
+                  setShareModalOpen(true);
+                  closeContextMenu();
+                }}
+              >
+                <Share2 className="mr-2 h-4 w-4" />
+                {t('modpacks.share_btn')}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
+                onClick={() => {
+                  onNavigate?.({ type: 'export', modpackId: contextMenu!.modpackId });
+                  closeContextMenu();
+                }}
+              >
+                {t('modpacks.export') || 'Экспорт'}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
+                onClick={() => {
+                  const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
+                  if (modpack) {
+                    handleRename(contextMenu!.modpackId, modpack.name);
+                  }
+                  closeContextMenu();
+                }}
+              >
+                {t('modpacks.rename') || 'Переименовать'}
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
+                onClick={() => {
+                  const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
+                  if (modpack) {
+                    handleDuplicate(contextMenu!.modpackId, modpack.name);
+                  }
+                  closeContextMenu();
+                }}
+              >
+                {t('modpacks.duplicate') || 'Дублировать'}
+              </button>
+              <div className="my-1 h-px bg-border/60" />
+              <button
+                type="button"
+                role="menuitem"
+                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-background/70 dark:text-red-400"
+                onClick={() => {
+                  const modpack = modpacks.find((m) => m.id === contextMenu!.modpackId);
+                  if (modpack) {
+                    handleDelete(contextMenu!.modpackId, modpack.name);
+                  }
+                  closeContextMenu();
+                }}
+              >
+                {t('modpacks.delete')}
+              </button>
+            </div>
+          </AnchoredOverlay>
         )
       }
 

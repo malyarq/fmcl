@@ -102,4 +102,30 @@ describe('ModpackList action truth', () => {
       expect(onNavigateMock).toHaveBeenCalledWith({ type: 'details', modpackId: 'alpha' });
     });
   });
+
+  it('opens the action menu from the keyboard and focuses the first menu item', async () => {
+    render(<ModpackList onNavigate={onNavigateMock} />);
+
+    const cardActivator = await screen.findByRole('button', { name: 'Alpha Pack' });
+    Object.defineProperty(cardActivator, 'getBoundingClientRect', {
+      configurable: true,
+      value: () => ({
+        top: 96,
+        left: 220,
+        right: 260,
+        bottom: 128,
+        width: 40,
+        height: 32,
+      }),
+    });
+
+    fireEvent.keyDown(cardActivator, { key: 'ContextMenu' });
+
+    const menu = await screen.findByRole('menu', { name: 'More actions: Alpha Pack' });
+    expect(menu).toBeTruthy();
+
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: 'Open details' })).toBe(document.activeElement);
+    });
+  });
 });

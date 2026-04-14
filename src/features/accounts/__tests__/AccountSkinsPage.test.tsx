@@ -10,25 +10,26 @@ const getSelectedAccountMock = vi.fn()
 const getSkinStateMock = vi.fn()
 const refreshSkinStateMock = vi.fn()
 const openExternalMock = vi.fn()
+const translate = (key: string) =>
+  ({
+    'accounts.title': 'Accounts',
+    'accounts.description': 'Manage your Minecraft accounts and switch between them.',
+    'accounts.skinTitle': 'Skin Management',
+    'accounts.skinRefresh': 'Refresh Preview',
+    'accounts.skinOpenProvider': 'Open Skin Site',
+    'accounts.skinUnsupportedOffline': 'Offline accounts do not have a provider skin page.',
+    'accounts.skinUnsupportedHint': 'Supported providers in this release: Blessing Skin and LittleSkin.',
+    'accounts.skinManageHint': 'Refresh the preview or open the provider site to change skins.',
+    'accounts.skinLoading': 'Loading skin information...',
+    'accounts.typeOffline': 'Offline',
+    'accounts.typeThirdParty': 'Third Party',
+    'accounts.addAccount': 'Add Account',
+    'accounts.providerSupportHint': 'Blessing Skin and LittleSkin are supported for provider-aware skin management.',
+  }[key] ?? key)
 
 vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
-    t: (key: string) =>
-      ({
-        'accounts.title': 'Accounts',
-        'accounts.description': 'Manage your Minecraft accounts and switch between them.',
-        'accounts.skinTitle': 'Skin Management',
-        'accounts.skinRefresh': 'Refresh Preview',
-        'accounts.skinOpenProvider': 'Open Skin Site',
-        'accounts.skinUnsupportedOffline': 'Offline accounts do not have a provider skin page.',
-        'accounts.skinUnsupportedHint': 'Supported providers in this release: Blessing Skin and LittleSkin.',
-        'accounts.skinManageHint': 'Refresh the preview or open the provider site to change skins.',
-        'accounts.skinLoading': 'Loading skin information...',
-        'accounts.typeOffline': 'Offline',
-        'accounts.typeThirdParty': 'Third Party',
-        'accounts.addAccount': 'Add Account',
-        'accounts.providerSupportHint': 'Blessing Skin and LittleSkin are supported for provider-aware skin management.',
-      }[key] ?? key),
+    t: translate,
   }),
 }))
 
@@ -155,7 +156,7 @@ describe('AccountsPage skin panel', () => {
     render(<AccountsPage />)
 
     await screen.findByText('Skin Management')
-    await screen.findByText('OfflineOnly')
+    expect((await screen.findAllByText('OfflineOnly')).length).toBeGreaterThan(0)
     await screen.findByText('Offline accounts do not have a provider skin page.')
 
     await waitFor(() => {

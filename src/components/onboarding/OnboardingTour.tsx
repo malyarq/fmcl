@@ -2,10 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
+import { AnchoredOverlay } from '../ui/AnchoredOverlay';
+import { rectFromElement, type AnchoredRect } from '../ui/anchoredOverlayLayout';
 
 export type TourStep = {
   id: string;
-  target: string; // CSS selector или ref
+  target: string;
   title: string;
   content: string;
   position?: 'top' | 'bottom' | 'left' | 'right';
@@ -18,63 +20,139 @@ interface OnboardingTourProps {
   onSkip: () => void;
 }
 
+function TourCard(props: {
+  currentStep: number;
+  stepsLength: number;
+  isLastStep: boolean;
+  title: string;
+  content: string;
+  onSkip: () => void;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  const { t, getAccentStyles } = useSettings();
+  const { currentStep, stepsLength, isLastStep, title, content, onSkip, onPrevious, onNext } = props;
+
+  return (
+    <div className="surface-panel pointer-events-auto rounded-2xl p-6">
+      <div className="mb-4">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
+            {title}
+          </h3>
+          <span className="text-xs text-zinc-500 dark:text-zinc-400">
+            {currentStep + 1} / {stepsLength}
+          </span>
+        </div>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">
+          {content}
+        </p>
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex gap-2">
+          {currentStep > 0 && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onPrevious();
+              }}
+            >
+              {t('onboarding.tour.previous') || 'Назад'}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={onSkip}>
+            {t('onboarding.tour.skip') || 'Пропустить'}
+          </Button>
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={onNext}
+          className={cn(getAccentStyles('bg').className)}
+          style={getAccentStyles('bg').style}
+        >
+          {isLastStep
+            ? t('onboarding.tour.finish') || 'Завершить'
+            : t('onboarding.tour.next') || 'Далее'}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export const OnboardingTour: React.FC<OnboardingTourProps> = ({
   steps,
   isOpen,
   onComplete,
   onSkip,
 }) => {
-  const { t, getAccentStyles, getAccentHex } = useSettings();
+  const { getAccentHex } = useSettings();
   const [currentStep, setCurrentStep] = useState(0);
-  const [overlayPosition, setOverlayPosition] = useState<{
-    top: number;
-    left: number;
-    width: number;
-    height: number;
-  } | null>(null);
+  const [overlayPosition, setOverlayPosition] = useState<AnchoredRect | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const spotlightRef = useRef<HTMLDivElement>(null);
   const isGoingBackRef = useRef(false);
 
   useEffect(() => {
-    if (!isOpen || currentStep >= steps.length) return;
+    if (!isOpen || currentStep >= steps.length) {
+      return;
+    }
 
-    const step = steps[currentStep];
-    const element = document.querySelector(step.target);
+    const resolveCurrentStep = (allowAdvance: boolean, shouldScroll: boolean) => {
+      const step = steps[currentStep];
+      const element = document.querySelector<HTMLElement>(step.target);
 
-    if (element) {
-      isGoingBackRef.current = false;
-      const rect = element.getBoundingClientRect();
-      const scrollX = window.scrollX || window.pageXOffset;
-      const scrollY = window.scrollY || window.pageYOffset;
+      if (element) {
+        isGoingBackRef.current = false;
+        setOverlayPosition(rectFromElement(element));
 
-      // Use setTimeout to avoid synchronous setState in effect
-      setTimeout(() => {
-        setOverlayPosition({
-          top: rect.top + scrollY,
-          left: rect.left + scrollX,
-          width: rect.width,
-          height: rect.height,
-        });
-      }, 0);
+        if (shouldScroll) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        return;
+      }
 
-      // Прокрутка к элементу, если он не виден
-      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    } else {
-      // Элемент не найден — пропускаем шаг только при движении вперёд, не при «Назад»
       if (isGoingBackRef.current) {
         isGoingBackRef.current = false;
-        setTimeout(() => setOverlayPosition(null), 0);
-      } else if (currentStep < steps.length - 1) {
-        setTimeout(() => setCurrentStep((prev) => prev + 1), 0);
-        setTimeout(() => setOverlayPosition(null), 0);
-      } else {
+        setOverlayPosition(null);
+        return;
+      }
+
+      if (allowAdvance && currentStep < steps.length - 1) {
+        setCurrentStep((prev) => prev + 1);
+        setOverlayPosition(null);
+        return;
+      }
+
+      if (allowAdvance) {
         onComplete();
       }
-    }
-  }, [isOpen, currentStep, steps, onComplete]);
+    };
 
-  if (!isOpen || currentStep >= steps.length) return null;
+    const frameId = window.requestAnimationFrame(() => {
+      resolveCurrentStep(true, true);
+    });
+
+    const handleViewportChange = () => {
+      resolveCurrentStep(false, false);
+    };
+
+    window.addEventListener('resize', handleViewportChange);
+    window.addEventListener('scroll', handleViewportChange, true);
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      window.removeEventListener('resize', handleViewportChange);
+      window.removeEventListener('scroll', handleViewportChange, true);
+    };
+  }, [currentStep, isOpen, onComplete, steps]);
+
+  if (!isOpen || currentStep >= steps.length) {
+    return null;
+  }
 
   const step = steps[currentStep];
   const isLastStep = currentStep === steps.length - 1;
@@ -82,111 +160,45 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
   const handleNext = () => {
     if (isLastStep) {
       onComplete();
-    } else {
-      setCurrentStep(currentStep + 1);
+      return;
     }
+
+    setCurrentStep(currentStep + 1);
   };
 
   const handlePrevious = () => {
-    if (currentStep > 0) {
-      isGoingBackRef.current = true;
-      setCurrentStep(currentStep - 1);
+    if (currentStep <= 0) {
+      return;
     }
+
+    isGoingBackRef.current = true;
+    setCurrentStep(currentStep - 1);
   };
 
-  const getTooltipPosition = () => {
-    if (!overlayPosition) return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
-
-    const position = step.position || 'bottom';
-    const padding = 20;
-    const tooltipWidth = 400; // Примерная ширина tooltip
-    const tooltipHeight = 200; // Примерная высота tooltip
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-
-    let top = 0;
-    let left = 0;
-    let transform = '';
-
-    switch (position) {
-      case 'top':
-        top = overlayPosition.top - padding;
-        left = overlayPosition.left + overlayPosition.width / 2;
-        transform = 'translate(-50%, -100%)';
-        // Проверка границ
-        if (top - tooltipHeight < 0) {
-          top = overlayPosition.top + overlayPosition.height + padding;
-          transform = 'translate(-50%, 0)';
-        }
-        break;
-      case 'bottom':
-        top = overlayPosition.top + overlayPosition.height + padding;
-        left = overlayPosition.left + overlayPosition.width / 2;
-        transform = 'translate(-50%, 0)';
-        // Проверка границ
-        if (top + tooltipHeight > viewportHeight) {
-          top = overlayPosition.top - padding;
-          transform = 'translate(-50%, -100%)';
-        }
-        break;
-      case 'left':
-        top = overlayPosition.top + overlayPosition.height / 2;
-        left = overlayPosition.left - padding;
-        transform = 'translate(-100%, -50%)';
-        // Проверка границ
-        if (left - tooltipWidth < 0) {
-          left = overlayPosition.left + overlayPosition.width + padding;
-          transform = 'translate(0, -50%)';
-        }
-        break;
-      case 'right':
-        top = overlayPosition.top + overlayPosition.height / 2;
-        left = overlayPosition.left + overlayPosition.width + padding;
-        transform = 'translate(0, -50%)';
-        // Проверка границ
-        if (left + tooltipWidth > viewportWidth) {
-          left = overlayPosition.left - padding;
-          transform = 'translate(-100%, -50%)';
-        }
-        break;
-      default:
-        top = overlayPosition.top + overlayPosition.height + padding;
-        left = overlayPosition.left + overlayPosition.width / 2;
-        transform = 'translate(-50%, 0)';
-    }
-
-    // Финальная проверка границ (учитываем transform)
-    const margin = 16;
-    if (position === 'top' || position === 'bottom') {
-      // left — центр tooltip, transform: translate(-50%, ...)
-      const minCenter = margin + tooltipWidth / 2;
-      const maxCenter = viewportWidth - margin - tooltipWidth / 2;
-      left = Math.max(minCenter, Math.min(maxCenter, left));
-    } else {
-      // left — левый край tooltip
-      left = Math.max(margin, Math.min(viewportWidth - margin - tooltipWidth, left));
-    }
-    top = Math.max(margin + 32, Math.min(viewportHeight - margin - tooltipHeight, top)); // +32 под TitleBar
-
-    return { top: `${top}px`, left: `${left}px`, transform };
-  };
-
-  const tooltipStyle = getTooltipPosition();
+  const card = (
+    <TourCard
+      currentStep={currentStep}
+      stepsLength={steps.length}
+      isLastStep={isLastStep}
+      title={step.title}
+      content={step.content}
+      onSkip={onSkip}
+      onPrevious={handlePrevious}
+      onNext={handleNext}
+    />
+  );
 
   return (
     <>
-      {/* Overlay - не блокирует TitleBar (z-100) и выделенный элемент */}
       {overlayPosition ? (
         <>
-          {/* Верхняя часть overlay (над выделенным элементом) */}
           {overlayPosition.top > 32 && (
             <div
-              className="fixed top-[32px] left-0 right-0 z-[90] bg-black/70 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
+              className="fixed left-0 right-0 top-[32px] z-[90] bg-black/70 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
               onClick={handleNext}
               style={{ height: `${overlayPosition.top - 32}px` }}
             />
           )}
-          {/* Левая часть overlay */}
           <div
             className="fixed z-[90] bg-black/70 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
             onClick={handleNext}
@@ -197,7 +209,6 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
               height: `${overlayPosition.height}px`,
             }}
           />
-          {/* Правая часть overlay */}
           <div
             className="fixed z-[90] bg-black/70 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
             onClick={handleNext}
@@ -208,7 +219,6 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
               height: `${overlayPosition.height}px`,
             }}
           />
-          {/* Нижняя часть overlay */}
           <div
             className="fixed z-[90] bg-black/70 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
             onClick={handleNext}
@@ -223,12 +233,11 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
       ) : (
         <div
           ref={overlayRef}
-          className="fixed top-[32px] left-0 right-0 bottom-0 z-[90] bg-black/70 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
+          className="fixed bottom-0 left-0 right-0 top-[32px] z-[90] bg-black/70 backdrop-blur-sm transition-opacity duration-300 pointer-events-auto"
           onClick={handleNext}
         />
       )}
 
-      {/* Spotlight highlight */}
       {overlayPosition && (
         <div
           ref={spotlightRef}
@@ -246,61 +255,27 @@ export const OnboardingTour: React.FC<OnboardingTourProps> = ({
         />
       )}
 
-      {/* Tooltip */}
-      <div
-        className="fixed z-[110] w-full max-w-sm bg-white dark:bg-zinc-800 rounded-lg shadow-2xl p-6 pointer-events-auto border border-zinc-200 dark:border-zinc-700"
-        style={{
-          ...tooltipStyle,
-          // Ограничиваем позицию tooltip, чтобы он не выходил за границы экрана
-          maxWidth: 'min(90vw, 400px)',
-          margin: '0 auto',
-        }}
-      >
-        <div className="mb-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-bold text-zinc-900 dark:text-white">
-              {step.title}
-            </h3>
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">
-              {currentStep + 1} / {steps.length}
-            </span>
-          </div>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            {step.content}
-          </p>
+      {overlayPosition ? (
+        <AnchoredOverlay
+          open={true}
+          anchorRect={overlayPosition}
+          placement={step.position || 'bottom'}
+          align="center"
+          offset={20}
+          padding={16}
+          className="z-[110] w-full max-w-sm"
+          style={{ maxWidth: 'min(90vw, 400px)' }}
+        >
+          {card}
+        </AnchoredOverlay>
+      ) : (
+        <div
+          className="fixed left-1/2 top-1/2 z-[110] w-full max-w-sm -translate-x-1/2 -translate-y-1/2"
+          style={{ maxWidth: 'min(90vw, 400px)' }}
+        >
+          {card}
         </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex gap-2">
-            {currentStep > 0 && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePrevious();
-                }}
-              >
-                {t('onboarding.tour.previous') || 'Назад'}
-              </Button>
-            )}
-            <Button variant="ghost" size="sm" onClick={onSkip}>
-              {t('onboarding.tour.skip') || 'Пропустить'}
-            </Button>
-          </div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleNext}
-            className={cn(getAccentStyles('bg').className)}
-            style={getAccentStyles('bg').style}
-          >
-            {isLastStep
-              ? t('onboarding.tour.finish') || 'Завершить'
-              : t('onboarding.tour.next') || 'Далее'}
-          </Button>
-        </div>
-      </div>
+      )}
     </>
   );
 };

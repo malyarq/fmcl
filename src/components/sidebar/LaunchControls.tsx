@@ -4,11 +4,23 @@ import { Play, RotateCcw } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { launcherIPC } from '../../services/ipc/launcherIPC';
 import { cn } from '../../utils/cn';
+import {
+  getLaunchActionLabel,
+  type LaunchStage,
+} from '../../features/launcher/services/launcherService';
+
+function translateWithFallback(t: (key: string) => string, key: string, fallback: string) {
+  const translated = t(key);
+  return translated === key ? fallback : translated;
+}
 
 export const LaunchControls = React.memo(function LaunchControls(props: {
   isLaunching: boolean;
   progress: number;
+  launchStage?: LaunchStage;
   statusText: string;
+  statusDetail?: string;
+  canForceRestart?: boolean;
   onLaunch: () => void;
   t: (key: string) => string;
   getAccentHex: () => string;
@@ -17,11 +29,29 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
   canLaunch?: boolean;
   lastLaunch?: string;
 }) {
-  const { isLaunching, progress, statusText, onLaunch, t, getAccentHex, getAccentStyles, isCollapsed, canLaunch = true, lastLaunch } = props;
+  const {
+    isLaunching,
+    progress,
+    launchStage,
+    statusText,
+    statusDetail,
+    canForceRestart = false,
+    onLaunch,
+    t,
+    getAccentHex,
+    getAccentStyles,
+    isCollapsed,
+    canLaunch = true,
+    lastLaunch,
+  } = props;
 
   // Memoize accent style to prevent recalculation
   const accentStyle = useMemo(() => getAccentStyles('bg').style || {}, [getAccentStyles]);
   const accentHex = useMemo(() => getAccentHex(), [getAccentHex]);
+  const currentStage = launchStage ?? (isLaunching ? 'launching' : 'idle');
+  const actionLabel = getLaunchActionLabel(currentStage, t);
+  const shouldPulseStatus = isLaunching && currentStage !== 'failed' && currentStage !== 'running';
+  const showForceRestart = Boolean(canForceRestart && !isCollapsed);
 
   return (
     <div className={cn(
@@ -29,11 +59,22 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
       isCollapsed ? "mt-auto pb-2" : "space-y-4 mt-8 pb-4 pt-6"
     )}>
       {!isCollapsed && (
-        <div className="min-h-[1.25rem] text-center text-xs font-medium text-secondary">
+        <div className="min-h-[2.5rem] text-center" role="status" aria-live="polite">
           {statusText ? (
-            <span className="animate-pulse">{statusText}</span>
+            <div className="space-y-1">
+              <p className={cn('text-xs font-semibold text-foreground', shouldPulseStatus && 'animate-pulse')}>
+                {statusText}
+              </p>
+              {statusDetail ? (
+                <p className="text-[11px] leading-5 text-secondary">
+                  {statusDetail}
+                </p>
+              ) : null}
+            </div>
           ) : lastLaunch ? (
-            <span>{t('dashboard.last_launch') || 'Last launch'}: {lastLaunch}</span>
+            <span className="text-xs font-medium text-secondary">
+              {t('dashboard.last_launch') || 'Last launch'}: {lastLaunch}
+            </span>
           ) : null}
         </div>
       )}
@@ -77,7 +118,7 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
                 }
           }
           progress={isLaunching ? progress : undefined}
-          title={isCollapsed ? (isLaunching ? t('general.running') : t('general.play')) : undefined}
+          title={isCollapsed ? (isLaunching ? actionLabel : t('general.play')) : undefined}
         >
           <Play className={cn('transition-all duration-500 ease-out', isCollapsed ? 'ml-0.5 h-5 w-5' : 'mr-1 h-5 w-5')} fill="currentColor" />
           <span className={cn(
@@ -86,12 +127,11 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
               ? "w-0 opacity-0 mr-0 hidden" 
               : "w-auto opacity-100"
           )}>
-            {isLaunching ? t('general.running') : t('general.play')}
+            {isLaunching ? actionLabel : t('general.play')}
           </span>
         </Button>
 
-        {/* Force restart button - only shown during launch: kills game process + reloads launcher */}
-        {isLaunching && !isCollapsed && (
+        {showForceRestart && (
           <Button
             variant="danger"
             onClick={() => {
@@ -99,10 +139,10 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
               else window.location.reload();
             }}
             className="px-3"
-            title="Force Restart"
+            title={translateWithFallback(t, 'status.force_restart', 'Force restart')}
           >
             <RotateCcw className="h-4 w-4" />
-            <span className="sr-only">{t('general.cancel') || 'Restart'}</span>
+            <span className="sr-only">{translateWithFallback(t, 'status.force_restart', 'Force restart')}</span>
           </Button>
         )}
       </div>

@@ -37,7 +37,7 @@ export function ManualVerificationApp() {
         <header className="surface-panel rounded-3xl p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
-              <div className="kicker-label">Phase 10</div>
+              <div className="kicker-label">Milestone v0.3.0</div>
               <h1 className="text-3xl font-black tracking-tight text-foreground">FriendLauncher Manual Verification</h1>
               <p className="max-w-3xl text-sm leading-6 text-secondary">
                 Stable browser entry for milestone walkthroughs. Each view mounts real launcher components on deterministic fixture data so live screenshots and DOM dumps stay reusable beyond one phase.

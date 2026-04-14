@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react';
 import { assetsIPC } from '../../services/ipc/assetsIPC';
+import { APP_ICON_PATH } from '../assets/branding';
 
 export function useAppIcon() {
-  // In dev mode, Vite dev server serves files from public, so use direct path
-  // In production, we'll update this via IPC
-  const [iconPath, setIconPath] = useState(() => (import.meta.env.DEV ? '/icon.png' : '/icon.png'));
+  const [iconPath, setIconPath] = useState(APP_ICON_PATH);
 
   useEffect(() => {
     if (!import.meta.env.DEV && assetsIPC.has('getIconPath')) {
@@ -14,11 +13,10 @@ export function useAppIcon() {
           setIconPath(path);
         })
         .catch(() => {
-          setIconPath('/icon.png');
+          setIconPath(APP_ICON_PATH);
         });
     }
   }, []);
 
   return { iconPath };
 }
-

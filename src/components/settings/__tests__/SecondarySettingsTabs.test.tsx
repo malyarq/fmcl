@@ -112,21 +112,21 @@ describe('SettingsPage secondary utility routes', () => {
     expect(screen.getByRole('tab', { name: 'Downloads' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tabpanel', { name: 'Downloads' })).toBeTruthy();
     expect(screen.getByText('Downloads utility surface')).toBeTruthy();
-    expect(screen.getByText('Tune mirrors, concurrency, and connection limits for a stable download pipeline.')).toBeTruthy();
+    expect(screen.getAllByText('Tune mirrors, concurrency, and connection limits for a stable download pipeline.').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Launcher' }));
     expect(screen.getByRole('tabpanel', { name: 'Launcher' })).toBeTruthy();
     expect(screen.getByText('Launcher utility surface')).toBeTruthy();
-    expect(screen.getByText('Manage runtime behavior, update checks, and persistent launcher caches from one place.')).toBeTruthy();
+    expect(screen.getAllByText('Manage runtime behavior, update checks, and persistent launcher caches from one place.').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Storage' }));
     expect(screen.getByRole('tabpanel', { name: 'Storage' })).toBeTruthy();
     expect(screen.getByText('Storage utility surface')).toBeTruthy();
-    expect(screen.getByText('Track deduplicated content usage and clean up stored files that are no longer needed.')).toBeTruthy();
+    expect(screen.getAllByText('Track deduplicated content usage and clean up stored files that are no longer needed.').length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByRole('tab', { name: 'Statistics' }));
     expect(screen.getByRole('tabpanel', { name: 'Statistics' })).toBeTruthy();
     expect(screen.getByText('Statistics utility surface')).toBeTruthy();
-    expect(screen.getByText('Review launches, play time, and local usage trends before exporting the current snapshot.')).toBeTruthy();
+    expect(screen.getAllByText('Review launches, play time, and local usage trends before exporting the current snapshot.').length).toBeGreaterThan(0);
   });
 });

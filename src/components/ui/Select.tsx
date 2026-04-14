@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '../../utils/cn';
 
@@ -17,17 +17,21 @@ export const Select: React.FC<SelectProps> = ({
     children,
     ...props
 }) => {
+    const generatedId = useId();
+    const selectId = props.id ?? generatedId;
+
     return (
         <div className={cn("flex flex-col gap-1.5", className?.match(/\bw-/) ? undefined : "w-full", className)}>
             {label && (
-                <label className="text-xs font-medium uppercase tracking-wider text-secondary">
+                <label htmlFor={selectId} className="control-label">
                     {label}
                 </label>
             )}
             <div className="relative w-full min-w-0">
                 <select
+                    id={selectId}
                     className={cn(
-                        'w-full appearance-none rounded-xl border border-border/70 bg-card/82 pl-3 pr-8 py-3 text-sm leading-normal text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all hover:bg-card/92',
+                        'control-frame min-h-11 w-full appearance-none py-2.5 pl-4 pr-9 text-sm leading-normal hover:bg-card/92',
                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                         'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none',
                         error && 'border-red-500 focus-visible:ring-red-500/30'

@@ -14,6 +14,7 @@ import { OptifineToggle } from './sidebar/OptifineToggle';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
 import { Tooltip } from './ui/Tooltip';
+import type { LaunchStage } from '../features/launcher/services/launcherService';
 
 
 import { cn } from '../utils/cn';
@@ -47,7 +48,10 @@ export type SidebarLaunchModel = {
 export type SidebarRuntimeModel = {
     isLaunching: boolean;
     progress: number;
+    launchStage?: LaunchStage;
     statusText: string;
+    statusDetail?: string;
+    canForceRestart?: boolean;
     onLaunch: () => void;
 };
 
@@ -71,6 +75,7 @@ const Sidebar = ({
     const { modpacks, selectedId, effectiveModpackId } = useModpack();
     const lastGame = useMemo(() => loadLastGame(effectiveModpackId), [effectiveModpackId]);
     const sidebarContentId = 'launcher-sidebar-content';
+    const liveStatus = [runtime.statusText, runtime.statusDetail].filter(Boolean).join(' - ');
     const [isCollapsed, setIsCollapsed] = useState(() => {
         const saved = localStorage.getItem('sidebar_collapsed');
         return saved === 'true';
@@ -84,6 +89,9 @@ const Sidebar = ({
     // В режиме simple всегда разрешаем запуск (там используется дефолтный пак)
     const isModpackAvailable = uiMode === 'simple' || (selectedId && modpacks.some(m => m.id === selectedId));
     const canLaunch = isModpackAvailable && !runtime.isLaunching;
+    const expandedWidthClass = compactMode
+        ? 'w-[clamp(15rem,24vw,18rem)] p-3 sm:p-4'
+        : 'w-[clamp(16.5rem,28vw,21rem)] p-3.5 sm:p-5';
 
     // Memoize OptiFine support check
     // Sidebar now only manages nickname; version and modloader settings are configured per-modpack.
@@ -92,8 +100,8 @@ const Sidebar = ({
         <aside
             aria-label="FriendLauncher sidebar"
             className={cn(
-            'relative z-10 flex flex-col border-r border-border bg-sidebar/86 shadow-[0_24px_80px_rgba(0,0,0,0.16)] backdrop-blur-xl transition-all duration-300 ease-out',
-            isCollapsed ? "w-16 p-2" : (compactMode ? "w-64 p-4" : "w-80 p-6"),
+            'relative z-10 flex h-full min-w-0 shrink-0 flex-col border-r border-border bg-sidebar/86 shadow-[0_24px_80px_rgba(0,0,0,0.16)] backdrop-blur-xl transition-all duration-300 ease-out',
+            isCollapsed ? "w-14 p-2 sm:w-16 sm:p-2.5" : expandedWidthClass,
             sidebarPosition === 'right' ? "border-l border-r-0 order-last" : "border-r border-l-0"
         )}
         >
@@ -127,11 +135,14 @@ const Sidebar = ({
             </div>
 
             <div className="sr-only" aria-live="polite">
-                {runtime.statusText || ''}
+                {liveStatus}
             </div>
 
             {!isCollapsed && (
-                <div id={sidebarContentId} className="space-y-6 flex-1 flex flex-col">
+                <div
+                    id={sidebarContentId}
+                    className="custom-scrollbar flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto pr-1"
+                >
                     {/* Игровые настройки – ник, версия и (в Classic) модлоадер/OptiFine */}
                     <div className="space-y-4 sidebar-section-enter">
                         <h2 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
@@ -241,7 +252,10 @@ const Sidebar = ({
                 <LaunchControls
                     isLaunching={runtime.isLaunching}
                     progress={runtime.progress}
+                    launchStage={runtime.launchStage}
                     statusText={runtime.statusText}
+                    statusDetail={runtime.statusDetail}
+                    canForceRestart={runtime.canForceRestart}
                     onLaunch={runtime.onLaunch}
                     t={t}
                     getAccentHex={getAccentHex}

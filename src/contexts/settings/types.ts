@@ -4,6 +4,7 @@ import type React from 'react';
 export type AccentColor = string;
 export type Language = 'en' | 'ru';
 export type Theme = 'dark' | 'light';
+export type ThemePresetId = 'default' | 'midnight' | 'forest' | 'light-plus' | 'navy';
 export type DownloadProvider = 'mojang' | 'bmcl' | 'auto';
 
 // Global UI mode for Phase 0 split between simple play and modpacks.

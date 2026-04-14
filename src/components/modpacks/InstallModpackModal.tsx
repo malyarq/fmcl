@@ -106,18 +106,18 @@ export const InstallModpackModal: React.FC<InstallModpackModalProps> = ({
     >
       <div className="space-y-4">
         {/* Modpack Info */}
-        <div className="flex gap-4 p-4 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-200 dark:border-zinc-700">
+        <div className="surface-soft flex gap-4 p-4">
           {modpack.iconUrl && (
             <img
               src={modpack.iconUrl}
               alt={modpack.title}
-              className="w-20 h-20 rounded-lg object-cover"
+              className="h-20 w-20 rounded-lg border border-border/60 object-cover"
             />
           )}
           <div className="flex-1">
-            <h3 className="font-bold text-lg text-zinc-900 dark:text-white">{modpack.title}</h3>
+            <h3 className="text-lg font-bold text-foreground">{modpack.title}</h3>
             {modpack.description && (
-              <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1 line-clamp-2">
+              <p className="mt-1 line-clamp-2 text-sm text-secondary">
                 {modpack.description}
               </p>
             )}
@@ -145,20 +145,20 @@ export const InstallModpackModal: React.FC<InstallModpackModalProps> = ({
 
         {/* Version Info */}
         {selectedVersion && (
-          <div className="grid grid-cols-2 gap-4 p-4 bg-zinc-50 dark:bg-zinc-900/40 rounded-lg border border-zinc-200 dark:border-zinc-700">
+          <div className="surface-soft grid grid-cols-2 gap-4 p-4">
             <div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <p className="helper-text mb-1">
                 {t('modpacks.minecraft_version')}
               </p>
-              <p className="font-mono font-bold text-sm text-zinc-900 dark:text-white">
+              <p className="text-sm font-mono font-bold text-foreground">
                 {selectedVersion.mcVersions[0] || '—'}
               </p>
             </div>
             <div>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">
+              <p className="helper-text mb-1">
                 {t('modpacks.loader')}
               </p>
-              <p className="font-mono font-bold text-sm text-zinc-900 dark:text-white">
+              <p className="text-sm font-mono font-bold text-foreground">
                 {selectedVersion.loaders.join(', ') || '—'}
               </p>
             </div>
@@ -177,8 +177,8 @@ export const InstallModpackModal: React.FC<InstallModpackModalProps> = ({
 
         {/* Success Message */}
         {success && (
-          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
-            <p className="text-sm text-green-700 dark:text-green-300">
+          <div className="rounded-lg border border-[rgb(var(--accent-main))]/25 bg-[rgb(var(--accent-main))]/10 p-3">
+            <p className="text-sm text-foreground">
               {t('modpacks.install_success')}
             </p>
           </div>
@@ -186,8 +186,8 @@ export const InstallModpackModal: React.FC<InstallModpackModalProps> = ({
 
         {/* Error Message */}
         {error && (
-          <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-            <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+          <div className="rounded-lg border border-[rgb(var(--color-error))]/25 bg-[rgb(var(--color-error))]/10 p-3">
+            <p className="text-sm text-[rgb(var(--color-error))]">{error}</p>
           </div>
         )}
 
@@ -197,14 +197,14 @@ export const InstallModpackModal: React.FC<InstallModpackModalProps> = ({
             onClick={onClose}
             variant="secondary"
             disabled={installing}
-            className="flex-1 bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600"
+            className="flex-1"
           >
             {t('general.cancel')}
           </Button>
           <Button
             onClick={handleInstall}
             disabled={!selectedVersion || installing || success}
-            className={cn("flex-1 text-white", getAccentStyles('bg').className)}
+            className={cn("flex-1 text-[rgb(var(--accent-content))]", getAccentStyles('bg').className)}
             style={getAccentStyles('bg').style}
           >
             {installing ? t('modpacks.installing') : t('modpacks.install')}

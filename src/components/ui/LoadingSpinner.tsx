@@ -15,9 +15,9 @@ const sizeClasses = {
 };
 
 const variantClasses = {
-  primary: 'border-zinc-300 dark:border-zinc-600 border-t-zinc-900 dark:border-t-zinc-100',
-  secondary: 'border-zinc-200 dark:border-zinc-700 border-t-zinc-600 dark:border-t-zinc-400',
-  accent: 'border-zinc-300/30 dark:border-zinc-600/30 border-t-current',
+  primary: 'border-border/60 border-t-foreground',
+  secondary: 'border-border/40 border-t-secondary',
+  accent: 'border-border/30 border-t-[rgb(var(--accent-main))]',
 };
 
 /**

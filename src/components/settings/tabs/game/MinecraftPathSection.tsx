@@ -13,7 +13,7 @@ export function MinecraftPathSection(props: {
 
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300 block">
+      <label className="control-label block">
         {t('settings.minecraft_path')}
       </label>
       <div className="flex gap-2 items-center">
@@ -53,7 +53,7 @@ export function MinecraftPathSection(props: {
               }
             }}
             variant="secondary"
-            className="h-[42px] bg-zinc-200 text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-600"
+            className="h-[42px]"
           >
             {t('settings.open_folder')}
           </Button>
@@ -62,4 +62,3 @@ export function MinecraftPathSection(props: {
     </div>
   );
 }
-

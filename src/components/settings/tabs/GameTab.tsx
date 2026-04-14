@@ -81,8 +81,8 @@ export const GameTab: React.FC<GameTabProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="bg-white/60 dark:bg-zinc-900/40 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50 p-3 space-y-3">
-        <div className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
+      <div className="surface-soft space-y-3 p-3 sm:p-4">
+        <div className="control-label">
           {t('settings.tab_game')}
         </div>
 
@@ -142,4 +142,3 @@ export const GameTab: React.FC<GameTabProps> = ({
     </div>
   );
 };
-

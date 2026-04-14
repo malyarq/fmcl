@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
+import { LAUNCHER_MARK_PATH } from '../app/assets/branding';
 import { Boxes, Settings2, Sparkles } from 'lucide-react';
 import { useSettings, useUIMode } from '../contexts/SettingsContext';
 import { useModpack } from '../contexts/ModpackContext';
@@ -13,6 +14,8 @@ import { ResourcePacksTab } from './modpacks/details/ResourcePacksTab';
 import { ShadersTab } from './modpacks/details/ShadersTab';
 import { WorldsTab } from './modpacks/details/WorldsTab';
 import { cn } from '../utils/cn';
+import { ProgressBar } from './ui/ProgressBar';
+import { getLaunchStageTitle, type LaunchStage } from '../features/launcher/services/launcherService';
 
 interface Particle {
   id: string;
@@ -30,6 +33,11 @@ const LOADER_LABELS: Record<string, string> = {
   neoforge: 'NeoForge',
 };
 
+function translateWithFallback(t: (key: string) => string, key: string, fallback: string) {
+  const translated = t(key);
+  return translated === key ? fallback : translated;
+}
+
 export type SimplePlayDashboardProps = {
   launch: {
     version: string;
@@ -40,6 +48,10 @@ export type SimplePlayDashboardProps = {
   };
   runtime: {
     isLaunching: boolean;
+    progress?: number;
+    launchStage?: LaunchStage;
+    statusText?: string;
+    statusDetail?: string;
     onLaunch: () => void;
   };
   actions: {
@@ -118,6 +130,17 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
   const loaderLabel = LOADER_LABELS[launch.loaderType] ?? launch.loaderType;
   const showMods = launch.loaderType !== 'vanilla';
   const reducedMotion = disableAnimations || prefersReducedMotion;
+  const launchStage = runtime.launchStage ?? (runtime.isLaunching ? 'launching' : 'idle');
+  const launchStatusTitle = runtime.statusText || getLaunchStageTitle(launchStage, t);
+  const launchStatusDetail = runtime.statusDetail || '';
+  const showLaunchStatus = launchStage !== 'idle' || Boolean(launchStatusTitle) || Boolean(launchStatusDetail);
+  const showLaunchProgress = runtime.isLaunching && launchStage !== 'running' && launchStage !== 'failed';
+  const launchStatusTone =
+    launchStage === 'failed'
+      ? 'border-red-500/30 bg-red-500/10'
+      : launchStage === 'running'
+        ? 'border-emerald-500/30 bg-emerald-500/10'
+        : 'border-border/70 bg-card/82';
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -215,10 +238,13 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
   }, [reducedMotion]);
 
   return (
-    <div className={cn(
-      'h-full w-full flex flex-col items-center px-4 py-6 md:px-6 overflow-y-auto overflow-x-hidden',
-      !reducedMotion && 'animate-fade-in-up'
-    )}>
+    <div className="h-full w-full overflow-y-auto overflow-x-hidden">
+      <div
+        className={cn(
+          'launcher-content-width flex min-h-full flex-col items-center px-4 py-6 sm:px-5 lg:px-6',
+          !reducedMotion && 'animate-fade-in-up'
+        )}
+      >
       {/* Welcome Banner */}
       {showWelcome && (
         <section
@@ -309,8 +335,9 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
           />
           <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-black/20 border border-zinc-200/60 dark:border-zinc-700/60 bg-zinc-900/80 flex items-center justify-center backdrop-blur-sm">
             <img
-              src="/icon.png"
+              src={LAUNCHER_MARK_PATH}
               alt="FriendLauncher"
+              data-testid="dashboard-launcher-mark"
               className="w-16 h-16 md:w-20 md:h-20 object-contain transition-transform duration-300"
               style={{
                 transform: !reducedMotion && showEasterEgg ? 'rotate(360deg) scale(1.2)' : 'none',
@@ -364,7 +391,7 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
                 }
               }
             >
-              <img src="/icon.png" alt="" className="w-full h-full object-contain" style={{ filter: `drop-shadow(0 0 6px ${accentHex}) drop-shadow(0 0 12px ${accentHex}60)` }} />
+              <img src={LAUNCHER_MARK_PATH} alt="" aria-hidden="true" className="w-full h-full object-contain" style={{ filter: `drop-shadow(0 0 6px ${accentHex}) drop-shadow(0 0 12px ${accentHex}60)` }} />
             </div>
           );
         })}
@@ -389,6 +416,38 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
       </div>
 
       {/* Info panel */}
+      {showLaunchStatus && (
+        <section
+          className={cn('surface-panel w-full max-w-2xl mb-6 p-5 border', launchStatusTone)}
+          aria-label={translateWithFallback(t, 'dashboard.launch_status', 'Launch status')}
+        >
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <p className="kicker-label">{translateWithFallback(t, 'dashboard.launch_status', 'Launch status')}</p>
+              {launchStatusTitle ? (
+                <h2 className="text-lg font-semibold text-foreground">
+                  {launchStatusTitle}
+                </h2>
+              ) : null}
+              {launchStatusDetail ? (
+                <p className="text-sm leading-6 text-secondary">
+                  {launchStatusDetail}
+                </p>
+              ) : null}
+            </div>
+
+            {showLaunchProgress ? (
+              <ProgressBar
+                value={runtime.progress ?? 0}
+                label={launchStatusTitle || (t('status.download_progress') || 'Downloading')}
+                valueLabel={`${Math.round(runtime.progress ?? 0)}%`}
+                className="w-full"
+              />
+            ) : null}
+          </div>
+        </section>
+      )}
+
       <section className="w-full max-w-2xl mb-6" aria-label={t('dashboard.info_panel') || 'Current settings'}>
         <h2 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">
           {t('dashboard.current_settings') || 'Current settings'}
@@ -462,6 +521,7 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
         <Boxes className="h-4 w-4" />
         {t('dashboard.go_to_modpacks') || 'Go to Modpacks'}
       </Button>
+      </div>
     </div>
   );
 }

@@ -3,7 +3,6 @@ import type { StatisticsOverview } from '@shared/contracts/statistics';
 import { Download } from 'lucide-react';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { useToast } from '../../../contexts/ToastContext';
-import { CollapsibleSection } from '../../../components/ui/CollapsibleSection';
 import { Button } from '../../../components/ui/Button';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { dialogIPC } from '../../../services/ipc/dialogIPC';
@@ -100,101 +99,116 @@ export const StatisticsTab: React.FC = () => {
                 </Button>
             </div>
 
-            <CollapsibleSection title={t('stats.global_stats')} defaultExpanded>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="surface-card p-4">
-                        <div className="text-sm text-secondary">{t('stats.total_play_time')}</div>
-                        <div className="text-2xl font-bold text-foreground">{formatTime(stats.global.totalPlayTime)}</div>
-                    </div>
-                    <div className="surface-card p-4">
-                        <div className="text-sm text-secondary">{t('stats.total_launches')}</div>
-                        <div className="text-2xl font-bold text-foreground">{stats.global.totalLaunches}</div>
-                    </div>
-                    <div className="surface-card p-4">
-                        <div className="text-sm text-secondary">{t('stats.average_session')}</div>
-                        <div className="text-2xl font-bold text-foreground">{formatTime(averageSessionTime)}</div>
-                    </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="surface-card p-4">
+                    <div className="text-sm text-secondary">{t('stats.total_play_time')}</div>
+                    <div className="text-2xl font-bold text-foreground">{formatTime(stats.global.totalPlayTime)}</div>
                 </div>
-            </CollapsibleSection>
-
-            <CollapsibleSection title={t('stats.popular_modpacks')} defaultExpanded>
-                <div className="space-y-2" role="list" aria-label={t('stats.popular_modpacks')}>
-                    {stats.popularModpacks.slice(0, 5).map((modpack, index) => (
-                        <div
-                            key={modpack.instanceId}
-                            role="listitem"
-                            className="surface-card flex items-center justify-between gap-4 p-3"
-                        >
-                            <div>
-                                <div className="font-medium text-foreground">
-                                    {index + 1}. {modpack.name}
-                                </div>
-                                <div className="text-xs text-secondary">
-                                    {t('stats.launches')}: {modpack.launches}
-                                </div>
-                            </div>
-                            <div className="text-right">
-                                <div className="font-mono text-foreground">{formatTime(modpack.playTime)}</div>
-                                <div className="text-xs text-secondary">
-                                    {t('stats.last_played')}: {modpack.lastPlayed ? new Date(modpack.lastPlayed).toLocaleDateString() : '—'}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                    {stats.popularModpacks.length === 0 && (
-                        <div className="surface-inline py-4 text-center text-secondary">{t('stats.no_popular_modpacks')}</div>
-                    )}
+                <div className="surface-card p-4">
+                    <div className="text-sm text-secondary">{t('stats.total_launches')}</div>
+                    <div className="text-2xl font-bold text-foreground">{stats.global.totalLaunches}</div>
                 </div>
-            </CollapsibleSection>
+                <div className="surface-card p-4">
+                    <div className="text-sm text-secondary">{t('stats.average_session')}</div>
+                    <div className="text-2xl font-bold text-foreground">{formatTime(averageSessionTime)}</div>
+                </div>
+            </div>
 
-            <CollapsibleSection title={t('stats.usage_trend')} defaultExpanded>
-                <div className="space-y-3" role="list" aria-label={t('stats.usage_trend')}>
-                    {trendPoints.map((point) => (
-                        <div key={point.date} role="listitem" className="surface-card space-y-2 p-3">
-                            <div className="flex items-center justify-between text-sm text-foreground">
-                                <span>{formatTrendDate(point.date)}</span>
-                                <span>
-                                    {point.launches} {t('stats.trend_launches')} · {formatTime(point.playTime)}
-                                </span>
-                            </div>
-                            <div className="space-y-2">
+            <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+                <div className="surface-card space-y-3 p-4">
+                    <div className="space-y-1">
+                        <h4 className="text-sm font-semibold text-foreground">{t('stats.popular_modpacks')}</h4>
+                        <p className="text-sm text-secondary">{t('stats.description')}</p>
+                    </div>
+
+                    <div className="space-y-2" role="list" aria-label={t('stats.popular_modpacks')}>
+                        {stats.popularModpacks.slice(0, 5).map((modpack, index) => (
+                            <div
+                                key={modpack.instanceId}
+                                role="listitem"
+                                className="surface-muted flex items-center justify-between gap-4 p-3"
+                            >
                                 <div>
-                                    <div className="flex justify-between text-xs text-secondary mb-1">
-                                        <span>{t('stats.trend_launches')}</span>
-                                        <span>{point.launches}</span>
+                                    <div className="font-medium text-foreground">
+                                        {index + 1}. {modpack.name}
                                     </div>
-                                    <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-background/80">
-                                        <div
-                                            className="h-full rounded-full bg-emerald-500"
-                                            style={{ width: `${(point.launches / maxTrendLaunches) * 100}%` }}
-                                        />
+                                    <div className="text-xs text-secondary">
+                                        {t('stats.launches')}: {modpack.launches}
                                     </div>
                                 </div>
-                                <div>
-                                    <div className="flex justify-between text-xs text-secondary mb-1">
-                                        <span>{t('stats.trend_play_time')}</span>
-                                        <span>{formatTime(point.playTime)}</span>
-                                    </div>
-                                    <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-background/80">
-                                        <div
-                                            className="h-full rounded-full bg-blue-500"
-                                            style={{ width: `${(point.playTime / maxTrendPlayTime) * 100}%` }}
-                                        />
+                                <div className="text-right">
+                                    <div className="font-mono text-foreground">{formatTime(modpack.playTime)}</div>
+                                    <div className="text-xs text-secondary">
+                                        {t('stats.last_played')}: {modpack.lastPlayed ? new Date(modpack.lastPlayed).toLocaleDateString() : '—'}
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
-                    {trendPoints.length === 0 && (
-                        <div className="surface-inline py-4 text-center text-secondary">{t('stats.no_usage_trend')}</div>
-                    )}
+                        ))}
+                        {stats.popularModpacks.length === 0 && (
+                            <div className="surface-inline py-4 text-center text-secondary">{t('stats.no_popular_modpacks')}</div>
+                        )}
+                    </div>
                 </div>
-            </CollapsibleSection>
 
-            <CollapsibleSection title={t('stats.instance_stats')} defaultExpanded={false}>
+                <div className="surface-card space-y-3 p-4">
+                    <div className="space-y-1">
+                        <h4 className="text-sm font-semibold text-foreground">{t('stats.usage_trend')}</h4>
+                        <p className="text-sm text-secondary">{t('stats.description')}</p>
+                    </div>
+
+                    <div className="space-y-3" role="list" aria-label={t('stats.usage_trend')}>
+                        {trendPoints.map((point) => (
+                            <div key={point.date} role="listitem" className="surface-muted space-y-2 p-3">
+                                <div className="flex items-center justify-between text-sm text-foreground">
+                                    <span>{formatTrendDate(point.date)}</span>
+                                    <span>
+                                        {point.launches} {t('stats.trend_launches')} · {formatTime(point.playTime)}
+                                    </span>
+                                </div>
+                                <div className="space-y-2">
+                                    <div>
+                                        <div className="mb-1 flex justify-between text-xs text-secondary">
+                                            <span>{t('stats.trend_launches')}</span>
+                                            <span>{point.launches}</span>
+                                        </div>
+                                        <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-background/80">
+                                            <div
+                                                className="h-full rounded-full bg-emerald-500"
+                                                style={{ width: `${(point.launches / maxTrendLaunches) * 100}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="mb-1 flex justify-between text-xs text-secondary">
+                                            <span>{t('stats.trend_play_time')}</span>
+                                            <span>{formatTime(point.playTime)}</span>
+                                        </div>
+                                        <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-background/80">
+                                            <div
+                                                className="h-full rounded-full bg-blue-500"
+                                                style={{ width: `${(point.playTime / maxTrendPlayTime) * 100}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                        {trendPoints.length === 0 && (
+                            <div className="surface-inline py-4 text-center text-secondary">{t('stats.no_usage_trend')}</div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="surface-card space-y-3 p-4">
+                <div className="space-y-1">
+                    <h4 className="text-sm font-semibold text-foreground">{t('stats.instance_stats')}</h4>
+                    <p className="text-sm text-secondary">{t('stats.description')}</p>
+                </div>
+
                 <div className="space-y-2" role="list" aria-label={t('stats.instance_stats')}>
                     {Object.entries(stats.instances).map(([id, instance]) => (
-                        <div key={id} role="listitem" className="surface-card flex items-center justify-between gap-4 p-3">
+                        <div key={id} role="listitem" className="surface-muted flex items-center justify-between gap-4 p-3">
                             <div>
                                 <div className="font-medium text-foreground">{instance.name || id}</div>
                                 <div className="text-xs text-secondary">
@@ -210,7 +224,7 @@ export const StatisticsTab: React.FC = () => {
                         <div className="surface-inline py-4 text-center text-secondary">{t('stats.no_instance_stats')}</div>
                     )}
                 </div>
-            </CollapsibleSection>
+            </div>
         </div>
     );
 };

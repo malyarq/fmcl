@@ -13,6 +13,18 @@ export interface ModSourceInfo {
   versionId?: string;
 }
 
+function formatManifestModLoaderId(modLoader?: { type: ModLoaderType; version?: string }): string | null {
+  if (!modLoader) {
+    return null;
+  }
+
+  if (modLoader.type === 'vanilla') {
+    return 'vanilla';
+  }
+
+  return modLoader.version ? `${modLoader.type}-${modLoader.version}` : modLoader.type;
+}
+
 /**
  * Попытка найти мод на платформах по хешу SHA1
  * 
@@ -59,24 +71,10 @@ export async function generateManifestFromInstance(
       }
       
       if (config.runtime?.modLoader) {
-        const loader = config.runtime.modLoader;
-        const loaderType = loader.type as ModLoaderType;
-        const loaderVersion = loader.version || '';
-        
-        let loaderId = '';
-        if (loaderType === 'forge') {
-          loaderId = `forge-${loaderVersion}`;
-        } else if (loaderType === 'fabric') {
-          loaderId = `fabric-${loaderVersion}`;
-        } else if (loaderType === 'quilt') {
-          loaderId = `quilt-${loaderVersion}`;
-        } else if (loaderType === 'neoforge') {
-          loaderId = `neoforge-${loaderVersion}`;
-        } else {
-          loaderId = loaderType;
+        const loaderId = formatManifestModLoaderId(config.runtime.modLoader as { type: ModLoaderType; version?: string });
+        if (loaderId) {
+          modLoaders = [{ id: loaderId, primary: true }];
         }
-        
-        modLoaders = [{ id: loaderId, primary: true }];
       }
     } catch {
       // Игнорируем ошибки парсинга конфига

@@ -22,20 +22,27 @@ export const DownloadsTab: React.FC<DownloadsTabProps> = ({
   t,
 }) => {
   return (
-    <div className="space-y-4">
-      <div className="surface-card space-y-2 p-4">
-        <div className="kicker-label">{t('settings.downloads')}</div>
-        <h3 className="text-lg font-bold text-foreground">{t('settings.downloads')}</h3>
-        <p className="text-sm text-secondary">{t('settings.downloadsHint')}</p>
+    <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="space-y-4">
+        <div className="surface-card space-y-2 p-5">
+          <div className="kicker-label">{t('settings.downloads')}</div>
+          <h3 className="text-lg font-bold text-foreground">{t('settings.downloads')}</h3>
+          <p className="text-sm text-secondary">{t('settings.downloadsHint')}</p>
+        </div>
+
+        <MirrorsSettings />
       </div>
 
-      <MirrorsSettings />
+      <div className="surface-card space-y-4 p-5">
+        <div className="space-y-1">
+          <h4 className="text-sm font-semibold text-foreground">{t('settings.downloadsTuningTitle')}</h4>
+          <p className="text-sm text-secondary">{t('settings.downloadsTuningHint')}</p>
+        </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="surface-card p-4">
+        <div className="surface-muted p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
-              <h4 className="text-sm font-semibold text-foreground">{t('settings.download_threads_auto')}</h4>
+              <h5 className="text-sm font-semibold text-foreground">{t('settings.download_threads_auto')}</h5>
               <p id="settings-auto-threads-hint" className="text-sm text-secondary">
                 {t('settings.download_threads_auto_desc')}
               </p>
@@ -50,30 +57,24 @@ export const DownloadsTab: React.FC<DownloadsTabProps> = ({
           </div>
         </div>
 
-        <div className="surface-card space-y-4 p-4">
-          <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-foreground">{t('settings.downloadsTuningTitle')}</h4>
-            <p className="text-sm text-secondary">{t('settings.downloadsTuningHint')}</p>
-          </div>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <Input
-              label={t('settings.download_threads')}
-              type="number"
-              min={1}
-              value={downloadThreads}
-              onChange={(e) => setDownloadThreads(parseInt(e.target.value || '1', 10))}
-              placeholder="8"
-              disabled={autoDownloadThreads}
-            />
-            <Input
-              label={t('settings.max_sockets')}
-              type="number"
-              min={1}
-              value={maxSockets}
-              onChange={(e) => setMaxSockets(parseInt(e.target.value || '1', 10))}
-              placeholder="64"
-            />
-          </div>
+        <div className="grid grid-cols-1 gap-4">
+          <Input
+            label={t('settings.download_threads')}
+            type="number"
+            min={1}
+            value={downloadThreads}
+            onChange={(e) => setDownloadThreads(parseInt(e.target.value || '1', 10))}
+            placeholder="8"
+            disabled={autoDownloadThreads}
+          />
+          <Input
+            label={t('settings.max_sockets')}
+            type="number"
+            min={1}
+            value={maxSockets}
+            onChange={(e) => setMaxSockets(parseInt(e.target.value || '1', 10))}
+            placeholder="64"
+          />
         </div>
       </div>
     </div>

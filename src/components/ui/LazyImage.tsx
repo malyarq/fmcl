@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { LAUNCHER_MARK_PATH, isBundledAssetSource } from '../../app/assets/branding';
 import { cn } from '../../utils/cn';
 import { cacheIPC } from '../../services/ipc/cacheIPC';
 
@@ -29,7 +30,8 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   ...props
 }) => {
   const [isInView, setIsInView] = useState(false);
-  const sourceKey = `${src ?? ''}::${fallback ?? ''}`;
+  const safeFallback = fallback ?? LAUNCHER_MARK_PATH;
+  const sourceKey = `${src ?? ''}::${safeFallback}`;
   const [imageState, setImageState] = useState(() => ({
     key: sourceKey,
     isLoaded: false,
@@ -51,7 +53,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
 
   useEffect(() => {
     // If no src but fallback exists, load immediately
-    if (!src && fallback) {
+    if (!src && safeFallback) {
       // Use setTimeout to avoid synchronous setState in effect
       setTimeout(() => {
         setIsInView(true);
@@ -124,7 +126,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
         observerRef.current.disconnect();
       }
     };
-  }, [rootMargin, useNativeLazy, src, fallback, isSmallImage]);
+  }, [rootMargin, useNativeLazy, src, safeFallback, isSmallImage]);
 
   useEffect(() => {
     let isActive = true;
@@ -182,7 +184,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   }, [currentImageState.resolvedSrc, isInView, isRemoteImage, sourceKey, src]);
 
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    if (!currentImageState.hasError && fallback && e.currentTarget.src !== fallback) {
+    if (!currentImageState.hasError && safeFallback && !isBundledAssetSource(e.currentTarget.currentSrc || e.currentTarget.src, safeFallback)) {
       // Try fallback if not already using it
       setImageState((previous) => ({
         ...(previous.key === sourceKey
@@ -209,15 +211,15 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   const primarySrc = src && isInView
     ? (isRemoteImage ? currentImageState.resolvedSrc : src)
     : undefined;
-  const imageSrc = currentImageState.hasError && fallback
-    ? fallback
-    : primarySrc ?? (fallback && !src ? fallback : undefined);
+  const imageSrc = currentImageState.hasError && safeFallback
+    ? safeFallback
+    : primarySrc ?? (safeFallback && !src ? safeFallback : undefined);
 
   // Extract size classes from className to apply to wrapper
   const otherClasses = className?.replace(/\b(w-|h-|w\[|h\[)\S+/g, '').trim() || '';
 
   // If no src and no fallback, show placeholder or nothing
-  if (!src && !fallback) {
+  if (!src && !safeFallback) {
     return (
       <div className={cn('relative overflow-hidden', sizeClasses, otherClasses)}>
         {placeholder && (

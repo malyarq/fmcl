@@ -27,6 +27,20 @@ export const DEFAULT_MODPACK_BROWSER_STATE: ModpackBrowserState = {
   showHistory: false,
 };
 
+const AVAILABLE_MODPACK_BROWSER_PLATFORMS: ReadonlyArray<ModpackPlatform> = ['modrinth'];
+
+export function normalizeModpackBrowserState(state: ModpackBrowserState): ModpackBrowserState {
+  const nextPlatform = AVAILABLE_MODPACK_BROWSER_PLATFORMS.includes(state.platform)
+    ? state.platform
+    : DEFAULT_MODPACK_BROWSER_STATE.platform;
+
+  return {
+    ...DEFAULT_MODPACK_BROWSER_STATE,
+    ...state,
+    platform: nextPlatform,
+  };
+}
+
 export type ModpackView =
   | { type: 'list' }
   | { type: 'browser'; state: ModpackBrowserState }
@@ -46,10 +60,7 @@ function normalizeView(view: ModpackView): ModpackView {
 
   return {
     type: 'browser',
-    state: {
-      ...DEFAULT_MODPACK_BROWSER_STATE,
-      ...view.state,
-    },
+    state: normalizeModpackBrowserState(view.state),
   };
 }
 

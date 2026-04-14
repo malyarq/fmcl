@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 import { Input } from '../../../ui/Input';
 import { Button } from '../../../ui/Button';
+import { Select } from '../../../ui/Select';
 import { cn } from '../../../../utils/cn';
 import type { ModpackConfig } from '../../../../contexts/ModpackContext';
 import { modpacksIPC } from '../../../../services/ipc/modpacksIPC';
@@ -118,10 +119,10 @@ export function RuntimeSection(props: {
         {/* Memory Slider (Max) */}
         <div>
           <div className="flex justify-between mb-2">
-            <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+            <label className="control-label">
               {t('settings.ram') || 'Max Memory (Xmx)'}
             </label>
-            <span className="text-sm font-mono font-bold text-zinc-900 dark:text-white">
+            <span className="text-sm font-mono font-semibold text-foreground">
               {getRamGb(modpackConfig, 4)} GB
             </span>
           </div>
@@ -163,7 +164,7 @@ export function RuntimeSection(props: {
             className={cn('w-full', getAccentStyles('accent').className)}
             style={getAccentStyles('accent').style}
           />
-          <div className="flex justify-between text-[10px] text-zinc-400">
+          <div className="helper-text flex justify-between text-[10px]">
             <span>1 GB</span>
             <span>8 GB</span>
             <span>16 GB</span>
@@ -174,10 +175,10 @@ export function RuntimeSection(props: {
         {showAdvanced && (
           <div className="animate-in fade-in slide-in-from-top-2">
             <div className="flex justify-between mb-2">
-              <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+              <label className="control-label">
                 {t('settings.min_ram') || 'Initial Memory (Xms)'}
               </label>
-              <span className="text-sm font-mono font-bold text-zinc-900 dark:text-white">
+              <span className="text-sm font-mono font-semibold text-foreground">
                 {getMinRamGb(modpackConfig, 1)} GB
               </span>
             </div>
@@ -191,7 +192,7 @@ export function RuntimeSection(props: {
               className={cn('w-full', getAccentStyles('accent').className)}
               style={getAccentStyles('accent').style}
             />
-            <div className="flex justify-between text-[10px] text-zinc-400">
+            <div className="helper-text flex justify-between text-[10px]">
               <span>0.5 GB</span>
               <span>{getRamGb(modpackConfig, 4)} GB</span>
             </div>
@@ -202,7 +203,7 @@ export function RuntimeSection(props: {
           <button
             type="button"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200 underline"
+            className="text-xs text-muted underline transition-colors hover:text-foreground"
           >
             {showAdvanced ? (t('general.hide_advanced') || 'Hide Advanced') : (t('general.show_advanced') || 'Show Advanced')}
           </button>
@@ -210,9 +211,9 @@ export function RuntimeSection(props: {
 
         {/* Warnings Area */}
         {warnings.length > 0 && (
-          <div className="p-3 bg-yellow-100/10 border border-yellow-500/20 rounded-lg space-y-1">
+          <div className="space-y-1 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
             {warnings.map((w, i) => (
-              <div key={i} className="text-xs text-yellow-600 dark:text-yellow-400 flex items-start gap-2">
+              <div key={i} className="flex items-start gap-2 text-xs text-amber-700 dark:text-amber-300">
                 <span>⚠️</span>
                 <span>{w}</span>
               </div>
@@ -222,8 +223,8 @@ export function RuntimeSection(props: {
 
         {/* Java Selection */}
         <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <label className="text-sm font-medium text-zinc-600 dark:text-zinc-300">
+          <div className="flex items-center justify-between gap-3">
+            <label className="control-label">
               {t('settings.java_path') || 'Java Version'}
             </label>
             <Button size="sm" variant="ghost" onClick={scanJava} disabled={isScanning}>
@@ -231,14 +232,10 @@ export function RuntimeSection(props: {
             </Button>
           </div>
 
-          <select
-            className={cn(
-              "w-full rounded-lg border bg-white/50 px-3 py-2 text-sm outline-none transition-all dark:bg-zinc-900/50",
-              "border-zinc-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-800 dark:focus:border-indigo-500",
-              getAccentStyles('ring').className
-            )}
+          <Select
             value={isCustomJava ? 'custom' : (currentJavaPath || 'auto')}
             onChange={(e) => handleJavaChange(e.target.value)}
+            disabled={isScanning}
           >
             <option value="auto">{t('settings.java_auto') || 'Auto (Recommended)'}</option>
             {detectedJavas.map((java) => (
@@ -247,7 +244,7 @@ export function RuntimeSection(props: {
               </option>
             ))}
             <option value="custom">{t('settings.java_custom') || 'Custom Path...'}</option>
-          </select>
+          </Select>
 
           {/* Custom Java Path Input */}
           {(isCustomJava || currentJavaPath === 'custom' || (!currentJavaPath && false)) && (
@@ -263,4 +260,3 @@ export function RuntimeSection(props: {
     </>
   );
 }
-

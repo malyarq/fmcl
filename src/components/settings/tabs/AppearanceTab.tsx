@@ -6,8 +6,8 @@ import { CollapsibleSection } from '../../ui/CollapsibleSection';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
 import { Select } from '../../ui/Select';
-import { THEME_PRESETS } from '../../../contexts/settings/theme-presets';
-import type { CustomThemeConfig } from '../../../contexts/settings/types';
+import { getThemePreset, THEME_PRESETS } from '../../../contexts/settings/theme-presets';
+import type { CustomThemeConfig, ThemePresetId } from '../../../contexts/settings/types';
 
 const COLORS = [
   { id: 'emerald', class: 'bg-emerald-500', ring: 'ring-emerald-500' },
@@ -63,9 +63,12 @@ export const AppearanceTab: React.FC = () => {
     accentColor, setAccentColor,
     theme, setTheme,
     language, setLanguage,
+    themePresetId,
+    applyThemePreset,
     t,
     getAccentStyles,
     customTheme, setCustomTheme,
+    activeThemeConfig,
     uiScale, setUiScale,
     disableAnimations, setDisableAnimations,
     sidebarPosition, setSidebarPosition,
@@ -73,6 +76,10 @@ export const AppearanceTab: React.FC = () => {
   } = useSettings();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const selectedPreset = getThemePreset(themePresetId);
+  const selectedPresetModeLabel = theme === 'light'
+    ? t('settings.theme_light')
+    : t('settings.theme_dark');
 
   // Preset palette is used to keep Tailwind classes static (prevents purging).
   const isPreset = (c: string) => COLORS.some((col) => col.id === c);
@@ -98,19 +105,20 @@ export const AppearanceTab: React.FC = () => {
     });
   };
 
-  const applyPreset = (presetId: string) => {
-    const preset = THEME_PRESETS.find(p => p.id === presetId);
-    if (preset) {
-      setTheme(preset.theme);
-      setCustomTheme(preset.config);
+  const handlePresetChange = (presetId: string) => {
+    if (!presetId) {
+      return;
     }
+
+    applyThemePreset(presetId as ThemePresetId);
   };
 
   const handleExportTheme = () => {
     const themeData = {
-      name: "Custom Export",
+      name: selectedPreset?.name || "Custom Export",
+      presetId: themePresetId || undefined,
       theme,
-      config: customTheme
+      config: activeThemeConfig
     };
     const blob = new Blob([JSON.stringify(themeData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -157,151 +165,237 @@ export const AppearanceTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="surface-card space-y-3 p-5">
-          <div className="flex items-center gap-2">
-            <Paintbrush2 className="h-4 w-4 text-secondary" />
-            <label className="text-sm font-medium text-foreground">
-              {t('settings.appearance_branding') || t('settings.accent')}
-            </label>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="surface-card space-y-4 p-5">
+          <div className="space-y-2">
+            <div className="kicker-label">{t('settings.tab_appearance')}</div>
+            <h3 className="text-lg font-bold text-foreground">
+              {selectedPreset
+                ? `${selectedPreset.name} · ${selectedPresetModeLabel}`
+                : (t('settings.theme_presets') || 'Theme Presets')}
+            </h3>
+            <p className="text-sm text-secondary">
+              {selectedPreset
+                ? (t('settings.theme_presets_desc') || 'Apply a ready-made visual profile, or import/export your own configuration.')
+                : (t('settings.theme_desc') || 'Choose the base mood of the launcher, then fine-tune the rest below.')}
+            </p>
           </div>
-          <p className="text-sm text-secondary">
-            {t('settings.appearance_branding_desc') || 'Set the accent tone used across launch buttons, highlights, and active controls.'}
-          </p>
-          <label className="text-sm font-medium text-foreground mb-2 block">
-            {t('settings.accent')}
-          </label>
-          <div className="flex gap-3 flex-wrap items-center">
-            {COLORS.map((c) => (
-              <button
-                key={c.id}
-                onClick={() => setAccentColor(c.id)}
-                className={cn(
-                  'w-8 h-8 rounded-full transition-all ring-offset-2 ring-offset-background focus:outline-none',
-                  c.class,
-                  accentColor === c.id ? `ring-2 ${c.ring} scale-110` : 'opacity-60 hover:opacity-100',
-                )}
-                title={c.id}
-              />
-            ))}
 
-            {/* Custom Color Picker */}
-            <div className="relative group w-8 h-8">
-              <div
-                className={cn(
-                  'w-full h-full rounded-full flex items-center justify-center transition-all ring-offset-2 ring-offset-background cursor-pointer overflow-hidden',
-                  isCustom ? 'ring-2 ring-zinc-500 scale-110' : 'bg-zinc-200 dark:bg-zinc-800 opacity-60 group-hover:opacity-100',
-                )}
-              >
-                {isCustom ? (
-                  <div className="w-full h-full" style={{ backgroundColor: accentColor }} />
-                ) : (
-                  <span className="text-base text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200">+</span>
-                )}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="surface-muted space-y-4 p-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-secondary" />
+                <label className="text-sm font-medium text-foreground">
+                  {t('settings.theme')}
+                </label>
               </div>
-              <input
-                type="color"
-                value={isCustom ? accentColor : '#10b981'}
-                onChange={(e) => setAccentColor(e.target.value)}
-                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
-                title={t('settings.custom_color') || 'Custom Color'}
-              />
+              <div className="flex rounded-[20px] border border-border/60 bg-background/84 p-1 shadow-inner">
+                {(['light', 'dark'] as const).map((m) => (
+                  <button
+                    type="button"
+                    key={m}
+                    onClick={() => setTheme(m)}
+                    className={cn(
+                      'flex-1 rounded-2xl py-2 text-xs font-bold uppercase transition-all',
+                      theme === m
+                        ? 'bg-card text-foreground shadow-md'
+                        : 'text-muted hover:text-foreground',
+                    )}
+                  >
+                    {m === 'light' ? t('settings.theme_light') : t('settings.theme_dark')}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  {t('settings.theme_presets') || 'Theme Presets'}
+                </label>
+                <Select
+                  value={themePresetId || ''}
+                  onChange={(e) => handlePresetChange(e.target.value)}
+                  className="w-full"
+                  aria-label={t('settings.theme_presets') || 'Theme Presets'}
+                >
+                  <option value="" disabled>{t('settings.theme_presets_placeholder') || 'Select a preset...'}</option>
+                  {THEME_PRESETS.map((preset) => (
+                    <option key={preset.id} value={preset.id}>{preset.name}</option>
+                  ))}
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button variant="secondary" onClick={() => fileInputRef.current?.click()} className="gap-2 sm:flex-1">
+                  <Upload className="h-4 w-4" />
+                  {t('settings.import_theme') || 'Import'}
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  className="hidden"
+                  onChange={handleImportTheme}
+                />
+
+                <Button variant="secondary" onClick={handleExportTheme} className="gap-2 sm:flex-1">
+                  <Download className="h-4 w-4" />
+                  {t('settings.export_theme') || 'Export'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="surface-muted space-y-4 p-4">
+              <div className="flex items-center gap-2">
+                <Paintbrush2 className="h-4 w-4 text-secondary" />
+                <label className="text-sm font-medium text-foreground">
+                  {t('settings.appearance_branding') || t('settings.accent')}
+                </label>
+              </div>
+              <p className="text-sm text-secondary">
+                {t('settings.appearance_branding_desc') || 'Set the accent tone used across launch buttons, highlights, and active controls.'}
+              </p>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  {t('settings.accent')}
+                </label>
+                <div className="flex flex-wrap items-center gap-3">
+                  {COLORS.map((c) => (
+                    <button
+                      key={c.id}
+                      onClick={() => setAccentColor(c.id)}
+                      className={cn(
+                        'h-8 w-8 rounded-full transition-all ring-offset-2 ring-offset-background focus:outline-none',
+                        c.class,
+                        accentColor === c.id ? `ring-2 ${c.ring} scale-110` : 'opacity-60 hover:opacity-100',
+                      )}
+                      title={c.id}
+                    />
+                  ))}
+
+                  <div className="relative group h-8 w-8">
+                    <div
+                      className={cn(
+                        'flex h-full w-full items-center justify-center overflow-hidden rounded-full transition-all ring-offset-2 ring-offset-background cursor-pointer',
+                        isCustom ? 'ring-2 ring-zinc-500 scale-110' : 'bg-zinc-200 dark:bg-zinc-800 opacity-60 group-hover:opacity-100',
+                      )}
+                    >
+                      {isCustom ? (
+                        <div className="h-full w-full" style={{ backgroundColor: accentColor }} />
+                      ) : (
+                        <span className="text-base text-zinc-400 group-hover:text-zinc-600 dark:group-hover:text-zinc-200">+</span>
+                      )}
+                    </div>
+                    <input
+                      type="color"
+                      value={isCustom ? accentColor : '#10b981'}
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                      title={t('settings.custom_color') || 'Custom Color'}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">
+                  {t('settings.language')}
+                </label>
+                <div className="flex rounded-[20px] border border-border/60 bg-background/84 p-1 shadow-inner">
+                  {(['en', 'ru'] as const).map((lang) => (
+                    <button
+                      type="button"
+                      key={lang}
+                      onClick={() => setLanguage(lang)}
+                      className={cn(
+                        'flex-1 rounded-2xl py-2 text-xs font-bold uppercase transition-all',
+                        language === lang
+                          ? 'bg-card text-foreground shadow-md'
+                          : 'text-muted hover:text-foreground',
+                      )}
+                    >
+                      {lang === 'en' ? 'English' : 'Русский'}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="surface-card space-y-3 p-5">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-secondary" />
-            <label className="text-sm font-medium text-foreground">
-              {t('settings.theme')}
-            </label>
+        <div className="surface-card space-y-4 p-5">
+          <div className="space-y-2">
+            <div className="kicker-label">{t('settings.ui_scalability') || 'UI Scalability'}</div>
+            <h4 className="text-lg font-semibold text-foreground">
+              {t('settings.ui_zoom') || 'Interface Zoom'}
+            </h4>
+            <p className="text-sm text-secondary">
+              {t('settings.ui_zoom_desc') || 'Adjust the size of the interface elements.'}
+            </p>
           </div>
-          <p className="text-sm text-secondary">
-            {t('settings.theme_desc') || 'Choose the base mood of the launcher, then fine-tune the rest below.'}
-          </p>
-          <label className="text-sm font-medium text-foreground mb-2 block">
-            {t('settings.theme')}
-          </label>
-          <div className="flex rounded-[20px] border border-border/60 bg-background/84 p-1 shadow-inner">
-            {(['light', 'dark'] as const).map((m) => (
+
+          <div className="space-y-2">
+            <label className="flex justify-between text-sm font-medium text-foreground">
+              <span>{t('settings.ui_zoom') || 'Interface Zoom'}</span>
+              <span>{uiScale}%</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min="70"
+                max="150"
+                step="5"
+                value={uiScale}
+                onChange={(e) => setUiScale(parseInt(e.target.value))}
+                className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-zinc-200 dark:bg-zinc-700"
+              />
+              <Button size="sm" variant="secondary" onClick={() => setUiScale(100)} disabled={uiScale === 100}>
+                {t('settings.reset') || 'Reset'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <ToggleRow
+              label={t('settings.animations') || 'Enable Animations'}
+              checked={!disableAnimations}
+              onToggle={() => setDisableAnimations(!disableAnimations)}
+            />
+
+            <ToggleRow
+              label={t('settings.compact_mode') || 'Compact Mode'}
+              checked={compactMode}
+              onToggle={() => setCompactMode(!compactMode)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">
+              {t('settings.sidebar_position') || 'Sidebar Position'}
+            </label>
+            <div className="flex rounded-[20px] border border-border/60 bg-background/84 p-1 shadow-inner">
               <button
                 type="button"
-                key={m}
-                onClick={() => setTheme(m)}
+                onClick={() => setSidebarPosition('left')}
                 className={cn(
-                  'flex-1 rounded-2xl py-2 text-xs font-bold uppercase transition-all',
-                  theme === m
-                    ? 'bg-card text-foreground shadow-md'
-                    : 'text-muted hover:text-foreground',
+                  'flex-1 rounded-2xl py-2 text-xs font-medium transition-all',
+                  sidebarPosition === 'left' ? 'bg-card text-foreground shadow' : 'text-secondary'
                 )}
               >
-                {m === 'light' ? t('settings.theme_light') : t('settings.theme_dark')}
+                {t('settings.sidebar_position_left') || 'Left'}
               </button>
-            ))}
+              <button
+                type="button"
+                onClick={() => setSidebarPosition('right')}
+                className={cn(
+                  'flex-1 rounded-2xl py-2 text-xs font-medium transition-all',
+                  sidebarPosition === 'right' ? 'bg-card text-foreground shadow' : 'text-secondary'
+                )}
+              >
+                {t('settings.sidebar_position_right') || 'Right'}
+              </button>
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Presets & Management */}
-      <div className="surface-card space-y-3 p-5">
-        <label className="text-sm font-medium text-foreground mb-2 block">
-          {t('settings.theme_presets') || 'Theme Presets'}
-        </label>
-        <p className="text-sm text-secondary">
-          {t('settings.theme_presets_desc') || 'Apply a ready-made visual profile, or import/export your own configuration.'}
-        </p>
-        <div className="flex gap-2">
-          <Select
-            onChange={(e) => applyPreset(e.target.value)}
-            className="flex-1"
-            defaultValue=""
-          >
-            <option value="" disabled>{t('settings.theme_presets_placeholder') || 'Select a preset...'}</option>
-            {THEME_PRESETS.map(preset => (
-              <option key={preset.id} value={preset.id}>{preset.name}</option>
-            ))}
-          </Select>
-
-          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-            <Upload className="h-4 w-4" />
-            {t('settings.import_theme') || 'Import'}
-          </Button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".json"
-            className="hidden"
-            onChange={handleImportTheme}
-          />
-
-          <Button variant="secondary" onClick={handleExportTheme}>
-            <Download className="h-4 w-4" />
-            {t('settings.export_theme') || 'Export'}
-          </Button>
-        </div>
-      </div>
-
-      <div className="surface-card space-y-3 p-5">
-        <label className="text-sm font-medium text-foreground mb-2 block">
-          {t('settings.language')}
-        </label>
-        <div className="flex rounded-[20px] border border-border/60 bg-background/84 p-1 shadow-inner">
-          {(['en', 'ru'] as const).map((lang) => (
-            <button
-              type="button"
-              key={lang}
-              onClick={() => setLanguage(lang)}
-              className={cn(
-                'flex-1 rounded-2xl py-2 text-xs font-bold uppercase transition-all',
-                language === lang
-                  ? 'bg-card text-foreground shadow-md'
-                  : 'text-muted hover:text-foreground',
-              )}
-            >
-              {lang === 'en' ? 'English' : 'Русский'}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -590,71 +684,6 @@ export const AppearanceTab: React.FC = () => {
                 </Select>
               </div>
             )}
-          </div>
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection title={t('settings.ui_scalability') || 'UI Scalability'} defaultExpanded={false}>
-        <div className="surface-muted space-y-4 p-4">
-          <div className="space-y-2">
-            <label className="flex justify-between text-sm font-medium text-foreground">
-              <span>{t('settings.ui_zoom') || 'Interface Zoom'}</span>
-              <span>{uiScale}%</span>
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min="70"
-                max="150"
-                step="5"
-                value={uiScale}
-                onChange={(e) => setUiScale(parseInt(e.target.value))}
-                className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 flex-1"
-              />
-              <Button size="sm" variant="secondary" onClick={() => setUiScale(100)} disabled={uiScale === 100}>
-                {t('settings.reset') || 'Reset'}
-              </Button>
-            </div>
-            <p className="text-xs text-secondary">{t('settings.ui_zoom_desc') || 'Adjust the size of the interface elements.'}</p>
-          </div>
-          <ToggleRow
-            label={t('settings.animations') || 'Enable Animations'}
-            checked={!disableAnimations}
-            onToggle={() => setDisableAnimations(!disableAnimations)}
-          />
-
-          <ToggleRow
-            label={t('settings.compact_mode') || 'Compact Mode'}
-            checked={compactMode}
-            onToggle={() => setCompactMode(!compactMode)}
-          />
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">
-              {t('settings.sidebar_position') || 'Sidebar Position'}
-            </label>
-            <div className="flex rounded-[20px] border border-border/60 bg-background/84 p-1 shadow-inner">
-              <button
-                type="button"
-                onClick={() => setSidebarPosition('left')}
-                className={cn(
-                  'flex-1 rounded-2xl py-2 text-xs font-medium transition-all',
-                  sidebarPosition === 'left' ? 'bg-card text-foreground shadow' : 'text-secondary'
-                )}
-              >
-                {t('settings.sidebar_position_left') || 'Left'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSidebarPosition('right')}
-                className={cn(
-                  'flex-1 rounded-2xl py-2 text-xs font-medium transition-all',
-                  sidebarPosition === 'right' ? 'bg-card text-foreground shadow' : 'text-secondary'
-                )}
-              >
-                {t('settings.sidebar_position_right') || 'Right'}
-              </button>
-            </div>
           </div>
         </div>
       </CollapsibleSection>
