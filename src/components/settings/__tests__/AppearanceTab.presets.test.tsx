@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsProvider } from '../../../contexts/SettingsContext';
 import { AppearanceTab } from '../tabs/AppearanceTab';
 
@@ -65,6 +65,40 @@ describe('AppearanceTab preset contract', () => {
     expect(getRootVar('--bg-card')).toBe('209 250 229');
     expect(getRootVar('--text-main')).toBe('6 78 59');
     expect(screen.getByText('Forest · Light')).toBeTruthy();
+  });
+
+  it('exports the localized preset summary while keeping the stable preset identity', async () => {
+    let exportBlob: Blob | null = null;
+    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      exportBlob = blob as Blob;
+      return 'blob:theme-export';
+    });
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    renderAppearanceTab();
+
+    fireEvent.change(getPresetSelect(), { target: { value: 'forest' } });
+
+    await waitFor(() => {
+      expect(localStorage.getItem('settings_themePresetId')).toBe('forest');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+
+    expect(exportBlob).toBeTruthy();
+
+    const exportedTheme = JSON.parse(await exportBlob!.text()) as {
+      name: string;
+      presetId?: string;
+      theme: string;
+    };
+
+    expect(exportedTheme.name).toBe('Forest · Dark');
+    expect(exportedTheme.presetId).toBe('forest');
+    expect(exportedTheme.theme).toBe('dark');
+
+    createObjectUrlSpy.mockRestore();
+    clickSpy.mockRestore();
   });
 
   it('migrates legacy preset-shaped custom theme storage into the new preset identity', async () => {

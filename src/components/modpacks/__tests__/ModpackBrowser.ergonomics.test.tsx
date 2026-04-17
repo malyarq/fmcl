@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModpackBrowser } from '../ModpackBrowser';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
 import { createTranslator } from '../../../contexts/settings/i18n';
+import { LAUNCHER_MARK_PATH } from '../../../app/assets/branding';
 
 const searchModrinthMock = vi.fn();
 const getCurseForgeVersionsMock = vi.fn();
@@ -149,6 +150,33 @@ describe('ModpackBrowser ergonomics', () => {
         filterLoader: 'all',
         currentPage: 1,
       }));
+    });
+  });
+
+  it('keeps browser filters wrap-friendly and routes no-art cards through the launcher mark fallback', async () => {
+    renderBrowser();
+
+    await screen.findByText('Alpha Pack');
+
+    const searchRegion = screen.getByRole('search', { name: 'Enter modpack name...' });
+    const controlsRow = searchRegion.querySelector('.flex.flex-wrap.items-start.gap-2');
+    const sortShell = screen.getByRole('combobox', { name: 'Popularity' }).parentElement?.parentElement;
+    const versionShell = screen.getByRole('combobox', { name: 'All MC Versions' }).parentElement?.parentElement;
+    const loaderShell = screen.getByRole('combobox', { name: 'All Modloaders' }).parentElement?.parentElement;
+    const pageSizeShell = screen.getByRole('combobox', { name: 'Items per page' }).parentElement?.parentElement;
+
+    expect(controlsRow?.className).toContain('flex-wrap');
+    expect(sortShell?.className).toContain('min-w-[11rem]');
+    expect(sortShell?.className).toContain('flex-1');
+    expect(versionShell?.className).toContain('min-w-[11rem]');
+    expect(versionShell?.className).toContain('flex-1');
+    expect(loaderShell?.className).toContain('min-w-[11rem]');
+    expect(loaderShell?.className).toContain('flex-1');
+    expect(pageSizeShell?.className).toContain('min-w-[8.5rem]');
+    expect(pageSizeShell?.className).toContain('flex-none');
+
+    await waitFor(() => {
+      expect(screen.getByRole('img', { name: 'Alpha Pack' }).getAttribute('src')).toBe(LAUNCHER_MARK_PATH);
     });
   });
 });

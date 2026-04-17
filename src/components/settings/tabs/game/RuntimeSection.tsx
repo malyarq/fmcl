@@ -41,18 +41,29 @@ const getRequiredJavaVersion = (mcVersion?: string): number => {
   return 8; // < 1.17 -> Java 8
 };
 
+function translateWithFallback(
+  t: (key: string, params?: Record<string, string | number>) => string,
+  key: string,
+  fallback: string,
+  params?: Record<string, string | number>,
+) {
+  const translated = t(key, params);
+  return translated === key ? fallback : translated;
+}
+
 export function RuntimeSection(props: {
   modpackConfig: ModpackConfig | null;
   setMemoryGb: (gb: number) => void;
   setMinMemoryGb: (gb: number) => void;
   setJavaPath: (path: string) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
   getAccentStyles: (type: 'bg' | 'text' | 'border' | 'ring' | 'hover' | 'accent' | 'title' | 'soft-bg' | 'soft-border') => {
     className?: string;
     style?: React.CSSProperties;
   };
+  isReadOnly?: boolean;
 }) {
-  const { modpackConfig, setMemoryGb, setMinMemoryGb, setJavaPath, t, getAccentStyles } = props;
+  const { modpackConfig, setMemoryGb, setMinMemoryGb, setJavaPath, t, getAccentStyles, isReadOnly = false } = props;
   const [detectedJavas, setDetectedJavas] = useState<DetectedJava[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -74,6 +85,12 @@ export function RuntimeSection(props: {
     void scanJava();
   }, []);
 
+  useEffect(() => {
+    if (isReadOnly) {
+      setShowAdvanced(true);
+    }
+  }, [isReadOnly]);
+
   const currentJavaPath = modpackConfig?.java?.path || '';
   const isCustomJava = currentJavaPath !== '' && !detectedJavas.some(j => j.path === currentJavaPath);
 
@@ -88,17 +105,36 @@ export function RuntimeSection(props: {
 
   // 32-bit check
   if (selectedJava?.arch === 'x86' && currentRam > 1.5) {
-    warnings.push(t('settings.warning_32bit_java') || 'You are using 32-bit Java with more than 1.5GB RAM. This may cause crashes.');
+    warnings.push(
+      translateWithFallback(
+        t,
+        'settings.warning_32bit_java',
+        'You are using 32-bit Java with more than 1.5 GB of RAM. This may cause crashes.',
+      ),
+    );
   }
 
   // Java version mismatch
   if (selectedJava && selectedJava.majorVersion < requiredJavaVer) {
-    warnings.push(`Minecraft ${modpackConfig?.runtime?.minecraft} requires Java ${requiredJavaVer}+. Selected: Java ${selectedJava.majorVersion}.`);
+    warnings.push(
+      translateWithFallback(
+        t,
+        'settings.warning_java_version',
+        'Minecraft {{version}} requires Java {{required}} or newer. Selected: Java {{selected}}.',
+        {
+          version: modpackConfig?.runtime?.minecraft ?? '?',
+          required: requiredJavaVer,
+          selected: selectedJava.majorVersion,
+        },
+      ),
+    );
   }
 
   // Low RAM
   if (currentRam < 1.0) {
-    warnings.push(t('settings.warning_low_ram') || 'Less than 1GB RAM allocated. This may cause lag.');
+    warnings.push(
+      translateWithFallback(t, 'settings.warning_low_ram', 'Less than 1 GB of RAM is allocated. This may cause lag.'),
+    );
   }
 
   const handleJavaChange = (val: string) => {
@@ -120,10 +156,10 @@ export function RuntimeSection(props: {
         <div>
           <div className="flex justify-between mb-2">
             <label className="control-label">
-              {t('settings.ram') || 'Max Memory (Xmx)'}
+              {translateWithFallback(t, 'settings.ram', 'Allocated Memory (RAM)')}
             </label>
             <span className="text-sm font-mono font-semibold text-foreground">
-              {getRamGb(modpackConfig, 4)} GB
+              {currentRam} GB
             </span>
           </div>
 
@@ -134,7 +170,7 @@ export function RuntimeSection(props: {
               className="flex-1 text-[10px] h-7 min-h-0 py-0"
               onClick={() => setMemoryGb(2)}
             >
-              Low (2GB)
+              2 GB
             </Button>
             <Button
               size="sm"
@@ -142,7 +178,7 @@ export function RuntimeSection(props: {
               className="flex-1 text-[10px] h-7 min-h-0 py-0"
               onClick={() => setMemoryGb(4)}
             >
-              Med (4GB)
+              4 GB
             </Button>
             <Button
               size="sm"
@@ -150,7 +186,7 @@ export function RuntimeSection(props: {
               className="flex-1 text-[10px] h-7 min-h-0 py-0"
               onClick={() => setMemoryGb(8)}
             >
-              High (8GB)
+              8 GB
             </Button>
           </div>
 
@@ -176,7 +212,7 @@ export function RuntimeSection(props: {
           <div className="animate-in fade-in slide-in-from-top-2">
             <div className="flex justify-between mb-2">
               <label className="control-label">
-                {t('settings.min_ram') || 'Initial Memory (Xms)'}
+                {translateWithFallback(t, 'settings.min_ram', 'Initial Memory (Xms)')}
               </label>
               <span className="text-sm font-mono font-semibold text-foreground">
                 {getMinRamGb(modpackConfig, 1)} GB
@@ -200,13 +236,25 @@ export function RuntimeSection(props: {
         )}
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-xs text-muted underline transition-colors hover:text-foreground"
-          >
-            {showAdvanced ? (t('general.hide_advanced') || 'Hide Advanced') : (t('general.show_advanced') || 'Show Advanced')}
-          </button>
+          {isReadOnly ? (
+            <p className="text-xs text-secondary">
+              {translateWithFallback(
+                t,
+                'settings.runtime_locked',
+                'Launch is in progress. These settings stay visible for reference and unlock when the current run finishes.',
+              )}
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="text-xs text-muted underline transition-colors hover:text-foreground"
+            >
+              {showAdvanced
+                ? translateWithFallback(t, 'general.hide_advanced', 'Hide advanced')
+                : translateWithFallback(t, 'general.show_advanced', 'Show advanced')}
+            </button>
+          )}
         </div>
 
         {/* Warnings Area */}
@@ -225,10 +273,12 @@ export function RuntimeSection(props: {
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-3">
             <label className="control-label">
-              {t('settings.java_path') || 'Java Version'}
+              {translateWithFallback(t, 'settings.java_runtime', 'Java runtime')}
             </label>
             <Button size="sm" variant="ghost" onClick={scanJava} disabled={isScanning}>
-              {isScanning ? (t('general.scanning') || 'Scanning...') : (t('general.rescan') || 'Rescan')}
+              {isScanning
+                ? translateWithFallback(t, 'general.scanning', 'Scanning...')
+                : translateWithFallback(t, 'general.rescan', 'Rescan')}
             </Button>
           </div>
 
@@ -237,13 +287,13 @@ export function RuntimeSection(props: {
             onChange={(e) => handleJavaChange(e.target.value)}
             disabled={isScanning}
           >
-            <option value="auto">{t('settings.java_auto') || 'Auto (Recommended)'}</option>
+            <option value="auto">{translateWithFallback(t, 'settings.java_auto', 'Auto (Recommended)')}</option>
             {detectedJavas.map((java) => (
               <option key={java.path} value={java.path}>
                 Java {java.majorVersion} ({java.version}){java.arch ? ` [${java.arch}]` : ''} - {java.path}
               </option>
             ))}
-            <option value="custom">{t('settings.java_custom') || 'Custom Path...'}</option>
+            <option value="custom">{translateWithFallback(t, 'settings.java_custom', 'Custom path...')}</option>
           </Select>
 
           {/* Custom Java Path Input */}
@@ -251,7 +301,7 @@ export function RuntimeSection(props: {
             <Input
               value={currentJavaPath}
               onChange={(e) => setJavaPath(e.target.value)}
-              placeholder="C:/Program Files/Java/..."
+              placeholder={translateWithFallback(t, 'settings.java_custom_placeholder', '/path/to/java')}
               className="mt-2"
             />
           )}

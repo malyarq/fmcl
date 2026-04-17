@@ -71,7 +71,7 @@ export type AppLayoutProps = {
   };
   runtime: {
     isLaunching: boolean;
-    progress: number;
+    progress?: number;
     launchStage: LaunchStage;
     statusText: string;
     statusDetail: string;

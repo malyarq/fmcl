@@ -2,54 +2,50 @@
 
 ## Current Milestone
 
-- Milestone: `v0.3.0`
-- Theme: Adaptive UX Hardening And Launcher Ergonomics
-- Status: complete
-- Last updated: `2026-04-14`
+- Milestone: `v0.4.0`
+- Theme: Launcher Truth And Product Polish
+- Status: active, with Phases 15-17 complete and Phase 18 closeout underway
+- Last updated: `2026-04-17`
 
 ## Why This Milestone Exists
 
-FMCL already had strong feature coverage, but everyday use still exposed trust gaps: layouts that did not adapt cleanly, preset themes that were not truthful in both modes, settings that felt over-nested, launch states that looked frozen, and modpack surfaces that still carried awkward or unstable interactions. The `v0.3.0` milestone closes those gaps without changing the core launcher architecture.
+FMCL already ships broad launcher coverage, but the screenshot-backed audit from `2026-04-14` exposed a smaller class of trust defects that still mattered in everyday use: contradictory launch states, stale loader summaries, broken-looking fallback art, raw localization keys, and a few remaining dense-surface navigation gaps. The `v0.4.0` milestone closes those defects without reopening the architecture or inventing new launcher scope.
 
-## Verified Launcher Surfaces
+## Verified Surface So Far
 
-The live walkthrough for this milestone covered the launcher at `1440x1100` and `900x1180`:
+The active browser-backed walkthrough for this milestone now covers `manual-verification.html?view=dashboard`, `manual-verification.html?view=modpack-details`, and `manual-verification.html?view=phase-17-polish`. Together those views verify:
 
-- Welcome screen and onboarding tour
-- Home dashboard and explicit launch-state feedback
-- Settings, accounts, and skin-management continuity
-- Modpack create, list, browser, details, export, and add-mod routes
-- Share flow and import-share path
-- Screenshots gallery and lightbox
-- Utilities surfaces: mirrors and statistics
-- Secondary content flow represented by datapack management
+- branded fallback art on the classic hero when pack artwork is missing
+- truthful loader summary on the active launch configuration
+- localized waiting, downloading, and failure feedback on the launch surface
+- visible read-only advanced settings while launch work is in flight
+- pack-provided runtime dependencies, readable requirement copy, and dense detail navigation on modpack details
+- branded fallback covers on catalog surfaces, coherent compact-nav active state, and Russian preset naming without raw settings keys
 
 ## Phase Status
 
 | Phase | Status | Outcome |
 |-------|--------|---------|
-| 11. Adaptive Layout And Interaction Foundations | Complete | Responsive shell rhythm, anchored overlays, overflow-safe menus, and shipped fallback assets |
-| 12. Theme Truth And Settings IA Simplification | Complete | Truthful preset themes across light and dark modes, better contrast, and flatter settings navigation |
-| 13. Launch Trust And Modpack Workflow Ergonomics | Complete | Explicit launch stages, busy-state feedback, truthful modpack dependencies, and steadier browser or card flows |
-| 14. Manual Verification And Release Truth | Complete | Multi-size browser walkthrough evidence, bounded follow-up capture, refreshed release docs, and a green final gate |
+| 15. Launch Truth And Shared Surface Contracts | Complete | Branded fallback art, truthful loader summary, synchronized launch stages, localized runtime copy, and read-only busy-state settings |
+| 16. Modpack Detail Integrity And Discoverable Dense Navigation | Complete | Dependency truth, readable requirement copy, and dense-screen detail navigation |
+| 17. Catalog, Compact Nav, And Settings Localization Polish | Complete | Catalog legibility, fallback imagery, compact-nav truth, and remaining locale cleanup |
+| 18. Verification And Release Truth | In progress | Focused automation, three-view browser proof, release-doc truth, and the final milestone gate |
 
-## What `v0.3.0` Delivers
+## What `v0.4.0` Delivers So Far
 
-- Adaptive layout and interaction safety across default and narrower desktop window sizes
-- Consistent sizing rhythm for primary controls, cards, and overlays on refreshed surfaces
-- Preset themes that actually repaint the launcher truthfully in light and dark mode without unreadable states
-- Flatter settings navigation for common tasks instead of deep tab-inside-tab drilling
-- Explicit launch progress and busy-state truth on the main play surface
-- More dependable modpack creation, browsing, and installed-pack quick actions
-- Placeholder and fallback asset cleanup on classic launcher surfaces
-- Manual browser verification at multiple sizes as part of release truth, not optional polish
+- Launch progress no longer falls back to misleading `0%` states when progress is still indeterminate
+- Classic launch feedback now stays aligned across CTA, status card, and runtime stage transitions
+- Missing hero art resolves to an intentional FMCL fallback instead of a broken image treatment
+- Advanced launch settings stay visible for reference while becoming read-only during active launch work
+- Runtime settings and launch-adjacent controls now respect the active launcher language on the audited classic surface
+- Modpack details now mark pack-provided runtime dependencies as satisfied and present readable requirement copy for mismatches
+- Dense detail navigation no longer depends on default horizontal-tab scrolling to reach core modpack sections
+- Catalog cards and compact navigation now keep fallback imagery and active-state truth coherent across the audited desktop shell
+- Audited settings surfaces now present localized preset names and no longer leak raw localization keys on the shipped UI
 
-## Next Candidates
+## Remaining Closeout Work
 
-These are likely follow-ups after `v0.3.0`, not committed scope for this milestone:
+Only the bounded Phase 18 closeout work remains before the milestone can be marked shipped:
 
-- Automated visual-regression coverage for the reusable manual-verification seam
-- Richer modpack metadata, dependency context, and changelog detail in browser and install flows
-- Dedicated activity-center UX for downloads, installs, and background tasks
-- Additional dashboard density or layout presets beyond the adaptive default shell
-- Deeper account and session conveniences, plus a final audit of lower-traffic localization and fallback seams
+- final repo-wide verification on `npm test`, `npm run lint`, `npx tsc --noEmit`, and `npm run build -- --publish never`
+- any strictly bounded packaging-truth cleanup required by that gate, without reopening product scope

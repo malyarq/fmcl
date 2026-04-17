@@ -35,20 +35,36 @@ interface ModpackDetailsProps {
   onNavigate: (view: { type: 'addMod'; modpackId: string } | { type: 'addResourcePack'; modpackId: string } | { type: 'addShader'; modpackId: string } | { type: 'export'; modpackId: string }) => void;
   onLaunch?: () => void | Promise<void>;
   onMetadataUpdated?: (metadata: ModpackMetadata) => void;
+  initialTab?: ModpackDetailsTab;
+  initialExpandedModId?: string;
+  initialMetadata?: ModpackMetadata;
+  initialMods?: ModpackModEntry[];
+  hydrateFromIpc?: boolean;
 }
 
-export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBack, onNavigate, onLaunch, onMetadataUpdated }) => {
+export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
+  modpackId,
+  onBack,
+  onNavigate,
+  onLaunch,
+  onMetadataUpdated,
+  initialTab = 'info',
+  initialExpandedModId,
+  initialMetadata,
+  initialMods,
+  hydrateFromIpc = true,
+}) => {
   const { t, getAccentStyles, getAccentHex, minecraftPath } = useSettings();
   const { modpacks, select, rename, duplicate, remove, refresh } = useModpack();
   const toast = useToast();
   const confirm = useConfirm();
 
-  const [metadata, setMetadata] = useState<ModpackMetadata | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<ModpackDetailsTab>('info');
+  const [metadata, setMetadata] = useState<ModpackMetadata | null>(initialMetadata ?? null);
+  const [loading, setLoading] = useState(initialMetadata ? false : true);
+  const [activeTab, setActiveTab] = useState<ModpackDetailsTab>(initialTab);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [hasUpdate, setHasUpdate] = useState(false);
-  const [mods, setMods] = useState<ModpackModEntry[]>([]);
+  const [mods, setMods] = useState<ModpackModEntry[]>(initialMods ?? []);
   const [loadingMods, setLoadingMods] = useState(false);
   const [modSearchQuery, setModSearchQuery] = useState('');
   const [modFilterStatus, setModFilterStatus] = useState<'all' | 'enabled' | 'disabled'>('all');
@@ -82,6 +98,11 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
   }, [activeTab, loadModpackConfig]);
 
   const loadDetails = useCallback(async () => {
+    if (!hydrateFromIpc) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       const meta = await modpacksIPC.getMetadata(modpackId, minecraftPath);
@@ -115,15 +136,19 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
     } finally {
       setLoading(false);
     }
-  }, [modpackId, minecraftPath]);
+  }, [hydrateFromIpc, modpackId, minecraftPath]);
 
   useEffect(() => {
-    if (!modpackId) return;
+    if (!modpackId || !hydrateFromIpc) return;
     loadDetails();
-  }, [modpackId, loadDetails]);
+  }, [hydrateFromIpc, modpackId, loadDetails]);
 
   const loadMods = useCallback(async () => {
     if (activeTab !== 'mods') return;
+    if (!hydrateFromIpc) {
+      setLoadingMods(false);
+      return;
+    }
     setLoadingMods(true);
     try {
       const modsList = await modpacksIPC.getMods(modpackId, minecraftPath);
@@ -138,7 +163,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
     } finally {
       setLoadingMods(false);
     }
-  }, [activeTab, modpackId, minecraftPath]);
+  }, [activeTab, hydrateFromIpc, modpackId, minecraftPath]);
 
   useEffect(() => {
     if (activeTab === 'mods') {
@@ -336,6 +361,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
                       <ModpackDetailsModsTab
                         mods={mods}
                         loadingMods={loadingMods}
+                        initialExpandedModId={initialExpandedModId}
                         modSearchQuery={modSearchQuery}
                         onModSearchQueryChange={setModSearchQuery}
                         modFilterStatus={modFilterStatus}
@@ -344,6 +370,10 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({ modpackId, onBac
                         onRemoveMod={handleRemoveMod}
                         onModToggle={handleModToggle}
                         onRefresh={loadMods}
+                        runtimeContext={{
+                          minecraft: effectiveConfig?.runtime.minecraft ?? metadata?.minecraftVersion,
+                          modLoader: effectiveConfig?.runtime.modLoader ?? metadata?.modLoader,
+                        }}
                         t={t}
                         getAccentStyles={getAccentStyles}
                       />

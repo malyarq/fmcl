@@ -4,6 +4,7 @@ import type { ComponentProps } from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
+import { getProgressStatus } from '../../../features/launcher/services/launcherService';
 import { LaunchControls } from '../LaunchControls';
 
 const killAndRestartMock = vi.fn();
@@ -42,20 +43,36 @@ describe('LaunchControls launch-state seam', () => {
   });
 
   it('shows stage-aware downloading copy without exposing restart too early', () => {
+    const t = createTranslator('ru');
+    const progressStatus = getProgressStatus({ type: 'assets', task: 42, total: 100 }, t);
+
     renderLaunchControls({
       isLaunching: true,
       progress: 42,
-      launchStage: 'downloading',
-      statusText: 'Downloading',
-      statusDetail: 'Game assets - 42%',
+      launchStage: progressStatus.stage,
+      statusText: progressStatus.title,
+      statusDetail: progressStatus.detail,
+      t,
     });
 
-    expect(screen.getAllByText('Downloading')).toHaveLength(2);
-    expect(screen.getByText('Game assets - 42%')).toBeTruthy();
+    expect(screen.getAllByText('Загрузка')).toHaveLength(2);
+    expect(screen.getByText('Игровые ассеты - 42%')).toBeTruthy();
 
-    const launchButton = screen.getByRole('button', { name: /^Downloading$/i });
+    const launchButton = screen.getByRole('button', { name: /^Загрузка$/i });
     expect(launchButton).toHaveProperty('disabled', true);
     expect(screen.queryByRole('button', { name: /Force restart/i })).toBeNull();
+  });
+
+  it('localizes launch-adjacent controls from the active launcher language', () => {
+    renderLaunchControls({
+      isLaunching: true,
+      launchStage: 'waiting',
+      canForceRestart: true,
+      t: createTranslator('ru'),
+    });
+
+    expect(screen.getByRole('button', { name: 'Ожидание Minecraft' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Перезапустить принудительно' })).toBeTruthy();
   });
 
   it('shows force restart only for waiting or running states', () => {

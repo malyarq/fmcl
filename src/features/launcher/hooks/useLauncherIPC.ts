@@ -2,9 +2,10 @@ import { useEffect } from 'react';
 import { launcherIPC } from '../../../services/ipc/launcherIPC';
 import {
   getLaunchStatusFromLog,
+  getMeaningfulProgressPercent,
   getProgressStatus,
   isTrackableProgressType,
-  toPercent,
+  shouldApplyLaunchStatus,
   type LaunchStage,
   type LauncherProgressEvent,
 } from '../services/launcherService';
@@ -22,9 +23,20 @@ export function useLauncherIPC(params: {
   onSetStatusDetail: (text: string) => void;
   onSetLaunchStage: (stage: LaunchStage) => void;
   onSetLaunching: (isLaunching: boolean) => void;
+  onClearProgress: () => void;
   getLaunchStage: () => LaunchStage;
 }) {
-  const { t, onAppendLog, onSetProgress, onSetStatusText, onSetStatusDetail, onSetLaunchStage, onSetLaunching, getLaunchStage } = params;
+  const {
+    t,
+    onAppendLog,
+    onSetProgress,
+    onSetStatusText,
+    onSetStatusDetail,
+    onSetLaunchStage,
+    onSetLaunching,
+    onClearProgress,
+    getLaunchStage,
+  } = params;
 
   // Subscribe to launcher events once for the active language.
   useEffect(() => {
@@ -39,7 +51,7 @@ export function useLauncherIPC(params: {
     const unsubLog = launcherIPC.onLog((log) => {
       onAppendLog(log);
       const nextStatus = getLaunchStatusFromLog(log, t);
-      if (nextStatus) {
+      if (nextStatus && shouldApplyLaunchStatus({ currentStage: getLaunchStage(), nextStage: nextStatus.stage, source: 'log' })) {
         onSetLaunchStage(nextStatus.stage);
         onSetStatusText(nextStatus.title);
         onSetStatusDetail(nextStatus.detail);
@@ -48,9 +60,13 @@ export function useLauncherIPC(params: {
 
     const unsubProgress = launcherIPC.onProgress((data: LauncherProgressEvent) => {
       if (isTrackableProgressType(data.type)) {
-        const percent = toPercent(data.task, data.total);
+        const percent = getMeaningfulProgressPercent(data);
         const nextStatus = getProgressStatus(data, t);
-        onSetProgress(percent);
+        if (percent === null) {
+          onClearProgress();
+        } else {
+          onSetProgress(percent);
+        }
         onSetLaunchStage(nextStatus.stage);
         onSetStatusText(nextStatus.title);
         onSetStatusDetail(nextStatus.detail);
@@ -72,7 +88,7 @@ export function useLauncherIPC(params: {
         onSetStatusDetail('');
       }
       onSetLaunching(false);
-      onSetProgress(0);
+      onClearProgress();
     });
 
     return () => {
@@ -80,7 +96,17 @@ export function useLauncherIPC(params: {
       unsubProgress();
       unsubClose();
     };
-  }, [t, onAppendLog, onSetProgress, onSetStatusText, onSetStatusDetail, onSetLaunchStage, onSetLaunching, getLaunchStage]);
+  }, [
+    t,
+    onAppendLog,
+    onSetProgress,
+    onSetStatusText,
+    onSetStatusDetail,
+    onSetLaunchStage,
+    onSetLaunching,
+    onClearProgress,
+    getLaunchStage,
+  ]);
 
   const sendStdin = async (data: string) => {
     if (launcherIPC.isAvailable() && launcherIPC.has('sendStdin')) {

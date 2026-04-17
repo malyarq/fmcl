@@ -396,10 +396,9 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
         </button>
         <div className="flex gap-4">
           <LazyImage
-            src={modpack.iconUrl ?? '/icon.png'}
+            src={modpack.iconUrl ?? undefined}
             alt={modpack.title}
             className="h-16 w-16 rounded-2xl border border-border/70 object-cover"
-            fallback="/icon.png"
           />
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex flex-wrap items-center gap-2 pr-8">
@@ -614,21 +613,28 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
 
         {/* Search and Filters */}
         {!showHistory && (
-          <div className="surface-muted mb-4 space-y-3 p-4" role="search" aria-label={t('modpacks.search_placeholder') || 'Search modpacks'}>
+          <div
+            className="surface-muted mb-4 space-y-3 p-4"
+            role="search"
+            aria-label={t('modpacks.search_placeholder') || 'Search modpacks'}
+            data-testid="remote-modpack-filters"
+          >
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t('modpacks.search_placeholder')}
               aria-label={t('modpacks.search_placeholder') || 'Search modpacks'}
               className="w-full"
+              data-testid="remote-modpack-search"
             />
 
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex flex-wrap items-start gap-2" data-testid="remote-modpack-filter-controls">
               <Select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
                 aria-label={t('modpacks.sort_popularity') || 'Sort modpacks'}
-                className="flex-1 min-w-[150px]"
+                className="min-w-[11rem] flex-1"
+                data-testid="remote-modpack-sort"
               >
                 <option value="popularity">{t('modpacks.sort_popularity') || 'По популярности'}</option>
                 <option value="alphabetical">{t('modpacks.sort_alphabetical') || 'По алфавиту'}</option>
@@ -639,7 +645,8 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
                 value={filterMCVersion}
                 onChange={(e) => setFilterMCVersion(e.target.value as FilterMCVersion)}
                 aria-label={t('modpacks.filter_all') || 'Filter by Minecraft version'}
-                className="flex-1 min-w-[150px]"
+                className="min-w-[11rem] flex-1"
+                data-testid="remote-modpack-version-filter"
               >
                 <option value="all">{t('modpacks.filter_all') || 'Все версии MC'}</option>
                 {MINECRAFT_VERSIONS.filter(v => v.type === 'release').map((v) => (
@@ -653,7 +660,8 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
                 value={filterLoader}
                 onChange={(e) => setFilterLoader(e.target.value as FilterLoader)}
                 aria-label={t('modpacks.filter_all_loaders') || 'Filter by modloader'}
-                className="flex-1 min-w-[150px]"
+                className="min-w-[11rem] flex-1"
+                data-testid="remote-modpack-loader-filter"
               >
                 <option value="all">{t('modpacks.filter_all_loaders') || 'Все модлоадеры'}</option>
                 <option value="forge">Forge</option>
@@ -665,8 +673,9 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
                 value={String(itemsPerPage)}
                 onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
                 aria-label={t('modpacks.items_per_page') || 'Items per page'}
-                className="w-[100px]"
+                className="min-w-[8.5rem] flex-none sm:basis-[8.5rem]"
                 title={t('modpacks.items_per_page') || 'Элементов на странице'}
+                data-testid="remote-modpack-items-per-page"
               >
                 <option value="12">12</option>
                 <option value="24">24</option>

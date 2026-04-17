@@ -126,6 +126,28 @@ function ModsHarness() {
           },
           enabled: false,
         },
+        {
+          id: 'gamma',
+          name: 'Gamma Runtime',
+          version: '3.1.0',
+          loaders: ['fabric'],
+          deps: [
+            { id: 'minecraft', versionRange: '[1.20.1]', kind: 'depends' },
+            { id: 'fabricloader', versionRange: '[0.17.0]', kind: 'depends' },
+            { id: 'alpha', versionRange: '[1.0.0]', kind: 'depends' },
+            { id: 'beta', versionRange: '[2.0.0]', kind: 'depends' },
+          ],
+          file: {
+            path: '/mods/gamma.jar',
+            name: 'gamma.jar',
+            size: 36,
+            mtimeMs: 3,
+          },
+          hash: {
+            sha1: 'gamma',
+          },
+          enabled: true,
+        },
       ]}
       loadingMods={false}
       modSearchQuery={query}
@@ -136,6 +158,13 @@ function ModsHarness() {
       onRemoveMod={vi.fn().mockResolvedValue(undefined)}
       onModToggle={vi.fn()}
       onRefresh={vi.fn()}
+      runtimeContext={{
+        minecraft: '1.20.1',
+        modLoader: {
+          type: 'fabric',
+          version: '0.16.9',
+        },
+      }}
       t={t}
       getAccentStyles={() => ({ className: '', style: undefined })}
     />
@@ -191,6 +220,7 @@ describe('secondary content tabs', () => {
     expect(screen.getByText('Review installed mods, toggle them quickly, or jump to their project pages for updates.')).toBeTruthy();
     expect(screen.getByText('Alpha Utilities')).toBeTruthy();
     expect(screen.getByText('Beta Tweaks')).toBeTruthy();
+    expect(screen.getByText('Gamma Runtime')).toBeTruthy();
 
     fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'disabled' },
@@ -198,6 +228,7 @@ describe('secondary content tabs', () => {
 
     await waitFor(() => {
       expect(screen.queryByText('Alpha Utilities')).toBeNull();
+      expect(screen.queryByText('Gamma Runtime')).toBeNull();
       expect(screen.getByText('Beta Tweaks')).toBeTruthy();
     });
 
@@ -206,6 +237,21 @@ describe('secondary content tabs', () => {
     });
 
     expect(screen.getByText('Beta Tweaks')).toBeTruthy();
+  });
+
+  it('marks runtime-provided dependencies truthfully and formats readable requirement copy', async () => {
+    render(<ModsHarness />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Gamma Runtime/i })[0]);
+
+    expect(await screen.findByText('Provided by pack runtime')).toBeTruthy();
+    expect(screen.getByText('Pack runtime mismatch')).toBeTruthy();
+    expect(screen.getByText('Pack runtime 1.20.1')).toBeTruthy();
+    expect(screen.getByText('Pack runtime 0.16.9')).toBeTruthy();
+    expect(screen.getByText(/requires 1\.20\.1/i)).toBeTruthy();
+    expect(screen.getByText(/requires 0\.17\.0/i)).toBeTruthy();
+    expect(screen.getByText(/requires 2\.0\.0/i)).toBeTruthy();
+    expect(screen.getAllByText('Missing')).toHaveLength(1);
   });
 
   it('routes datapack deletion through the shared confirm flow instead of browser confirm', async () => {

@@ -8,14 +8,119 @@ import { Select } from '../../ui/Select';
 import { cn } from '../../../utils/cn';
 import { modNameToSlug } from '../../../utils/modSlug';
 import type { ModEntry } from '@shared/types/mods';
-import { isVersionCompatible } from '../../../utils/versionCheck';
+import type { ModLoaderType as RuntimeModLoaderType } from '@shared/types/modpack';
+import {
+  describeVersionRequirement,
+  isVersionCompatible,
+  type VersionRequirementDescriptor,
+} from '../../../utils/versionCheck';
 import { externalLinksIPC } from '../../../services/ipc/externalLinksIPC';
 
 export type ModpackModEntry = ModEntry;
+type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
+
+export interface ModpackRuntimeDependencyContext {
+  minecraft?: string;
+  modLoader?: {
+    type: RuntimeModLoaderType;
+    version?: string;
+  };
+}
+
+type DependencyStatus = 'missing' | 'incompatible' | 'installed' | 'provided';
+type DependencySource = 'runtime' | 'mod' | 'none';
+
+interface DependencyResolution {
+  status: DependencyStatus;
+  source: DependencySource;
+  providedVersion?: string;
+}
+
+const LOADER_RUNTIME_IDS: Record<Exclude<RuntimeModLoaderType, 'vanilla'>, string[]> = {
+  fabric: ['fabric', 'fabricloader'],
+  quilt: ['quilt', 'quilt-loader', 'quilt_loader'],
+  forge: ['forge'],
+  neoforge: ['neoforge'],
+};
+
+function normalizeDependencyId(id: string): string {
+  return id.trim().toLowerCase();
+}
+
+function resolveRuntimeDependency(
+  depId: string,
+  runtimeContext?: ModpackRuntimeDependencyContext,
+): { matched: boolean; version?: string } {
+  if (!runtimeContext) {
+    return { matched: false };
+  }
+
+  const normalizedDepId = normalizeDependencyId(depId);
+  if (normalizedDepId === 'minecraft') {
+    return {
+      matched: Boolean(runtimeContext.minecraft),
+      version: runtimeContext.minecraft,
+    };
+  }
+
+  const loaderType = runtimeContext.modLoader?.type;
+  if (!loaderType || loaderType === 'vanilla') {
+    return { matched: false };
+  }
+
+  if (!LOADER_RUNTIME_IDS[loaderType].includes(normalizedDepId)) {
+    return { matched: false };
+  }
+
+  return {
+    matched: true,
+    version: runtimeContext.modLoader?.version,
+  };
+}
+
+function formatVersionRequirement(descriptor: VersionRequirementDescriptor, t: TranslateFn): string | null {
+  switch (descriptor.kind) {
+    case 'any':
+      return null;
+    case 'exact':
+      return t('modpacks.dep_version_exact', { version: descriptor.version });
+    case 'minimum':
+      return t(
+        descriptor.inclusive ? 'modpacks.dep_version_minimum' : 'modpacks.dep_version_above',
+        { version: descriptor.version },
+      );
+    case 'maximum':
+      return t(
+        descriptor.inclusive ? 'modpacks.dep_version_maximum' : 'modpacks.dep_version_below',
+        { version: descriptor.version },
+      );
+    case 'between':
+      return t(
+        descriptor.minInclusive && descriptor.maxInclusive
+          ? 'modpacks.dep_version_between'
+          : 'modpacks.dep_version_between_strict',
+        { min: descriptor.min, max: descriptor.max },
+      );
+    case 'oneOf': {
+      const parts = descriptor.items
+        .map((item) => formatVersionRequirement(item, t))
+        .filter((item): item is string => Boolean(item));
+      if (parts.length === 0) {
+        return null;
+      }
+      return parts.join(` ${t('modpacks.dep_version_or')} `);
+    }
+    case 'raw':
+      return descriptor.value;
+    default:
+      return null;
+  }
+}
 
 export interface ModpackDetailsModsTabProps {
   mods: ModpackModEntry[];
   loadingMods: boolean;
+  initialExpandedModId?: string;
   modSearchQuery: string;
   onModSearchQueryChange: (value: string) => void;
   modFilterStatus: 'all' | 'enabled' | 'disabled';
@@ -24,7 +129,8 @@ export interface ModpackDetailsModsTabProps {
   onRemoveMod: (mod: ModpackModEntry) => Promise<void>;
   onModToggle?: (mod: ModpackModEntry) => void;
   onRefresh?: () => void;
-  t: (key: string) => string;
+  runtimeContext?: ModpackRuntimeDependencyContext;
+  t: TranslateFn;
   getAccentStyles: (type: 'bg' | 'text' | 'border' | 'ring' | 'hover' | 'accent' | 'title' | 'soft-bg' | 'soft-border') => {
     className?: string;
     style?: React.CSSProperties;
@@ -34,6 +140,7 @@ export interface ModpackDetailsModsTabProps {
 export const ModpackDetailsModsTab: React.FC<ModpackDetailsModsTabProps> = ({
   mods,
   loadingMods,
+  initialExpandedModId,
   modSearchQuery,
   onModSearchQueryChange,
   modFilterStatus,
@@ -42,22 +149,52 @@ export const ModpackDetailsModsTab: React.FC<ModpackDetailsModsTabProps> = ({
   onRemoveMod,
   onModToggle,
   onRefresh,
+  runtimeContext,
   t,
 }) => {
-  const [expandedModId, setExpandedModId] = React.useState<string | null>(null);
+  const [expandedModId, setExpandedModId] = React.useState<string | null>(initialExpandedModId ?? null);
 
   const toggleExpand = React.useCallback((modId: string) => {
     setExpandedModId((prev) => (prev === modId ? null : modId));
   }, []);
 
-  const getDependencyStatus = React.useCallback(
+  const resolveDependency = React.useCallback(
     (depId: string, versionRange?: string | string[]) => {
-      const installed = mods.find((mod) => mod.id === depId);
-      if (!installed) return 'missing';
-      if (!isVersionCompatible(installed.version, versionRange)) return 'incompatible';
-      return 'installed';
+      const runtimeMatch = resolveRuntimeDependency(depId, runtimeContext);
+      if (runtimeMatch.matched) {
+        const compatible = !versionRange || isVersionCompatible(runtimeMatch.version ?? '', versionRange);
+        return {
+          status: compatible ? 'provided' : 'incompatible',
+          source: 'runtime',
+          providedVersion: runtimeMatch.version,
+        } satisfies DependencyResolution;
+      }
+
+      const installed = mods.find(
+        (mod) => mod.enabled !== false && normalizeDependencyId(mod.id) === normalizeDependencyId(depId),
+      );
+      if (!installed) {
+        return {
+          status: 'missing',
+          source: 'none',
+        } satisfies DependencyResolution;
+      }
+
+      if (!isVersionCompatible(installed.version, versionRange)) {
+        return {
+          status: 'incompatible',
+          source: 'mod',
+          providedVersion: installed.version,
+        } satisfies DependencyResolution;
+      }
+
+      return {
+        status: 'installed',
+        source: 'mod',
+        providedVersion: installed.version,
+      } satisfies DependencyResolution;
     },
-    [mods]
+    [mods, runtimeContext],
   );
 
   const handleOpenExternalLink = React.useCallback((url: string, context: string) => {
@@ -81,6 +218,19 @@ export const ModpackDetailsModsTab: React.FC<ModpackDetailsModsTabProps> = ({
   }, [mods, modSearchQuery, modFilterStatus]);
 
   const enabledCount = React.useMemo(() => mods.filter((mod) => mod.enabled).length, [mods]);
+  const renderModItem = (mod: ModpackModEntry) => (
+    <ModItem
+      key={mod.id}
+      mod={mod}
+      isExpanded={expandedModId === mod.id}
+      toggleExpand={toggleExpand}
+      onModToggle={onModToggle}
+      onRemoveMod={onRemoveMod}
+      onOpenExternalLink={handleOpenExternalLink}
+      resolveDependency={resolveDependency}
+      t={t}
+    />
+  );
 
   return (
     <div className="space-y-4">
@@ -153,22 +303,18 @@ export const ModpackDetailsModsTab: React.FC<ModpackDetailsModsTabProps> = ({
         </div>
       ) : (
         <div className="surface-card h-[800px] overflow-hidden p-2">
-          <Virtuoso
-            style={{ height: '100%' }}
-            data={filteredMods}
-            itemContent={(_index, mod) => (
-              <ModItem
-                mod={mod}
-                isExpanded={expandedModId === mod.id}
-                toggleExpand={toggleExpand}
-                onModToggle={onModToggle}
-                onRemoveMod={onRemoveMod}
-                onOpenExternalLink={handleOpenExternalLink}
-                getDependencyStatus={getDependencyStatus}
-                t={t}
-              />
-            )}
-          />
+          {filteredMods.length <= 8 ? (
+            <div className="h-full overflow-y-auto pr-1 custom-scrollbar">
+              {filteredMods.map(renderModItem)}
+            </div>
+          ) : (
+            <Virtuoso
+              style={{ height: '100%' }}
+              data={filteredMods}
+              initialItemCount={8}
+              itemContent={(_index, mod) => renderModItem(mod)}
+            />
+          )}
         </div>
       )}
     </div>
@@ -182,9 +328,9 @@ const ModItem = React.memo<{
   onModToggle?: (mod: ModpackModEntry) => void;
   onRemoveMod: (mod: ModpackModEntry) => Promise<void>;
   onOpenExternalLink: (url: string, context: string) => void;
-  getDependencyStatus: (id: string, range?: string | string[]) => string;
-  t: (key: string) => string;
-}>(({ mod, isExpanded, toggleExpand, onModToggle, onRemoveMod, onOpenExternalLink, getDependencyStatus, t }) => {
+  resolveDependency: (id: string, range?: string | string[]) => DependencyResolution;
+  t: TranslateFn;
+}>(({ mod, isExpanded, toggleExpand, onModToggle, onRemoveMod, onOpenExternalLink, resolveDependency, t }) => {
   return (
     <div className={cn('mb-2 rounded-2xl border border-border/70 bg-card/86 p-4 shadow-[0_12px_32px_rgba(0,0,0,0.12)]', !mod.enabled && 'opacity-75')}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -203,14 +349,12 @@ const ModItem = React.memo<{
               <span
                 className={cn(
                   'rounded-full border px-2 py-0.5 text-xs font-medium',
-                  mod.deps.some(
-                    (dep) =>
-                      dep.kind === 'depends' &&
-                      (getDependencyStatus(dep.id, dep.versionRange) === 'missing' ||
-                        getDependencyStatus(dep.id, dep.versionRange) === 'incompatible')
-                  )
+                  mod.deps.some((dep) => {
+                    const resolution = resolveDependency(dep.id, dep.versionRange);
+                    return dep.kind === 'depends' && (resolution.status === 'missing' || resolution.status === 'incompatible');
+                  })
                     ? 'border-red-500/30 bg-red-500/10 text-red-400'
-                    : 'border-border/70 bg-background/70 text-secondary'
+                    : 'border-border/70 bg-background/70 text-secondary',
                 )}
               >
                 {mod.deps.length} {t('modpacks.deps_title')}
@@ -282,26 +426,46 @@ const ModItem = React.memo<{
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{t('modpacks.deps_title')}</p>
           <div className="space-y-2">
             {mod.deps.map((dep, index) => {
-              const status = getDependencyStatus(dep.id, dep.versionRange);
-              const isMissing = status === 'missing' && dep.kind === 'depends';
-              const isIncompatible = status === 'incompatible';
+              const resolution = resolveDependency(dep.id, dep.versionRange);
+              const requirementText = formatVersionRequirement(describeVersionRequirement(dep.versionRange), t);
+              const isMissing = resolution.status === 'missing' && dep.kind === 'depends';
+              const isIncompatible = resolution.status === 'incompatible';
+              const isRuntimeProvided = resolution.status === 'provided';
+              const statusText = isMissing
+                ? t('modpacks.dep_missing')
+                : isIncompatible && resolution.source === 'runtime'
+                  ? t('modpacks.dep_runtime_incompatible')
+                  : isIncompatible
+                    ? t('modpacks.dep_incompatible')
+                    : isRuntimeProvided
+                      ? t('modpacks.dep_provided_runtime')
+                      : null;
 
               return (
                 <div key={`${dep.id}-${index}`} className="surface-inline flex flex-wrap items-center gap-2 p-3 text-xs">
                   <span
                     className={cn(
                       'h-2 w-2 rounded-full',
-                      isMissing ? 'bg-red-500' : isIncompatible ? 'bg-yellow-500' : 'bg-emerald-500'
+                      isMissing ? 'bg-red-500' : isIncompatible ? 'bg-yellow-500' : 'bg-emerald-500',
                     )}
                   />
                   <span className="font-mono text-foreground">{dep.id}</span>
-                  {dep.versionRange && <span className="text-secondary">({String(dep.versionRange)})</span>}
+                  {requirementText && <span className="text-secondary">({requirementText})</span>}
+                  {resolution.source === 'runtime' && resolution.providedVersion && (
+                    <span className="text-secondary">{t('modpacks.dep_runtime_version', { version: resolution.providedVersion })}</span>
+                  )}
                   <span className="rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-[10px] uppercase text-secondary">
                     {dep.kind}
                   </span>
-                  {isMissing && <span className="ml-auto font-medium text-red-400">{t('modpacks.dep_missing')}</span>}
-                  {isIncompatible && (
-                    <span className="ml-auto font-medium text-yellow-400">{t('modpacks.dep_incompatible')}</span>
+                  {statusText && (
+                    <span
+                      className={cn(
+                        'ml-auto font-medium',
+                        isMissing ? 'text-red-400' : isIncompatible ? 'text-yellow-400' : 'text-emerald-400',
+                      )}
+                    >
+                      {statusText}
+                    </span>
                   )}
                 </div>
               );

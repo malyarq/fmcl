@@ -34,11 +34,11 @@ describe('SettingsTabsHeader accessibility', () => {
 
     expect(screen.getByRole('tablist', { name: 'settings.title' })).toBeTruthy();
     expect(screen.getAllByRole('tab')).toHaveLength(6);
-    expect(screen.getAllByRole('tab', { name: 'settings.tab_storage' })).toHaveLength(1);
+    expect(screen.getAllByRole('tab', { name: 'Storage' })).toHaveLength(1);
 
-    const appearance = screen.getByRole('tab', { name: 'settings.tab_appearance' });
-    const downloads = screen.getByRole('tab', { name: 'settings.tab_downloads' });
-    const statistics = screen.getByRole('tab', { name: 'settings.tab_statistics' });
+    const appearance = screen.getByRole('tab', { name: 'Appearance' });
+    const downloads = screen.getByRole('tab', { name: 'Downloads' });
+    const statistics = screen.getByRole('tab', { name: 'Statistics' });
 
     appearance.focus();
     fireEvent.keyDown(appearance, { key: 'ArrowRight' });

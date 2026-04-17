@@ -68,13 +68,14 @@ export function ConsolePage() {
             const entry = parseLog(rawLog);
             setLogs((prev) => [...prev, entry]);
         },
-        onSetProgress: () => { },
-        onSetStatusText: () => { },
-        onSetStatusDetail: () => { },
+        onSetProgress: (_percent) => { },
+        onSetStatusText: (_text) => { },
+        onSetStatusDetail: (_text) => { },
         onSetLaunchStage: (stage) => {
             launchStageRef.current = stage;
         },
-        onSetLaunching: () => { },
+        onSetLaunching: (_isLaunching) => { },
+        onClearProgress: () => { },
         getLaunchStage: () => launchStageRef.current,
     });
 

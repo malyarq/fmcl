@@ -2,6 +2,8 @@
   "name": "friend-launcher",
   "private": true,
   "version": "0.3.0",
+  "description": "Desktop Minecraft launcher for vanilla play, modpacks, and FriendTunnel multiplayer.",
+  "author": "FriendLauncher Contributors",
   "type": "module",
   "scripts": {
     "dev": "vite",

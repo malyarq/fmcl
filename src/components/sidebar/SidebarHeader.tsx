@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { Globe2, Menu, PanelsTopLeft, Settings2 } from 'lucide-react';
+import { Globe2, LayoutGrid, Menu, PanelsTopLeft, Settings2 } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import type { UIMode } from '../../contexts/settings/types';
@@ -28,6 +28,8 @@ export function SidebarHeader(props: {
     uiMode,
     onChangeMode,
   } = props;
+  const simpleLabel = t('ui_mode.simple') || 'Classic';
+  const modpacksLabel = t('ui_mode.modpacks') || 'Modpacks';
 
   return (
     <div className={cn("relative mb-3", isCollapsed && "mb-2")}>
@@ -110,6 +112,8 @@ export function SidebarHeader(props: {
           type="button"
           data-tour="classic"
           onClick={() => onChangeMode('simple')}
+          aria-label={isCollapsed ? simpleLabel : undefined}
+          aria-pressed={uiMode === 'simple'}
           className={cn(
             'flex items-center justify-center font-medium rounded-full transition-all duration-500 ease-out',
             isCollapsed 
@@ -119,13 +123,13 @@ export function SidebarHeader(props: {
               ? 'bg-card text-foreground shadow-sm'
               : 'text-secondary hover:text-foreground'
           )}
-          title={isCollapsed ? (t('ui_mode.simple') || 'Classic') : undefined}
+          title={isCollapsed ? simpleLabel : undefined}
         >
           {isCollapsed ? (
-            <PanelsTopLeft className="h-3.5 w-3.5" />
+            <PanelsTopLeft className="h-3.5 w-3.5" data-testid="sidebar-mode-simple-glyph" aria-hidden="true" />
           ) : (
             <span className="inline-block text-[11px] transition-all duration-500 ease-out">
-              {t('ui_mode.simple') || 'Classic'}
+              {simpleLabel}
             </span>
           )}
         </button>
@@ -133,6 +137,8 @@ export function SidebarHeader(props: {
           type="button"
           data-tour="modpacks"
           onClick={() => onChangeMode('modpacks')}
+          aria-label={isCollapsed ? modpacksLabel : undefined}
+          aria-pressed={uiMode === 'modpacks'}
           className={cn(
             'flex items-center justify-center font-medium rounded-full transition-all duration-500 ease-out',
             isCollapsed 
@@ -142,14 +148,19 @@ export function SidebarHeader(props: {
               ? 'bg-card text-foreground shadow-sm'
               : 'text-secondary hover:text-foreground'
           )}
-          title={isCollapsed ? (t('ui_mode.modpacks') || 'Modpacks') : undefined}
+          title={isCollapsed ? modpacksLabel : undefined}
         >
-          <span className={cn(
-            "transition-all duration-500 ease-out inline-block",
-            isCollapsed ? "text-[9px] opacity-100" : "text-[11px] opacity-100"
-          )}>
-            {isCollapsed ? 'M' : t('ui_mode.modpacks') || 'Modpacks'}
-          </span>
+          {isCollapsed ? (
+            <LayoutGrid className="h-3.5 w-3.5" data-testid="sidebar-mode-modpacks-glyph" aria-hidden="true" />
+          ) : (
+            <span
+              className={cn(
+                'transition-all duration-500 ease-out inline-block text-[11px] opacity-100',
+              )}
+            >
+              {modpacksLabel}
+            </span>
+          )}
         </button>
       </div>
     </div>

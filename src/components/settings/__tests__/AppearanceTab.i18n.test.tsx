@@ -129,6 +129,7 @@ describe('AppearanceTab i18n seams', () => {
 
     expect(screen.getByText('Launcher Accent')).toBeTruthy();
     expect(screen.getAllByText('Theme Presets').length).toBeGreaterThan(0);
+    expect(screen.getByRole('option', { name: 'Forest' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Advanced Appearance' })).toBeTruthy();
     expect(screen.getByText('Background Type')).toBeTruthy();
     expect(screen.getByText('Particle Type')).toBeTruthy();
@@ -138,6 +139,7 @@ describe('AppearanceTab i18n seams', () => {
 
     expect(container.textContent).not.toContain('settings.appearance_branding');
     expect(container.textContent).not.toContain('settings.theme_presets');
+    expect(container.textContent).not.toContain('settings.theme_preset_forest');
     expect(container.textContent).not.toContain('settings.background_type');
     expect(container.textContent).not.toContain('settings.ui_scalability');
     expect(container.textContent).not.toContain('settings.sidebar_position');
@@ -151,6 +153,7 @@ describe('AppearanceTab i18n seams', () => {
 
     expect(screen.getByText('Акцент лаунчера')).toBeTruthy();
     expect(screen.getAllByText('Готовые темы').length).toBeGreaterThan(0);
+    expect(screen.getByRole('option', { name: 'Лес' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Расширенный внешний вид' })).toBeTruthy();
     expect(screen.getByText('Тип фона')).toBeTruthy();
     expect(screen.getByText('Тип частиц')).toBeTruthy();
@@ -160,11 +163,13 @@ describe('AppearanceTab i18n seams', () => {
 
     expect(container.textContent).not.toContain('settings.appearance_branding');
     expect(container.textContent).not.toContain('settings.theme_presets');
+    expect(container.textContent).not.toContain('settings.theme_preset_forest');
     expect(container.textContent).not.toContain('settings.background_type');
     expect(container.textContent).not.toContain('settings.ui_scalability');
     expect(container.textContent).not.toContain('settings.sidebar_position');
     expect(container.textContent).not.toContain('settings.reset_custom_theme');
     expect(container.textContent).not.toContain('Theme Presets');
+    expect(container.textContent).not.toContain('Forest');
     expect(container.textContent).not.toContain('Background Type');
     expect(container.textContent).not.toContain('UI Scalability');
     expect(container.textContent).not.toContain('Sidebar Position');

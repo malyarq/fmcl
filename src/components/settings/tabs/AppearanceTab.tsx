@@ -6,7 +6,12 @@ import { CollapsibleSection } from '../../ui/CollapsibleSection';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
 import { Select } from '../../ui/Select';
-import { getThemePreset, THEME_PRESETS } from '../../../contexts/settings/theme-presets';
+import {
+  getThemePreset,
+  getThemePresetLabel,
+  getThemePresetSummary,
+  THEME_PRESETS,
+} from '../../../contexts/settings/theme-presets';
 import type { CustomThemeConfig, ThemePresetId } from '../../../contexts/settings/types';
 
 const COLORS = [
@@ -26,6 +31,11 @@ type BackgroundPosition = NonNullable<BackgroundConfig['position']>;
 const BACKGROUND_TYPES: readonly BackgroundType[] = ['image', 'video', 'particles'];
 const BACKGROUND_POSITIONS: readonly BackgroundPosition[] = ['cover', 'contain', 'center', 'repeat'];
 const BACKGROUND_PARTICLE_TYPES: readonly BackgroundParticleType[] = ['stars', 'snow', 'rain'];
+
+function translateWithFallback(t: (key: string) => string, key: string, fallback: string): string {
+  const translated = t(key);
+  return translated === key ? fallback : translated;
+}
 
 function ToggleRow(props: {
   label: string;
@@ -77,9 +87,30 @@ export const AppearanceTab: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const selectedPreset = getThemePreset(themePresetId);
-  const selectedPresetModeLabel = theme === 'light'
-    ? t('settings.theme_light')
-    : t('settings.theme_dark');
+  const themePresetsLabel = translateWithFallback(t, 'settings.theme_presets', 'Theme Presets');
+  const themePresetsDescription = translateWithFallback(
+    t,
+    'settings.theme_presets_desc',
+    'Apply a ready-made visual profile, or import/export your own configuration.',
+  );
+  const themeDescription = translateWithFallback(
+    t,
+    'settings.theme_desc',
+    'Choose the base mood of the launcher, then fine-tune the rest below.',
+  );
+  const themePresetsPlaceholder = translateWithFallback(
+    t,
+    'settings.theme_presets_placeholder',
+    'Select a preset...',
+  );
+  const importThemeLabel = translateWithFallback(t, 'settings.import_theme', 'Import');
+  const exportThemeLabel = translateWithFallback(t, 'settings.export_theme', 'Export');
+  const customThemeExportName = translateWithFallback(
+    t,
+    'settings.theme_custom_export_name',
+    'Custom Theme',
+  );
+  const selectedPresetSummary = getThemePresetSummary(t, selectedPreset, theme);
 
   // Preset palette is used to keep Tailwind classes static (prevents purging).
   const isPreset = (c: string) => COLORS.some((col) => col.id === c);
@@ -115,7 +146,7 @@ export const AppearanceTab: React.FC = () => {
 
   const handleExportTheme = () => {
     const themeData = {
-      name: selectedPreset?.name || "Custom Export",
+      name: selectedPresetSummary || customThemeExportName,
       presetId: themePresetId || undefined,
       theme,
       config: activeThemeConfig
@@ -170,14 +201,12 @@ export const AppearanceTab: React.FC = () => {
           <div className="space-y-2">
             <div className="kicker-label">{t('settings.tab_appearance')}</div>
             <h3 className="text-lg font-bold text-foreground">
-              {selectedPreset
-                ? `${selectedPreset.name} · ${selectedPresetModeLabel}`
-                : (t('settings.theme_presets') || 'Theme Presets')}
+              {selectedPresetSummary || themePresetsLabel}
             </h3>
             <p className="text-sm text-secondary">
               {selectedPreset
-                ? (t('settings.theme_presets_desc') || 'Apply a ready-made visual profile, or import/export your own configuration.')
-                : (t('settings.theme_desc') || 'Choose the base mood of the launcher, then fine-tune the rest below.')}
+                ? themePresetsDescription
+                : themeDescription}
             </p>
           </div>
 
@@ -209,17 +238,17 @@ export const AppearanceTab: React.FC = () => {
 
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">
-                  {t('settings.theme_presets') || 'Theme Presets'}
+                  {themePresetsLabel}
                 </label>
                 <Select
                   value={themePresetId || ''}
                   onChange={(e) => handlePresetChange(e.target.value)}
                   className="w-full"
-                  aria-label={t('settings.theme_presets') || 'Theme Presets'}
+                  aria-label={themePresetsLabel}
                 >
-                  <option value="" disabled>{t('settings.theme_presets_placeholder') || 'Select a preset...'}</option>
+                  <option value="" disabled>{themePresetsPlaceholder}</option>
                   {THEME_PRESETS.map((preset) => (
-                    <option key={preset.id} value={preset.id}>{preset.name}</option>
+                    <option key={preset.id} value={preset.id}>{getThemePresetLabel(t, preset)}</option>
                   ))}
                 </Select>
               </div>
@@ -227,7 +256,7 @@ export const AppearanceTab: React.FC = () => {
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Button variant="secondary" onClick={() => fileInputRef.current?.click()} className="gap-2 sm:flex-1">
                   <Upload className="h-4 w-4" />
-                  {t('settings.import_theme') || 'Import'}
+                  {importThemeLabel}
                 </Button>
                 <input
                   ref={fileInputRef}
@@ -239,7 +268,7 @@ export const AppearanceTab: React.FC = () => {
 
                 <Button variant="secondary" onClick={handleExportTheme} className="gap-2 sm:flex-1">
                   <Download className="h-4 w-4" />
-                  {t('settings.export_theme') || 'Export'}
+                  {exportThemeLabel}
                 </Button>
               </div>
             </div>

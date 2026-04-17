@@ -6,6 +6,7 @@ import { useModpack } from '../contexts/ModpackContext';
 import { modpacksIPC } from '../services/ipc/modpacksIPC';
 import { resourcePacksIPC } from '../services/ipc/resourcePacksIPC';
 import { shadersIPC } from '../services/ipc/shadersIPC';
+import type { ModpackMetadata } from '@shared/types/modpack';
 import { ModsTab } from './modpacks/details/ModsTab';
 import { Button } from './ui/Button';
 import { CollapsibleSection } from './ui/CollapsibleSection';
@@ -16,6 +17,8 @@ import { WorldsTab } from './modpacks/details/WorldsTab';
 import { cn } from '../utils/cn';
 import { ProgressBar } from './ui/ProgressBar';
 import { getLaunchStageTitle, type LaunchStage } from '../features/launcher/services/launcherService';
+import { LazyImage } from './ui/LazyImage';
+import { buildRuntimeDependencyState, getModloaderDisplayLabel } from './sidebar/modpackRuntimeDependencies';
 
 interface Particle {
   id: string;
@@ -25,13 +28,6 @@ interface Particle {
   delay: number;
   size: number;
 }
-
-const LOADER_LABELS: Record<string, string> = {
-  vanilla: 'Vanilla',
-  forge: 'Forge',
-  fabric: 'Fabric',
-  neoforge: 'NeoForge',
-};
 
 function translateWithFallback(t: (key: string) => string, key: string, fallback: string) {
   const translated = t(key);
@@ -96,6 +92,7 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
   const targetPath = currentModpack?.path || minecraftPath || undefined;
 
   const [resolvedPath, setResolvedPath] = useState<string>('');
+  const [metadata, setMetadata] = useState<ModpackMetadata | null>(null);
 
   useEffect(() => {
     if (!targetPath && modpackId) {
@@ -107,6 +104,35 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
         .catch((err: Error) => console.error('Failed to resolve path:', err));
     }
   }, [targetPath, modpackId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMetadata = async () => {
+      if (!modpackId) {
+        setMetadata(null);
+        return;
+      }
+
+      try {
+        const nextMetadata = await modpacksIPC.getMetadata(modpackId, minecraftPath);
+        if (!cancelled) {
+          setMetadata(nextMetadata);
+        }
+      } catch (error) {
+        console.error('Failed to load dashboard modpack metadata:', error);
+        if (!cancelled) {
+          setMetadata(null);
+        }
+      }
+    };
+
+    void loadMetadata();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [minecraftPath, modpackId]);
 
   const effectivePath = targetPath || resolvedPath || undefined;
 
@@ -127,20 +153,46 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
 
   const accent = getAccentStyles('text');
   const accentHex = getAccentHex();
-  const loaderLabel = LOADER_LABELS[launch.loaderType] ?? launch.loaderType;
+  const runtimeDependencyState = buildRuntimeDependencyState(
+    launch.version,
+    launch.loaderType,
+    modpackConfig?.runtime?.modLoader?.version,
+  );
+  const loaderLabel = getModloaderDisplayLabel(runtimeDependencyState.modLoader, t);
   const showMods = launch.loaderType !== 'vanilla';
   const reducedMotion = disableAnimations || prefersReducedMotion;
   const launchStage = runtime.launchStage ?? (runtime.isLaunching ? 'launching' : 'idle');
   const launchStatusTitle = runtime.statusText || getLaunchStageTitle(launchStage, t);
   const launchStatusDetail = runtime.statusDetail || '';
   const showLaunchStatus = launchStage !== 'idle' || Boolean(launchStatusTitle) || Boolean(launchStatusDetail);
-  const showLaunchProgress = runtime.isLaunching && launchStage !== 'running' && launchStage !== 'failed';
+  const launchProgressValue = typeof runtime.progress === 'number' ? runtime.progress : null;
+  const showLaunchProgress = runtime.isLaunching && launchStage === 'downloading' && launchProgressValue !== null;
+  const lockLaunchSurface = runtime.isLaunching;
   const launchStatusTone =
     launchStage === 'failed'
       ? 'border-red-500/30 bg-red-500/10'
       : launchStage === 'running'
         ? 'border-emerald-500/30 bg-emerald-500/10'
         : 'border-border/70 bg-card/82';
+  const heroName = metadata?.name || currentModpack?.name || modpackConfig?.name || 'FriendLauncher';
+  const heroSubtitle = `${launch.version} • ${loaderLabel}`;
+  const heroArtAlt = `${heroName} artwork`;
+  const advancedSettingsTitle = translateWithFallback(t, 'dashboard.advanced_settings', 'Advanced settings');
+  const advancedSettingsContent = (
+    <GameTab
+      modpackConfig={modpackConfig}
+      setMemoryGb={setMemoryGb}
+      setMinMemoryGb={setMinMemoryGb}
+      setJavaPath={setJavaPath}
+      setVmOptions={setVmOptions}
+      setGameExtraArgs={setGameExtraArgs}
+      setGameResolution={setGameResolution}
+      setAutoConnectServer={setAutoConnectServer}
+      t={t}
+      getAccentStyles={getAccentStyles}
+      isReadOnly={lockLaunchSurface}
+    />
+  );
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -334,9 +386,10 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
             }}
           />
           <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-black/20 border border-zinc-200/60 dark:border-zinc-700/60 bg-zinc-900/80 flex items-center justify-center backdrop-blur-sm">
-            <img
-              src={LAUNCHER_MARK_PATH}
-              alt="FriendLauncher"
+            <LazyImage
+              src={metadata?.iconUrl ?? undefined}
+              fallback={LAUNCHER_MARK_PATH}
+              alt={heroArtAlt}
               data-testid="dashboard-launcher-mark"
               className="w-16 h-16 md:w-20 md:h-20 object-contain transition-transform duration-300"
               style={{
@@ -361,6 +414,10 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
         >
           FriendLauncher
         </h1>
+        <div className="relative z-10 text-center">
+          <p className="text-sm font-semibold text-foreground">{heroName}</p>
+          <p className="text-xs text-secondary">{heroSubtitle}</p>
+        </div>
         {!reducedMotion && particles.map((p) => {
           const ar = (p.angle * Math.PI) / 180;
           const x = Math.cos(ar) * p.distance;
@@ -438,9 +495,9 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
 
             {showLaunchProgress ? (
               <ProgressBar
-                value={runtime.progress ?? 0}
+                value={launchProgressValue}
                 label={launchStatusTitle || (t('status.download_progress') || 'Downloading')}
-                valueLabel={`${Math.round(runtime.progress ?? 0)}%`}
+                valueLabel={`${Math.round(launchProgressValue)}%`}
                 className="w-full"
               />
             ) : null}
@@ -474,25 +531,25 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
       </section>
 
       {/* Настройки игры для Classic — свой конфиг, отдельно от модпаков */}
-      <CollapsibleSection
-        title={t('dashboard.advanced_settings') || 'Расширенные настройки'}
-        defaultExpanded={false}
-        storageKey="classic_game_settings_expanded"
-        className="w-full max-w-2xl mt-6"
-      >
-        <GameTab
-          modpackConfig={modpackConfig}
-          setMemoryGb={setMemoryGb}
-          setMinMemoryGb={setMinMemoryGb}
-          setJavaPath={setJavaPath}
-          setVmOptions={setVmOptions}
-          setGameExtraArgs={setGameExtraArgs}
-          setGameResolution={setGameResolution}
-          setAutoConnectServer={setAutoConnectServer}
-          t={t}
-          getAccentStyles={getAccentStyles}
-        />
-      </CollapsibleSection>
+      {lockLaunchSurface ? (
+        <section className="w-full max-w-2xl mt-6" aria-label={advancedSettingsTitle}>
+          <div className="space-y-2">
+            <div className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-card/68 px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-secondary">
+              <span>{advancedSettingsTitle}</span>
+            </div>
+            <div className="pt-2 space-y-3">{advancedSettingsContent}</div>
+          </div>
+        </section>
+      ) : (
+        <CollapsibleSection
+          title={advancedSettingsTitle}
+          defaultExpanded={false}
+          storageKey="classic_game_settings_expanded"
+          className="w-full max-w-2xl mt-6"
+        >
+          {advancedSettingsContent}
+        </CollapsibleSection>
+      )}
 
       {/* Контент: Моды, Ресурспаки, Шейдеры, Миры */}
       <CollapsibleSection
@@ -516,6 +573,7 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
         type="button"
         variant="ghost"
         onClick={() => setMode('modpacks')}
+        disabled={lockLaunchSurface}
         className="mt-8"
       >
         <Boxes className="h-4 w-4" />

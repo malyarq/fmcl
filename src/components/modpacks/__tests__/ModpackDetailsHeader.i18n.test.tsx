@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from '@testing-library/react';
+import React from 'react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import type { ModpackConfig } from '../../../contexts/instances/types';
 import type { ModpackMetadata } from '@shared/types/modpack';
-import { ModpackDetailsHeader } from '../details/ModpackDetailsHeader';
+import { ModpackDetailsHeader, type ModpackDetailsTab } from '../details/ModpackDetailsHeader';
 
 const metadata: ModpackMetadata = {
   id: 'alpha',
@@ -51,22 +52,71 @@ function renderHeader(language: 'en' | 'ru') {
   );
 }
 
+function renderInteractiveHeader(language: 'en' | 'ru') {
+  const t = createTranslator(language);
+
+  const Harness = () => {
+    const [activeTab, setActiveTab] = React.useState<ModpackDetailsTab>('info');
+
+    return (
+      <ModpackDetailsHeader
+        modpackName="Alpha Pack"
+        metadata={metadata}
+        effectiveConfig={effectiveConfig}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        t={t}
+        getAccentStyles={() => ({ className: '', style: undefined })}
+        getAccentHex={() => '#10b981'}
+      />
+    );
+  };
+
+  return render(<Harness />);
+}
+
 describe('ModpackDetailsHeader i18n', () => {
   beforeEach(() => {
     cleanup();
   });
 
-  it('renders the refreshed details tabs with translated English copy', () => {
-    const { container } = renderHeader('en');
+  it('renders translated English tabs in a wrapped tab surface with keyboard navigation', async () => {
+    const { container } = renderInteractiveHeader('en');
+    const tablist = screen.getByRole('tablist', { name: 'Modpack details' });
+    const infoTab = screen.getByRole('tab', { name: 'Information' });
+    const modsTab = screen.getByRole('tab', { name: 'Mods' });
+    const settingsTab = screen.getByRole('tab', { name: 'Settings' });
 
-    expect(screen.getByRole('tablist', { name: 'Modpack details' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Information' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Mods' })).toBeTruthy();
+    expect(tablist).toBeTruthy();
+    expect(tablist.getAttribute('aria-orientation')).toBe('horizontal');
+    expect(tablist.className).toContain('flex-wrap');
+    expect(tablist.className).not.toContain('overflow-x-auto');
+    expect(tablist.className).not.toContain('scrollbar-hide');
+    expect(infoTab).toBeTruthy();
+    expect(modsTab).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Resource packs' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Shaders' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Worlds' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Screenshots' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Settings' })).toBeTruthy();
+    expect(settingsTab).toBeTruthy();
+
+    expect(infoTab.getAttribute('tabindex')).toBe('0');
+    expect(modsTab.getAttribute('tabindex')).toBe('-1');
+
+    infoTab.focus();
+    fireEvent.keyDown(infoTab, { key: 'ArrowRight' });
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(modsTab);
+    });
+    expect(modsTab.getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.keyDown(modsTab, { key: 'End' });
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(settingsTab);
+    });
+    expect(settingsTab.getAttribute('aria-selected')).toBe('true');
 
     expect(container.textContent).not.toContain('modpacks.details_title');
     expect(container.textContent).not.toContain('modpacks.tab_info');

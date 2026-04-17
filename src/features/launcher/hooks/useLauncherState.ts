@@ -3,7 +3,7 @@ import type { RefObject } from 'react';
 import type { LaunchStage } from '../services/launcherService';
 
 export function useLauncherState() {
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState<number | null>(null);
   const [statusText, setStatusText] = useState('');
   const [statusDetail, setStatusDetail] = useState('');
   const [logs, setLogs] = useState<string[]>([]);

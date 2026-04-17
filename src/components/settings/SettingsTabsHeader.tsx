@@ -5,6 +5,7 @@ import {
   getSettingsTabDescriptionId,
   getSettingsTabId,
   getSettingsTabLabelId,
+  getTranslatedSettingsTabs,
   SETTINGS_TABS,
   type SettingsTabId,
 } from './settingsTabs';
@@ -35,11 +36,7 @@ export function SettingsTabsHeader(props: {
     pendingFocusTabRef.current = null;
   }, [activeTab]);
 
-  const tabs = SETTINGS_TABS.map((tab) => ({
-    ...tab,
-    label: t(tab.labelKey),
-    description: t(tab.descriptionKey),
-  }));
+  const tabs = getTranslatedSettingsTabs(t);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, currentTab: SettingsTabId) => {
     const currentIndex = SETTINGS_TABS.findIndex((tab) => tab.id === currentTab);

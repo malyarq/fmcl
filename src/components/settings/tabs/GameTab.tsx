@@ -6,6 +6,16 @@ import { ResolutionSection } from './game/ResolutionSection';
 import { ArgsSection } from './game/ArgsSection';
 import { AutoConnectSection } from './game/AutoConnectSection';
 
+function translateWithFallback(
+  t: (key: string, params?: Record<string, string | number>) => string,
+  key: string,
+  fallback: string,
+  params?: Record<string, string | number>,
+) {
+  const translated = t(key, params);
+  return translated === key ? fallback : translated;
+}
+
 export interface GameTabProps {
   modpackConfig: ModpackConfig | null;
   setMemoryGb: (gb: number) => void;
@@ -15,11 +25,12 @@ export interface GameTabProps {
   setGameExtraArgs: (args: string[]) => void;
   setGameResolution: (resolution?: { width?: number; height?: number; fullscreen?: boolean }) => void;
   setAutoConnectServer: (server?: { host: string; port: number }) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
   getAccentStyles: (type: 'bg' | 'text' | 'border' | 'ring' | 'hover' | 'accent' | 'title' | 'soft-bg' | 'soft-border') => {
     className?: string;
     style?: React.CSSProperties;
   };
+  isReadOnly?: boolean;
 }
 
 export const GameTab: React.FC<GameTabProps> = ({
@@ -33,6 +44,7 @@ export const GameTab: React.FC<GameTabProps> = ({
   setAutoConnectServer,
   t,
   getAccentStyles,
+  isReadOnly = false,
 }) => {
   const resolution = modpackConfig?.game?.resolution;
 
@@ -83,61 +95,77 @@ export const GameTab: React.FC<GameTabProps> = ({
     <div className="space-y-4">
       <div className="surface-soft space-y-3 p-3 sm:p-4">
         <div className="control-label">
-          {t('settings.tab_game')}
+          {translateWithFallback(t, 'settings.tab_game', 'Game')}
         </div>
 
-        <RuntimeSection
-          modpackConfig={modpackConfig}
-          setMemoryGb={setMemoryGb}
-          setMinMemoryGb={setMinMemoryGb}
-          setJavaPath={setJavaPath}
-          t={t}
-          getAccentStyles={getAccentStyles}
-        />
+        {isReadOnly ? (
+          <div
+            id="game-tab-readonly-hint"
+            className="surface-inline rounded-xl border border-border/60 px-3 py-2 text-xs leading-5 text-secondary"
+          >
+            {translateWithFallback(
+              t,
+              'settings.runtime_locked',
+              'Launch is in progress. These settings stay visible for reference and unlock when the current run finishes.',
+            )}
+          </div>
+        ) : null}
 
-        <ResolutionSection
-          widthInput={widthInput}
-          heightInput={heightInput}
-          fullscreen={fullscreen}
-          onWidthInputChange={(v) => {
-            setWidthInput(v);
-            updateResolutionFromInputs({ widthText: v, heightText: heightInput, fullscreen });
-          }}
-          onHeightInputChange={(v) => {
-            setHeightInput(v);
-            updateResolutionFromInputs({ widthText: widthInput, heightText: v, fullscreen });
-          }}
-          onFullscreenChange={(next) => {
-            setFullscreen(next);
-            updateResolutionFromInputs({ widthText: widthInput, heightText: heightInput, fullscreen: next });
-          }}
-          t={t}
-        />
+        <fieldset disabled={isReadOnly} aria-describedby={isReadOnly ? 'game-tab-readonly-hint' : undefined} className="space-y-4">
+          <RuntimeSection
+            modpackConfig={modpackConfig}
+            setMemoryGb={setMemoryGb}
+            setMinMemoryGb={setMinMemoryGb}
+            setJavaPath={setJavaPath}
+            t={t}
+            getAccentStyles={getAccentStyles}
+            isReadOnly={isReadOnly}
+          />
 
-        <ArgsSection
-          vmArgsText={vmArgsText}
-          mcArgsText={mcArgsText}
-          onVmArgsTextChange={(v) => {
-            setVmArgsText(v);
-            setVmOptions(parseArgs(v));
-          }}
-          onMcArgsTextChange={(v) => {
-            setMcArgsText(v);
-            setGameExtraArgs(parseArgs(v));
-          }}
-          t={t}
-        />
+          <ResolutionSection
+            widthInput={widthInput}
+            heightInput={heightInput}
+            fullscreen={fullscreen}
+            onWidthInputChange={(v) => {
+              setWidthInput(v);
+              updateResolutionFromInputs({ widthText: v, heightText: heightInput, fullscreen });
+            }}
+            onHeightInputChange={(v) => {
+              setHeightInput(v);
+              updateResolutionFromInputs({ widthText: widthInput, heightText: v, fullscreen });
+            }}
+            onFullscreenChange={(next) => {
+              setFullscreen(next);
+              updateResolutionFromInputs({ widthText: widthInput, heightText: heightInput, fullscreen: next });
+            }}
+            t={t}
+          />
 
-        <AutoConnectSection
-          autoConnect={autoConnect}
-          serverHost={serverHost}
-          serverPort={serverPort}
-          setAutoConnect={setAutoConnect}
-          setServerHost={setServerHost}
-          setServerPort={setServerPort}
-          applyAutoConnect={applyAutoConnect}
-          t={t}
-        />
+          <ArgsSection
+            vmArgsText={vmArgsText}
+            mcArgsText={mcArgsText}
+            onVmArgsTextChange={(v) => {
+              setVmArgsText(v);
+              setVmOptions(parseArgs(v));
+            }}
+            onMcArgsTextChange={(v) => {
+              setMcArgsText(v);
+              setGameExtraArgs(parseArgs(v));
+            }}
+            t={t}
+          />
+
+          <AutoConnectSection
+            autoConnect={autoConnect}
+            serverHost={serverHost}
+            serverPort={serverPort}
+            setAutoConnect={setAutoConnect}
+            setServerHost={setServerHost}
+            setServerPort={setServerPort}
+            applyAutoConnect={applyAutoConnect}
+            t={t}
+          />
+        </fieldset>
       </div>
     </div>
   );

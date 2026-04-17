@@ -27,6 +27,139 @@ function compareVersions(a: string, b: string): number {
     return 0;
 }
 
+export type VersionRequirementDescriptor =
+  | { kind: 'any'; raw: string | string[] | undefined }
+  | { kind: 'exact'; version: string; raw: string }
+  | { kind: 'minimum'; version: string; inclusive: boolean; raw: string }
+  | { kind: 'maximum'; version: string; inclusive: boolean; raw: string }
+  | {
+      kind: 'between';
+      min: string;
+      max: string;
+      minInclusive: boolean;
+      maxInclusive: boolean;
+      raw: string;
+    }
+  | { kind: 'oneOf'; items: VersionRequirementDescriptor[]; raw: string[] }
+  | { kind: 'raw'; value: string; raw: string };
+
+function parseSingleRequirement(rangeSpec: string): VersionRequirementDescriptor {
+    const range = rangeSpec.trim();
+
+    if (!range || range === '*') {
+        return { kind: 'any', raw: rangeSpec };
+    }
+
+    if (!range.startsWith('[') && !range.startsWith('(')) {
+        return { kind: 'exact', version: range, raw: rangeSpec };
+    }
+
+    if (range.startsWith('[') && range.endsWith(']') && !range.includes(',')) {
+        const version = range.slice(1, -1).trim();
+        return version
+            ? { kind: 'exact', version, raw: rangeSpec }
+            : { kind: 'raw', value: rangeSpec, raw: rangeSpec };
+    }
+
+    const match = range.match(/^([[()])\s*([^,]*)\s*,\s*([^,]*)\s*([\])])$/);
+    if (!match) {
+        return { kind: 'raw', value: rangeSpec, raw: rangeSpec };
+    }
+
+    const [, leftBracket, minVerRaw, maxVerRaw, rightBracket] = match;
+    const minVer = minVerRaw.trim();
+    const maxVer = maxVerRaw.trim();
+
+    if (minVer && maxVer) {
+        if (minVer === maxVer && leftBracket === '[' && rightBracket === ']') {
+            return { kind: 'exact', version: minVer, raw: rangeSpec };
+        }
+
+        return {
+            kind: 'between',
+            min: minVer,
+            max: maxVer,
+            minInclusive: leftBracket === '[',
+            maxInclusive: rightBracket === ']',
+            raw: rangeSpec,
+        };
+    }
+
+    if (minVer) {
+        return {
+            kind: 'minimum',
+            version: minVer,
+            inclusive: leftBracket === '[',
+            raw: rangeSpec,
+        };
+    }
+
+    if (maxVer) {
+        return {
+            kind: 'maximum',
+            version: maxVer,
+            inclusive: rightBracket === ']',
+            raw: rangeSpec,
+        };
+    }
+
+    return { kind: 'any', raw: rangeSpec };
+}
+
+export function describeVersionRequirement(rangeSpec: string | string[] | undefined): VersionRequirementDescriptor {
+    if (!rangeSpec) {
+        return { kind: 'any', raw: rangeSpec };
+    }
+
+    if (Array.isArray(rangeSpec)) {
+        const parsed = rangeSpec
+            .map(parseSingleRequirement)
+            .filter((item) => item.kind !== 'any');
+
+        if (parsed.length === 0) {
+            return { kind: 'any', raw: rangeSpec };
+        }
+
+        if (parsed.length === 1) {
+            return parsed[0];
+        }
+
+        return { kind: 'oneOf', items: parsed, raw: rangeSpec };
+    }
+
+    return parseSingleRequirement(rangeSpec);
+}
+
+function requirementMatches(version: string, requirement: VersionRequirementDescriptor): boolean {
+    switch (requirement.kind) {
+        case 'any':
+            return true;
+        case 'exact':
+            return compareVersions(version, requirement.version) === 0;
+        case 'minimum': {
+            const cmp = compareVersions(version, requirement.version);
+            return requirement.inclusive ? cmp >= 0 : cmp > 0;
+        }
+        case 'maximum': {
+            const cmp = compareVersions(version, requirement.version);
+            return requirement.inclusive ? cmp <= 0 : cmp < 0;
+        }
+        case 'between': {
+            const lowerCmp = compareVersions(version, requirement.min);
+            const upperCmp = compareVersions(version, requirement.max);
+            const lowerOk = requirement.minInclusive ? lowerCmp >= 0 : lowerCmp > 0;
+            const upperOk = requirement.maxInclusive ? upperCmp <= 0 : upperCmp < 0;
+            return lowerOk && upperOk;
+        }
+        case 'oneOf':
+            return requirement.items.some((item) => requirementMatches(version, item));
+        case 'raw':
+            return true;
+        default:
+            return true;
+    }
+}
+
 /**
  * Checks if a version satisfies a Maven-style version range.
  * Examples:
@@ -40,50 +173,6 @@ export function isVersionCompatible(installedVersion: string, rangeSpec: string 
     if (!rangeSpec) return true;
     if (!installedVersion) return false;
 
-    const ranges = Array.isArray(rangeSpec) ? rangeSpec : [rangeSpec];
     const version = installedVersion.startsWith('v') ? installedVersion.slice(1) : installedVersion;
-
-    // Start optimistic: if any range in the list is satisfied, return true.
-    return ranges.some(range => {
-        range = range.trim();
-        if (!range || range === '*') return true;
-
-        // Strict exact match if no brackets/parens (or simple string)
-        // Actually in Mods, often "1.2.3" means "at least 1.2.3" or "exact" depend on context.
-        // For now, let's assume if it doesn't have [ or (, it is a minimum version or exact.
-        // But safely: if it doesn't look like a range, compare exact.
-        if (!range.startsWith('[') && !range.startsWith('(')) {
-            return compareVersions(version, range) === 0;
-        }
-
-        // Parse range
-        // Format: startChar ( [ ) minVersion , maxVersion endChar ( ] )
-        const match = range.match(/^([[(])([^,]*),([^,]*)([\])])$/);
-        if (!match) {
-            // Fallback for single strict range like "[1.2.3]"
-            if (range.startsWith('[') && range.endsWith(']')) {
-                const v = range.slice(1, -1);
-                return compareVersions(version, v) === 0;
-            }
-            return true; // Unknown format
-        }
-
-        const [, leftBracket, minVer, maxVer, rightBracket] = match;
-
-        // Check lower bound
-        if (minVer) {
-            const cmp = compareVersions(version, minVer.trim());
-            if (leftBracket === '[' && cmp < 0) return false; // inclusive: must be >= 0
-            if (leftBracket === '(' && cmp <= 0) return false; // exclusive: must be > 0
-        }
-
-        // Check upper bound
-        if (maxVer) {
-            const cmp = compareVersions(version, maxVer.trim());
-            if (rightBracket === ']' && cmp > 0) return false;
-            if (rightBracket === ')' && cmp >= 0) return false;
-        }
-
-        return true;
-    });
+    return requirementMatches(version, describeVersionRequirement(rangeSpec));
 }

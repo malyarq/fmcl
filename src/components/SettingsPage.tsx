@@ -7,7 +7,7 @@ import { cn } from '../utils/cn';
 import { SettingsTabsHeader } from './settings/SettingsTabsHeader';
 import {
     getSettingsPanelId,
-    getSettingsTabConfig,
+    getTranslatedSettingsTabConfig,
     getSettingsTabLabelId,
     type SettingsTabId,
 } from './settings/settingsTabs';
@@ -54,7 +54,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
         }
     }, [status]);
 
-    const activeTabConfig = getSettingsTabConfig(activeTab);
+    const activeTabConfig = getTranslatedSettingsTabConfig(activeTab, t);
 
     const renderActiveTab = () => {
         if (activeTab === 'appearance') {
@@ -127,13 +127,13 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
 
                 <div className="surface-inline flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="space-y-1">
-                        <div className="kicker-label">{t(activeTabConfig.labelKey)}</div>
+                        <div className="kicker-label">{activeTabConfig.label}</div>
                         <p className="text-sm leading-6 text-secondary">
-                            {t(activeTabConfig.descriptionKey)}
+                            {activeTabConfig.description}
                         </p>
                     </div>
                     <p className="max-w-xl text-sm leading-6 text-secondary">
-                        {t(activeTabConfig.panelHintKey)}
+                        {activeTabConfig.panelHint}
                     </p>
                 </div>
 
@@ -149,7 +149,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
 
                 <div className="surface-inline flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-sm text-secondary">
-                        {t(activeTabConfig.panelHintKey)}
+                        {activeTabConfig.panelHint}
                     </p>
                     <Button
                         onClick={onClose}

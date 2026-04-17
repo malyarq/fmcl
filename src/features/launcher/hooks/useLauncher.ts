@@ -24,7 +24,7 @@ interface LaunchOptions {
 
 export interface UseLauncherResult {
   isLaunching: boolean;
-  progress: number;
+  progress?: number;
   launchStage: LaunchStage;
   statusText: string;
   statusDetail: string;
@@ -49,6 +49,7 @@ export const useLauncher = (): UseLauncherResult => {
     onSetStatusDetail: state.setStatusDetail,
     onSetLaunchStage: state.setLaunchStage,
     onSetLaunching: state.setIsLaunching,
+    onClearProgress: () => state.setProgress(null),
     getLaunchStage: state.getLaunchStage,
   });
 
@@ -68,7 +69,7 @@ export const useLauncher = (): UseLauncherResult => {
     }
 
     state.setIsLaunching(true);
-    state.setProgress(0);
+    state.setProgress(null);
     state.setLaunchStage('preparing');
     state.setStatusText(getLaunchStageTitle('preparing', t) || t('status.initializing'));
     state.setStatusDetail(translateWithFallback(t, 'status.preparing_detail', 'Checking runtime requirements and selected pack.'));
@@ -105,6 +106,7 @@ export const useLauncher = (): UseLauncherResult => {
         });
       }
 
+      state.setProgress(null);
       state.setLaunchStage('waiting');
       state.setStatusText(getLaunchStageTitle('waiting', t));
       state.setStatusDetail(
@@ -120,7 +122,7 @@ export const useLauncher = (): UseLauncherResult => {
           : translateWithFallback(t, 'status.failed_detail', 'Review the error and try launching again.')
       );
       state.setIsLaunching(false);
-      state.setProgress(0);
+      state.setProgress(null);
     }
   };
 
@@ -130,7 +132,7 @@ export const useLauncher = (): UseLauncherResult => {
 
   return {
     isLaunching: state.isLaunching,
-    progress: state.progress,
+    progress: state.progress ?? undefined,
     launchStage: state.launchStage,
     statusText: state.statusText,
     statusDetail: state.statusDetail,

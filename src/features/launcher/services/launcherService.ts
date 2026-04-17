@@ -1,6 +1,7 @@
 export type LauncherProgressEvent = { type: string; task: number; total: number };
 
 export type LaunchStage = 'idle' | 'preparing' | 'downloading' | 'launching' | 'waiting' | 'running' | 'failed';
+export type LaunchStatusSource = 'lifecycle' | 'progress' | 'log';
 
 export interface LaunchStatusSnapshot {
   stage: LaunchStage;
@@ -9,13 +10,39 @@ export interface LaunchStatusSnapshot {
 }
 
 const PROGRESS_TYPES = new Set(['assets', 'natives', 'classes', 'Forge', 'Fabric', 'NeoForge', 'OptiFine', 'download']);
+const STAGE_RANK: Record<Exclude<LaunchStage, 'failed'>, number> = {
+  idle: 0,
+  preparing: 1,
+  downloading: 2,
+  launching: 3,
+  waiting: 4,
+  running: 5,
+};
 
 const LOG_PREFIX_PATTERN = /^\[[^\]]+\]\s*/;
 const DIVIDER_PATTERN = /^═+$/;
 
-function translateWithFallback(t: (key: string) => string, key: string, fallback: string) {
-  const translated = t(key);
+function translateWithFallback(
+  t: (key: string, params?: Record<string, string | number>) => string,
+  key: string,
+  fallback: string,
+  params?: Record<string, string | number>,
+) {
+  const translated = t(key, params);
   return translated === key ? fallback : translated;
+}
+
+function getStageDetail(stage: Extract<LaunchStage, 'preparing' | 'downloading' | 'launching' | 'running'>, t: (key: string) => string) {
+  switch (stage) {
+    case 'preparing':
+      return translateWithFallback(t, 'status.preparing_detail', 'Checking runtime requirements and selected pack.');
+    case 'downloading':
+      return translateWithFallback(t, 'status.downloading_detail', 'Preparing game files and runtime dependencies.');
+    case 'launching':
+      return translateWithFallback(t, 'status.launching_detail', 'Starting the Minecraft process.');
+    case 'running':
+      return translateWithFallback(t, 'status.running_detail', 'Minecraft is running. Live game logs will appear here.');
+  }
 }
 
 export function isTrackableProgressType(type: string) {
@@ -25,6 +52,54 @@ export function isTrackableProgressType(type: string) {
 export function toPercent(task: number, total: number) {
   if (!Number.isFinite(task) || !Number.isFinite(total) || total <= 0) return 0;
   return (task / total) * 100;
+}
+
+export function getMeaningfulProgressPercent(progress: LauncherProgressEvent): number | null {
+  const percent = toPercent(progress.task, progress.total);
+  if (!Number.isFinite(percent)) return null;
+  if (progress.total <= 0 || progress.task <= 0) return null;
+  return Math.max(0, Math.min(100, Math.round(percent)));
+}
+
+export function shouldApplyLaunchStatus(params: {
+  currentStage: LaunchStage;
+  nextStage: LaunchStage;
+  source: LaunchStatusSource;
+}) {
+  const { currentStage, nextStage, source } = params;
+
+  if (source !== 'log') {
+    return true;
+  }
+
+  if (
+    currentStage === nextStage &&
+    (currentStage === 'preparing' || currentStage === 'downloading' || currentStage === 'launching')
+  ) {
+    return false;
+  }
+
+  if (currentStage === 'failed') {
+    return nextStage === 'failed';
+  }
+
+  if (nextStage === 'failed') {
+    return true;
+  }
+
+  if (currentStage === 'running') {
+    return nextStage === 'running';
+  }
+
+  if (currentStage === 'waiting') {
+    return nextStage === 'waiting' || nextStage === 'running';
+  }
+
+  if (nextStage === 'idle') {
+    return currentStage === 'idle';
+  }
+
+  return STAGE_RANK[nextStage as Exclude<LaunchStage, 'failed'>] >= STAGE_RANK[currentStage as Exclude<LaunchStage, 'failed'>];
 }
 
 export function isForceRestartAllowed(stage: LaunchStage) {
@@ -93,11 +168,12 @@ export function getProgressLabel(type: string, t: (key: string) => string) {
 }
 
 export function getProgressStatus(progress: LauncherProgressEvent, t: (key: string) => string): LaunchStatusSnapshot {
-  const percent = Math.round(toPercent(progress.task, progress.total));
+  const percent = getMeaningfulProgressPercent(progress);
+  const label = getProgressLabel(progress.type, t);
   return {
     stage: 'downloading',
     title: getLaunchStageTitle('downloading', t),
-    detail: `${getProgressLabel(progress.type, t)} - ${percent}%`,
+    detail: percent === null ? label : `${label} - ${percent}%`,
   };
 }
 
@@ -129,7 +205,7 @@ export function getLaunchStatusFromLog(log: string, t: (key: string) => string):
     return {
       stage: 'running',
       title: getLaunchStageTitle('running', t),
-      detail: translateWithFallback(t, 'status.running_detail', 'Minecraft is running. Live game logs will appear here.'),
+      detail: getStageDetail('running', t),
     };
   }
 
@@ -137,7 +213,7 @@ export function getLaunchStatusFromLog(log: string, t: (key: string) => string):
     return {
       stage: 'launching',
       title: getLaunchStageTitle('launching', t),
-      detail: translateWithFallback(t, 'status.launching_detail', 'Starting the Minecraft process.'),
+      detail: getStageDetail('launching', t),
     };
   }
 
@@ -145,7 +221,7 @@ export function getLaunchStatusFromLog(log: string, t: (key: string) => string):
     return {
       stage: 'launching',
       title: getLaunchStageTitle('launching', t),
-      detail,
+      detail: getStageDetail('launching', t),
     };
   }
 
@@ -162,7 +238,7 @@ export function getLaunchStatusFromLog(log: string, t: (key: string) => string):
     return {
       stage: 'downloading',
       title: getLaunchStageTitle('downloading', t),
-      detail,
+      detail: getStageDetail('downloading', t),
     };
   }
 
@@ -178,7 +254,7 @@ export function getLaunchStatusFromLog(log: string, t: (key: string) => string):
     return {
       stage: 'preparing',
       title: getLaunchStageTitle('preparing', t),
-      detail,
+      detail: getStageDetail('preparing', t),
     };
   }
 

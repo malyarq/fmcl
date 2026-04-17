@@ -2,9 +2,17 @@ import type { CustomThemeConfig, Theme, ThemePresetId } from './types';
 
 export interface ThemePreset {
     id: ThemePresetId;
-    name: string;
+    labelKey: string;
+    fallbackLabel: string;
     defaultTheme: Theme;
     themes: Record<Theme, CustomThemeConfig>;
+}
+
+type ThemeTranslator = (key: string) => string;
+
+function translateWithFallback(t: ThemeTranslator, key: string, fallback: string): string {
+    const translated = t(key);
+    return translated === key ? fallback : translated;
 }
 
 function createPresetColors(colors: NonNullable<CustomThemeConfig['colors']>): CustomThemeConfig {
@@ -37,7 +45,8 @@ function normalizeThemeConfig(config: CustomThemeConfig): string {
 export const THEME_PRESETS: ThemePreset[] = [
     {
         id: 'default',
-        name: 'Default',
+        labelKey: 'settings.theme_preset_default',
+        fallbackLabel: 'Default',
         defaultTheme: 'dark',
         themes: {
             light: createPresetColors({
@@ -60,7 +69,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     },
     {
         id: 'midnight',
-        name: 'Midnight',
+        labelKey: 'settings.theme_preset_midnight',
+        fallbackLabel: 'Midnight',
         defaultTheme: 'dark',
         themes: {
             light: createPresetColors({
@@ -83,7 +93,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     },
     {
         id: 'forest',
-        name: 'Forest',
+        labelKey: 'settings.theme_preset_forest',
+        fallbackLabel: 'Forest',
         defaultTheme: 'dark',
         themes: {
             light: createPresetColors({
@@ -106,7 +117,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     },
     {
         id: 'light-plus',
-        name: 'Light+',
+        labelKey: 'settings.theme_preset_light_plus',
+        fallbackLabel: 'Light+',
         defaultTheme: 'light',
         themes: {
             light: createPresetColors({
@@ -129,7 +141,8 @@ export const THEME_PRESETS: ThemePreset[] = [
     },
     {
         id: 'navy',
-        name: 'Navy',
+        labelKey: 'settings.theme_preset_navy',
+        fallbackLabel: 'Navy',
         defaultTheme: 'dark',
         themes: {
             light: createPresetColors({
@@ -158,6 +171,40 @@ export function getThemePreset(presetId: ThemePresetId | string | null | undefin
     }
 
     return THEME_PRESETS.find((preset) => preset.id === presetId);
+}
+
+export function getThemePresetLabel(
+    t: ThemeTranslator,
+    presetOrId: ThemePreset | ThemePresetId | string | null | undefined,
+) {
+    const preset = typeof presetOrId === 'object' && presetOrId !== null && 'labelKey' in presetOrId
+        ? presetOrId
+        : getThemePreset(presetOrId);
+
+    if (!preset) {
+        return undefined;
+    }
+
+    return translateWithFallback(t, preset.labelKey, preset.fallbackLabel);
+}
+
+export function getThemePresetSummary(
+    t: ThemeTranslator,
+    presetOrId: ThemePreset | ThemePresetId | string | null | undefined,
+    theme: Theme,
+) {
+    const presetLabel = getThemePresetLabel(t, presetOrId);
+    if (!presetLabel) {
+        return undefined;
+    }
+
+    const modeLabel = translateWithFallback(
+        t,
+        theme === 'light' ? 'settings.theme_light' : 'settings.theme_dark',
+        theme === 'light' ? 'Light' : 'Dark',
+    );
+
+    return `${presetLabel} · ${modeLabel}`;
 }
 
 export function getThemePresetConfig(

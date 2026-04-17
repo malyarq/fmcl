@@ -4,7 +4,7 @@
 
 FriendLauncher is a desktop Minecraft launcher for people who move between vanilla play, modpacks, and multiplayer with friends. It combines local instance management, modpack browsing, content tools, and FriendTunnel P2P play in one Electron application.
 
-The current `v0.3.0` UX-hardening release has been checked against the browser-backed `manual-verification.html` seam on `2026-04-14`. The reviewed walkthrough covered the launcher at `1440x1100` and `900x1180`, including welcome and onboarding, dashboard and launch-state feedback, settings and accounts, create/list/browser/details/export/add-mod modpack flows, sharing, screenshots, utilities, and datapack management. The descriptions below reflect that verified launcher surface rather than old backlog plans.
+The current `v0.4.0` launcher-truth release candidate has been checked against the browser-backed `manual-verification.html` seam on `2026-04-17`. The active closeout proof now covers `?view=dashboard`, `?view=modpack-details`, and `?view=phase-17-polish`, validating launch-state truth, modpack dependency semantics, catalog or compact-nav polish, and Russian settings preset naming before the final packaging gate. The descriptions below reflect that verified launcher surface rather than stale milestone plans.
 
 ## <a name="english"></a>English
 
@@ -17,15 +17,14 @@ The current `v0.3.0` UX-hardening release has been checked against the browser-b
 - Use FriendTunnel to host and join LAN-style multiplayer sessions over the internet without extra VPN tooling.
 - Track local statistics, change themes and accents, use custom backgrounds, and adjust the launcher layout for daily use.
 
-### `v0.3.0` UX-Hardening Highlights
+### `v0.4.0` Verified Highlights
 
-- Adaptive shell, cards, controls, and overlays now stay readable across first-launch default bounds and narrower desktop widths instead of relying on one lucky window size.
-- Preset themes apply truthfully in both light and dark mode, and refreshed inputs, cards, and overlays no longer regress into unreadable white-on-white states.
-- Common settings tasks are flatter to reach, so appearance, launcher behavior, accounts, mirrors, statistics, and related actions no longer feel buried behind tab-inside-tab navigation.
-- Main play surfaces now expose explicit launch-stage feedback and busy-state truth instead of ambiguous waiting that invites repeated clicks.
-- Modpack creation, browsing, and installed-pack actions now surface runtime dependencies, clearer filtering state, and anchored quick-action menus that stay inside the current window.
-- Classic and fallback launcher surfaces now use shipped assets instead of placeholder-feeling logo leaks.
-- Release truth now includes browser-backed walkthrough evidence, not only tests and code review.
+- Main play surfaces now keep launch progress, CTA state, loader summaries, and localized runtime feedback on one truthful contract instead of drifting between partial states.
+- Missing launch or catalog artwork now resolves to a deliberate FMCL fallback treatment instead of broken-image or empty-placeholder states.
+- Modpack details now show pack-provided runtime dependencies honestly, render readable requirement copy, and keep dense-screen sections reachable without default horizontal-tab friction.
+- Installed and remote catalog surfaces stay legible with the sidebar open, and collapsed navigation keeps an intentional active-state treatment instead of stray placeholder letters.
+- Audited settings and launch-adjacent controls no longer leak raw localization keys, and appearance preset names now follow one deliberate RU/EN naming policy on the shipped surface.
+- Release truth now includes a reusable three-view browser-backed walkthrough on `manual-verification.html`, not only tests and code review.
 
 ### Development
 
@@ -67,15 +66,14 @@ The project includes support for alternative authentication flows through `authl
 - FriendTunnel для LAN-подобной игры через интернет без отдельных VPN-инструментов.
 - Локальная статистика, темы и акцентные цвета, кастомные фоны и настройка вида лаунчера под повседневное использование.
 
-### Что Улучшено В `v0.3.0`
+### Что Уже Проверено В `v0.4.0`
 
-- Адаптивный shell, карточки, контролы и overlays теперь остаются читаемыми и устойчивыми как на стартовом размере окна, так и на более узкой ширине, без расчёта на один «удачный» viewport.
-- Готовые темы применяются честно и в светлом, и в тёмном режиме, а обновлённые inputs, карточки и overlays больше не разваливаются в белый текст на белом фоне.
-- Частые настройки стали доступнее: appearance, launcher behavior, accounts, mirrors, statistics и связанные действия больше не требуют прохода через лишние вложенные панели.
-- На основном play surface теперь видны явные стадии запуска и busy-state, поэтому лаунчер не выглядит подвисшим во время подготовки или загрузки.
-- Создание, браузинг и управление установленными modpack-сборками теперь показывают runtime dependencies, более понятное состояние фильтров и anchored quick actions без выпадающих меню вне окна.
-- Классические и fallback-поверхности теперь используют shipped assets вместо ощущения «плейсхолдера вместо логотипа».
-- Truth релиза теперь опирается на browser-backed walkthrough, а не только на тесты и code review.
+- Основные play-surface теперь держат launch progress, CTA state, loader summary и локализованный runtime feedback на одном truthful-контракте вместо рассинхронизированных состояний.
+- Отсутствующее launch- или catalog-artwork теперь заменяется осмысленным FMCL fallback, а не broken-image или пустым placeholder-состоянием.
+- Modpack details теперь честно показывают pack-provided runtime dependencies, рендерят читаемый requirement copy и сохраняют доступность dense-screen разделов без tab-friction по умолчанию.
+- Installed и remote catalog surface остаются читаемыми при открытом sidebar, а collapsed navigation показывает внятное active-state поведение без случайных буквенных заглушек.
+- Audited settings и launch-adjacent controls больше не показывают raw localization keys, а названия appearance preset теперь следуют единой RU/EN политике на shipped surface.
+- Truth релиза теперь опирается на переиспользуемый three-view browser-backed walkthrough в `manual-verification.html`, а не только на тесты и code review.
 
 ### Разработка
 

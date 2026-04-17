@@ -1,8 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { SettingsProvider } from '../../contexts/SettingsContext';
 import { ToastProvider } from '../../contexts/ToastContext';
 import { ConfirmProvider } from '../../contexts/ConfirmContext';
 import { ModpackProvider } from '../../contexts/ModpackContext';
+import { createTranslator } from '../../contexts/settings/i18n';
+import type { UIMode } from '../../contexts/settings/types';
+import { LAUNCHER_MARK_PATH } from '../../app/assets/branding';
 import SettingsPage from '../../components/SettingsPage';
 import { WelcomePage } from '../../components/onboarding/WelcomePage';
 import { OnboardingTour, type TourStep } from '../../components/onboarding/OnboardingTour';
@@ -13,6 +16,7 @@ import { ModpackDetails } from '../../components/modpacks/ModpackDetails';
 import { CreateModpackModal } from '../../components/modpacks/CreateModpackModal';
 import { ExportModpackPage } from '../../components/modpacks/ExportModpackPage';
 import { AddModModal } from '../../components/modpacks/AddModModal';
+import { SidebarHeader } from '../../components/sidebar/SidebarHeader';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../features/modpacks/hooks/useModpackNavigation';
 import { AccountsPage } from '../../features/accounts/AccountsPage';
 import { ShareModal } from '../../features/share/ShareModal';
@@ -21,6 +25,7 @@ import { MirrorsSettings } from '../../features/settings/mirrors/MirrorsSettings
 import { StatisticsTab } from '../../features/settings/statistics/StatisticsTab';
 import { WorldDatapacksModal } from '../../components/modpacks/details/WorldDatapacksModal';
 import { CORE_VIEWS, type ManualVerificationView } from './views';
+import { getManualVerificationModEntries, getManualVerificationModpackMetadata } from './mockEnvironment';
 
 interface ManualVerificationScenarioProps {
   onReady: (message: string) => void;
@@ -46,6 +51,15 @@ function ModpackProviders(props: { children: React.ReactNode }) {
       </ModpackProvider>
     </SettingsProvider>
   );
+}
+
+function ManualDashboardProviders(props: { language: 'en' | 'ru'; children: React.ReactNode }) {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('settings_language', props.language);
+    localStorage.setItem('simple_play_welcome_dismissed', 'true');
+  }
+
+  return <ModpackProviders>{props.children}</ModpackProviders>;
 }
 
 function useReadyByText(onReady: (message: string) => void, needles: string[], message: string) {
@@ -166,34 +180,98 @@ function TourScenario({ onReady }: ManualVerificationScenarioProps) {
 function DashboardScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['Welcome to FriendLauncher!', 'Quick actions', 'Downloading runtime'],
-    'Classic dashboard rendered with explicit launch-stage feedback.',
+    ['Vanilla', 'Ожидание Minecraft', 'Запуск не удался'],
+    'Classic dashboard rendered with fallback art, loader truth, localized launch feedback, and read-only busy-state settings.',
   );
 
   return (
-    <ModpackProviders>
-      <SimplePlayDashboard
-        launch={{
-          version: '1.20.1',
-          nickname: 'Steve',
-          loaderType: 'fabric',
-          ram: 6,
-          isOffline: true,
-        }}
-        runtime={{
-          isLaunching: true,
-          progress: 68,
-          launchStage: 'downloading',
-          statusText: 'Downloading runtime',
-          statusDetail: 'Fetching client, libraries, and assets for the selected pack.',
-          onLaunch: () => undefined,
-        }}
-        actions={{
-          onShowMultiplayer: () => undefined,
-          onShowSettings: () => undefined,
-        }}
-      />
-    </ModpackProviders>
+    <ManualDashboardProviders language="ru">
+      <div className="space-y-8">
+        <section className="space-y-3">
+          <div>
+            <div className="kicker-label mb-2">Waiting + read-only</div>
+            <h2 className="text-xl font-semibold text-foreground">Localized waiting state with visible advanced settings</h2>
+          </div>
+          <SimplePlayDashboard
+            launch={{
+              version: '1.20.1',
+              nickname: 'Steve',
+              loaderType: 'vanilla',
+              ram: 6,
+              isOffline: true,
+            }}
+            runtime={{
+              isLaunching: true,
+              progress: undefined,
+              launchStage: 'waiting',
+              statusText: 'Ожидание Minecraft',
+              statusDetail: 'Процесс Minecraft уже запущен. Ждем окно игры и первые логи.',
+              onLaunch: () => undefined,
+            }}
+            actions={{
+              onShowMultiplayer: () => undefined,
+              onShowSettings: () => undefined,
+            }}
+          />
+        </section>
+
+        <section className="space-y-3">
+          <div>
+            <div className="kicker-label mb-2">Download truth</div>
+            <h2 className="text-xl font-semibold text-foreground">Progress stays numeric only while files are actually downloading</h2>
+          </div>
+          <SimplePlayDashboard
+            launch={{
+              version: '1.20.1',
+              nickname: 'Steve',
+              loaderType: 'fabric',
+              ram: 6,
+              isOffline: true,
+            }}
+            runtime={{
+              isLaunching: true,
+              progress: 68,
+              launchStage: 'downloading',
+              statusText: 'Загрузка',
+              statusDetail: 'Подготавливаем файлы игры и необходимые зависимости.',
+              onLaunch: () => undefined,
+            }}
+            actions={{
+              onShowMultiplayer: () => undefined,
+              onShowSettings: () => undefined,
+            }}
+          />
+        </section>
+
+        <section className="space-y-3">
+          <div>
+            <div className="kicker-label mb-2">Failure persistence</div>
+            <h2 className="text-xl font-semibold text-foreground">Failure remains visible after controls unlock</h2>
+          </div>
+          <SimplePlayDashboard
+            launch={{
+              version: '1.20.1',
+              nickname: 'Steve',
+              loaderType: 'fabric',
+              ram: 6,
+              isOffline: true,
+            }}
+            runtime={{
+              isLaunching: false,
+              progress: undefined,
+              launchStage: 'failed',
+              statusText: 'Запуск не удался',
+              statusDetail: 'Minecraft завершился с кодом 1',
+              onLaunch: () => undefined,
+            }}
+            actions={{
+              onShowMultiplayer: () => undefined,
+              onShowSettings: () => undefined,
+            }}
+          />
+        </section>
+      </div>
+    </ManualDashboardProviders>
   );
 }
 
@@ -208,6 +286,130 @@ function SettingsAccountsScenario({ onReady }: ManualVerificationScenarioProps) 
     <SettingsProviders>
       <SettingsPage onClose={() => undefined} initialTab="accounts" />
     </SettingsProviders>
+  );
+}
+
+function Phase17PolishScenario({ onReady }: ManualVerificationScenarioProps) {
+  const [collapsedMode, setCollapsedMode] = useState<UIMode>('modpacks');
+  const sidebarTranslator = useMemo(() => createTranslator('en'), []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const deadline = Date.now() + 4_000;
+
+    const tick = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const text = document.body.textContent ?? '';
+      const hasCollapsedActiveState = Array.from(document.querySelectorAll<HTMLButtonElement>('button')).some(
+        (button) => button.getAttribute('title') === 'Modpacks' && button.getAttribute('aria-pressed') === 'true',
+      );
+      const brandedFallbackImages = Array.from(document.querySelectorAll<HTMLImageElement>('img')).filter((image) => {
+        const source = image.getAttribute('src');
+        return typeof source === 'string' && (source === LAUNCHER_MARK_PATH || source.endsWith(LAUNCHER_MARK_PATH));
+      });
+
+      if (
+        text.includes('Alpha Pack') &&
+        text.includes('История') &&
+        text.includes('Лес · Темная') &&
+        text.includes('Положение сайдбара') &&
+        hasCollapsedActiveState &&
+        brandedFallbackImages.length >= 2
+      ) {
+        onReady(
+          'Phase 17 proof rendered with constrained catalog cards, launcher-mark fallback art, coherent collapsed nav state, and Russian preset naming.',
+        );
+        return;
+      }
+
+      if (Date.now() < deadline) {
+        window.setTimeout(tick, 50);
+      }
+    };
+
+    tick();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [collapsedMode, onReady]);
+
+  return (
+    <div className="space-y-8">
+      <section className="space-y-3">
+        <div>
+          <div className="kicker-label mb-2">Compact navigation proof</div>
+          <h2 className="text-xl font-semibold text-foreground">Collapsed sidebar mode keeps its active state readable</h2>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-[5.5rem,1fr]">
+          <div className="surface-panel w-[5.5rem] rounded-[2rem] p-2">
+            <SidebarHeader
+              appVersion="0.4.0"
+              onShowMultiplayer={() => undefined}
+              onShowSettings={() => undefined}
+              getAccentStyles={() => ({ className: '', style: undefined })}
+              getAccentHex={() => '#10b981'}
+              isCollapsed={true}
+              onToggleCollapse={() => undefined}
+              t={sidebarTranslator}
+              uiMode={collapsedMode}
+              onChangeMode={setCollapsedMode}
+            />
+          </div>
+          <div className="surface-inline space-y-2 rounded-3xl p-5">
+            <div className="kicker-label">Sidebar target</div>
+            <p className="text-sm leading-6 text-secondary">
+              The compact switcher stays icon-led, keeps explicit labels on hover, and preserves the active mode state
+              instead of collapsing into ambiguous one-letter affordances.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-2">
+        <section className="space-y-3">
+          <div>
+            <div className="kicker-label mb-2">Installed catalog</div>
+            <h2 className="text-xl font-semibold text-foreground">Sidebar-width cards remain readable without pack art</h2>
+          </div>
+          <ModpackProviders>
+            <div className="surface-panel max-w-[30rem] rounded-3xl p-4">
+              <ModpackList onNavigate={() => undefined} onCreateWizard={() => undefined} />
+            </div>
+          </ModpackProviders>
+        </section>
+
+        <section className="space-y-3">
+          <div>
+            <div className="kicker-label mb-2">Remote browser</div>
+            <h2 className="text-xl font-semibold text-foreground">Search controls wrap cleanly while no-art cards fall back to launcher branding</h2>
+          </div>
+          <SettingsProviders>
+            <div className="surface-panel max-w-[30rem] rounded-3xl p-4">
+              <ModpackBrowser
+                initialState={{ ...DEFAULT_MODPACK_BROWSER_STATE, platform: 'modrinth', query: 'alpha' }}
+                onBack={() => undefined}
+                onNavigate={() => undefined}
+                onStateChange={() => undefined}
+              />
+            </div>
+          </SettingsProviders>
+        </section>
+      </div>
+
+      <section className="space-y-3">
+        <div>
+          <div className="kicker-label mb-2">Russian settings shell</div>
+          <h2 className="text-xl font-semibold text-foreground">Appearance copy stays localized and preset naming remains policy-aligned</h2>
+        </div>
+        <SettingsProviders>
+          <SettingsPage onClose={() => undefined} initialTab="appearance" />
+        </SettingsProviders>
+      </section>
+    </div>
   );
 }
 
@@ -277,10 +479,13 @@ function ModpackBrowserScenario({ onReady }: ManualVerificationScenarioProps) {
 }
 
 function ModpackDetailsScenario({ onReady }: ManualVerificationScenarioProps) {
+  const fixtureMetadata = useMemo(() => getManualVerificationModpackMetadata('modpack-details'), []);
+  const fixtureMods = useMemo(() => getManualVerificationModEntries(), []);
+
   useReadyByText(
     onReady,
-    ['Modpack details', 'Alpha Pack', 'Export'],
-    'Modpack details overview rendered with refreshed hero actions.',
+    ['Gamma Runtime', 'Provided by pack runtime', 'Pack runtime mismatch', 'requires 0.17.0'],
+    'Modpack details rendered with dense navigation plus runtime-provided and incompatible dependency truth.',
   );
 
   return (
@@ -288,6 +493,11 @@ function ModpackDetailsScenario({ onReady }: ManualVerificationScenarioProps) {
       <div className="min-h-screen p-6">
         <ModpackDetails
           modpackId="alpha"
+          initialTab="mods"
+          initialExpandedModId="gamma"
+          initialMetadata={fixtureMetadata}
+          initialMods={fixtureMods}
+          hydrateFromIpc={false}
           onBack={() => undefined}
           onNavigate={() => undefined}
           onLaunch={() => undefined}
@@ -420,6 +630,10 @@ export function ManualVerificationScenarios(props: { view: ManualVerificationVie
 
   if (props.view === 'settings-accounts') {
     return <SettingsAccountsScenario {...scenarioProps} />;
+  }
+
+  if (props.view === 'phase-17-polish') {
+    return <Phase17PolishScenario {...scenarioProps} />;
   }
 
   if (props.view === 'accounts') {

@@ -16,7 +16,7 @@ function translateWithFallback(t: (key: string) => string, key: string, fallback
 
 export const LaunchControls = React.memo(function LaunchControls(props: {
   isLaunching: boolean;
-  progress: number;
+  progress?: number;
   launchStage?: LaunchStage;
   statusText: string;
   statusDetail?: string;
@@ -117,7 +117,7 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
                   willChange: 'border-radius, width, height, padding',
                 }
           }
-          progress={isLaunching ? progress : undefined}
+          progress={isLaunching && typeof progress === 'number' ? progress : undefined}
           title={isCollapsed ? (isLaunching ? actionLabel : t('general.play')) : undefined}
         >
           <Play className={cn('transition-all duration-500 ease-out', isCollapsed ? 'ml-0.5 h-5 w-5' : 'mr-1 h-5 w-5')} fill="currentColor" />
