@@ -87,6 +87,8 @@ export type AppLayoutProps = {
 
 import { BackgroundLayer } from './layout/BackgroundLayer';
 
+export const APP_LAYOUT_SAFE_AREA_TEST_ID = 'app-layout-safe-area';
+
 export function AppLayout(props: AppLayoutProps) {
   const { theme, updates, modpackUpdates, modpackOnLaunch, overlays, actions, launch, runtime } = props;
 
@@ -111,36 +113,42 @@ export function AppLayout(props: AppLayoutProps) {
             {hasModpackUpdates && modpackUpdates && <ModpackUpdateNotification updates={modpackUpdates.updates} onDismiss={modpackUpdates.onDismiss} />}
             <TitleBar />
 
-            {overlays.showSettings && (
-              <SettingsPage onClose={overlays.onCloseSettings} />
-            )}
-            {overlays.showMultiplayer && (
-              <MultiplayerPage onBack={overlays.onBackFromMultiplayer} />
-            )}
-
             <div
-              data-testid="app-layout-split"
-              className={cn(
-              "relative flex min-h-0 flex-1 overflow-hidden",
-              sidebarPosition === 'right' ? "flex-row-reverse" : "flex-row"
-            )}
+              data-testid={APP_LAYOUT_SAFE_AREA_TEST_ID}
+              data-shell-safe-area="title-bar"
+              className="relative flex min-h-0 flex-1 flex-col overflow-hidden pt-2"
             >
-              <Sidebar
-                launch={launch}
-                runtime={runtime}
-                actions={actions}
-              />
+              {overlays.showSettings && (
+                <SettingsPage onClose={overlays.onCloseSettings} />
+              )}
+              {overlays.showMultiplayer && (
+                <MultiplayerPage onBack={overlays.onBackFromMultiplayer} />
+              )}
 
               <div
-                data-testid="app-layout-main"
-                className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background transition-all duration-300"
+                data-testid="app-layout-split"
+                className={cn(
+                  'relative flex min-h-0 flex-1 overflow-hidden',
+                  sidebarPosition === 'right' ? 'flex-row-reverse' : 'flex-row',
+                )}
               >
-                <div key={uiMode} className="mode-switch-enter flex min-h-0 flex-1 flex-col">
-                  {uiMode === 'modpacks' ? (
-                    <ModpackRouter onLaunch={modpackOnLaunch ?? runtime.onLaunch} />
-                  ) : (
-                    <SimplePlayDashboard launch={launch} runtime={runtime} actions={actions} />
-                  )}
+                <Sidebar
+                  launch={launch}
+                  runtime={runtime}
+                  actions={actions}
+                />
+
+                <div
+                  data-testid="app-layout-main"
+                  className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background transition-all duration-300"
+                >
+                  <div key={uiMode} className="mode-switch-enter flex min-h-0 flex-1 flex-col">
+                    {uiMode === 'modpacks' ? (
+                      <ModpackRouter onLaunch={modpackOnLaunch ?? runtime.onLaunch} />
+                    ) : (
+                      <SimplePlayDashboard launch={launch} runtime={runtime} actions={actions} />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

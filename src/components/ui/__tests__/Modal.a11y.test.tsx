@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { useState } from 'react';
+import { createRef, useState } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Modal } from '../Modal';
@@ -81,5 +81,32 @@ describe('Modal accessibility', () => {
     await waitFor(() => {
       expect(focusSpy).toHaveBeenCalled();
     });
+  });
+
+  it('forwards modal body props and refs for flow-owned scroll handling', async () => {
+    const onScroll = vi.fn();
+    const bodyRef = createRef<HTMLDivElement>();
+
+    render(
+      <Modal
+        isOpen
+        onClose={vi.fn()}
+        title="Flow modal"
+        bodyRef={bodyRef}
+        bodyProps={{ onScroll }}
+      >
+        <button type="button">Primary action</button>
+      </Modal>,
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: 'Flow modal' });
+    const modalBody = dialog.querySelector<HTMLElement>('[data-modal-body="true"]');
+
+    expect(bodyRef.current).toBe(modalBody);
+    expect(modalBody).toBeTruthy();
+    expect(dialog.contains(modalBody as HTMLElement)).toBe(true);
+
+    fireEvent.scroll(modalBody as HTMLElement);
+    expect(onScroll).toHaveBeenCalled();
   });
 });

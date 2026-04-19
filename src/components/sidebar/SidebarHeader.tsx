@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
-import { Globe2, LayoutGrid, Menu, PanelsTopLeft, Settings2 } from 'lucide-react';
+import { Globe2, LayoutGrid, Menu, PanelLeftClose, PanelsTopLeft, Settings2 } from 'lucide-react';
+import { BrandLockup } from '../branding/BrandLockup';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import type { UIMode } from '../../contexts/settings/types';
@@ -12,6 +13,7 @@ export function SidebarHeader(props: {
   getAccentHex: () => string;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  contentId?: string;
   t: (key: string) => string;
   uiMode: UIMode;
   onChangeMode: (mode: UIMode) => void;
@@ -20,10 +22,9 @@ export function SidebarHeader(props: {
     appVersion,
     onShowMultiplayer,
     onShowSettings,
-    getAccentStyles,
-    getAccentHex,
     isCollapsed,
     onToggleCollapse,
+    contentId,
     t,
     uiMode,
     onChangeMode,
@@ -33,20 +34,19 @@ export function SidebarHeader(props: {
 
   return (
     <div className={cn("relative mb-3", isCollapsed && "mb-2")}>
-      {/* Burger button - всегда рендерится, но меняет позицию */}
-      {onToggleCollapse && (
+      {onToggleCollapse && isCollapsed && (
         <button 
           onClick={onToggleCollapse} 
           aria-label={t('sidebar.expand') || 'Expand sidebar'}
+          aria-controls={contentId}
+          aria-expanded={!isCollapsed}
           className={cn(
             'mx-auto flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-card/78 text-secondary transition-all duration-300 ease-out hover:bg-card/96 hover:text-foreground',
-            isCollapsed 
-              ? "mx-auto block" 
-              : "absolute top-0 right-0 opacity-0 pointer-events-none"
+            'mx-auto block',
           )}
           style={{
             transition: 'opacity 300ms ease-out, transform 300ms ease-out',
-            transform: isCollapsed ? 'scale(1)' : 'scale(0.8)',
+            transform: 'scale(1)',
           }}
         >
           <Menu className="h-4 w-4" />
@@ -59,17 +59,16 @@ export function SidebarHeader(props: {
         isCollapsed ? "opacity-0 h-0 overflow-hidden" : "opacity-100"
       )}>
         <div className="mb-2 flex items-start justify-between">
-          <div>
-            <h1
-              className={cn('text-2xl font-black tracking-tighter drop-shadow-sm', getAccentStyles('text').className)}
-              style={{
-                ...getAccentStyles('text').style,
-                textShadow: `0 2px 8px ${getAccentHex()}30`,
-              }}
-            >
-              FriendLauncher
-            </h1>
-            <p className="mt-1 font-mono text-[10px] text-muted opacity-70">BUILD v{appVersion}</p>
+          <div className="min-w-0">
+            <BrandLockup
+              align="start"
+              markFrame="brand"
+              markRole="product-mark"
+              markSize="sm"
+              className="max-w-full"
+              wordmarkClassName="truncate text-lg text-foreground sm:text-xl"
+            />
+            <p className="mt-2 kicker-label">Build v{appVersion}</p>
           </div>
           <div className={cn(
             "flex gap-1 transition-all duration-500 ease-out",
@@ -97,6 +96,20 @@ export function SidebarHeader(props: {
             >
               <Settings2 className="h-4 w-4" />
             </Button>
+            {onToggleCollapse && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onToggleCollapse}
+                aria-label={t('sidebar.collapse') || 'Collapse sidebar'}
+                aria-controls={contentId}
+                aria-expanded={!isCollapsed}
+                className="px-2 transition-all duration-500 ease-out"
+                title={t('sidebar.collapse') || 'Collapse sidebar'}
+              >
+                <PanelLeftClose className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>

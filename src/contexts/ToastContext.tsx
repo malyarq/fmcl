@@ -12,7 +12,10 @@ interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
 
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ToastProvider: React.FC<{ children: React.ReactNode; suppressToasts?: boolean }> = ({
+    children,
+    suppressToasts = false,
+}) => {
     const [toasts, setToasts] = useState<ToastData[]>([]);
 
     const removeToast = useCallback((id: string) => {
@@ -20,6 +23,10 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }, []);
 
     const showToast = useCallback((message: string, type: ToastType = 'info', duration?: number) => {
+        if (suppressToasts) {
+            return;
+        }
+
         setToasts((prev) => {
             const existingIndex = prev.findIndex(t => t.message === message && t.type === type);
 
@@ -47,7 +54,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             };
             return [...prev, newToast];
         });
-    }, []);
+    }, [suppressToasts]);
 
     const success = useCallback((message: string, duration?: number) => {
         showToast(message, 'success', duration);
@@ -68,7 +75,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return (
         <ToastContext.Provider value={{ showToast, success, error, warning, info }}>
             {children}
-            <ToastContainer toasts={toasts} onRemove={removeToast} />
+            {suppressToasts ? null : <ToastContainer toasts={toasts} onRemove={removeToast} />}
         </ToastContext.Provider>
     );
 };

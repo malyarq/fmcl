@@ -28,6 +28,9 @@ vi.mock('../../../contexts/SettingsContext', () => ({
     t,
     getAccentStyles: () => ({ className: '', style: undefined }),
     getAccentHex: () => '#10b981',
+    formatDate: (timestamp: number | undefined, unknownText = 'Unknown', options?: Intl.DateTimeFormatOptions) =>
+      timestamp ? new Date(timestamp).toLocaleDateString('en-US', options) : unknownText,
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-US', options).format(value),
     minecraftPath: '/minecraft',
   }),
 }));
@@ -62,6 +65,8 @@ vi.mock('../../../features/share/ImportShareModal', () => ({
 }));
 
 describe('ModpackList action truth', () => {
+  const denseName = 'Alpha Pack With Dense Menu State';
+
   beforeEach(() => {
     cleanup();
     listWithMetadataMock.mockReset();
@@ -74,7 +79,7 @@ describe('ModpackList action truth', () => {
     listWithMetadataMock.mockResolvedValue([
       {
         id: 'alpha',
-        name: 'Alpha Pack',
+        name: denseName,
         path: '/packs/alpha',
         selected: false,
         metadata: {
@@ -89,10 +94,10 @@ describe('ModpackList action truth', () => {
   it('routes the contextual details action to the details screen and does not expose a fake play action', async () => {
     render(<ModpackList onNavigate={onNavigateMock} />);
 
-    const actionButton = await screen.findByRole('button', { name: 'More actions: Alpha Pack' });
+    const actionButton = await screen.findByRole('button', { name: `More actions: ${denseName}` });
     fireEvent.click(actionButton);
 
-    expect(await screen.findByRole('menu', { name: 'More actions: Alpha Pack' })).toBeTruthy();
+    expect(await screen.findByRole('menu', { name: `More actions: ${denseName}` })).toBeTruthy();
     expect(screen.queryByRole('menuitem', { name: 'Play' })).toBeNull();
     expect(screen.queryByRole('menuitem', { name: 'Settings' })).toBeNull();
 
@@ -106,7 +111,7 @@ describe('ModpackList action truth', () => {
   it('opens the action menu from the keyboard and focuses the first menu item', async () => {
     render(<ModpackList onNavigate={onNavigateMock} />);
 
-    const cardActivator = await screen.findByRole('button', { name: 'Alpha Pack' });
+    const cardActivator = await screen.findByRole('button', { name: denseName });
     Object.defineProperty(cardActivator, 'getBoundingClientRect', {
       configurable: true,
       value: () => ({
@@ -121,7 +126,7 @@ describe('ModpackList action truth', () => {
 
     fireEvent.keyDown(cardActivator, { key: 'ContextMenu' });
 
-    const menu = await screen.findByRole('menu', { name: 'More actions: Alpha Pack' });
+    const menu = await screen.findByRole('menu', { name: `More actions: ${denseName}` });
     expect(menu).toBeTruthy();
 
     await waitFor(() => {

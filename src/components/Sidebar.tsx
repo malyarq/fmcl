@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
-import { Globe2, PanelLeftClose, Settings2 } from 'lucide-react';
+import { Globe2, Settings2 } from 'lucide-react';
 import pkg from '../../package.json';
 import { useSettings, useUIMode } from '../contexts/SettingsContext';
 import { useModpack } from '../contexts/ModpackContext';
@@ -15,7 +15,7 @@ import { Button } from './ui/Button';
 import { Select } from './ui/Select';
 import { Tooltip } from './ui/Tooltip';
 import type { LaunchStage } from '../features/launcher/services/launcherService';
-
+import { useModpackPrimaryActionOwnership } from './modpacks/primaryActionOwnership';
 
 import { cn } from '../utils/cn';
 
@@ -73,6 +73,7 @@ const Sidebar = ({
     const { getAccentStyles, getAccentHex, t, compactMode, sidebarPosition } = useSettings();
     const { uiMode, setMode } = useUIMode();
     const { modpacks, selectedId, effectiveModpackId } = useModpack();
+    const modpackPrimaryActionOwnership = useModpackPrimaryActionOwnership();
     const lastGame = useMemo(() => loadLastGame(effectiveModpackId), [effectiveModpackId]);
     const sidebarContentId = 'launcher-sidebar-content';
     const liveStatus = [runtime.statusText, runtime.statusDetail].filter(Boolean).join(' - ');
@@ -89,6 +90,7 @@ const Sidebar = ({
     // В режиме simple всегда разрешаем запуск (там используется дефолтный пак)
     const isModpackAvailable = uiMode === 'simple' || (selectedId && modpacks.some(m => m.id === selectedId));
     const canLaunch = isModpackAvailable && !runtime.isLaunching;
+    const launchPriority = uiMode === 'modpacks' && modpackPrimaryActionOwnership === 'route' ? 'secondary' : 'primary';
     const expandedWidthClass = compactMode
         ? 'w-[clamp(15rem,24vw,18rem)] p-3 sm:p-4'
         : 'w-[clamp(16.5rem,28vw,21rem)] p-3.5 sm:p-5';
@@ -105,34 +107,19 @@ const Sidebar = ({
             sidebarPosition === 'right' ? "border-l border-r-0 order-last" : "border-r border-l-0"
         )}
         >
-            {/* Collapse button at the very top - thin strip */}
-            {!isCollapsed && (
-                <button
-                    type="button"
-                    onClick={() => setIsCollapsed(!isCollapsed)}
-                    aria-controls={sidebarContentId}
-                    aria-expanded={!isCollapsed}
-                    className="absolute left-0 right-0 top-0 flex h-7 items-center justify-center gap-1 border-b border-border/50 text-[10px] text-secondary transition-colors hover:bg-background/60 hover:text-foreground"
-                >
-                    <PanelLeftClose className="h-3 w-3" />
-                    <span>{t('sidebar.collapse') || 'Collapse sidebar'}</span>
-                </button>
-            )}
-
-            <div className={!isCollapsed ? "pt-6" : ""}>
-                <SidebarHeader
-                    appVersion={pkg.version}
-                    onShowMultiplayer={actions.onShowMultiplayer}
-                    onShowSettings={actions.onShowSettings}
-                    getAccentStyles={(type) => getAccentStyles(type)}
-                    getAccentHex={getAccentHex}
-                    isCollapsed={isCollapsed}
-                    onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
-                    t={t}
-                    uiMode={uiMode}
-                    onChangeMode={setMode}
-                />
-            </div>
+            <SidebarHeader
+                appVersion={pkg.version}
+                onShowMultiplayer={actions.onShowMultiplayer}
+                onShowSettings={actions.onShowSettings}
+                getAccentStyles={(type) => getAccentStyles(type)}
+                getAccentHex={getAccentHex}
+                isCollapsed={isCollapsed}
+                onToggleCollapse={() => setIsCollapsed(!isCollapsed)}
+                contentId={sidebarContentId}
+                t={t}
+                uiMode={uiMode}
+                onChangeMode={setMode}
+            />
 
             <div className="sr-only" aria-live="polite">
                 {liveStatus}
@@ -263,6 +250,7 @@ const Sidebar = ({
                     isCollapsed={isCollapsed}
                     canLaunch={Boolean(canLaunch)}
                     lastLaunch={lastGame ? formatLastLaunch(lastGame.timestamp, t) : undefined}
+                    priority={launchPriority}
                 />
             </div>
         </aside>

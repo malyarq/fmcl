@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 
 import type { ComponentProps } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModpackBrowser } from '../ModpackBrowser';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
 import { createTranslator } from '../../../contexts/settings/i18n';
-import { LAUNCHER_MARK_PATH } from '../../../app/assets/branding';
+import { MEDIA_FALLBACK_PATH } from '../../../app/assets/branding';
 
 const searchModrinthMock = vi.fn();
 const getCurseForgeVersionsMock = vi.fn();
@@ -17,6 +17,9 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
     t,
     getAccentStyles: () => ({ className: '', style: undefined }),
+    formatDate: (timestamp: number | undefined, unknownText = 'Unknown', options?: Intl.DateTimeFormatOptions) =>
+      timestamp ? new Date(timestamp).toLocaleDateString('en-US', options) : unknownText,
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-US', options).format(value),
   }),
 }));
 
@@ -133,7 +136,7 @@ describe('ModpackBrowser ergonomics', () => {
     await screen.findByText('Alpha Pack');
 
     expect(screen.getByText('Active filters')).toBeTruthy();
-    expect(screen.getByText('"alpha"')).toBeTruthy();
+    expect(screen.getByText('Search modpacks: "alpha"')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Clear filters' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
@@ -153,30 +156,26 @@ describe('ModpackBrowser ergonomics', () => {
     });
   });
 
-  it('keeps browser filters wrap-friendly and routes no-art cards through the launcher mark fallback', async () => {
+  it('keeps browser filters grouped and card metadata labeled at dense desktop widths', async () => {
     renderBrowser();
 
     await screen.findByText('Alpha Pack');
 
-    const searchRegion = screen.getByRole('search', { name: 'Enter modpack name...' });
-    const controlsRow = searchRegion.querySelector('.flex.flex-wrap.items-start.gap-2');
-    const sortShell = screen.getByRole('combobox', { name: 'Popularity' }).parentElement?.parentElement;
-    const versionShell = screen.getByRole('combobox', { name: 'All MC Versions' }).parentElement?.parentElement;
-    const loaderShell = screen.getByRole('combobox', { name: 'All Modloaders' }).parentElement?.parentElement;
-    const pageSizeShell = screen.getByRole('combobox', { name: 'Items per page' }).parentElement?.parentElement;
+    const searchRegion = screen.getByRole('search', { name: 'Search modpacks' });
+    const controlsGrid = within(searchRegion).getByTestId('remote-modpack-filter-controls');
 
-    expect(controlsRow?.className).toContain('flex-wrap');
-    expect(sortShell?.className).toContain('min-w-[11rem]');
-    expect(sortShell?.className).toContain('flex-1');
-    expect(versionShell?.className).toContain('min-w-[11rem]');
-    expect(versionShell?.className).toContain('flex-1');
-    expect(loaderShell?.className).toContain('min-w-[11rem]');
-    expect(loaderShell?.className).toContain('flex-1');
-    expect(pageSizeShell?.className).toContain('min-w-[8.5rem]');
-    expect(pageSizeShell?.className).toContain('flex-none');
+    expect(controlsGrid.className).toContain('grid');
+    expect(controlsGrid.className).toContain('xl:grid-cols-4');
+    expect(within(searchRegion).getByText('Search modpacks')).toBeTruthy();
+    expect(within(searchRegion).getByText('Minecraft Version')).toBeTruthy();
+    expect(within(searchRegion).getByText('Modloader')).toBeTruthy();
+    expect(within(searchRegion).getByText('Items per page')).toBeTruthy();
+    expect(screen.getByText('Downloads')).toBeTruthy();
+    expect(screen.getByText('Updated')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Open details: Alpha Pack' })).toBeTruthy();
 
     await waitFor(() => {
-      expect(screen.getByRole('img', { name: 'Alpha Pack' }).getAttribute('src')).toBe(LAUNCHER_MARK_PATH);
+      expect(screen.getByRole('img', { name: 'Alpha Pack' }).getAttribute('src')).toBe(MEDIA_FALLBACK_PATH);
     });
   });
 });

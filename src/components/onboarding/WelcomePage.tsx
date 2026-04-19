@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Globe2, Paintbrush2, Settings2, Sparkles } from 'lucide-react';
 import { useSettings } from '../../contexts/SettingsContext';
+import { BrandLockup } from '../branding/BrandLockup';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 
@@ -46,17 +47,26 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({ onComplete, onSkip, on
                 <Sparkles className="h-3.5 w-3.5" />
                 {t('onboarding.welcome.badge') || 'Launcher setup'}
               </div>
+              <BrandLockup
+                align="start"
+                markFrame="brand"
+                markRole="product-mark"
+                markSize="lg"
+                className="mb-5"
+                wordmarkTone="hero"
+                wordmarkClassName="text-3xl sm:text-4xl"
+              />
               <h1
-                className={cn('text-4xl font-black tracking-tight sm:text-5xl', getAccentStyles('text').className)}
+                className={cn('text-2xl font-black tracking-tight sm:text-3xl', getAccentStyles('text').className)}
                 style={{
                   ...getAccentStyles('text').style,
                   textShadow: `0 2px 12px ${getAccentHex()}28`,
                 }}
               >
-                FriendLauncher
+                {t('onboarding.welcome.title') || 'Welcome!'}
               </h1>
               <p className="mt-4 max-w-xl text-base text-secondary sm:text-lg">
-                {t('onboarding.welcome.title') || 'Welcome!'}
+                {t('onboarding.welcome.intro') || 'Start with one clear launcher shell, then move into modpacks, multiplayer, and personalization when you need them.'}
               </p>
             </div>
 

@@ -49,6 +49,7 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
     t,
     getAccentStyles,
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-US', options).format(value),
   }),
 }));
 

@@ -28,6 +28,7 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
   isCollapsed?: boolean;
   canLaunch?: boolean;
   lastLaunch?: string;
+  priority?: 'primary' | 'secondary';
 }) {
   const {
     isLaunching,
@@ -43,6 +44,7 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
     isCollapsed,
     canLaunch = true,
     lastLaunch,
+    priority = 'primary',
   } = props;
 
   // Memoize accent style to prevent recalculation
@@ -52,6 +54,7 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
   const actionLabel = getLaunchActionLabel(currentStage, t);
   const shouldPulseStatus = isLaunching && currentStage !== 'failed' && currentStage !== 'running';
   const showForceRestart = Boolean(canForceRestart && !isCollapsed);
+  const isPrimary = priority === 'primary';
 
   return (
     <div className={cn(
@@ -82,24 +85,28 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
       <div className={cn("flex gap-2", isCollapsed && "justify-center")}>
         <Button
           onClick={onLaunch}
+          variant={isPrimary ? 'primary' : 'secondary'}
           disabled={isLaunching || !canLaunch}
           data-tour="launch"
+          data-launch-priority={priority}
           className={cn(
-            'text-lg font-black uppercase tracking-widest shadow-2xl transform !transition-none',
+            'text-lg font-black uppercase tracking-widest transform !transition-none',
             // Плавная анимация изменения формы - переопределяем rounded-lg из Button
             isCollapsed 
               ? 'w-12 h-12 p-0 flex-none [&>div]:gap-0 [&>div]:justify-center' 
               : 'flex-1 py-5',
             isLaunching || !canLaunch
               ? 'bg-zinc-300 dark:bg-zinc-600 text-zinc-500 dark:text-zinc-400 cursor-not-allowed shadow-none scale-100'
-              : cn(
+              : isPrimary
+                ? cn(
                   'text-white hover:brightness-110 active:scale-[0.97] hover:scale-[1.03]',
                   'hover:shadow-[0_0_40px_rgba(0,0,0,0.4)]',
                   getAccentStyles('bg').className
                 )
+                : 'border-border/70 bg-card/82 text-foreground shadow-[0_10px_24px_rgba(0,0,0,0.08)] hover:bg-card/96 hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)]'
           )}
           style={
-            !isLaunching && canLaunch
+            !isLaunching && canLaunch && isPrimary
               ? {
                   ...accentStyle,
                   boxShadow: `0 12px 40px ${accentHex}50, 0 0 30px ${accentHex}30`,

@@ -9,31 +9,39 @@ import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { LazyImage } from '../../../components/ui/LazyImage';
 import { Button } from '../../../components/ui/Button';
 import { ScreenshotLightbox } from './ScreenshotLightbox';
+import { DegradedStateView } from '../../../components/layout/DegradedStateView';
+import { toDisplayErrorMessage } from '../../../utils/displayError';
 
 interface ScreenshotsTabProps {
     instancePath: string;
 }
 
 export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
-    const { t } = useSettings();
+    const { t, formatDate, formatNumber } = useSettings();
     const toast = useToast();
     const confirm = useConfirm();
     const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<unknown | null>(null);
     const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
     const loadScreenshots = useCallback(async () => {
         setLoading(true);
+        setLoadError(null);
         try {
             const list = await screenshotsIPC.list(instancePath);
             setScreenshots(list);
         } catch (error) {
             console.error('Failed to load screenshots:', error);
+            setLoadError(error);
             toast.error(t('screenshots.loadError'));
         } finally {
             setLoading(false);
         }
     }, [instancePath, t, toast]);
+    const screenshotsErrorDescription = loadError
+        ? toDisplayErrorMessage(loadError, t('error.inline_fallback'))
+        : t('error.inline_fallback');
 
     useEffect(() => {
         void loadScreenshots();
@@ -85,21 +93,46 @@ export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
         );
     }
 
+    if (loadError) {
+        return (
+            <DegradedStateView
+                variant="error"
+                label={t('degraded.error_label')}
+                title={t('screenshots.loadError')}
+                description={screenshotsErrorDescription}
+                footer={(
+                    <>
+                        <Button variant="secondary" size="sm" onClick={() => void loadScreenshots()}>
+                            {t('modpacks.world_refresh')}
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={() => void handleOpenFolder()}>
+                            <FolderOpen className="h-4 w-4" />
+                            {t('screenshots.openFolder')}
+                        </Button>
+                    </>
+                )}
+            />
+        );
+    }
+
     if (screenshots.length === 0) {
         return (
-            <div className="surface-card flex flex-col items-center justify-center gap-4 p-10 text-center">
+            <DegradedStateView
+                variant="empty"
+                label={t('degraded.empty_label')}
+                title={t('screenshots.emptyTitle')}
+                description={t('screenshots.emptyDescription')}
+                footer={(
+                    <Button variant="secondary" size="sm" onClick={() => void handleOpenFolder()}>
+                        <FolderOpen className="h-4 w-4" />
+                        {t('screenshots.openFolder')}
+                    </Button>
+                )}
+            >
                 <div className="rounded-full border border-border/60 bg-background/78 p-4 text-secondary">
                     <ImageIcon className="h-8 w-8" />
                 </div>
-                <div className="space-y-2">
-                    <h3 className="text-lg font-bold text-foreground">{t('screenshots.emptyTitle')}</h3>
-                    <p className="max-w-md text-sm text-secondary">{t('screenshots.emptyDescription')}</p>
-                </div>
-                <Button variant="secondary" onClick={() => void handleOpenFolder()}>
-                    <FolderOpen className="h-4 w-4" />
-                    {t('screenshots.openFolder')}
-                </Button>
-            </div>
+            </DegradedStateView>
         );
     }
 
@@ -108,7 +141,7 @@ export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
             <div className="surface-muted flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
                     <div className="kicker-label">{t('modpacks.tab_screenshots')}</div>
-                    <p className="text-sm text-secondary">{t('screenshots.count', { count: screenshots.length })}</p>
+                    <p className="text-sm text-secondary">{t('screenshots.count', { count: formatNumber(screenshots.length) })}</p>
                 </div>
                 <Button variant="secondary" size="sm" onClick={() => void handleOpenFolder()}>
                     <FolderOpen className="h-4 w-4" />
@@ -143,7 +176,7 @@ export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
                                         {screenshot.name}
                                     </span>
                                     <span className="text-xs text-muted">
-                                        {new Date(screenshot.createdAt).toLocaleDateString()}
+                                        {formatDate(screenshot.createdAt, '', { dateStyle: 'medium' })}
                                     </span>
                                 </div>
                             </button>

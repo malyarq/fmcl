@@ -3,6 +3,8 @@ import { Select } from '../../ui/Select';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { GameTab } from '../../settings/tabs/GameTab';
 import { ModloaderSection } from '../../sidebar/ModloaderSection';
+import { ModpackDependencySummary } from '../../sidebar/ModpackDependencySummary';
+import { buildRuntimeDependencyState } from '../../sidebar/modpackRuntimeDependencies';
 import { OptifineToggle } from '../../sidebar/OptifineToggle';
 import type { ModpackConfig } from '../../../contexts/ModpackContext';
 import type { ModpackDetailsConfigSetters } from '../../../features/modpacks/hooks/useModpackDetailsConfig';
@@ -51,6 +53,22 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
     );
   }
 
+  const isOptiFineSupported = optiFineVersions.includes(effectiveConfig.runtime.minecraft);
+  const runtimeDependencies = buildRuntimeDependencyState({
+    minecraftVersion: effectiveConfig.runtime.minecraft,
+    modLoaderType: effectiveConfig.runtime.modLoader?.type ?? 'vanilla',
+    modLoaderVersion: effectiveConfig.runtime.modLoader?.version,
+    useOptiFine: Boolean(effectiveConfig.game?.useOptiFine),
+    isOptiFineSupported,
+  });
+
+  const handleMinecraftVersionChange = async (minecraftVersion: string) => {
+    await setters.setRuntimeMinecraft(minecraftVersion);
+    if (Boolean(effectiveConfig.game?.useOptiFine) && !optiFineVersions.includes(minecraftVersion)) {
+      await setters.setUseOptiFine(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="surface-card space-y-4 p-4">
@@ -66,7 +84,9 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
           <Select
             label={t('modpacks.minecraft_version')}
             value={effectiveConfig.runtime.minecraft}
-            onChange={(e) => setters.setRuntimeMinecraft(e.target.value)}
+            onChange={(e) => {
+              void handleMinecraftVersionChange(e.target.value);
+            }}
           >
             {versions
               .filter((v) => v.type === 'release')
@@ -95,13 +115,15 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
         />
 
         <OptifineToggle
-          isOptiFineSupported={optiFineVersions.includes(effectiveConfig.runtime.minecraft)}
+          isOptiFineSupported={isOptiFineSupported}
           useForge={effectiveConfig.runtime.modLoader?.type === 'forge'}
           useOptiFine={Boolean(effectiveConfig.game?.useOptiFine)}
           setUseOptiFine={setters.setUseOptiFine}
           t={t}
           getAccentStyles={getAccentStyles}
         />
+
+        <ModpackDependencySummary runtime={runtimeDependencies} t={t} />
       </div>
 
       <div className="surface-card p-1">

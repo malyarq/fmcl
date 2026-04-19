@@ -89,7 +89,7 @@ describe('ModpackDetailsHeader i18n', () => {
 
     expect(tablist).toBeTruthy();
     expect(tablist.getAttribute('aria-orientation')).toBe('horizontal');
-    expect(tablist.className).toContain('flex-wrap');
+    expect(tablist.className).toContain('grid');
     expect(tablist.className).not.toContain('overflow-x-auto');
     expect(tablist.className).not.toContain('scrollbar-hide');
     expect(infoTab).toBeTruthy();
@@ -102,6 +102,8 @@ describe('ModpackDetailsHeader i18n', () => {
 
     expect(infoTab.getAttribute('tabindex')).toBe('0');
     expect(modsTab.getAttribute('tabindex')).toBe('-1');
+    expect(infoTab.getAttribute('data-state')).toBe('active');
+    expect(modsTab.getAttribute('data-state')).toBe('inactive');
 
     infoTab.focus();
     fireEvent.keyDown(infoTab, { key: 'ArrowRight' });

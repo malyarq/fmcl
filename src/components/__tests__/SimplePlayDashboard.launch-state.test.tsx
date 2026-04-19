@@ -183,11 +183,14 @@ describe('SimplePlayDashboard launch-state seam', () => {
     expect(screen.queryByText('0%')).toBeNull();
   });
 
-  it('renders a branded hero fallback and shared loader label on the classic surface', async () => {
-    renderDashboard();
+  it('renders the canonical launcher mark and shared wordmark contract on the classic surface', async () => {
+    const { container } = renderDashboard();
 
-    const heroImage = await screen.findByRole('img', { name: 'Classic Pack artwork' });
+    const heroImage = await screen.findByTestId('dashboard-launcher-mark');
+    expect(heroImage.getAttribute('data-brand-role')).toBe('product-mark');
     expect(heroImage.getAttribute('src')).toBe(LAUNCHER_MARK_PATH);
+    expect(heroImage.closest('.brand-mark-frame')).toBeTruthy();
+    expect(container.querySelector('[data-brand-wordmark]')).toBeTruthy();
     expect(screen.getByText('Classic Pack')).toBeTruthy();
     expect(screen.getAllByText('Fabric').length).toBeGreaterThan(0);
   });

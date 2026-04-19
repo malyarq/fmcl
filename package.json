@@ -1,13 +1,14 @@
 {
   "name": "friend-launcher",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "Desktop Minecraft launcher for vanilla play, modpacks, and FriendTunnel multiplayer.",
   "author": "FriendLauncher Contributors",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "test": "vitest run",
+    "test:visual:closeout": "playwright test tests/visual/manual-closeout.spec.ts --project=chromium",
     "test:full": "node scripts/test-full.js",
     "test:full:vanilla": "node scripts/test-full.js --stage=vanilla",
     "test:full:forge": "node scripts/test-full.js --stage=forge",
@@ -51,6 +52,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^25.0.10",

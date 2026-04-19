@@ -14,7 +14,10 @@ import { useVersions } from '../../features/launcher/hooks/useVersions';
 import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
 import { ModloaderSection } from '../sidebar/ModloaderSection';
 import { ModpackDependencySummary } from '../sidebar/ModpackDependencySummary';
-import { buildRuntimeDependencyState } from '../sidebar/modpackRuntimeDependencies';
+import {
+  buildRuntimeDependencyState,
+  shouldKeepOptiFineEnabled,
+} from '../sidebar/modpackRuntimeDependencies';
 import { OptifineToggle } from '../sidebar/OptifineToggle';
 import { AddModModal } from './AddModModal';
 import { ModpackDetailsModsTab, type ModpackModEntry } from './details';
@@ -133,7 +136,12 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
   const isOptiFineSupported = optiFineVersions.includes(draft.minecraftVersion);
 
   const modLoaderType: ModLoaderType = draft.useNeoForge ? 'neoforge' : draft.useForge ? 'forge' : draft.useFabric ? 'fabric' : 'vanilla';
-  const runtimeDependencies = buildRuntimeDependencyState(draft.minecraftVersion.trim(), modLoaderType);
+  const runtimeDependencies = buildRuntimeDependencyState({
+    minecraftVersion: draft.minecraftVersion.trim(),
+    modLoaderType,
+    useOptiFine: draft.useOptiFine,
+    isOptiFineSupported,
+  });
 
   const setLoader = (loader: 'vanilla' | 'forge' | 'fabric' | 'neoforge') => {
     setDraft((prev) => ({
@@ -141,8 +149,31 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
       useForge: loader === 'forge',
       useFabric: loader === 'fabric',
       useNeoForge: loader === 'neoforge',
+      useOptiFine: loader === 'forge' ? prev.useOptiFine : false,
     }));
   };
+
+  const persistCreatedGameSettings = useCallback(async (modpackId: string) => {
+    if (!runtimeDependencies.useOptiFine) {
+      return;
+    }
+
+    const createdConfig = await modpacksIPC.getConfig(modpackId, minecraftPath);
+    if (!createdConfig) {
+      return;
+    }
+
+    await modpacksIPC.saveConfig(
+      {
+        ...createdConfig,
+        game: {
+          ...(createdConfig.game ?? {}),
+          useOptiFine: true,
+        },
+      },
+      minecraftPath,
+    );
+  }, [minecraftPath, runtimeDependencies.useOptiFine]);
 
   const createModpackForStep3 = useCallback(async (): Promise<string | null> => {
     const nameValidation = validateName(draft.name);
@@ -157,6 +188,9 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     if (result?.id && draft.description.trim()) {
       await modpacksIPC.updateMetadata(result.id, { description: draft.description.trim() }, minecraftPath);
     }
+    if (result?.id) {
+      await persistCreatedGameSettings(result.id);
+    }
     return result?.id ?? null;
   }, [
     draft.description,
@@ -164,6 +198,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     draft.name,
     draft.version,
     minecraftPath,
+    persistCreatedGameSettings,
     runtimeDependencies.modLoader,
     validateName,
   ]);
@@ -270,6 +305,9 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
       if (result?.id && draft.description.trim()) {
         await modpacksIPC.updateMetadata(result.id, { description: draft.description.trim() }, minecraftPath);
       }
+      if (result?.id) {
+        await persistCreatedGameSettings(result.id);
+      }
 
       localStorage.removeItem(DRAFT_STORAGE_KEY);
       await refresh();
@@ -362,11 +400,23 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
           placeholder="1.0.0"
         />
 
-        <Select
-          label={t('modpacks.minecraft_version')}
-          value={draft.minecraftVersion}
-          onChange={(e) => setDraft((prev) => ({ ...prev, minecraftVersion: e.target.value }))}
-        >
+          <Select
+            label={t('modpacks.minecraft_version')}
+            value={draft.minecraftVersion}
+            onChange={(e) => {
+              const nextMinecraftVersion = e.target.value;
+              setDraft((prev) => ({
+                ...prev,
+                minecraftVersion: nextMinecraftVersion,
+                useOptiFine: shouldKeepOptiFineEnabled({
+                  useOptiFine: prev.useOptiFine,
+                  modLoaderType:
+                    prev.useNeoForge ? 'neoforge' : prev.useForge ? 'forge' : prev.useFabric ? 'fabric' : 'vanilla',
+                  isOptiFineSupported: optiFineVersions.includes(nextMinecraftVersion),
+                }),
+              }));
+            }}
+          >
           {versions.filter(v => v.type === 'release').map((v) => (
             <option key={v.id} value={v.id}>
               {v.id}
@@ -480,7 +530,10 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 min-h-0">
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div
+          className="mx-auto flex min-h-full max-w-2xl flex-col gap-6"
+          data-testid="modpack-creation-flow"
+        >
           {/* Progress indicator */}
           <div className="flex items-center justify-between">
             {[1, 2, 3].map((step) => (
@@ -536,18 +589,21 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
             <ErrorMessage message={error} />
           )}
 
-          {/* Navigation buttons */}
-          <div className="flex gap-2 pt-4">
+          <div
+            className="surface-card mt-auto flex flex-col gap-2 p-4 sm:flex-row sm:flex-wrap sm:items-center"
+            data-testid="modpack-creation-actions"
+          >
             {currentStep > 1 && (
-              <Button variant="secondary" onClick={handleBack}>
+              <Button variant="secondary" onClick={handleBack} className="w-full sm:w-auto">
                 {t('wizard.back') || 'Back'}
               </Button>
             )}
-            <div className="flex-1" />
+            <div className="hidden sm:block sm:flex-1" />
             {currentStep < 3 ? (
               <Button
                 variant="primary"
                 onClick={() => void handleNext()}
+                className="w-full sm:w-auto"
                 disabled={
                   creating ||
                   (currentStep === 1 && !canProceedFromStep1) ||
@@ -563,6 +619,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
               <Button
                 variant="primary"
                 onClick={handleCreate}
+                className="w-full sm:w-auto"
                 disabled={creating || !draft.name.trim() || !!nameError}
                 style={getAccentStyles('bg').style}
                 isLoading={creating}
@@ -570,7 +627,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
                 {creating ? t('modpacks.creating') || 'Создание...' : t('modpacks.create')}
               </Button>
             )}
-            <Button variant="secondary" onClick={handleClose}>
+            <Button variant="secondary" onClick={handleClose} className="w-full sm:w-auto">
               {t('general.cancel')}
             </Button>
           </div>

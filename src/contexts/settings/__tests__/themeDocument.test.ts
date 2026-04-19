@@ -31,7 +31,7 @@ describe('applyThemeToDocument', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(true);
     expect(document.body.classList.contains('dark')).toBe(true);
     expect(getRootVar('--accent-main')).toBe('59 130 246');
-    expect(getRootVar('--accent-hover')).toBe('59 130 246');
+    expect(getRootVar('--accent-hover')).toBe('37 99 235');
     expect(getRootVar('--accent-content')).toBe('255 255 255');
     expect(getRootVar('--bg-app')).toBe('24 24 27');
     expect(getRootVar('--bg-card')).toBe('39 39 42');
@@ -49,7 +49,7 @@ describe('applyThemeToDocument', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false);
     expect(document.body.classList.contains('dark')).toBe(false);
     expect(getRootVar('--accent-main')).toBe('244 63 94');
-    expect(getRootVar('--accent-hover')).toBe('244 63 94');
+    expect(getRootVar('--accent-hover')).toBe('225 29 72');
     expect(getRootVar('--accent-content')).toBe('24 24 27');
     expect(getRootVar('--bg-app')).toBe('244 244 245');
     expect(getRootVar('--bg-card')).toBe('255 255 255');
@@ -76,7 +76,7 @@ describe('applyThemeToDocument', () => {
     });
 
     expect(getRootVar('--accent-main')).toBe('18 52 86');
-    expect(getRootVar('--accent-hover')).toBe('18 52 86');
+    expect(getRootVar('--accent-hover')).toBe('15 43 71');
     expect(getRootVar('--accent-content')).toBe('24 24 27');
     expect(getRootVar('--bg-app')).toBe('17 34 51');
     expect(getRootVar('--bg-card')).toBe('171 205 239');

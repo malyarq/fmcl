@@ -28,10 +28,11 @@ export const Input: React.FC<InputProps> = ({
             <input
                 id={inputId}
                 className={cn(
-                    'control-frame min-h-11 w-full px-4 py-2.5 text-sm leading-normal placeholder:text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:bg-card/92 disabled:bg-background/70 disabled:opacity-50',
-                    error && 'border-red-500 focus-visible:ring-red-500/30',
+                    'control-frame min-h-11 w-full px-4 py-2.5 text-sm leading-normal placeholder:text-muted/90 focus:border-[rgb(var(--accent-main)/0.36)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:border-border hover:bg-card/92 disabled:cursor-not-allowed disabled:border-border/50 disabled:bg-background/72 disabled:text-muted disabled:placeholder:text-muted/80 disabled:opacity-100',
+                    error && 'border-red-500 focus:border-red-500 focus-visible:ring-red-500/30',
                     className
                 )}
+                aria-invalid={error ? true : undefined}
                 {...props}
             />
             {error && (

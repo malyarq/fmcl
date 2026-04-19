@@ -1,3 +1,5 @@
+import { toDisplayErrorMessage } from '../../../utils/displayError';
+
 export type LauncherProgressEvent = { type: string; task: number; total: number };
 
 export type LaunchStage = 'idle' | 'preparing' | 'downloading' | 'launching' | 'waiting' | 'running' | 'failed';
@@ -21,9 +23,10 @@ const STAGE_RANK: Record<Exclude<LaunchStage, 'failed'>, number> = {
 
 const LOG_PREFIX_PATTERN = /^\[[^\]]+\]\s*/;
 const DIVIDER_PATTERN = /^═+$/;
+type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
 
 function translateWithFallback(
-  t: (key: string, params?: Record<string, string | number>) => string,
+  t: TranslateFn,
   key: string,
   fallback: string,
   params?: Record<string, string | number>,
@@ -32,7 +35,7 @@ function translateWithFallback(
   return translated === key ? fallback : translated;
 }
 
-function getStageDetail(stage: Extract<LaunchStage, 'preparing' | 'downloading' | 'launching' | 'running'>, t: (key: string) => string) {
+function getStageDetail(stage: Extract<LaunchStage, 'preparing' | 'downloading' | 'launching' | 'running'>, t: TranslateFn) {
   switch (stage) {
     case 'preparing':
       return translateWithFallback(t, 'status.preparing_detail', 'Checking runtime requirements and selected pack.');
@@ -106,7 +109,7 @@ export function isForceRestartAllowed(stage: LaunchStage) {
   return stage === 'waiting' || stage === 'running';
 }
 
-export function getLaunchActionLabel(stage: LaunchStage, t: (key: string) => string) {
+export function getLaunchActionLabel(stage: LaunchStage, t: TranslateFn) {
   switch (stage) {
     case 'preparing':
       return translateWithFallback(t, 'status.preparing', 'Preparing launcher');
@@ -123,7 +126,7 @@ export function getLaunchActionLabel(stage: LaunchStage, t: (key: string) => str
   }
 }
 
-export function getLaunchStageTitle(stage: LaunchStage, t: (key: string) => string) {
+export function getLaunchStageTitle(stage: LaunchStage, t: TranslateFn) {
   switch (stage) {
     case 'preparing':
       return translateWithFallback(t, 'status.preparing', 'Preparing launcher');
@@ -142,7 +145,7 @@ export function getLaunchStageTitle(stage: LaunchStage, t: (key: string) => stri
   }
 }
 
-export function getProgressLabel(type: string, t: (key: string) => string) {
+export function getProgressLabel(type: string, t: TranslateFn) {
   if (type.startsWith('Java')) {
     return translateWithFallback(t, 'status.progress.java', 'Java runtime');
   }
@@ -167,7 +170,7 @@ export function getProgressLabel(type: string, t: (key: string) => string) {
   }
 }
 
-export function getProgressStatus(progress: LauncherProgressEvent, t: (key: string) => string): LaunchStatusSnapshot {
+export function getProgressStatus(progress: LauncherProgressEvent, t: TranslateFn): LaunchStatusSnapshot {
   const percent = getMeaningfulProgressPercent(progress);
   const label = getProgressLabel(progress.type, t);
   return {
@@ -185,7 +188,7 @@ function isDividerLog(log: string) {
   return DIVIDER_PATTERN.test(log.trim());
 }
 
-export function getLaunchStatusFromLog(log: string, t: (key: string) => string): LaunchStatusSnapshot | null {
+export function getLaunchStatusFromLog(log: string, t: TranslateFn): LaunchStatusSnapshot | null {
   if (!log || isDividerLog(log)) {
     return null;
   }
@@ -259,4 +262,30 @@ export function getLaunchStatusFromLog(log: string, t: (key: string) => string):
   }
 
   return null;
+}
+
+export function getLauncherUnavailableDetail(t: TranslateFn) {
+  return translateWithFallback(
+    t,
+    'status.launcher_unavailable',
+    'Launcher API is unavailable. Reload the launcher shell and try again.',
+  );
+}
+
+export function getLauncherSessionEndedLog(code: number, t: TranslateFn) {
+  return code === 0
+    ? translateWithFallback(t, 'status.session_ended', 'Minecraft session ended.')
+    : translateWithFallback(
+        t,
+        'status.session_ended_with_code',
+        'Minecraft session ended (exit code {{code}}).',
+        { code },
+      );
+}
+
+export function getVisibleLaunchFailureDetail(error: unknown, t: TranslateFn) {
+  return toDisplayErrorMessage(
+    error,
+    translateWithFallback(t, 'status.failed_detail', 'Review the error and try launching again.'),
+  );
 }

@@ -29,6 +29,9 @@ vi.mock('../../../contexts/SettingsContext', () => ({
     t,
     getAccentStyles: () => ({ className: '', style: undefined }),
     getAccentHex: () => '#10b981',
+    formatDate: (timestamp: number | undefined, unknownText = 'Unknown', options?: Intl.DateTimeFormatOptions) =>
+      timestamp ? new Date(timestamp).toLocaleDateString('en-US', options) : unknownText,
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-US', options).format(value),
     minecraftPath: '/minecraft',
   }),
 }));
@@ -63,6 +66,8 @@ vi.mock('../../../features/share/ImportShareModal', () => ({
 }));
 
 describe('ModpackList quick actions', () => {
+  const denseName = 'Alpha Pack With Dense Action Footer';
+
   beforeEach(() => {
     cleanup();
     selectedIdState = '';
@@ -76,7 +81,7 @@ describe('ModpackList quick actions', () => {
     listWithMetadataMock.mockResolvedValue([
       {
         id: 'alpha',
-        name: 'Alpha Pack',
+        name: denseName,
         path: '/packs/alpha',
         selected: selectedIdState === 'alpha',
         metadata: {
@@ -91,13 +96,13 @@ describe('ModpackList quick actions', () => {
   it('prioritizes opening details while keeping activation as a fast secondary action', async () => {
     render(<ModpackList onNavigate={onNavigateMock} />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Open details: Alpha Pack' }));
+    fireEvent.click(await screen.findByRole('button', { name: `Open details: ${denseName}` }));
 
     await waitFor(() => {
       expect(onNavigateMock).toHaveBeenCalledWith({ type: 'details', modpackId: 'alpha' });
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Make active: Alpha Pack' }));
+    fireEvent.click(screen.getByRole('button', { name: `Make active: ${denseName}` }));
 
     await waitFor(() => {
       expect(selectMock).toHaveBeenCalledWith('alpha');
@@ -109,7 +114,7 @@ describe('ModpackList quick actions', () => {
     listWithMetadataMock.mockResolvedValue([
       {
         id: 'alpha',
-        name: 'Alpha Pack',
+        name: denseName,
         path: '/packs/alpha',
         selected: true,
         metadata: {
@@ -122,7 +127,7 @@ describe('ModpackList quick actions', () => {
 
     render(<ModpackList onNavigate={onNavigateMock} />);
 
-    expect(await screen.findByRole('button', { name: 'Open details: Alpha Pack' })).toBeTruthy();
-    expect((screen.getByRole('button', { name: 'Active now: Alpha Pack' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(await screen.findByRole('button', { name: `Open details: ${denseName}` })).toBeTruthy();
+    expect((screen.getByRole('button', { name: `Active now: ${denseName}` }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

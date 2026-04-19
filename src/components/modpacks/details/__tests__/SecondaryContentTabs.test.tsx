@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../../contexts/settings/i18n';
 import { ModpackDetailsModsTab } from '../ModpackDetailsModsTab';
+import { ResourcePacksTab } from '../ResourcePacksTab';
 import { WorldDatapacksModal } from '../WorldDatapacksModal';
 
 const t = createTranslator('en');
@@ -18,6 +19,11 @@ const installMock = vi.fn();
 const deleteMock = vi.fn();
 const enableMock = vi.fn();
 const disableMock = vi.fn();
+const resourcePackListMock = vi.fn();
+const resourcePackEnableMock = vi.fn();
+const resourcePackDisableMock = vi.fn();
+const resourcePackDeleteMock = vi.fn();
+const resourcePackReorderMock = vi.fn();
 
 vi.mock('react-virtuoso', () => ({
   Virtuoso: ({
@@ -32,6 +38,8 @@ vi.mock('react-virtuoso', () => ({
 vi.mock('../../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
     t,
+    getAccentStyles: () => ({ className: '', style: undefined }),
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-US', options).format(value),
   }),
 }));
 
@@ -66,6 +74,16 @@ vi.mock('../../../../services/ipc/datapacksIPC', () => ({
     delete: (...args: unknown[]) => deleteMock(...args),
     enable: (...args: unknown[]) => enableMock(...args),
     disable: (...args: unknown[]) => disableMock(...args),
+  },
+}));
+
+vi.mock('../../../../services/ipc/resourcePacksIPC', () => ({
+  resourcePacksIPC: {
+    list: (...args: unknown[]) => resourcePackListMock(...args),
+    enable: (...args: unknown[]) => resourcePackEnableMock(...args),
+    disable: (...args: unknown[]) => resourcePackDisableMock(...args),
+    delete: (...args: unknown[]) => resourcePackDeleteMock(...args),
+    reorder: (...args: unknown[]) => resourcePackReorderMock(...args),
   },
 }));
 
@@ -171,6 +189,51 @@ function ModsHarness() {
   );
 }
 
+function ModsUnverifiedRuntimeHarness() {
+  return (
+    <ModpackDetailsModsTab
+      mods={[
+        {
+          id: 'gamma',
+          name: 'Gamma Runtime',
+          version: '3.1.0',
+          loaders: ['fabric'],
+          deps: [
+            { id: 'fabricloader', versionRange: '[0.17.0]', kind: 'depends' },
+          ],
+          file: {
+            path: '/mods/gamma.jar',
+            name: 'gamma.jar',
+            size: 36,
+            mtimeMs: 3,
+          },
+          hash: {
+            sha1: 'gamma',
+          },
+          enabled: true,
+        },
+      ]}
+      loadingMods={false}
+      modSearchQuery=""
+      onModSearchQueryChange={vi.fn()}
+      modFilterStatus="all"
+      onModFilterStatusChange={vi.fn()}
+      onAddMod={vi.fn()}
+      onRemoveMod={vi.fn().mockResolvedValue(undefined)}
+      onModToggle={vi.fn()}
+      onRefresh={vi.fn()}
+      runtimeContext={{
+        minecraft: '1.20.1',
+        modLoader: {
+          type: 'fabric',
+        },
+      }}
+      t={t}
+      getAccentStyles={() => ({ className: '', style: undefined })}
+    />
+  );
+}
+
 describe('secondary content tabs', () => {
   beforeEach(() => {
     cleanup();
@@ -185,6 +248,11 @@ describe('secondary content tabs', () => {
     deleteMock.mockReset();
     enableMock.mockReset();
     disableMock.mockReset();
+    resourcePackListMock.mockReset();
+    resourcePackEnableMock.mockReset();
+    resourcePackDisableMock.mockReset();
+    resourcePackDeleteMock.mockReset();
+    resourcePackReorderMock.mockReset();
 
     confirmMock.mockResolvedValue(true);
     listMock.mockResolvedValue([
@@ -194,6 +262,13 @@ describe('secondary content tabs', () => {
         description: 'Mob tweaks',
         isEnabled: true,
         path: '/world/datapacks/better-mobs.zip',
+      },
+      {
+        fileName: 'dormant-utilities.zip',
+        name: 'Dormant Utilities',
+        description: 'Disabled world helpers kept around for compatibility.',
+        isEnabled: false,
+        path: '/world/datapacks/dormant-utilities.zip',
       },
     ]);
     searchMock.mockResolvedValue({
@@ -212,6 +287,26 @@ describe('secondary content tabs', () => {
     deleteMock.mockResolvedValue({ ok: true });
     enableMock.mockResolvedValue({ ok: true });
     disableMock.mockResolvedValue({ ok: true });
+    resourcePackListMock.mockResolvedValue([
+      {
+        fileName: 'faithful-64x.zip',
+        name: 'Faithful 64x',
+        description: 'Sharper textures and clearer UI contrast for dense detail layouts.',
+        iconUrl: null,
+        isEnabled: true,
+      },
+      {
+        fileName: 'cozy-ui-refresh.zip',
+        name: 'Cozy UI Refresh',
+        description: 'Warm menus and softer widgets for long session play.',
+        iconUrl: null,
+        isEnabled: false,
+      },
+    ]);
+    resourcePackEnableMock.mockResolvedValue({ ok: true });
+    resourcePackDisableMock.mockResolvedValue({ ok: true });
+    resourcePackDeleteMock.mockResolvedValue({ ok: true });
+    resourcePackReorderMock.mockResolvedValue({ ok: true });
   });
 
   it('keeps the details mods tab filterable without breaking the refreshed surface copy', async () => {
@@ -252,6 +347,62 @@ describe('secondary content tabs', () => {
     expect(screen.getByText(/requires 0\.17\.0/i)).toBeTruthy();
     expect(screen.getByText(/requires 2\.0\.0/i)).toBeTruthy();
     expect(screen.getAllByText('Missing')).toHaveLength(1);
+  });
+
+  it('marks runtime dependencies as unverified when the runtime exists but its version is unknown', async () => {
+    render(<ModsUnverifiedRuntimeHarness />);
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Gamma Runtime/i })[0]);
+
+    expect(await screen.findByText('Pack runtime version unverified')).toBeTruthy();
+    expect(screen.queryByText(/Pack runtime 0\.17\.0/i)).toBeNull();
+  });
+
+  it('keeps resource pack summaries explicitly labeled instead of collapsing into raw ratios', async () => {
+    render(<ResourcePacksTab instancePath="/instances/alpha" />);
+
+    expect(await screen.findByText('Faithful 64x')).toBeTruthy();
+
+    const summary = screen.getByTestId('resourcepacks-summary');
+    expect(summary.textContent).toContain('Enabled');
+    expect(summary.textContent).toContain('Installed');
+    expect(summary.textContent?.includes('1 / 2')).toBe(false);
+  });
+
+  it('shows a truthful unavailable resource-pack state instead of reusing the empty card', async () => {
+    resourcePackListMock.mockRejectedValue(new Error('[IPC] resource packs failed: Packs directory unavailable'));
+
+    render(<ResourcePacksTab instancePath="/instances/alpha" />);
+
+    const errorState = await screen.findByRole('status');
+    expect(screen.getByRole('heading', { name: 'Failed to load resource packs' })).toBeTruthy();
+    expect(errorState.textContent).toContain('Unavailable');
+    expect(errorState.textContent).not.toContain('No resource packs installed');
+  });
+
+  it('keeps the datapacks modal on the shared modal scroll region with labeled installed counts', async () => {
+    render(
+      <WorldDatapacksModal
+        isOpen={true}
+        onClose={vi.fn()}
+        instancePath="/instances/alpha"
+        worldFolder="world-1"
+        worldName="Alpha World"
+      />
+    );
+
+    expect(await screen.findByText('Better Mobs')).toBeTruthy();
+
+    const summary = screen.getByTestId('world-datapacks-installed-summary');
+    expect(summary.textContent).toContain('Enabled');
+    expect(summary.textContent).toContain('Installed');
+    expect(screen.getByRole('tab', { name: 'Installed' }).getAttribute('data-state')).toBe('active');
+    const disabledRow = screen.getByText('Dormant Utilities').closest('[data-state="inactive"]');
+    expect(disabledRow).toBeTruthy();
+    expect(disabledRow?.className).not.toContain('opacity-75');
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog.querySelectorAll('.overflow-y-auto')).toHaveLength(1);
   });
 
   it('routes datapack deletion through the shared confirm flow instead of browser confirm', async () => {
@@ -308,5 +459,26 @@ describe('secondary content tabs', () => {
     await waitFor(() => {
       expect(toastSuccessMock).toHaveBeenCalledWith('Installed datapack "Dungeon Boost"');
     });
+  });
+
+  it('shows a dedicated unavailable state when datapack search fails', async () => {
+    searchMock.mockRejectedValue(new Error('[IPC] datapack search failed: Modrinth unavailable'));
+
+    render(
+      <WorldDatapacksModal
+        isOpen={true}
+        onClose={vi.fn()}
+        instancePath="/instances/alpha"
+        worldFolder="world-1"
+        worldName="Alpha World"
+      />
+    );
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Search Modrinth' }));
+
+    const errorState = await screen.findByRole('status');
+    expect(screen.getByRole('heading', { name: 'Failed to search datapacks' })).toBeTruthy();
+    expect(errorState.textContent).toContain('Unavailable');
+    expect(errorState.textContent).not.toContain('No datapacks matched your filters');
   });
 });

@@ -52,7 +52,7 @@ export const DownloadsTab: React.FC<DownloadsTabProps> = ({
               checked={autoDownloadThreads}
               onChange={(e) => setAutoDownloadThreads(e.target.checked)}
               aria-describedby="settings-auto-threads-hint"
-              className="mt-1 h-4 w-4 cursor-pointer rounded border-border/70 bg-card text-[rgb(var(--accent-main))] focus:ring-[rgb(var(--accent-main))] focus:ring-offset-background"
+              className="mt-1 h-5 w-5 shrink-0 cursor-pointer rounded-md border border-border/70 bg-card text-[rgb(var(--accent-main))] accent-[rgb(var(--accent-main))] shadow-sm transition-all focus:ring-2 focus:ring-[rgb(var(--accent-main))] focus:ring-offset-2 focus:ring-offset-background disabled:cursor-not-allowed disabled:border-border/50 disabled:opacity-100"
             />
           </div>
         </div>

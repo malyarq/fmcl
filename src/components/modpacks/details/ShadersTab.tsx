@@ -8,6 +8,8 @@ import { shadersIPC } from '../../../services/ipc/shadersIPC';
 import { cn } from '../../../utils/cn';
 import { Button } from '../../ui/Button';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
+import { DegradedStateView } from '../../layout/DegradedStateView';
+import { toDisplayErrorMessage } from '../../../utils/displayError';
 
 interface ShadersTabProps {
     instancePath: string;
@@ -20,15 +22,18 @@ export function ShadersTab({ instancePath, onUpdate, onAddShader }: ShadersTabPr
     const confirm = useConfirm();
     const [packs, setPacks] = useState<ShaderPack[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<unknown | null>(null);
     const toast = useToast();
 
     const loadPacks = useCallback(async () => {
         setLoading(true);
+        setLoadError(null);
         try {
             const list = await shadersIPC.list(instancePath);
             setPacks(list);
         } catch (err) {
             console.error(err);
+            setLoadError(err);
             toast.error(t('modpacks.shader_load_error'));
         } finally {
             setLoading(false);
@@ -90,6 +95,9 @@ export function ShadersTab({ instancePath, onUpdate, onAddShader }: ShadersTabPr
     );
 
     const activeShader = useMemo(() => packs.find((pack) => pack.isActive), [packs]);
+    const shaderLoadDescription = loadError
+        ? toDisplayErrorMessage(loadError, t('error.inline_fallback'))
+        : t('error.inline_fallback');
 
     return (
         <div className="space-y-4">
@@ -118,7 +126,7 @@ export function ShadersTab({ instancePath, onUpdate, onAddShader }: ShadersTabPr
 
                 <div className="surface-inline flex flex-wrap items-center gap-3 p-3 text-sm text-secondary">
                     <span>{t('modpacks.active_shader_summary')}</span>
-                    <span className="text-foreground">{activeShader?.name ?? t('modpacks.shader_active_none')}</span>
+                    <span className="text-foreground">{loadError ? t('degraded.unavailable_label') : activeShader?.name ?? t('modpacks.shader_active_none')}</span>
                     {activeShader && (
                         <Button variant="ghost" size="sm" onClick={() => void handleDisable()}>
                             {t('modpacks.shader_disable')}
@@ -132,11 +140,32 @@ export function ShadersTab({ instancePath, onUpdate, onAddShader }: ShadersTabPr
                     <LoadingSpinner size="sm" variant="accent" />
                     {t('modpacks.loading')}
                 </div>
+            ) : loadError ? (
+                <DegradedStateView
+                    variant="unavailable"
+                    label={t('degraded.unavailable_label')}
+                    title={t('modpacks.shader_load_error')}
+                    description={shaderLoadDescription}
+                    footer={(
+                        <Button variant="secondary" size="sm" onClick={() => void loadPacks()}>
+                            <RefreshCw className="h-4 w-4" />
+                            {t('modpacks.update')}
+                        </Button>
+                    )}
+                />
             ) : packs.length === 0 ? (
-                <div className="surface-muted flex flex-col items-center gap-2 p-8 text-center">
-                    <p className="text-base font-semibold text-foreground">{t('modpacks.no_shaders_installed')}</p>
-                    <p className="max-w-xl text-sm text-secondary">{t('modpacks.shaders_empty_hint')}</p>
-                </div>
+                <DegradedStateView
+                    variant="empty"
+                    label={t('degraded.empty_label')}
+                    title={t('modpacks.no_shaders_installed')}
+                    description={t('modpacks.shaders_empty_hint')}
+                    footer={onAddShader ? (
+                        <Button variant="primary" size="sm" onClick={onAddShader}>
+                            <Sparkles className="h-4 w-4" />
+                            {t('modpacks.add_shader_btn')}
+                        </Button>
+                    ) : undefined}
+                />
             ) : (
                 <div className="space-y-3" role="list" aria-label={t('modpacks.installed_shaders')}>
                     {packs.map((pack) => (

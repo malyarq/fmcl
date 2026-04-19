@@ -39,7 +39,24 @@ vi.mock('../../features/launch/services/lastGame', () => ({
 }));
 
 vi.mock('../sidebar/SidebarHeader', () => ({
-  SidebarHeader: () => <div>Sidebar header</div>,
+  SidebarHeader: ({
+    contentId,
+    isCollapsed,
+    onToggleCollapse,
+  }: {
+    contentId?: string;
+    isCollapsed?: boolean;
+    onToggleCollapse?: () => void;
+  }) => (
+    <button
+      type="button"
+      onClick={onToggleCollapse}
+      aria-controls={contentId}
+      aria-expanded={!isCollapsed}
+    >
+      Sidebar header
+    </button>
+  ),
 }));
 
 vi.mock('../sidebar/NicknameSection', () => ({
@@ -140,7 +157,7 @@ describe('Sidebar accessibility', () => {
       />
     );
 
-    const collapseButton = screen.getByRole('button', { name: /Collapse sidebar/i });
+    const collapseButton = screen.getByRole('button', { name: 'Sidebar header' });
 
     expect(collapseButton.getAttribute('aria-controls')).toBe('launcher-sidebar-content');
     expect(collapseButton.getAttribute('aria-expanded')).toBe('true');

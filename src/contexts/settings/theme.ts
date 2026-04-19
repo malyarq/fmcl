@@ -1,6 +1,6 @@
-import { getAccentHexForColor } from './accent';
+import { getAccentHexForColor, getAccentHoverHexForColor } from './accent';
 import { getThemePresetConfig } from './theme-presets';
-import type { Theme, AccentColor, CustomThemeConfig, ThemePresetId } from './types';
+import type { AccentColor, BrandThemeConfig, CustomThemeConfig, Theme, ThemePresetId } from './types';
 
 type ThemeDocumentColors = {
   background: string;
@@ -14,6 +14,8 @@ type ThemeDocumentColors = {
   borderActive: string;
   error: string;
 };
+
+type BrandDocumentTokens = Required<BrandThemeConfig>;
 
 const DEFAULT_THEME_DOCUMENT_COLORS: Record<Theme, ThemeDocumentColors> = {
   light: {
@@ -42,6 +44,35 @@ const DEFAULT_THEME_DOCUMENT_COLORS: Record<Theme, ThemeDocumentColors> = {
   },
 };
 
+const DEFAULT_BRAND_DOCUMENT_TOKENS: Record<Theme, BrandDocumentTokens> = {
+  light: {
+    shellGlow: '#6b8b6f',
+    markFrame: '#eef2e8',
+    markBorder: '#cbd5c2',
+    markGlow: '#314338',
+    mediaFrame: '#edf1e8',
+    mediaBorder: '#d2dad0',
+    surfacePanelShadow: '0 24px 80px rgba(24, 31, 27, 0.16)',
+    surfaceCardShadow: '0 14px 48px rgba(24, 31, 27, 0.12)',
+    surfaceSoftShadow: '0 8px 24px rgba(24, 31, 27, 0.08)',
+    wordmarkWeight: '820',
+    wordmarkSpacing: '0.08em',
+  },
+  dark: {
+    shellGlow: '#7aa57d',
+    markFrame: '#131916',
+    markBorder: '#344138',
+    markGlow: '#8eb795',
+    mediaFrame: '#1a221c',
+    mediaBorder: '#36433a',
+    surfacePanelShadow: '0 24px 80px rgba(0, 0, 0, 0.26)',
+    surfaceCardShadow: '0 14px 48px rgba(0, 0, 0, 0.22)',
+    surfaceSoftShadow: '0 8px 24px rgba(0, 0, 0, 0.18)',
+    wordmarkWeight: '820',
+    wordmarkSpacing: '0.08em',
+  },
+};
+
 function hexToRgb(hex: string) {
   const normalized = hex.startsWith('#') ? hex : `#${hex}`;
   const r = parseInt(normalized.slice(1, 3), 16);
@@ -58,6 +89,10 @@ function mergeThemeConfig(base?: CustomThemeConfig, override?: CustomThemeConfig
   const colors = {
     ...base?.colors,
     ...override?.colors,
+  };
+  const brand = {
+    ...base?.brand,
+    ...override?.brand,
   };
 
   const backgroundVideo = {
@@ -80,6 +115,7 @@ function mergeThemeConfig(base?: CustomThemeConfig, override?: CustomThemeConfig
   return {
     ...(Object.keys(colors).length > 0 ? { colors } : {}),
     ...(Object.keys(background).length > 0 ? { background } : {}),
+    ...(Object.keys(brand).length > 0 ? { brand } : {}),
   };
 }
 
@@ -101,6 +137,13 @@ function buildThemeDocumentColors(theme: Theme, customTheme?: CustomThemeConfig)
   };
 }
 
+function buildBrandDocumentTokens(theme: Theme, customTheme?: CustomThemeConfig): BrandDocumentTokens {
+  return {
+    ...DEFAULT_BRAND_DOCUMENT_TOKENS[theme],
+    ...customTheme?.brand,
+  };
+}
+
 export function resolveThemeConfig(
   theme: Theme,
   themePresetId?: ThemePresetId | null,
@@ -117,7 +160,9 @@ export function applyThemeToDocument(theme: Theme, accentColor: AccentColor, cus
 
   const root = document.documentElement;
   const accentHex = getAccentHexForColor(accentColor || 'emerald');
+  const accentHoverHex = getAccentHoverHexForColor(accentColor || 'emerald');
   const palette = buildThemeDocumentColors(theme, customTheme);
+  const brandTokens = buildBrandDocumentTokens(theme, customTheme);
 
   root.style.setProperty('--bg-app', hexToRgb(palette.background));
   root.style.setProperty('--bg-card', hexToRgb(palette.card));
@@ -129,7 +174,18 @@ export function applyThemeToDocument(theme: Theme, accentColor: AccentColor, cus
   root.style.setProperty('--border-default', hexToRgb(palette.border));
   root.style.setProperty('--border-active', hexToRgb(palette.borderActive));
   root.style.setProperty('--accent-main', hexToRgb(accentHex));
-  root.style.setProperty('--accent-hover', hexToRgb(accentHex));
+  root.style.setProperty('--accent-hover', hexToRgb(accentHoverHex));
   root.style.setProperty('--accent-content', getAccentContent(theme));
   root.style.setProperty('--color-error', hexToRgb(palette.error));
+  root.style.setProperty('--brand-shell-glow', hexToRgb(brandTokens.shellGlow));
+  root.style.setProperty('--brand-mark-frame', hexToRgb(brandTokens.markFrame));
+  root.style.setProperty('--brand-mark-border', hexToRgb(brandTokens.markBorder));
+  root.style.setProperty('--brand-mark-glow', hexToRgb(brandTokens.markGlow));
+  root.style.setProperty('--brand-media-frame', hexToRgb(brandTokens.mediaFrame));
+  root.style.setProperty('--brand-media-border', hexToRgb(brandTokens.mediaBorder));
+  root.style.setProperty('--surface-shadow-panel', brandTokens.surfacePanelShadow);
+  root.style.setProperty('--surface-shadow-card', brandTokens.surfaceCardShadow);
+  root.style.setProperty('--surface-shadow-soft', brandTokens.surfaceSoftShadow);
+  root.style.setProperty('--brand-wordmark-weight', brandTokens.wordmarkWeight);
+  root.style.setProperty('--brand-wordmark-spacing', brandTokens.wordmarkSpacing);
 }

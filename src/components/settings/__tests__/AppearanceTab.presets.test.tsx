@@ -3,6 +3,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsProvider } from '../../../contexts/SettingsContext';
+import { resolveThemeConfig } from '../../../contexts/settings/theme';
 import { AppearanceTab } from '../tabs/AppearanceTab';
 
 function getRootVar(name: string) {
@@ -123,5 +124,43 @@ describe('AppearanceTab preset contract', () => {
     expect(localStorage.getItem('settings_customTheme')).toBe('{}');
     expect(getPresetSelect().value).toBe('forest');
     expect(getRootVar('--bg-app')).toBe('5 46 22');
+  });
+
+  it('restores the preset identity when importing an exported preset payload', async () => {
+    const fileReaderMock = class {
+      onload: ((event: ProgressEvent<FileReader>) => void) | null = null;
+
+      readAsText() {
+        this.onload?.({
+          target: {
+            result: JSON.stringify({
+              presetId: 'forest',
+              theme: 'dark',
+              config: resolveThemeConfig('dark', 'forest'),
+            }),
+          },
+        } as ProgressEvent<FileReader>);
+      }
+    };
+
+    vi.stubGlobal('FileReader', fileReaderMock as unknown as typeof FileReader);
+
+    renderAppearanceTab();
+
+    const fileInput = document.querySelector('input[type="file"]');
+    expect(fileInput).toBeTruthy();
+
+    fireEvent.change(fileInput!, {
+      target: {
+        files: [new File(['{}'], 'friend-launcher-theme.json', { type: 'application/json' })],
+      },
+    });
+
+    await waitFor(() => {
+      expect(localStorage.getItem('settings_themePresetId')).toBe('forest');
+    });
+
+    expect(getPresetSelect().value).toBe('forest');
+    expect(screen.getByText('Forest · Dark')).toBeTruthy();
   });
 });

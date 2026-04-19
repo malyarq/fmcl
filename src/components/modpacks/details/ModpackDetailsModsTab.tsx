@@ -1,6 +1,5 @@
 import React from 'react';
 import { ExternalLink, Filter, PackagePlus, RefreshCw, Trash2 } from 'lucide-react';
-import { Virtuoso } from 'react-virtuoso';
 import { Button } from '../../ui/Button';
 import { Input } from '../../ui/Input';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
@@ -27,7 +26,7 @@ export interface ModpackRuntimeDependencyContext {
   };
 }
 
-type DependencyStatus = 'missing' | 'incompatible' | 'installed' | 'provided';
+type DependencyStatus = 'missing' | 'incompatible' | 'installed' | 'provided' | 'unverified';
 type DependencySource = 'runtime' | 'mod' | 'none';
 
 interface DependencyResolution {
@@ -162,6 +161,13 @@ export const ModpackDetailsModsTab: React.FC<ModpackDetailsModsTabProps> = ({
     (depId: string, versionRange?: string | string[]) => {
       const runtimeMatch = resolveRuntimeDependency(depId, runtimeContext);
       if (runtimeMatch.matched) {
+        if (versionRange && !runtimeMatch.version) {
+          return {
+            status: 'unverified',
+            source: 'runtime',
+          } satisfies DependencyResolution;
+        }
+
         const compatible = !versionRange || isVersionCompatible(runtimeMatch.version ?? '', versionRange);
         return {
           status: compatible ? 'provided' : 'incompatible',
@@ -257,12 +263,22 @@ export const ModpackDetailsModsTab: React.FC<ModpackDetailsModsTabProps> = ({
           </div>
         </div>
 
-        <div className="surface-inline flex flex-wrap items-center gap-3 p-3 text-sm text-secondary">
-          <Filter className="h-4 w-4" />
-          <span>{t('modpacks.mods_manage_hint')}</span>
-          <span className="text-foreground">
-            {enabledCount} {t('modpacks.enabled').toLowerCase()} / {mods.length}
-          </span>
+        <div
+          className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_repeat(2,minmax(0,9rem))]"
+          data-testid="mods-summary"
+        >
+          <div className="surface-inline flex items-start gap-3 p-3 text-sm text-secondary">
+            <Filter className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <span>{t('modpacks.mods_manage_hint')}</span>
+          </div>
+          <div className="surface-inline rounded-2xl px-3 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{t('modpacks.enabled')}</p>
+            <p className="mt-2 text-base font-semibold text-foreground">{enabledCount}</p>
+          </div>
+          <div className="surface-inline rounded-2xl px-3 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{t('modpacks.installed')}</p>
+            <p className="mt-2 text-base font-semibold text-foreground">{mods.length}</p>
+          </div>
         </div>
       </div>
 
@@ -302,19 +318,8 @@ export const ModpackDetailsModsTab: React.FC<ModpackDetailsModsTabProps> = ({
           <p className="max-w-xl text-sm text-secondary">{t('modpacks.mods_filter_hint')}</p>
         </div>
       ) : (
-        <div className="surface-card h-[800px] overflow-hidden p-2">
-          {filteredMods.length <= 8 ? (
-            <div className="h-full overflow-y-auto pr-1 custom-scrollbar">
-              {filteredMods.map(renderModItem)}
-            </div>
-          ) : (
-            <Virtuoso
-              style={{ height: '100%' }}
-              data={filteredMods}
-              initialItemCount={8}
-              itemContent={(_index, mod) => renderModItem(mod)}
-            />
-          )}
+        <div className="space-y-2">
+          {filteredMods.map(renderModItem)}
         </div>
       )}
     </div>
@@ -332,7 +337,15 @@ const ModItem = React.memo<{
   t: TranslateFn;
 }>(({ mod, isExpanded, toggleExpand, onModToggle, onRemoveMod, onOpenExternalLink, resolveDependency, t }) => {
   return (
-    <div className={cn('mb-2 rounded-2xl border border-border/70 bg-card/86 p-4 shadow-[0_12px_32px_rgba(0,0,0,0.12)]', !mod.enabled && 'opacity-75')}>
+    <div
+      className={cn(
+        'mb-2 rounded-2xl border p-4 shadow-[0_12px_32px_rgba(0,0,0,0.12)] transition-colors',
+        mod.enabled
+          ? 'border-border/70 bg-card/86'
+          : 'border-border/55 bg-background/78 text-secondary',
+      )}
+      data-state={mod.enabled ? 'active' : 'inactive'}
+    >
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <button
           type="button"
@@ -341,7 +354,7 @@ const ModItem = React.memo<{
           aria-expanded={isExpanded}
         >
           <div className="flex flex-wrap items-center gap-2">
-            <h5 className="truncate text-base font-semibold text-foreground">{mod.name}</h5>
+            <h5 className="break-words text-base font-semibold leading-5 text-foreground">{mod.name}</h5>
             <span className="rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-xs font-medium text-secondary">
               {t('modpacks.version')}: {mod.version}
             </span>
@@ -351,7 +364,11 @@ const ModItem = React.memo<{
                   'rounded-full border px-2 py-0.5 text-xs font-medium',
                   mod.deps.some((dep) => {
                     const resolution = resolveDependency(dep.id, dep.versionRange);
-                    return dep.kind === 'depends' && (resolution.status === 'missing' || resolution.status === 'incompatible');
+                    return dep.kind === 'depends' && (
+                      resolution.status === 'missing' ||
+                      resolution.status === 'incompatible' ||
+                      resolution.status === 'unverified'
+                    );
                   })
                     ? 'border-red-500/30 bg-red-500/10 text-red-400'
                     : 'border-border/70 bg-background/70 text-secondary',
@@ -367,7 +384,7 @@ const ModItem = React.memo<{
             )}
           </div>
 
-          <p className="mt-2 truncate text-sm text-secondary">{mod.file.name}</p>
+          <p className="mt-2 break-words text-sm text-secondary">{mod.file.name}</p>
         </button>
 
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -430,9 +447,12 @@ const ModItem = React.memo<{
               const requirementText = formatVersionRequirement(describeVersionRequirement(dep.versionRange), t);
               const isMissing = resolution.status === 'missing' && dep.kind === 'depends';
               const isIncompatible = resolution.status === 'incompatible';
+              const isUnverified = resolution.status === 'unverified';
               const isRuntimeProvided = resolution.status === 'provided';
               const statusText = isMissing
                 ? t('modpacks.dep_missing')
+                : isUnverified
+                  ? t('modpacks.dep_runtime_unverified')
                 : isIncompatible && resolution.source === 'runtime'
                   ? t('modpacks.dep_runtime_incompatible')
                   : isIncompatible
@@ -446,7 +466,7 @@ const ModItem = React.memo<{
                   <span
                     className={cn(
                       'h-2 w-2 rounded-full',
-                      isMissing ? 'bg-red-500' : isIncompatible ? 'bg-yellow-500' : 'bg-emerald-500',
+                      isMissing ? 'bg-red-500' : isIncompatible || isUnverified ? 'bg-yellow-500' : 'bg-emerald-500',
                     )}
                   />
                   <span className="font-mono text-foreground">{dep.id}</span>
@@ -461,7 +481,7 @@ const ModItem = React.memo<{
                     <span
                       className={cn(
                         'ml-auto font-medium',
-                        isMissing ? 'text-red-400' : isIncompatible ? 'text-yellow-400' : 'text-emerald-400',
+                        isMissing ? 'text-red-400' : isIncompatible || isUnverified ? 'text-yellow-400' : 'text-emerald-400',
                       )}
                     >
                       {statusText}

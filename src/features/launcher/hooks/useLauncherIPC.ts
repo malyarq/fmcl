@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 import { launcherIPC } from '../../../services/ipc/launcherIPC';
 import {
+  getLaunchStageTitle,
   getLaunchStatusFromLog,
+  getLauncherSessionEndedLog,
+  getLauncherUnavailableDetail,
   getMeaningfulProgressPercent,
   getProgressStatus,
   isTrackableProgressType,
@@ -16,7 +19,7 @@ function translateWithFallback(t: (key: string) => string, key: string, fallback
 }
 
 export function useLauncherIPC(params: {
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
   onAppendLog: (log: string) => void;
   onSetProgress: (percent: number) => void;
   onSetStatusText: (text: string) => void;
@@ -41,10 +44,11 @@ export function useLauncherIPC(params: {
   // Subscribe to launcher events once for the active language.
   useEffect(() => {
     if (!launcherIPC.isAvailable()) {
-      onSetStatusText('');
-      onSetStatusDetail('');
+      const unavailableDetail = getLauncherUnavailableDetail(t);
+      onSetStatusText(getLaunchStageTitle('failed', t));
+      onSetStatusDetail(unavailableDetail);
       onSetLaunchStage('failed');
-      onAppendLog('[SYSTEM] Launcher API not available. Is preload loaded?');
+      onAppendLog(unavailableDetail);
       return;
     }
 
@@ -74,7 +78,7 @@ export function useLauncherIPC(params: {
     });
 
     const unsubClose = launcherIPC.onClose((code) => {
-      onAppendLog(`[SYSTEM] Game session ended (Code: ${code})`);
+      onAppendLog(getLauncherSessionEndedLog(code, t));
       const currentStage = getLaunchStage();
       if (code !== 0 && currentStage !== 'failed') {
         onSetLaunchStage('failed');

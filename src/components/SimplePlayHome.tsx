@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LAUNCHER_MARK_PATH } from '../app/assets/branding';
+import { BrandMark } from './branding/BrandMark';
+import { BrandWordmark } from './branding/BrandWordmark';
 import { useSettings } from '../contexts/SettingsContext';
 
 interface Particle {
@@ -13,7 +14,7 @@ interface Particle {
 
 // Main screen for Classic mode (legacy): логотип лаунчера с иконкой.
 export const SimplePlayHome: React.FC = () => {
-  const { getAccentStyles, getAccentHex } = useSettings();
+  const { getAccentHex } = useSettings();
   const [showEasterEgg, setShowEasterEgg] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
   const clickTimestampsRef = useRef<number[]>([]);
@@ -22,7 +23,6 @@ export const SimplePlayHome: React.FC = () => {
   const lastClickTimeRef = useRef<number>(0);
   const lastFireworksTimeRef = useRef<number>(0);
 
-  const accent = getAccentStyles('text');
   const accentHex = getAccentHex();
 
   const generateParticles = (baseId: number): Particle[] => {
@@ -121,41 +121,45 @@ export const SimplePlayHome: React.FC = () => {
           onClick={handleLogoClick}
           className="logo-container relative w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-visible cursor-pointer transition-all duration-300 ease-out hover:scale-110 active:scale-105"
           style={{
-            filter: `drop-shadow(0 0 20px ${accentHex}60) drop-shadow(0 0 40px ${accentHex}40)`,
+            filter: showEasterEgg
+              ? `drop-shadow(0 0 24px ${accentHex}65) drop-shadow(0 0 48px ${accentHex}40)`
+              : 'drop-shadow(0 0 20px rgb(var(--brand-mark-glow) / 0.28)) drop-shadow(0 0 44px rgb(var(--brand-mark-glow) / 0.18))',
           }}
         >
           <div
             className="absolute inset-0 rounded-2xl animate-pulse-slow"
             style={{
-              background: `radial-gradient(circle, ${accentHex}30 0%, transparent 70%)`,
-              animation: showEasterEgg ? 'easter-egg-glow 0.5s ease-in-out infinite' : 'none',
+              background: showEasterEgg
+                ? `radial-gradient(circle, ${accentHex}30 0%, transparent 70%)`
+                : 'radial-gradient(circle, rgb(var(--brand-shell-glow) / 0.2) 0%, transparent 70%)',
+              animation: showEasterEgg ? 'easter-egg-glow 0.5s ease-in-out infinite' : undefined,
             }}
           />
-          <div className="relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-black/30 border border-zinc-200/80 dark:border-zinc-700/80 bg-zinc-900/90 flex items-center justify-center backdrop-blur-sm">
-            <img
-              src={LAUNCHER_MARK_PATH}
-              alt="FriendLauncher"
-              data-testid="classic-launcher-mark"
-              className="w-16 h-16 md:w-20 md:h-20 object-contain transition-transform duration-300"
-              style={{
-                transform: showEasterEgg ? 'rotate(360deg) scale(1.2)' : 'none',
-                filter: showEasterEgg ? `drop-shadow(0 0 15px ${accentHex})` : 'none',
-              }}
-            />
-          </div>
+          <BrandMark
+            role="product-mark"
+            alt="FriendLauncher mark"
+            data-testid="classic-launcher-mark"
+            frame="brand"
+            wrapperClassName="relative h-full w-full"
+            className="h-16 w-16 md:h-20 md:w-20 transition-transform duration-300"
+            style={{
+              transform: showEasterEgg ? 'rotate(360deg) scale(1.2)' : 'none',
+              filter: showEasterEgg ? `drop-shadow(0 0 15px ${accentHex})` : undefined,
+            }}
+          />
         </div>
 
-        <h1
-          className={`text-3xl md:text-4xl font-black tracking-tight drop-shadow-sm transition-all duration-300 ${accent.className ?? ''} ${showEasterEgg ? 'animate-pulse scale-110' : ''}`}
+        <BrandWordmark
+          as="h1"
+          tone="hero"
+          className={`text-foreground transition-all duration-300 ${showEasterEgg ? 'animate-pulse scale-110' : ''}`}
           style={{
-            ...(accent.style ?? {}),
             textShadow: showEasterEgg
               ? `0 0 20px ${accentHex}, 0 0 40px ${accentHex}, 0 4px 14px ${accentHex}80`
-              : `0 4px 14px ${accentHex}40`,
+              : '0 4px 18px rgb(var(--brand-mark-glow) / 0.24)',
           }}
         >
-          FriendLauncher
-        </h1>
+        </BrandWordmark>
         </div>
 
       {/* Фейерверк из иконок */}
@@ -189,11 +193,10 @@ export const SimplePlayHome: React.FC = () => {
               '--accent-color': string;
             }}
           >
-            <img
-              src={LAUNCHER_MARK_PATH}
-              alt=""
-              aria-hidden="true"
-              className="w-full h-full object-contain"
+            <BrandMark
+              role="product-mark"
+              decorative
+              className="w-full h-full"
               style={{
                 filter: `drop-shadow(0 0 6px ${accentHex}) drop-shadow(0 0 12px ${accentHex}60)`,
               }}
@@ -253,11 +256,12 @@ export const SimplePlayHome: React.FC = () => {
         }
 
         .logo-container:hover {
-          filter: drop-shadow(0 0 30px ${accentHex}80) drop-shadow(0 0 60px ${accentHex}60) !important;
+          filter: ${showEasterEgg
+            ? `drop-shadow(0 0 30px ${accentHex}80) drop-shadow(0 0 60px ${accentHex}60)`
+            : 'drop-shadow(0 0 26px rgb(var(--brand-mark-glow) / 0.34)) drop-shadow(0 0 58px rgb(var(--brand-mark-glow) / 0.2))'} !important;
         }
       `}</style>
       </div>
     </div>
   );
 };
-

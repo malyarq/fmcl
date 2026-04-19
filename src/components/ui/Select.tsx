@@ -31,16 +31,17 @@ export const Select: React.FC<SelectProps> = ({
                 <select
                     id={selectId}
                     className={cn(
-                        'control-frame min-h-11 w-full appearance-none py-2.5 pl-4 pr-9 text-sm leading-normal hover:bg-card/92',
+                        'peer control-frame min-h-11 w-full appearance-none py-2.5 pl-4 pr-9 text-sm leading-normal hover:border-border hover:bg-card/92',
                         'focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                        'disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none',
-                        error && 'border-red-500 focus-visible:ring-red-500/30'
+                        'focus:border-[rgb(var(--accent-main)/0.36)] disabled:cursor-not-allowed disabled:border-border/50 disabled:bg-background/72 disabled:text-muted disabled:opacity-100 disabled:shadow-none',
+                        error && 'border-red-500 focus:border-red-500 focus-visible:ring-red-500/30'
                     )}
+                    aria-invalid={error ? true : undefined}
                     {...props}
                 >
                     {children}
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted">
+                <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted transition-colors peer-focus:text-foreground peer-disabled:text-muted/70">
                     <ChevronDown className="h-4 w-4 shrink-0" />
                 </div>
             </div>

@@ -6,12 +6,39 @@ import {
   withModpackMinMemoryGb,
   withModpackJavaPath,
   withRuntimeMinecraft,
-  withRuntimeLoader,
   withVmOptions,
   withGameExtraArgs,
   withGameResolution,
   withAutoConnectServer,
 } from '../../../contexts/instances/utils/configPatching';
+
+function buildUpdatedRuntimeConfig(
+  currentConfig: ModpackConfig,
+  loader: ModLoaderType,
+): ModpackConfig {
+  const previousLoaderType = currentConfig.runtime.modLoader?.type ?? 'vanilla';
+  const nextModLoader =
+    previousLoaderType === loader
+      ? currentConfig.runtime.modLoader ?? { type: loader }
+      : loader === 'vanilla'
+        ? { type: 'vanilla' as const }
+        : { type: loader };
+
+  return {
+    ...currentConfig,
+    runtime: {
+      ...currentConfig.runtime,
+      modLoader: nextModLoader,
+    },
+    game:
+      loader === 'forge'
+        ? currentConfig.game
+        : {
+            ...(currentConfig.game ?? {}),
+            useOptiFine: false,
+          },
+  };
+}
 
 export interface UseModpackDetailsConfigParams {
   modpackId: string;
@@ -58,7 +85,6 @@ export function useModpackDetailsConfig({
     setGameResolution: ctxSetGameResolution,
     setAutoConnectServer: ctxSetAutoConnectServer,
     setRuntimeMinecraft: ctxSetRuntimeMinecraft,
-    setRuntimeLoader: ctxSetRuntimeLoader,
     patchConfig,
     saveConfig,
   } = useModpack();
@@ -182,15 +208,16 @@ export function useModpackDetailsConfig({
 
   const setRuntimeLoader = useCallback(
     async (loader: ModLoaderType) => {
-      if (isSelectedModpack) {
-        ctxSetRuntimeLoader(loader);
+      if (isSelectedModpack && config) {
+        const updated = buildUpdatedRuntimeConfig(config, loader);
+        await saveConfig(updated);
       } else if (modpackConfig) {
-        const updated = withRuntimeLoader(modpackConfig, loader);
+        const updated = buildUpdatedRuntimeConfig(modpackConfig, loader);
         setModpackConfig(updated);
         await saveConfig(updated);
       }
     },
-    [isSelectedModpack, modpackConfig, ctxSetRuntimeLoader, saveConfig]
+    [config, isSelectedModpack, modpackConfig, saveConfig]
   );
 
   const setUseOptiFine = useCallback(

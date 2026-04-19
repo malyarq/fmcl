@@ -126,7 +126,6 @@ export const AccountSkinPanel: React.FC<AccountSkinPanelProps> = ({ account }) =
             <LazyImage
               src={avatarUrl}
               alt={t('accounts.skinPreviewAlt') || 'Skin preview'}
-              fallback="/icon.png"
               className="h-full w-full object-cover"
             />
           </div>

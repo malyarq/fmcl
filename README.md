@@ -4,7 +4,7 @@
 
 FriendLauncher is a desktop Minecraft launcher for people who move between vanilla play, modpacks, and multiplayer with friends. It combines local instance management, modpack browsing, content tools, and FriendTunnel P2P play in one Electron application.
 
-The current `v0.4.0` launcher-truth release candidate has been checked against the browser-backed `manual-verification.html` seam on `2026-04-17`. The active closeout proof now covers `?view=dashboard`, `?view=modpack-details`, and `?view=phase-17-polish`, validating launch-state truth, modpack dependency semantics, catalog or compact-nav polish, and Russian settings preset naming before the final packaging gate. The descriptions below reflect that verified launcher surface rather than stale milestone plans.
+The current `v0.5.0` redesign closeout has been checked against the browser-backed `manual-verification.html` seam on `2026-04-19`. The authoritative closeout set now covers `?view=phase-24-home-closeout`, `?view=phase-24-modpacks-closeout`, `?view=phase-24-degraded-closeout`, `?view=phase-24-theme-dark`, `?view=phase-24-theme-light`, `?view=phase-24-locale-en`, and `?view=phase-24-locale-ru`, with `npm run test:visual:closeout` guarding screenshot drift before packaging. The descriptions below reflect that verified redesign surface rather than stale milestone plans.
 
 ## <a name="english"></a>English
 
@@ -17,14 +17,14 @@ The current `v0.4.0` launcher-truth release candidate has been checked against t
 - Use FriendTunnel to host and join LAN-style multiplayer sessions over the internet without extra VPN tooling.
 - Track local statistics, change themes and accents, use custom backgrounds, and adjust the launcher layout for daily use.
 
-### `v0.4.0` Verified Highlights
+### `v0.5.0` Verified Highlights
 
-- Main play surfaces now keep launch progress, CTA state, loader summaries, and localized runtime feedback on one truthful contract instead of drifting between partial states.
-- Missing launch or catalog artwork now resolves to a deliberate FMCL fallback treatment instead of broken-image or empty-placeholder states.
-- Modpack details now show pack-provided runtime dependencies honestly, render readable requirement copy, and keep dense-screen sections reachable without default horizontal-tab friction.
-- Installed and remote catalog surfaces stay legible with the sidebar open, and collapsed navigation keeps an intentional active-state treatment instead of stray placeholder letters.
-- Audited settings and launch-adjacent controls no longer leak raw localization keys, and appearance preset names now follow one deliberate RU/EN naming policy on the shipped surface.
-- Release truth now includes a reusable three-view browser-backed walkthrough on `manual-verification.html`, not only tests and code review.
+- Shared shell surfaces now hold one trustworthy layout contract: content clears the custom title bar, dense pages keep their last actions visible, and deep routes no longer fight the sidebar for primary CTA ownership.
+- The launcher brand reset is consistent across shell, settings, onboarding, and fallback states, while missing artwork now resolves through a neutral product-owned media treatment instead of broken or noisy branding.
+- Modpack browser, details, create, edit, and secondary-content routes stay readable under dense desktop pressure with labeled metadata, stable summaries, and truthful dependency/runtime state.
+- Dark/light themes and EN/RU locales now use explicit closeout pairs on the real shell, so state contrast, accent propagation, dates, counts, and translated copy can be reviewed on stable fixture data.
+- Degraded, empty, missing-data, and fatal error states now render through productized recovery surfaces instead of raw React internals, unresolved placeholders, or contradictory availability copy.
+- Release truth now includes a reusable seven-view closeout matrix on `manual-verification.html` plus a committed Playwright screenshot lane, not only tests and code review.
 
 ### Development
 
@@ -66,14 +66,14 @@ The project includes support for alternative authentication flows through `authl
 - FriendTunnel для LAN-подобной игры через интернет без отдельных VPN-инструментов.
 - Локальная статистика, темы и акцентные цвета, кастомные фоны и настройка вида лаунчера под повседневное использование.
 
-### Что Уже Проверено В `v0.4.0`
+### Что Уже Проверено В `v0.5.0`
 
-- Основные play-surface теперь держат launch progress, CTA state, loader summary и локализованный runtime feedback на одном truthful-контракте вместо рассинхронизированных состояний.
-- Отсутствующее launch- или catalog-artwork теперь заменяется осмысленным FMCL fallback, а не broken-image или пустым placeholder-состоянием.
-- Modpack details теперь честно показывают pack-provided runtime dependencies, рендерят читаемый requirement copy и сохраняют доступность dense-screen разделов без tab-friction по умолчанию.
-- Installed и remote catalog surface остаются читаемыми при открытом sidebar, а collapsed navigation показывает внятное active-state поведение без случайных буквенных заглушек.
-- Audited settings и launch-adjacent controls больше не показывают raw localization keys, а названия appearance preset теперь следуют единой RU/EN политике на shipped surface.
-- Truth релиза теперь опирается на переиспользуемый three-view browser-backed walkthrough в `manual-verification.html`, а не только на тесты и code review.
+- Shared shell surface теперь держат единый layout-контракт: контент не уходит под custom title bar, dense-страницы не прячут финальные действия, а deep-route экраны не конфликтуют с sidebar по primary CTA.
+- Brand reset применён последовательно к shell, settings, onboarding и fallback state, а отсутствующее artwork теперь проходит через нейтральный product-owned media fallback вместо broken-image или навязчивого брендинга.
+- Modpack browser, details, create, edit и secondary-content route остаются читаемыми под плотной desktop-нагрузкой, с подписанными metadata, стабильными summary и честным runtime/dependency state.
+- Для dark/light темы и EN/RU locale есть явные closeout-пары на реальном shell, поэтому контраст состояний, accent propagation, даты, счётчики и translated copy можно проверять на стабильных fixture-данных.
+- Degraded, empty, missing-data и fatal error state теперь рендерятся через productized recovery surface вместо raw React internals, unresolved placeholder и противоречивого availability copy.
+- Truth релиза теперь опирается на переиспользуемую seven-view closeout matrix в `manual-verification.html` и на committed Playwright screenshot lane, а не только на тесты и code review.
 
 ### Разработка
 

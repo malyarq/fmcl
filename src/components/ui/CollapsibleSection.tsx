@@ -63,7 +63,14 @@ export function CollapsibleSection({
       <button
         type="button"
         onClick={handleToggle}
-        className="flex w-full items-center justify-between rounded-xl border border-border/60 bg-card/68 px-3 py-2 text-left text-xs font-bold uppercase tracking-wider text-secondary transition-colors hover:bg-card/92 hover:text-foreground"
+        aria-expanded={expanded}
+        data-state={expanded ? 'expanded' : 'collapsed'}
+        className={cn(
+          'flex w-full items-center justify-between rounded-xl border px-3 py-2 text-left text-xs font-bold uppercase tracking-wider transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+          expanded
+            ? 'border-[rgb(var(--accent-main)/0.24)] bg-[rgb(var(--accent-main)/0.12)] text-foreground shadow-[0_12px_28px_rgba(0,0,0,0.16)]'
+            : 'border-border/60 bg-card/68 text-secondary hover:border-[rgb(var(--accent-main)/0.16)] hover:bg-card/92 hover:text-foreground'
+        )}
       >
         <span>{title}</span>
         <ChevronDown
@@ -83,6 +90,7 @@ export function CollapsibleSection({
           'overflow-hidden transition-all duration-200 ease-out',
           expanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
         )}
+        aria-hidden={!expanded}
       >
         <div className="pt-2 space-y-3">{children}</div>
       </div>

@@ -18,3 +18,21 @@ export function formatDate(timestamp: number | undefined, unknownText: string = 
     if (!timestamp) return unknownText;
     return new Date(timestamp).toLocaleDateString();
 }
+
+export function formatDateForLocale(
+    timestamp: number | undefined,
+    locale: string,
+    unknownText: string = 'Unknown',
+    options?: Intl.DateTimeFormatOptions,
+): string {
+    if (!timestamp) return unknownText;
+    return new Date(timestamp).toLocaleDateString(locale, options);
+}
+
+export function formatNumberForLocale(
+    value: number,
+    locale: string,
+    options?: Intl.NumberFormatOptions,
+): string {
+    return new Intl.NumberFormat(locale, options).format(value);
+}

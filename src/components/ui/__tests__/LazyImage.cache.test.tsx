@@ -2,7 +2,7 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { LAUNCHER_MARK_PATH } from '../../../app/assets/branding'
+import { LAUNCHER_MARK_PATH, MEDIA_FALLBACK_PATH } from '../../../app/assets/branding'
 import { LazyImage } from '../LazyImage'
 
 const resolveImageMock = vi.fn()
@@ -101,7 +101,7 @@ describe('LazyImage image cache integration', () => {
     })
   })
 
-  it('uses the shipped launcher mark when a remote image fails without an explicit fallback', async () => {
+  it('uses the neutral artwork fallback when a remote image fails without an explicit fallback', async () => {
     resolveImageMock.mockResolvedValue({
       localUrl: 'file:///tmp/fmcl-cache/missing-mark.png',
       sourceUrl: 'https://cdn.example.com/missing-mark.png',
@@ -112,12 +112,12 @@ describe('LazyImage image cache integration', () => {
     render(
       <LazyImage
         src="https://cdn.example.com/missing-mark.png"
-        alt="Fallback launcher mark"
+        alt="Fallback artwork"
         className="w-20 h-20 rounded"
       />,
     )
 
-    const image = await screen.findByRole('img', { name: 'Fallback launcher mark' })
+    const image = await screen.findByRole('img', { name: 'Fallback artwork' })
 
     await waitFor(() => {
       expect(image.getAttribute('src')).toBe('file:///tmp/fmcl-cache/missing-mark.png')
@@ -126,7 +126,7 @@ describe('LazyImage image cache integration', () => {
     fireEvent.error(image)
 
     await waitFor(() => {
-      expect(image.getAttribute('src')).toBe(LAUNCHER_MARK_PATH)
+      expect(image.getAttribute('src')).toBe(MEDIA_FALLBACK_PATH)
     })
   })
 

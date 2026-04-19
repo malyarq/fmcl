@@ -21,6 +21,20 @@ export type AccentStyleType =
   | 'soft-bg'
   | 'soft-border';
 
+export type BrandThemeConfig = {
+  mediaBorder?: string;
+  mediaFrame?: string;
+  markBorder?: string;
+  markFrame?: string;
+  markGlow?: string;
+  shellGlow?: string;
+  surfaceCardShadow?: string;
+  surfacePanelShadow?: string;
+  surfaceSoftShadow?: string;
+  wordmarkSpacing?: string;
+  wordmarkWeight?: string;
+};
+
 export type CustomThemeConfig = {
   colors?: {
     background?: string;
@@ -48,6 +62,7 @@ export type CustomThemeConfig = {
       speed?: number;
     };
   };
+  brand?: BrandThemeConfig;
 };
 
 export type AccentStyleResult = { className?: string; style?: React.CSSProperties };

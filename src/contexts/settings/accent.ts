@@ -2,6 +2,7 @@ import type { AccentStyleResult, AccentStyleType } from './types';
 
 // Preset styles are static to prevent Tailwind purging.
 const TEXT_ON_ACCENT = 'text-zinc-900 dark:text-white';
+export const DEFAULT_ACCENT_COLOR = 'emerald';
 
 const PRESET_STYLES: Record<string, Record<string, string>> = {
   emerald: {
@@ -61,8 +62,28 @@ const PRESET_HEX_MAP: Record<string, string> = {
   rose: '#f43f5e',
 };
 
+const PRESET_HOVER_HEX_MAP: Record<string, string> = {
+  emerald: '#059669',
+  blue: '#2563eb',
+  purple: '#9333ea',
+  orange: '#ea580c',
+  rose: '#e11d48',
+};
+
 function isPreset(color: string) {
   return PRESET_KEYS.includes(color);
+}
+
+function mixHex(hex: string, targetHex: string, ratio: number) {
+  const source = hex.startsWith('#') ? hex.slice(1) : hex;
+  const target = targetHex.startsWith('#') ? targetHex.slice(1) : targetHex;
+  const channels = [0, 2, 4].map((offset) => {
+    const sourceChannel = parseInt(source.slice(offset, offset + 2), 16);
+    const targetChannel = parseInt(target.slice(offset, offset + 2), 16);
+    return Math.round(sourceChannel + (targetChannel - sourceChannel) * ratio);
+  });
+
+  return `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
 }
 
 function hexToRgba(hex: string, alpha: number) {
@@ -73,8 +94,17 @@ function hexToRgba(hex: string, alpha: number) {
 }
 
 export function getAccentHexForColor(accentColor: string) {
-  const color = accentColor || 'emerald';
+  const color = accentColor || DEFAULT_ACCENT_COLOR;
   return isPreset(color) ? PRESET_HEX_MAP[color] : color;
+}
+
+export function getAccentHoverHexForColor(accentColor: string) {
+  const color = accentColor || DEFAULT_ACCENT_COLOR;
+  if (isPreset(color)) {
+    return PRESET_HOVER_HEX_MAP[color];
+  }
+
+  return mixHex(getAccentHexForColor(color), '#000000', 0.18);
 }
 
 export function getAccentStylesForColor(
@@ -82,7 +112,7 @@ export function getAccentStylesForColor(
   type: AccentStyleType,
   theme?: 'light' | 'dark'
 ): AccentStyleResult {
-  const color = accentColor || 'emerald';
+  const color = accentColor || DEFAULT_ACCENT_COLOR;
 
   if (isPreset(color)) {
     if (type === 'soft-bg') return { className: `bg-${color}-500/10` };
@@ -97,6 +127,7 @@ export function getAccentStylesForColor(
   if (type === 'text') return { style: { color } };
   if (type === 'title') return { style: { color } };
   if (type === 'border') return { style: { borderColor: color } };
+  if (type === 'hover') return { style: { color: getAccentHoverHexForColor(color) } };
   if (type === 'accent') return { style: { accentColor: color } };
   if (type === 'soft-bg') return { style: { backgroundColor: hexToRgba(color, 0.1) } };
   if (type === 'soft-border') return { style: { borderColor: hexToRgba(color, 0.2) } };
@@ -109,7 +140,7 @@ export function getAccentClassForColor(accentColor: string, tailwindClasses: str
   if (isPreset(accentColor)) {
     return tailwindClasses.replace(/XXX/g, accentColor);
   }
-  return tailwindClasses.replace(/XXX/g, 'emerald');
+  return tailwindClasses.replace(/XXX/g, DEFAULT_ACCENT_COLOR);
 }
 
 /**
@@ -118,4 +149,3 @@ export function getAccentClassForColor(accentColor: string, tailwindClasses: str
 export function getPresetAccentSafelistClassName() {
   return Object.values(PRESET_STYLES).flatMap((s) => Object.values(s)).join(' ');
 }
-

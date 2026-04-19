@@ -6,7 +6,13 @@ import { launcherIPC } from '../../../services/ipc/launcherIPC';
 import { useLauncherState } from './useLauncherState';
 import { useLauncherIPC } from './useLauncherIPC';
 import { saveLastGame } from '../../launch/services/lastGame';
-import { getLaunchStageTitle, isForceRestartAllowed, type LaunchStage } from '../services/launcherService';
+import {
+  getLaunchStageTitle,
+  getLauncherUnavailableDetail,
+  getVisibleLaunchFailureDetail,
+  isForceRestartAllowed,
+  type LaunchStage,
+} from '../services/launcherService';
 
 function translateWithFallback(t: (key: string) => string, key: string, fallback: string) {
   const translated = t(key);
@@ -61,10 +67,11 @@ export const useLauncher = (): UseLauncherResult => {
   const handleLaunch = async (options: LaunchOptions) => {
     if (state.isLaunching) return;
     if (!launcherIPC.isAvailable()) {
-      state.setStatusText('Launcher not available');
-      state.setStatusDetail('');
+      const unavailableDetail = getLauncherUnavailableDetail(t);
+      state.setStatusText(getLaunchStageTitle('failed', t));
+      state.setStatusDetail(unavailableDetail);
       state.setLaunchStage('failed');
-      state.appendLog('[SYSTEM] Launcher API not available. Is preload loaded?');
+      state.appendLog(unavailableDetail);
       return;
     }
 
@@ -113,14 +120,11 @@ export const useLauncher = (): UseLauncherResult => {
         translateWithFallback(t, 'status.waiting_detail', 'Minecraft process started. Waiting for the game window and logs.')
       );
     } catch (e) {
-      state.appendLog(`Error: ${e}`);
+      const detail = getVisibleLaunchFailureDetail(e, t);
+      state.appendLog(detail);
       state.setLaunchStage('failed');
       state.setStatusText(getLaunchStageTitle('failed', t));
-      state.setStatusDetail(
-        e instanceof Error && e.message
-          ? e.message
-          : translateWithFallback(t, 'status.failed_detail', 'Review the error and try launching again.')
-      );
+      state.setStatusDetail(detail);
       state.setIsLaunching(false);
       state.setProgress(null);
     }

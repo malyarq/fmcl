@@ -1,5 +1,8 @@
-import React, { memo, useCallback } from 'react';
-import { DEFAULT_MODPACK_BROWSER_STATE, useModpackNavigation } from '../../features/modpacks/hooks/useModpackNavigation';
+import React, { memo, useCallback, useEffect } from 'react';
+import {
+  DEFAULT_MODPACK_BROWSER_STATE,
+  useModpackNavigation,
+} from '../../features/modpacks/hooks/useModpackNavigation';
 import { ModpackList } from './ModpackList';
 import { ModpackBrowser } from './ModpackBrowser';
 import { ModpackDetails } from './ModpackDetails';
@@ -8,6 +11,10 @@ import { ExportModpackPage } from './ExportModpackPage';
 import { InstallModpackPage } from './InstallModpackPage';
 import { ImportModpackPreviewPage } from './ImportModpackPreviewPage';
 import { ModpackCreationWizard } from './ModpackCreationWizard';
+import {
+  getPrimaryActionOwnershipForView,
+  setModpackPrimaryActionOwnership,
+} from './primaryActionOwnership';
 
 interface ModpackRouterProps {
   onLaunch?: () => void | Promise<void>;
@@ -22,6 +29,15 @@ const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
   const handleBrowserStateChange = useCallback((state: typeof DEFAULT_MODPACK_BROWSER_STATE) => {
     replace({ type: 'browser', state });
   }, [replace]);
+  const primaryActionOwnership = getPrimaryActionOwnershipForView(view);
+
+  useEffect(() => {
+    setModpackPrimaryActionOwnership(primaryActionOwnership);
+  }, [primaryActionOwnership]);
+
+  useEffect(() => () => {
+    setModpackPrimaryActionOwnership('shell');
+  }, []);
 
   // Render based on current view
   switch (view.type) {

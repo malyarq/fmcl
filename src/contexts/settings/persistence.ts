@@ -3,13 +3,19 @@ import { useCallback, useState } from 'react';
 export function useLocalStorageState<T>(
   key: string,
   deserialize: (raw: string | null) => T,
-  serialize: (val: T) => string,
+  serialize: (val: T) => string | null,
 ): readonly [T, (val: T) => void] {
   const [state, setState] = useState<T>(() => deserialize(localStorage.getItem(key)));
 
   const set = useCallback((val: T) => {
     setState(val);
-    localStorage.setItem(key, serialize(val));
+    const serialized = serialize(val);
+    if (serialized === null) {
+      localStorage.removeItem(key);
+      return;
+    }
+
+    localStorage.setItem(key, serialized);
   }, [key, serialize]);
 
   return [state, set] as const;
@@ -44,4 +50,3 @@ export function deserializeInt(fallback: number) {
 export function serializeInt(val: number) {
   return String(val);
 }
-

@@ -17,6 +17,9 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
     t,
     getAccentStyles: () => ({ className: '', style: undefined }),
+    formatDate: (timestamp: number | undefined, unknownText = 'Unknown', options?: Intl.DateTimeFormatOptions) =>
+      timestamp ? new Date(timestamp).toLocaleDateString('en-US', options) : unknownText,
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-US', options).format(value),
   }),
 }));
 

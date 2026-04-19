@@ -102,4 +102,14 @@ describe('LaunchControls launch-state seam', () => {
     const launchButton = screen.getByRole('button', { name: /^Play$/i });
     expect(launchButton).toHaveProperty('disabled', false);
   });
+
+  it('preserves launch copy when the shell demotes the button to a secondary context', () => {
+    renderLaunchControls({
+      priority: 'secondary',
+    });
+
+    const launchButton = screen.getByRole('button', { name: /^Play$/i });
+    expect(launchButton.getAttribute('data-launch-priority')).toBe('secondary');
+    expect(launchButton).toHaveProperty('disabled', false);
+  });
 });

@@ -8,6 +8,8 @@ import { cn } from '../../utils/cn';
 import { shareIPC } from '../../services/ipc/shareIPC';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 import { useToast } from '../../contexts/ToastContext';
+import { DegradedStateView } from '../../components/layout/DegradedStateView';
+import { toDisplayErrorMessage } from '../../utils/displayError';
 
 interface ShareModalProps {
     isOpen: boolean;
@@ -49,7 +51,7 @@ export function ShareModal({ isOpen, onClose, modpackId }: ShareModalProps) {
 
                     console.error(err);
                     setCode('');
-                    setError(err instanceof Error ? err.message : t('share.generateError'));
+                    setError(toDisplayErrorMessage(err, t('share.generateError')));
                     setLoadedForId(modpackId);
                 })
         ;
@@ -121,9 +123,13 @@ export function ShareModal({ isOpen, onClose, modpackId }: ShareModalProps) {
                             <LoadingSpinner variant="accent" />
                         </div>
                     ) : error ? (
-                        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200" role="alert">
-                            {error}
-                        </div>
+                        <DegradedStateView
+                            variant="error"
+                            layout="inline"
+                            label={t('degraded.error_label')}
+                            title={t('share.error_title')}
+                            description={error}
+                        />
                     ) : (
                         <div className="flex flex-col gap-3 sm:flex-row">
                             <Input

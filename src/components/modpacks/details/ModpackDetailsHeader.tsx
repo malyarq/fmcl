@@ -45,6 +45,32 @@ export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
   getAccentHex,
 }) => {
   const effectiveLoader = effectiveConfig?.runtime?.modLoader ?? metadata?.modLoader;
+  const metadataEntries = [
+    metadata?.version
+      ? {
+          label: t('modpacks.version'),
+          value: metadata.version,
+        }
+      : null,
+    effectiveConfig?.runtime.minecraft || metadata?.minecraftVersion
+      ? {
+          label: t('modpacks.minecraft_version'),
+          value: effectiveConfig?.runtime.minecraft ?? metadata?.minecraftVersion ?? '',
+        }
+      : null,
+    effectiveLoader
+      ? {
+          label: t('modpacks.loader'),
+          value: `${effectiveLoader.type}${effectiveLoader.version ? ` ${effectiveLoader.version}` : ''}`,
+        }
+      : null,
+    metadata?.author
+      ? {
+          label: t('modpacks.author'),
+          value: metadata.author,
+        }
+      : null,
+  ].filter((entry): entry is { label: string; value: string } => Boolean(entry));
   const activeTabBackground = getAccentStyles('soft-bg');
   const activeTabBorder = getAccentStyles('soft-border');
   const activeTabText = getAccentStyles('title');
@@ -109,91 +135,79 @@ export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
   };
 
   return (
-    <div className="flex-shrink-0 px-6 pt-6 pb-0">
-      <div className="surface-card mb-6 flex items-start gap-4 p-5">
-        {metadata?.iconUrl && (
-          <LazyImage
-            src={metadata.iconUrl}
-            alt={modpackName}
-            className="h-20 w-20 rounded-2xl border border-border/70 object-cover"
-            fallback="/icon.png"
-          />
-        )}
-        <div className="flex-1 min-w-0">
-          <h3 className="mb-2 text-xl font-bold text-foreground">{modpackName}</h3>
-          {metadata && (
-            <div className="space-y-1 text-sm">
-              {metadata.version && (
-                <p className="text-secondary">
-                  {t('modpacks.version')}: {metadata.version}
-                </p>
-              )}
-              {(effectiveConfig || metadata.minecraftVersion) && (
-                <p className="text-secondary">
-                  {t('modpacks.minecraft_version')}:{' '}
-                  {effectiveConfig?.runtime.minecraft ?? metadata.minecraftVersion}
-                </p>
-              )}
-              {effectiveLoader && (
-                <p className="text-secondary">
-                  {t('modpacks.loader')}:{' '}
-                  {effectiveLoader.type}
-                  {effectiveLoader.version ? ` ${effectiveLoader.version}` : ''}
-                </p>
-              )}
-              {metadata.author && (
-                <p className="text-secondary">
-                  {t('modpacks.author')}: {metadata.author}
-                </p>
-              )}
+    <div className="space-y-4">
+      <div className="surface-card grid gap-4 p-5 lg:grid-cols-[5.5rem_minmax(0,1fr)]">
+        <LazyImage
+          src={metadata?.iconUrl}
+          alt={modpackName}
+          className="h-20 w-20 self-start rounded-2xl border border-border/70 object-cover"
+        />
+        <div className="min-w-0 space-y-4">
+          <div className="space-y-2">
+            <div className="kicker-label">{t('modpacks.details_title') || 'Modpack details'}</div>
+            <h3 className="text-xl font-bold leading-tight text-foreground sm:text-2xl">{modpackName}</h3>
+          </div>
+          {metadataEntries.length > 0 && (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" data-testid="modpack-details-metadata">
+              {metadataEntries.map((entry) => (
+                <div key={entry.label} className="surface-inline min-w-0 rounded-2xl px-3 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{entry.label}</p>
+                  <p className="mt-2 break-words text-sm font-medium leading-5 text-foreground">{entry.value}</p>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
 
-      <div
-        className="surface-inline mb-4 flex flex-wrap gap-2 p-2"
-        role="tablist"
-        aria-label={t('modpacks.details_title') || 'Modpack details'}
-        aria-orientation="horizontal"
-      >
-        {detailTabs.map((tab) => {
-          const isActive = activeTab === tab.id;
+      <div className="surface-card space-y-3 p-4">
+        <p className="text-sm text-secondary">{t('modpacks.secondary_content_description')}</p>
+        <div
+          className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
+          role="tablist"
+          aria-label={t('modpacks.details_title') || 'Modpack details'}
+          aria-orientation="horizontal"
+          data-testid="modpack-details-tablist"
+        >
+          {detailTabs.map((tab) => {
+            const isActive = activeTab === tab.id;
 
-          return (
-            <button
-              key={tab.id}
-              ref={(node) => {
-                tabRefs.current[tab.id] = node;
-              }}
-              type="button"
-              onClick={() => onTabChange(tab.id)}
-              onKeyDown={(event) => handleKeyDown(event, tab.id)}
-              role="tab"
-              aria-selected={isActive}
-              tabIndex={isActive ? 0 : -1}
-              className={cn(
-                'min-w-[9.5rem] flex-1 rounded-xl border px-3 py-2 text-sm font-medium leading-5 transition-colors sm:flex-none',
-                isActive
-                  ? cn(
-                      'text-foreground shadow-sm',
-                      activeTabBackground.className,
-                      activeTabBorder.className,
-                      activeTabText.className
-                    )
-                  : 'border-border/60 bg-background/68 text-secondary hover:border-border hover:bg-card/72 hover:text-foreground'
-              )}
-              style={isActive ? {
-                ...activeTabBackground.style,
-                ...activeTabBorder.style,
-                ...activeTabText.style,
-                boxShadow: `0 0 0 1px ${getAccentHex()}20`,
-              } : undefined}
-            >
-              {t(tab.labelKey) || tab.fallback}
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={tab.id}
+                ref={(node) => {
+                  tabRefs.current[tab.id] = node;
+                }}
+                type="button"
+                onClick={() => onTabChange(tab.id)}
+                onKeyDown={(event) => handleKeyDown(event, tab.id)}
+                role="tab"
+                aria-selected={isActive}
+                tabIndex={isActive ? 0 : -1}
+                data-state={isActive ? 'active' : 'inactive'}
+                className={cn(
+                  'w-full rounded-xl border px-3 py-3 text-left text-sm font-medium leading-5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                  isActive
+                    ? cn(
+                        'text-foreground shadow-sm',
+                        activeTabBackground.className,
+                        activeTabBorder.className,
+                        activeTabText.className
+                      )
+                    : 'border-border/60 bg-background/68 text-secondary hover:border-[rgb(var(--accent-main)/0.18)] hover:bg-card/78 hover:text-foreground'
+                )}
+                style={isActive ? {
+                  ...activeTabBackground.style,
+                  ...activeTabBorder.style,
+                  ...activeTabText.style,
+                  boxShadow: `0 0 0 1px ${getAccentHex()}20`,
+                } : undefined}
+              >
+                {t(tab.labelKey) || tab.fallback}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

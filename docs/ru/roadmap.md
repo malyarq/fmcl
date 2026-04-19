@@ -2,50 +2,55 @@
 
 ## Текущий Milestone
 
-- Milestone: `v0.4.0`
-- Тема: Launcher Truth And Product Polish
-- Статус: активен, Phases 15-17 завершены, Phase 18 в closeout
-- Обновлено: `2026-04-17`
+- Milestone: `v0.5.0`
+- Тема: Experience Reinvention And Brand Reset
+- Статус: Phase 24 завершена, closeout подтверждён, milestone готов к закрытию
+- Обновлено: `2026-04-19`
 
 ## Зачем Нужен Этот Milestone
 
-У FMCL уже есть широкий набор сценариев, но screenshot-backed аудит от `2026-04-14` показал более узкий, но важный класс дефектов доверия: противоречивые launch states, устаревшие loader summaries, broken-looking fallback art, raw localization keys и несколько оставшихся проблем на плотных surface-ах. Milestone `v0.4.0` закрывает эти дефекты без расширения архитектурного scope и без новых feature-направлений.
+FMCL дошёл до стадии, где проблема была уже не только в correctness. Лаунчер начал дрейфовать визуально и поведенчески: shell мог скрывать контент, бренд использовался противоречиво, плотные route-ы спорили за иерархию, темы и локали были непоследовательны, а degraded-state всё ещё выглядели как технические остатки. Milestone `v0.5.0` приводит эти surface-ы к одному намеренному и проверяемому продукту без расширения scope новыми фичами.
 
-## Что Уже Проверено
+## Проверенная Closeout Surface
 
-Текущий browser-backed walkthrough этого milestone теперь покрывает `manual-verification.html?view=dashboard`, `manual-verification.html?view=modpack-details` и `manual-verification.html?view=phase-17-polish`. Вместе эти view подтверждают:
+Текущая closeout-matrix привязана к browser-backed seam `manual-verification.html` и к committed lane `npm run test:visual:closeout`. Owned Phase 24 набор для review покрывает:
 
-- branded fallback art на классическом hero, когда у сборки нет artwork
-- truthful loader summary для активной launch-конфигурации
-- локализованные waiting, downloading и failure states на launch surface
-- видимые read-only advanced settings во время активного запуска
-- pack-provided runtime dependencies, читаемый requirement copy и dense detail navigation на modpack details
-- branded fallback cover на catalog surface, coherent compact-nav active state и русские preset names без raw settings keys
+- `manual-verification.html?view=phase-24-home-closeout`
+- `manual-verification.html?view=phase-24-modpacks-closeout`
+- `manual-verification.html?view=phase-24-degraded-closeout`
+- `manual-verification.html?view=phase-24-theme-dark`
+- `manual-verification.html?view=phase-24-theme-light`
+- `manual-verification.html?view=phase-24-locale-en`
+- `manual-verification.html?view=phase-24-locale-ru`
+
+Вместе эти view подтверждают:
+
+- shared shell clearance и route-owned CTA hierarchy на launcher home и modpack flow
+- dense modpack browser и details surface под реалистичной desktop-нагрузкой
+- representative degraded route и secondary-content failure на shipped productized fallback surface
+- явное dark/light сравнение на одной и той же shell-owned appearance surface
+- явное EN/RU сравнение с видимыми датами, счётчиками, translated copy и secondary content
 
 ## Статус Фаз
 
 | Фаза | Статус | Результат |
 |------|--------|-----------|
-| 15. Launch Truth And Shared Surface Contracts | Завершена | Branded fallback art, truthful loader summary, синхронизированные launch stages, локализованный runtime copy и read-only busy-state settings |
-| 16. Modpack Detail Integrity And Discoverable Dense Navigation | Завершена | Truthful dependency semantics, читаемый requirement copy и discoverable dense navigation |
-| 17. Catalog, Compact Nav, And Settings Localization Polish | Завершена | Каталожная legibility, fallback imagery, compact-nav truth и оставшаяся localization cleanup |
-| 18. Verification And Release Truth | В процессе | Focused automation, three-view browser proof, release-doc truth и финальный milestone gate |
+| 19. Baseline Stability, Scope, And Shell Invariants | Завершена | Shared safe-zone shell contract, один primary action на контекст и flow-first geometry для dense-route |
+| 20. Brand System, Shared Tokens, And Surface Migration | Завершена | Канонический brand contract, shared launcher tokens и нейтральная artwork fallback policy |
+| 21. Dense Surface IA, Navigation, And CTA Hierarchy | Завершена | Читаемые dense catalog/details route и truthful runtime summary для create/edit flow |
+| 22. Theme Truth And Interaction-State Fidelity | Завершена | Читаемые dark/light state, последовательная accent propagation и locale-faithful formatting |
+| 23. Fallback, Error, And Placeholder Productization | Завершена | Productized empty/degraded/error state и recovery-first fatal crash surface |
+| 24. Verification, Locale, And Release Truth | Завершена | Curated closeout matrix, строгий screenshot regression lane, sync release truth и финальная closeout verification |
 
-## Что Уже Даёт `v0.4.0`
+## Что Даёт `v0.5.0`
 
-- Launch progress больше не скатывается к ложному `0%`, когда реальный прогресс ещё неопределён
-- Classic launch feedback теперь согласован между CTA, status card и runtime stage transitions
-- Отсутствующий hero artwork заменяется осмысленным FMCL fallback вместо broken-image состояния
-- Advanced launch settings остаются видимыми для справки и становятся read-only во время активного запуска
-- Runtime settings и launch-adjacent controls теперь уважают выбранный язык лаунчера на audited classic surface
-- Modpack details теперь помечает pack-provided runtime dependencies как удовлетворённые и показывает читаемый requirement copy для несовпадений
-- Dense detail navigation больше не зависит от горизонтального tab-scroll как базового паттерна доступа к ключевым секциям
-- Catalog cards и compact navigation теперь держат fallback imagery и active-state truth согласованными на audited desktop shell
-- Audited settings surface теперь показывает локализованные preset names и не протекает raw localization keys в shipped UI
+- Shell лаунчера теперь ведёт себя как единый desktop frame, а не как набор route-local spacing hack.
+- Brand usage снова намеренный: launcher surface, onboarding и fallback state говорят на одном сдержанном визуальном языке.
+- Modpack flow остаются читаемыми под плотными данными, длинными label и ограниченной desktop-шириной без дублирования или сокрытия primary action.
+- Theme и locale различия теперь можно review-ить намеренно, а не находить случайно.
+- Missing data, failed load и fatal crash теперь показывают recovery-safe product truth вместо raw internals или декоративных placeholder.
+- Proof релиза больше не держится на словах: он живёт в переиспользуемой manual matrix и в committed Playwright screenshot lane.
 
-## Что Осталось До Закрытия
+## Ограниченные Residuals
 
-До статуса shipped остался только ограниченный closeout Phase 18:
-
-- финальная repo-wide проверка через `npm test`, `npm run lint`, `npx tsc --noEmit` и `npm run build -- --publish never`
-- только тот packaging-truth cleanup, который действительно нужен для прохождения этого gate без расширения продуктового scope
+- Production build по-прежнему печатает существующий large renderer chunk warning. На closeout он остаётся явно non-blocking, потому что финальный gate зелёный и в пределах этого milestone нет user-facing regression, завязанной на это предупреждение.

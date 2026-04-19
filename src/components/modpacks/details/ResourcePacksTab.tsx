@@ -9,6 +9,8 @@ import { cn } from '../../../utils/cn';
 import { Button } from '../../ui/Button';
 import { LazyImage } from '../../ui/LazyImage';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
+import { DegradedStateView } from '../../layout/DegradedStateView';
+import { toDisplayErrorMessage } from '../../../utils/displayError';
 
 interface ResourcePacksTabProps {
     instancePath: string;
@@ -21,15 +23,18 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
     const confirm = useConfirm();
     const [packs, setPacks] = useState<ResourcePack[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<unknown | null>(null);
     const toast = useToast();
 
     const loadPacks = useCallback(async () => {
         setLoading(true);
+        setLoadError(null);
         try {
             const list = await resourcePacksIPC.list(instancePath);
             setPacks(list);
         } catch (err) {
             console.error(err);
+            setLoadError(err);
             toast.error(t('modpacks.resourcepack_load_error'));
         } finally {
             setLoading(false);
@@ -83,6 +88,9 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
     );
 
     const enabledPacks = useMemo(() => packs.filter((pack) => pack.isEnabled), [packs]);
+    const resourcePackLoadDescription = loadError
+        ? toDisplayErrorMessage(loadError, t('error.inline_fallback'))
+        : t('error.inline_fallback');
 
     const handleMove = useCallback(
         async (pack: ResourcePack, direction: 'up' | 'down') => {
@@ -142,11 +150,21 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
                     </div>
                 </div>
 
-                <div className="surface-inline flex flex-wrap items-center gap-3 p-3 text-sm text-secondary">
-                    <span>{t('modpacks.resourcepacks_priority_hint')}</span>
-                    <span className="text-foreground">
-                        {enabledPacks.length} / {packs.length}
-                    </span>
+                <div
+                    className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_repeat(2,minmax(0,9rem))]"
+                    data-testid="resourcepacks-summary"
+                >
+                    <div className="surface-inline p-3 text-sm text-secondary">
+                        {t('modpacks.resourcepacks_priority_hint')}
+                    </div>
+                    <div className="surface-inline rounded-2xl px-3 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{t('modpacks.enabled')}</p>
+                        <p className="mt-2 text-base font-semibold text-foreground">{loadError ? t('degraded.unavailable_label') : enabledPacks.length}</p>
+                    </div>
+                    <div className="surface-inline rounded-2xl px-3 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{t('modpacks.installed')}</p>
+                        <p className="mt-2 text-base font-semibold text-foreground">{loadError ? t('degraded.unavailable_label') : packs.length}</p>
+                    </div>
                 </div>
             </div>
 
@@ -155,11 +173,32 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
                     <LoadingSpinner size="sm" variant="accent" />
                     {t('modpacks.loading')}
                 </div>
+            ) : loadError ? (
+                <DegradedStateView
+                    variant="unavailable"
+                    label={t('degraded.unavailable_label')}
+                    title={t('modpacks.resourcepack_load_error')}
+                    description={resourcePackLoadDescription}
+                    footer={(
+                        <Button variant="secondary" size="sm" onClick={() => void loadPacks()}>
+                            <RefreshCw className="h-4 w-4" />
+                            {t('modpacks.update')}
+                        </Button>
+                    )}
+                />
             ) : packs.length === 0 ? (
-                <div className="surface-muted flex flex-col items-center gap-2 p-8 text-center">
-                    <p className="text-base font-semibold text-foreground">{t('modpacks.no_resourcepacks_installed')}</p>
-                    <p className="max-w-xl text-sm text-secondary">{t('modpacks.resourcepacks_empty_hint')}</p>
-                </div>
+                <DegradedStateView
+                    variant="empty"
+                    label={t('degraded.empty_label')}
+                    title={t('modpacks.no_resourcepacks_installed')}
+                    description={t('modpacks.resourcepacks_empty_hint')}
+                    footer={onAddResourcePack ? (
+                        <Button variant="primary" size="sm" onClick={onAddResourcePack}>
+                            <ImagePlus className="h-4 w-4" />
+                            {t('modpacks.add_resourcepack_btn')}
+                        </Button>
+                    ) : undefined}
+                />
             ) : (
                 <div className="space-y-3" role="list" aria-label={t('modpacks.installed_resourcepacks')}>
                     {packs.map((pack) => {
@@ -177,19 +216,18 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
                                     <div className="h-14 w-14 flex-shrink-0 overflow-hidden rounded-2xl border border-border/70 bg-background/70">
                                         <LazyImage
                                             src={pack.iconUrl}
-                                            fallback="/icon.png"
                                             className={cn('h-full w-full object-cover', !pack.isEnabled && 'grayscale')}
                                         />
                                     </div>
 
                                     <div className="min-w-0 space-y-1">
                                         <div className="flex flex-wrap items-center gap-2">
-                                            <h4 className="truncate text-base font-semibold text-foreground">{pack.name}</h4>
+                                            <h4 className="break-words text-base font-semibold leading-5 text-foreground">{pack.name}</h4>
                                             <span className="rounded-full border border-border/70 bg-background/70 px-2 py-0.5 text-xs font-medium text-secondary">
                                                 {pack.isEnabled ? t('modpacks.filter_enabled') : t('modpacks.filter_disabled')}
                                             </span>
                                         </div>
-                                        <p className="truncate text-sm text-secondary">{pack.description || pack.fileName}</p>
+                                        <p className="line-clamp-2 break-words text-sm text-secondary">{pack.description || pack.fileName}</p>
                                     </div>
                                 </div>
 

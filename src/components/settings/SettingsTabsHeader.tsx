@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { cn } from '../../utils/cn';
+import type { AccentStyleType } from '../../contexts/settings/types';
 import {
   getSettingsPanelId,
   getSettingsTabDescriptionId,
@@ -14,7 +15,7 @@ export function SettingsTabsHeader(props: {
   activeTab: SettingsTabId;
   onTabChange: (tab: SettingsTabId) => void;
   t: (key: string) => string;
-  getAccentStyles: (type: 'border') => { className?: string; style?: React.CSSProperties };
+  getAccentStyles: (type: AccentStyleType) => { className?: string; style?: React.CSSProperties };
 }) {
   const { activeTab, onTabChange, t, getAccentStyles } = props;
   const tabRefs = useRef<Record<SettingsTabId, HTMLButtonElement | null>>({
@@ -83,7 +84,9 @@ export function SettingsTabsHeader(props: {
     >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
-        const accentBorderStyle = isActive ? getAccentStyles('border').style : undefined;
+        const activeBackground = isActive ? getAccentStyles('soft-bg') : undefined;
+        const activeBorder = isActive ? getAccentStyles('soft-border') : undefined;
+        const activeLabel = isActive ? getAccentStyles('title') : undefined;
         const tabLabelId = getSettingsTabLabelId(tab.id);
         const tabDescriptionId = getSettingsTabDescriptionId(tab.id);
 
@@ -102,18 +105,39 @@ export function SettingsTabsHeader(props: {
             aria-labelledby={tabLabelId}
             aria-describedby={tabDescriptionId}
             tabIndex={isActive ? 0 : -1}
+            data-state={isActive ? 'active' : 'inactive'}
             className={cn(
-              'flex min-h-[5.75rem] flex-col items-start rounded-2xl border px-4 py-3 text-left transition-all',
+              'flex min-h-[5.75rem] flex-col items-start rounded-2xl border px-4 py-3 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               isActive
-                ? 'border-border bg-card text-foreground shadow-sm'
-                : 'border-border/60 bg-background/68 text-secondary hover:border-border hover:bg-card/72 hover:text-foreground'
+                ? 'border-border bg-card/90 text-foreground shadow-[0_18px_36px_rgba(0,0,0,0.16)]'
+                : 'border-border/60 bg-background/68 text-secondary hover:border-[rgb(var(--accent-main)/0.18)] hover:bg-card/78 hover:text-foreground'
             )}
-            style={accentBorderStyle}
+            style={
+              isActive
+                ? {
+                    ...activeBackground?.style,
+                    ...activeBorder?.style,
+                  }
+                : undefined
+            }
           >
-            <span id={tabLabelId} className="text-sm font-semibold text-foreground">
+            <span
+              id={tabLabelId}
+              className={cn(
+                'text-sm font-semibold',
+                isActive ? activeLabel?.className ?? 'text-foreground' : 'text-foreground'
+              )}
+              style={isActive ? activeLabel?.style : undefined}
+            >
               {tab.label}
             </span>
-            <span id={tabDescriptionId} className="mt-1 text-xs leading-5 text-secondary">
+            <span
+              id={tabDescriptionId}
+              className={cn(
+                'mt-1 text-xs leading-5',
+                isActive ? 'text-foreground/78' : 'text-secondary'
+              )}
+            >
               {tab.description}
             </span>
           </button>

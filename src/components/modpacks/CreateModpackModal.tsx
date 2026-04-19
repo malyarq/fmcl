@@ -13,7 +13,10 @@ import { useVersions } from '../../features/launcher/hooks/useVersions';
 import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
 import { ModloaderSection } from '../sidebar/ModloaderSection';
 import { ModpackDependencySummary } from '../sidebar/ModpackDependencySummary';
-import { buildRuntimeDependencyState } from '../sidebar/modpackRuntimeDependencies';
+import {
+  buildRuntimeDependencyState,
+  shouldKeepOptiFineEnabled,
+} from '../sidebar/modpackRuntimeDependencies';
 import { OptifineToggle } from '../sidebar/OptifineToggle';
 
 interface CreateModpackModalProps {
@@ -49,12 +52,42 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
 
   // Определяем текущий модлоадер
   const modLoaderType: ModLoaderType = useNeoForge ? 'neoforge' : useForge ? 'forge' : useFabric ? 'fabric' : 'vanilla';
-  const runtimeDependencies = buildRuntimeDependencyState(minecraftVersion.trim(), modLoaderType);
+  const runtimeDependencies = buildRuntimeDependencyState({
+    minecraftVersion: minecraftVersion.trim(),
+    modLoaderType,
+    useOptiFine,
+    isOptiFineSupported,
+  });
   
   const setLoader = (loader: 'vanilla' | 'forge' | 'fabric' | 'neoforge') => {
     setUseForge(loader === 'forge');
     setUseFabric(loader === 'fabric');
     setUseNeoForge(loader === 'neoforge');
+    if (loader !== 'forge') {
+      setUseOptiFine(false);
+    }
+  };
+
+  const persistCreatedGameSettings = async (modpackId: string) => {
+    if (!runtimeDependencies.useOptiFine) {
+      return;
+    }
+
+    const createdConfig = await modpacksIPC.getConfig(modpackId, minecraftPath);
+    if (!createdConfig) {
+      return;
+    }
+
+    await modpacksIPC.saveConfig(
+      {
+        ...createdConfig,
+        game: {
+          ...(createdConfig.game ?? {}),
+          useOptiFine: true,
+        },
+      },
+      minecraftPath,
+    );
   };
 
   const validateName = (value: string): string | null => {
@@ -94,6 +127,9 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
       if (result?.id && description.trim()) {
         // Сохраняем описание в метаданных модпака
         await modpacksIPC.updateMetadata(result.id, { description: description.trim() }, minecraftPath);
+      }
+      if (result?.id) {
+        await persistCreatedGameSettings(result.id);
       }
 
       await refresh();
@@ -157,7 +193,19 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
           <Select
             label={t('modpacks.minecraft_version')}
             value={minecraftVersion}
-            onChange={(e) => setMinecraftVersion(e.target.value)}
+            onChange={(e) => {
+              const nextMinecraftVersion = e.target.value;
+              setMinecraftVersion(nextMinecraftVersion);
+              if (
+                !shouldKeepOptiFineEnabled({
+                  useOptiFine,
+                  modLoaderType,
+                  isOptiFineSupported: optiFineVersions.includes(nextMinecraftVersion),
+                })
+              ) {
+                setUseOptiFine(false);
+              }
+            }}
           >
             {versions.filter(v => v.type === 'release').map((v) => (
               <option key={v.id} value={v.id}>

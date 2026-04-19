@@ -7,6 +7,7 @@ import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { cn } from '../../utils/cn';
 import { DEFAULT_MODPACK_BROWSER_STATE, type ModpackBrowserState } from '../../features/modpacks/hooks/useModpackNavigation';
+import { LazyImage } from '../ui/LazyImage';
 
 export function ModpackSection() {
   const { t, getAccentStyles, minecraftPath } = useSettings();
@@ -67,18 +68,13 @@ export function ModpackSection() {
     <>
       <div className="p-4 rounded-lg bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700" data-tour="modpacks">
         <div className="flex items-center gap-3 mb-3">
-          {metadata?.iconUrl && (
-            <img
-              src={metadata.iconUrl}
+          <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-xl border border-border/70 bg-background/70">
+            <LazyImage
+              src={metadata?.iconUrl}
               alt={selectedModpack.name}
-              className="w-10 h-10 rounded object-cover flex-shrink-0"
-              onError={(e) => {
-                if (e.currentTarget.src !== '/icon.png') {
-                  e.currentTarget.src = '/icon.png';
-                }
-              }}
+              className="h-full w-full object-cover"
             />
-          )}
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">
               {t('modpacks.selected')}

@@ -2,7 +2,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppLayout, type AppLayoutProps } from '../AppLayout';
+import { APP_LAYOUT_SAFE_AREA_TEST_ID, AppLayout, type AppLayoutProps } from '../AppLayout';
 
 const uiModeState = { value: 'simple' as 'simple' | 'modpacks' };
 const settingsState = { sidebarPosition: 'left' as 'left' | 'right' };
@@ -21,7 +21,8 @@ vi.mock('../layout/BackgroundLayer', () => ({
 }));
 
 vi.mock('../TitleBar', () => ({
-  default: () => <div>Title bar</div>,
+  TITLE_BAR_TEST_ID: 'app-title-bar',
+  default: () => <div data-testid="app-title-bar">Title bar</div>,
 }));
 
 vi.mock('../Sidebar', () => ({
@@ -124,29 +125,41 @@ describe('AppLayout responsive shell', () => {
     settingsState.sidebarPosition = 'left';
   });
 
-  it('renders the adaptive shell frame and main content contract', () => {
+  it('renders a shell-owned safe-area seam directly below the title bar', () => {
     render(<AppLayout {...createProps()} />);
 
     const shellFrame = screen.getByTestId('app-shell-frame');
+    const titleBar = screen.getByTestId('app-title-bar');
+    const safeArea = screen.getByTestId(APP_LAYOUT_SAFE_AREA_TEST_ID);
     const main = screen.getByTestId('app-layout-main');
     const split = screen.getByTestId('app-layout-split');
 
     expect(shellFrame.className).toContain('min-w-0');
     expect(shellFrame.className).toContain('sm:rounded-[28px]');
+    expect(titleBar.nextElementSibling).toBe(safeArea);
+    expect(safeArea.getAttribute('data-shell-safe-area')).toBe('title-bar');
+    expect(split.parentElement).toBe(safeArea);
     expect(main.className).toContain('min-w-0');
     expect(split.className).toContain('flex-row');
     expect(screen.getByText('Simple play dashboard')).toBeTruthy();
   });
 
-  it('reverses the shell split when the sidebar is moved to the right and still renders overlays', () => {
+  it('keeps the same safe-area contract when the route and shell state change', () => {
     settingsState.sidebarPosition = 'right';
+    uiModeState.value = 'modpacks';
     const props = createProps();
     props.overlays.showSettings = true;
     props.overlays.showMultiplayer = true;
 
     render(<AppLayout {...props} />);
 
+    const safeArea = screen.getByTestId(APP_LAYOUT_SAFE_AREA_TEST_ID);
+
+    expect(safeArea.getAttribute('data-shell-safe-area')).toBe('title-bar');
     expect(screen.getByTestId('app-layout-split').className).toContain('flex-row-reverse');
+    expect(safeArea.contains(screen.getByText('Settings page'))).toBe(true);
+    expect(safeArea.contains(screen.getByText('Multiplayer page'))).toBe(true);
+    expect(safeArea.contains(screen.getByText('Modpack router'))).toBe(true);
     expect(screen.getByText('Settings page')).toBeTruthy();
     expect(screen.getByText('Multiplayer page')).toBeTruthy();
   });

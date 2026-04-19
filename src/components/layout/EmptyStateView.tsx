@@ -1,5 +1,7 @@
 import { useSettings } from '../../contexts/SettingsContext';
 import { LAUNCHER_MARK_PATH, isBundledAssetSource } from '../../app/assets/branding';
+import { BrandMark } from '../branding/BrandMark';
+import { BrandWordmark } from '../branding/BrandWordmark';
 
 export function EmptyStateView(props: {
   iconPath: string;
@@ -11,9 +13,15 @@ export function EmptyStateView(props: {
     <div className="flex flex-1 select-none items-center justify-center p-10">
       <div className="surface-card flex max-w-md flex-col items-center px-10 py-12 text-center">
         <div className="relative mb-6">
-          <img
+          <BrandMark
+            role="product-mark"
             src={iconPath}
-            className="mb-4 h-32 w-32 opacity-90 transition-all duration-500 hover:scale-105"
+            alt="FriendLauncher mark"
+            data-testid="empty-state-brand-mark"
+            frame="brand"
+            size="xl"
+            wrapperClassName="relative flex h-32 w-32 items-center justify-center"
+            className="mb-4 h-24 w-24 opacity-90 transition-all duration-500 hover:scale-105"
             style={{
               filter: `drop-shadow(0 0 30px ${getAccentHex()}) drop-shadow(0 0 60px ${getAccentHex()}40)`,
             }}
@@ -30,18 +38,15 @@ export function EmptyStateView(props: {
             }}
           />
         </div>
-        <p className="text-4xl font-black uppercase tracking-widest text-secondary drop-shadow-lg">
-          <span
-            className={getAccentStyles('text').className}
-            style={{
-              ...getAccentStyles('text').style,
-              textShadow: `0 0 20px ${getAccentHex()}40, 0 2px 4px rgba(0,0,0,0.3)`,
-            }}
-          >
-            Friend
-          </span>
-          <span className="opacity-60">Launcher</span>
-        </p>
+        <BrandWordmark
+          as="p"
+          tone="hero"
+          className={getAccentStyles('text').className}
+          style={{
+            ...getAccentStyles('text').style,
+            textShadow: `0 0 20px ${getAccentHex()}40, 0 2px 4px rgba(0,0,0,0.3)`,
+          }}
+        />
       </div>
     </div>
   );

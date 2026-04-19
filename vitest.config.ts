@@ -18,5 +18,8 @@ export default defineConfig({
       'electron/**/*.{test,spec}.{ts,tsx}',
       'shared/**/*.{test,spec}.{ts,tsx}',
     ],
+    exclude: [
+      'tests/visual/**/*',
+    ],
   },
 });

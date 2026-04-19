@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
-import type { AccentColor, AccentStyleType, DownloadProvider, Language, Theme, UIMode, CustomThemeConfig, ThemePresetId } from './settings/types';
+import type { AccentColor, AccentStyleType, BrandThemeConfig, DownloadProvider, Language, Theme, UIMode, CustomThemeConfig, ThemePresetId } from './settings/types';
 import {
     deserializeBoolean,
     deserializeInt,
@@ -11,8 +11,9 @@ import {
 } from './settings/persistence';
 import { getThemePreset, inferThemePresetId } from './settings/theme-presets';
 import { applyThemeToDocument, resolveThemeConfig } from './settings/theme';
-import { createTranslator } from './settings/i18n';
+import { createTranslator, getLocaleForLanguage } from './settings/i18n';
 import { getAccentClassForColor, getAccentHexForColor, getAccentStylesForColor, getPresetAccentSafelistClassName } from './settings/accent';
+import { formatDateForLocale, formatNumberForLocale } from '../utils/format';
 
 interface SettingsState {
     minecraftPath: string;
@@ -42,11 +43,15 @@ interface SettingsState {
     uiMode: UIMode;
     setUIMode: (val: UIMode) => void;
     t: (key: string, params?: Record<string, string | number>) => string;
+    locale: string;
+    formatDate: (timestamp: number | undefined, unknownText?: string, options?: Intl.DateTimeFormatOptions) => string;
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string;
     getAccentStyles: (type: AccentStyleType) => { className?: string; style?: React.CSSProperties };
     getAccentClass: (tailwindClasses: string) => string;
     getAccentHex: () => string;
     customTheme: CustomThemeConfig;
     activeThemeConfig: CustomThemeConfig;
+    brandTheme: BrandThemeConfig;
     setCustomTheme: (val: CustomThemeConfig) => void;
     uiScale: number;
     setUiScale: (val: number) => void;
@@ -77,7 +82,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
             return getThemePreset(raw)?.id ?? null;
         },
-        (val) => val ?? '',
+        (val) => val,
     );
     const [legacyDownloadProvider, setDownloadProvider] = useLocalStorageState<DownloadProvider>(
         'settings_downloadProvider',
@@ -122,6 +127,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         () => resolveThemeConfig(theme, themePresetId, customTheme),
         [customTheme, theme, themePresetId],
     );
+    const brandTheme = activeThemeConfig.brand ?? {};
 
     const [uiScale, setUiScale] = useLocalStorageState('settings_uiScale', deserializeInt(100), serializeInt);
     const [disableAnimations, setDisableAnimations] = useLocalStorageState('settings_disableAnimations', deserializeBoolean(false), serializeBoolean);
@@ -141,7 +147,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
     useEffect(() => {
         const persistedThemePresetId = localStorage.getItem('settings_themePresetId');
-        if (persistedThemePresetId !== null || themePresetId !== null) {
+        if (persistedThemePresetId === '') {
+            localStorage.removeItem('settings_themePresetId');
+        }
+
+        if ((persistedThemePresetId !== null && persistedThemePresetId !== '') || themePresetId !== null) {
             return;
         }
 
@@ -181,6 +191,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, [compactMode]);
 
     const t = useMemo(() => createTranslator(language), [language]);
+    const locale = useMemo(() => getLocaleForLanguage(language), [language]);
+    const formatDate = useCallback(
+        (timestamp: number | undefined, unknownText = 'Unknown', options?: Intl.DateTimeFormatOptions) =>
+            formatDateForLocale(timestamp, locale, unknownText, options),
+        [locale],
+    );
+    const formatNumber = useCallback(
+        (value: number, options?: Intl.NumberFormatOptions) => formatNumberForLocale(value, locale, options),
+        [locale],
+    );
 
     const getAccentHex = useCallback(() => getAccentHexForColor(accentColor), [accentColor]);
     const getAccentStyles = useCallback(
@@ -219,11 +239,15 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             maxSockets, setMaxSockets,
             uiMode, setUIMode,
             t,
+            locale,
+            formatDate,
+            formatNumber,
             getAccentStyles,
             getAccentClass,
             getAccentHex,
             customTheme,
             activeThemeConfig,
+            brandTheme,
             setCustomTheme,
             uiScale, setUiScale,
             disableAnimations, setDisableAnimations,

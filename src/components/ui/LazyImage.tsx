@@ -1,13 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LAUNCHER_MARK_PATH, isBundledAssetSource } from '../../app/assets/branding';
+import { isBundledAssetSource } from '../../app/assets/branding';
 import { cn } from '../../utils/cn';
 import { cacheIPC } from '../../services/ipc/cacheIPC';
+import { ArtworkFallback, type ArtworkFallbackKind } from './ArtworkFallback';
 
 export interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   /** Placeholder to show while loading */
   placeholder?: React.ReactNode;
   /** Fallback image source if main image fails to load */
   fallback?: string;
+  /** Shared fallback policy to use when no explicit fallback source is provided */
+  fallbackKind?: ArtworkFallbackKind;
   /** Root margin for Intersection Observer (default: "50px") */
   rootMargin?: string;
   /** Whether to use native lazy loading as fallback */
@@ -24,13 +27,14 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   className,
   placeholder,
   fallback,
+  fallbackKind = ArtworkFallback.defaultKind,
   rootMargin = '50px',
   useNativeLazy = true,
   onError,
   ...props
 }) => {
   const [isInView, setIsInView] = useState(false);
-  const safeFallback = fallback ?? LAUNCHER_MARK_PATH;
+  const safeFallback = fallback ?? ArtworkFallback.getSrc(fallbackKind);
   const sourceKey = `${src ?? ''}::${safeFallback}`;
   const [imageState, setImageState] = useState(() => ({
     key: sourceKey,

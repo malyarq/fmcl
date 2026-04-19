@@ -27,6 +27,9 @@ vi.mock('../../../contexts/SettingsContext', () => ({
     t,
     getAccentStyles: () => ({ className: '', style: undefined }),
     getAccentHex: () => '#10b981',
+    formatDate: (timestamp: number | undefined, unknownText = 'Unknown', options?: Intl.DateTimeFormatOptions) =>
+      timestamp ? new Date(timestamp).toLocaleDateString('en-US', options) : unknownText,
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-US', options).format(value),
     minecraftPath: '/minecraft',
   }),
 }));

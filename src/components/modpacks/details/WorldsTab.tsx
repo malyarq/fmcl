@@ -5,10 +5,12 @@ import { useConfirm } from '../../../contexts/ConfirmContext';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { openWorldFolder, worldsIPC } from '../../../services/ipc/worldsIPC';
-import { formatDate, formatSize } from '../../../utils/format';
+import { formatSize } from '../../../utils/format';
 import { Button } from '../../ui/Button';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { WorldDatapacksModal } from './WorldDatapacksModal';
+import { DegradedStateView } from '../../layout/DegradedStateView';
+import { toDisplayErrorMessage } from '../../../utils/displayError';
 
 interface WorldsTabProps {
     instancePath: string;
@@ -30,25 +32,31 @@ function supportsDatapacks(version?: string): boolean {
 }
 
 export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps) {
-    const { t } = useSettings();
+    const { t, formatDate, formatNumber } = useSettings();
     const confirm = useConfirm();
     const [worlds, setWorlds] = useState<WorldInfo[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<unknown | null>(null);
     const [datapacksModalWorld, setDatapacksModalWorld] = useState<WorldInfo | null>(null);
     const toast = useToast();
 
     const loadWorlds = useCallback(async () => {
         setLoading(true);
+        setLoadError(null);
         try {
             const list = await worldsIPC.list(instancePath);
             setWorlds(list);
         } catch (err) {
             console.error(err);
+            setLoadError(err);
             toast.error(t('modpacks.world_load_error'));
         } finally {
             setLoading(false);
         }
     }, [instancePath, t, toast]);
+    const worldsLoadDescription = loadError
+        ? toDisplayErrorMessage(loadError, t('error.inline_fallback'))
+        : t('error.inline_fallback');
 
     useEffect(() => {
         void loadWorlds();
@@ -126,7 +134,7 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
 
                 <div className="surface-inline flex flex-wrap items-center gap-3 p-3 text-sm text-secondary">
                     <span>{t('modpacks.worlds_manage_hint')}</span>
-                    <span className="text-foreground">{worlds.length}</span>
+                    <span className="text-foreground">{loadError ? t('degraded.unavailable_label') : formatNumber(worlds.length)}</span>
                 </div>
             </div>
 
@@ -135,11 +143,26 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
                     <LoadingSpinner size="sm" variant="accent" />
                     {t('modpacks.loading')}
                 </div>
+            ) : loadError ? (
+                <DegradedStateView
+                    variant="unavailable"
+                    label={t('degraded.unavailable_label')}
+                    title={t('modpacks.world_load_error')}
+                    description={worldsLoadDescription}
+                    footer={(
+                        <Button variant="secondary" size="sm" onClick={() => void loadWorlds()}>
+                            <RefreshCw className="h-4 w-4" />
+                            {t('modpacks.world_refresh')}
+                        </Button>
+                    )}
+                />
             ) : worlds.length === 0 ? (
-                <div className="surface-muted flex flex-col items-center gap-2 p-8 text-center">
-                    <p className="text-base font-semibold text-foreground">{t('modpacks.no_worlds_found')}</p>
-                    <p className="max-w-xl text-sm text-secondary">{t('modpacks.play_to_create_world')}</p>
-                </div>
+                <DegradedStateView
+                    variant="empty"
+                    label={t('degraded.empty_label')}
+                    title={t('modpacks.no_worlds_found')}
+                    description={t('modpacks.play_to_create_world')}
+                />
             ) : (
                 <div className="space-y-3" role="list" aria-label={t('modpacks.saved_worlds')}>
                     {worlds.map((world) => (
@@ -156,7 +179,7 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
                                     <h4 className="truncate text-base font-semibold text-foreground">{world.name}</h4>
                                     <div className="flex flex-wrap gap-3 text-sm text-secondary">
                                         <span>{formatSize(world.sizeBytes)}</span>
-                                        <span>{t('modpacks.last_played', { date: formatDate(world.lastPlayed, t('general.unknown')) })}</span>
+                                        <span>{t('modpacks.last_played', { date: formatDate(world.lastPlayed, t('general.unknown'), { dateStyle: 'medium' }) })}</span>
                                     </div>
                                 </div>
                             </div>

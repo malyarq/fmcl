@@ -7,11 +7,14 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Breadcrumbs } from '../ui/Breadcrumbs';
 import { LazyImage } from '../ui/LazyImage';
+import { DegradedStateView } from '../layout/DegradedStateView';
 import { cn } from '../../utils/cn';
 import { modsIPC } from '../../services/ipc/modsIPC';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import { MINECRAFT_VERSIONS } from '../../utils/minecraftVersionsList';
 import type { ModpackMetadata } from '@shared/types/modpack';
+import { sanitizeUiText } from '../../utils/safeUiText';
+import { toDisplayErrorMessage } from '../../utils/displayError';
 
 interface AddModPageProps {
   modpackId: string;
@@ -41,6 +44,13 @@ interface ModVersion {
 
 type CheckedEntry = { mod: ModSearchResult; version: ModVersion } | 'loading';
 
+function getSafeModVersionLabel(version: ModVersion, fallback: string) {
+  return sanitizeUiText(
+    version.name,
+    sanitizeUiText(version.versionNumber, sanitizeUiText(version.versionId, fallback)),
+  );
+}
+
 export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, contentType = 'mod' }) => {
   const { t, getAccentStyles, minecraftPath } = useSettings();
   const toast = useToast();
@@ -48,6 +58,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
   const [platform, setPlatform] = useState<'curseforge' | 'modrinth'>('modrinth');
   const [searchResults, setSearchResults] = useState<ModSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [checkedMods, setCheckedMods] = useState<Map<string, CheckedEntry>>(new Map());
   const [installing, setInstalling] = useState(false);
   const [modpackMetadata, setModpackMetadata] = useState<ModpackMetadata | null>(null);
@@ -56,7 +67,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
   const [filterSort, setFilterSort] = useState<'popularity' | 'date' | 'alphabetical'>('popularity');
   const [total, setTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
-  const resultsScrollRef = useRef<HTMLDivElement>(null);
+  const pageScrollRef = useRef<HTMLDivElement>(null);
   const PAGE_SIZE = 20;
 
   const effectiveLoader = contentType === 'mod' ? (filterLoader || modpackMetadata?.modLoader?.type || '') : '';
@@ -86,6 +97,9 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
     if (offset === 0) setLoading(true);
     else setLoadingMore(true);
     try {
+      if (!append) {
+        setSearchError(null);
+      }
       const result = await modsIPC.searchMods({
         platform,
         query: query.trim() || '',
@@ -101,12 +115,21 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
       setTotal(data.total ?? 0);
     } catch (error) {
       console.error('Error searching mods:', error);
-      if (!append) setSearchResults([]);
+      if (!append) {
+        setSearchResults([]);
+        setTotal(0);
+        setSearchError(
+          toDisplayErrorMessage(
+            error,
+            t('modpacks.add_mod_search_error_desc') || 'We could not load catalog results right now.',
+          ),
+        );
+      }
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [query, platform, effectiveMCVersion, effectiveLoader, filterSort, contentType]);
+  }, [query, platform, effectiveMCVersion, effectiveLoader, filterSort, contentType, t]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -120,12 +143,22 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
   }, [platform]);
 
   const handleScroll = useCallback(() => {
-    const el = resultsScrollRef.current;
+    const el = pageScrollRef.current;
     if (!el || loading || loadingMore) return;
     const { scrollTop, scrollHeight, clientHeight } = el;
     if (scrollTop + clientHeight >= scrollHeight - 100) {
       const currentLen = searchResults.length;
       if (currentLen < total) searchMods(currentLen, true);
+    }
+  }, [loading, loadingMore, searchResults.length, total, searchMods]);
+
+  useEffect(() => {
+    const el = pageScrollRef.current;
+    if (!el || loading || loadingMore) return;
+    if (searchResults.length === 0 || searchResults.length >= total) return;
+
+    if (el.scrollHeight <= el.clientHeight + 48) {
+      void searchMods(searchResults.length, true);
     }
   }, [loading, loadingMore, searchResults.length, total, searchMods]);
 
@@ -210,6 +243,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
       setInstalling(false);
     }
   };
+  const unavailableVersionLabel = t('modpacks.version_unavailable') || 'Version unavailable';
 
   const getTitle = () => {
     switch (contentType) {
@@ -285,7 +319,12 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 min-h-0">
+      <div
+        ref={pageScrollRef}
+        className="flex-1 overflow-y-auto p-6 min-h-0"
+        onScroll={handleScroll}
+        data-testid="add-mod-page-scroll"
+      >
         <div className="space-y-4 max-w-4xl mx-auto">
           {/* Filters */}
           <div className="flex gap-2 flex-wrap">
@@ -344,11 +383,10 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
             </div>
           )}
 
-          {!loading && searchResults.length > 0 && (
+          {!loading && !searchError && searchResults.length > 0 && (
             <div
-              ref={resultsScrollRef}
-              className="max-h-96 overflow-y-auto custom-scrollbar space-y-2"
-              onScroll={handleScroll}
+              className="space-y-2"
+              data-testid="add-mod-results"
             >
               {searchResults.map((mod) => {
                 const key = `${mod.platform}:${mod.projectId}`;
@@ -374,21 +412,18 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
                       onClick={(e) => e.stopPropagation()}
                       className="mt-1 w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 focus:ring-2 focus:ring-zinc-500"
                     />
-                    {mod.iconUrl && (
-                      <LazyImage
-                        src={mod.iconUrl}
-                        alt={mod.title}
-                        className="w-12 h-12 rounded object-cover shrink-0"
-                        fallback="/icon.png"
-                      />
-                    )}
+                    <LazyImage
+                      src={mod.iconUrl}
+                      alt={mod.title}
+                      className="w-12 h-12 rounded object-cover shrink-0"
+                    />
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium text-zinc-900 dark:text-white truncate">
                         {mod.title}
                       </h4>
                       {version && (
                         <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
-                          {version.name} {version.mcVersions[0] && `(${version.mcVersions[0]})`}
+                          {getSafeModVersionLabel(version, unavailableVersionLabel)} {version.mcVersions[0] && `(${version.mcVersions[0]})`}
                         </p>
                       )}
                       {mod.description && !version && (
@@ -421,19 +456,53 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
             </div>
           )}
 
-          <div className="flex gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-700">
+          {!loading && searchError ? (
+            <DegradedStateView
+              variant="error"
+              label={t('degraded.error_label')}
+              title={t('modpacks.add_mod_search_error_title') || 'Unable to search right now'}
+              description={searchError}
+              footer={(
+                <Button variant="secondary" size="sm" onClick={() => void searchMods(0, false)}>
+                  {t('modpacks.search_btn')}
+                </Button>
+              )}
+            />
+          ) : null}
+
+          {!loading && !searchError && searchResults.length === 0 ? (
+            <DegradedStateView
+              variant={query.trim() ? 'zero-results' : 'empty'}
+              label={t(query.trim() ? 'degraded.zero_results_label' : 'degraded.empty_label')}
+              title={
+                query.trim()
+                  ? t('modpacks.no_mod_results') || 'No mods found for the current filters'
+                  : t('modpacks.add_mod_empty_title') || 'Search the catalog'
+              }
+              description={
+                query.trim()
+                  ? t('modpacks.mods_filter_hint') || 'Try a broader query or adjust the current filters.'
+                  : t('modpacks.add_mod_empty_desc') || 'Use search and filters to find loader-compatible files for this modpack.'
+              }
+            />
+          ) : null}
+
+          <div
+            className="surface-card flex flex-col gap-2 p-4 sm:flex-row"
+            data-testid="add-mod-page-actions"
+          >
             <Button
               onClick={onBack}
               variant="secondary"
               disabled={installing}
-              className="flex-1"
+              className="w-full sm:flex-1"
             >
               {t('general.cancel')}
             </Button>
             <Button
               onClick={handleAddBulk}
               disabled={readyToAdd.length === 0 || installing || hasLoading}
-              className={cn("flex-1 text-white", getAccentStyles('bg').className)}
+              className={cn("w-full text-white sm:flex-1", getAccentStyles('bg').className)}
               style={getAccentStyles('bg').style}
               isLoading={installing}
             >

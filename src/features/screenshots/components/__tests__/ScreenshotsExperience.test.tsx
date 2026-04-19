@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Screenshot } from '../../../../../electron/services/screenshots/screenshotService';
 import { ScreenshotsTab } from '../ScreenshotsTab';
@@ -22,6 +22,9 @@ const t = createTranslator('en');
 vi.mock('../../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
     t,
+    formatDate: (timestamp: number | undefined, unknownText = 'Unknown', options?: Intl.DateTimeFormatOptions) =>
+      timestamp ? new Date(timestamp).toLocaleDateString('en-US', options) : unknownText,
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-US', options).format(value),
   }),
 }));
 
@@ -143,6 +146,19 @@ describe('screenshots experience', () => {
     await waitFor(() => {
       expect(openFolderMock).toHaveBeenCalledWith('/instance');
     });
+  });
+
+  it('shows a degraded error state for failed screenshot loads and retries into the empty state', async () => {
+    listMock.mockRejectedValue(new Error('[IPC] screenshots failed: Screenshots folder unavailable'));
+
+    render(<ScreenshotsTab instancePath="/instance" />);
+
+    const errorState = await screen.findByRole('alert');
+    expect(screen.getByRole('heading', { name: t('screenshots.loadError') })).toBeTruthy();
+    expect(errorState.textContent).toContain(t('degraded.error_label'));
+    expect(errorState.textContent).not.toContain(t('screenshots.emptyTitle'));
+    expect(within(errorState).getByRole('button', { name: t('modpacks.world_refresh') })).toBeTruthy();
+    expect(within(errorState).getByRole('button', { name: t('screenshots.openFolder') })).toBeTruthy();
   });
 
   it('confirms screenshot deletion through the shared confirm flow and updates the gallery', async () => {

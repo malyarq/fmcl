@@ -8,6 +8,9 @@ interface ModalProps {
     children: React.ReactNode;
     title?: React.ReactNode;
     className?: string;
+    bodyClassName?: string;
+    bodyProps?: Omit<React.HTMLAttributes<HTMLDivElement>, 'children' | 'className' | 'id'>;
+    bodyRef?: React.Ref<HTMLDivElement>;
 }
 
 const FOCUSABLE_SELECTOR = [
@@ -92,7 +95,10 @@ export const Modal: React.FC<ModalProps> = ({
     onClose,
     children,
     title,
-    className
+    className,
+    bodyClassName,
+    bodyProps,
+    bodyRef,
 }) => {
     const dialogRef = useRef<HTMLDivElement>(null);
     const lastFocusedElementRef = useRef<HTMLElement | null>(null);
@@ -221,7 +227,7 @@ export const Modal: React.FC<ModalProps> = ({
                 <div
                     ref={dialogRef}
                     className={cn(
-                        'surface-panel w-full max-w-lg rounded-[28px] overflow-hidden pointer-events-auto',
+                        'surface-panel pointer-events-auto flex w-full max-w-lg flex-col overflow-hidden rounded-[28px]',
                         'max-h-[95vh] sm:max-h-[90vh] md:max-h-[85vh]',
                         animationClasses.dialog,
                         className
@@ -252,9 +258,14 @@ export const Modal: React.FC<ModalProps> = ({
                     </div>
 
                     <div
+                        ref={bodyRef}
                         id={contentId}
                         data-modal-body="true"
-                        className="p-4 sm:p-6 max-h-[calc(95vh-80px)] sm:max-h-[calc(90vh-80px)] md:max-h-[70vh] overflow-y-auto custom-scrollbar"
+                        className={cn(
+                            'min-h-0 flex-1 overflow-y-auto p-4 custom-scrollbar sm:p-6',
+                            bodyClassName
+                        )}
+                        {...bodyProps}
                     >
                         {children}
                     </div>

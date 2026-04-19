@@ -1,12 +1,65 @@
 import type { FriendLauncherApi, ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts';
 import type { Account, Mirror, ModpackManifest, ModpackMetadata, StatisticsOverview } from '@shared/types';
 import type { ModEntry } from '@shared/types/mods';
+import type { ResourcePack } from '@shared/types/resourcePack';
 import type { ModpackConfig } from '../../contexts/instances/types';
 import type { Screenshot } from '../../../electron/services/screenshots/screenshotService';
 
 const ICON_PATH = '/icon.png';
 const DESKTOP_PATH = '/Users/manual/Desktop';
 const PHASE_17_POLISH_VIEW = 'phase-17-polish';
+const PHASE_21_BROWSER_DENSITY_VIEW = 'phase-21-browser-density';
+const PHASE_21_DETAILS_DENSITY_VIEW = 'phase-21-details-density';
+const PHASE_21_RUNTIME_EDIT_VIEW = 'phase-21-runtime-edit';
+const PHASE_21_SECONDARY_DENSITY_VIEW = 'phase-21-secondary-density';
+const PHASE_22_THEME_DARK_VIEW = 'phase-22-theme-dark';
+const PHASE_22_THEME_LIGHT_VIEW = 'phase-22-theme-light';
+const PHASE_22_LOCALE_RU_VIEW = 'phase-22-locale-ru';
+const PHASE_24_HOME_CLOSEOUT_VIEW = 'phase-24-home-closeout';
+const PHASE_24_MODPACKS_CLOSEOUT_VIEW = 'phase-24-modpacks-closeout';
+const PHASE_24_DEGRADED_CLOSEOUT_VIEW = 'phase-24-degraded-closeout';
+const PHASE_24_THEME_DARK_VIEW = 'phase-24-theme-dark';
+const PHASE_24_THEME_LIGHT_VIEW = 'phase-24-theme-light';
+const PHASE_24_LOCALE_EN_VIEW = 'phase-24-locale-en';
+const PHASE_24_LOCALE_RU_VIEW = 'phase-24-locale-ru';
+
+const PHASE_21_DETAIL_VIEWS = new Set([PHASE_21_DETAILS_DENSITY_VIEW, PHASE_21_RUNTIME_EDIT_VIEW]);
+const PHASE_24_CLOSEOUT_VIEWS = new Set([
+  PHASE_24_HOME_CLOSEOUT_VIEW,
+  PHASE_24_MODPACKS_CLOSEOUT_VIEW,
+  PHASE_24_DEGRADED_CLOSEOUT_VIEW,
+  PHASE_24_THEME_DARK_VIEW,
+  PHASE_24_THEME_LIGHT_VIEW,
+  PHASE_24_LOCALE_EN_VIEW,
+  PHASE_24_LOCALE_RU_VIEW,
+]);
+const PHASE_24_SIMPLE_VIEWS = new Set([
+  PHASE_24_HOME_CLOSEOUT_VIEW,
+  PHASE_24_THEME_DARK_VIEW,
+  PHASE_24_THEME_LIGHT_VIEW,
+]);
+const PHASE_24_BROWSER_PROOF_VIEWS = new Set([
+  PHASE_24_MODPACKS_CLOSEOUT_VIEW,
+  PHASE_24_LOCALE_EN_VIEW,
+  PHASE_24_LOCALE_RU_VIEW,
+]);
+
+const FIXTURE_NOW_MS = Date.parse('2026-04-19T12:00:00.000Z');
+const secondsAgo = (seconds: number) => FIXTURE_NOW_MS - seconds * 1_000;
+const minutesAgo = (minutes: number) => FIXTURE_NOW_MS - minutes * 60_000;
+const hoursAgo = (hours: number) => FIXTURE_NOW_MS - hours * 3_600_000;
+
+export const PHASE_21_RUNTIME_FIXTURE = {
+  name: 'Atlas Control Room Longform Runtime Review Pack',
+  description:
+    'Shared Phase 21 runtime summary fixture with intentionally long metadata so create and edit truth can be compared under real shell density.',
+  version: '2.6.0-rc.12',
+  minecraftVersion: '1.20.1',
+  modLoader: {
+    type: 'fabric' as const,
+    version: '0.16.9',
+  },
+};
 
 const baseConfigs: Record<string, ModpackConfig> = {
   alpha: {
@@ -121,12 +174,95 @@ const browserResults: ModpackSearchResultItem[] = [
   },
 ];
 
+const phase21BrowserResults: ModpackSearchResultItem[] = [
+  {
+    platform: 'modrinth',
+    projectId: 'atlas-control-room',
+    slug: 'atlas-control-room',
+    title: 'Atlas Control Room Longform Runtime Review Pack',
+    description: 'Crowded card with layered compatibility, activity, and install metadata for dense browser proof.',
+    iconUrl: undefined,
+    downloads: 91_234,
+    dateCreated: '2026-03-29T10:00:00.000Z',
+    dateModified: '2026-04-16T08:30:00.000Z',
+  },
+  {
+    platform: 'modrinth',
+    projectId: 'signal-overwatch',
+    slug: 'signal-overwatch',
+    title: 'Signal Overwatch Operations Board',
+    description: 'Long-title follow-up card with enough copy to expose wrapped metadata and CTA drift.',
+    iconUrl: ICON_PATH,
+    downloads: 48_302,
+    dateCreated: '2026-03-25T09:15:00.000Z',
+    dateModified: '2026-04-15T12:00:00.000Z',
+  },
+  {
+    platform: 'modrinth',
+    projectId: 'archive-telemetry',
+    slug: 'archive-telemetry',
+    title: 'Archive Telemetry and Recovery Procedures',
+    description: 'Secondary dense browser result with stacked copy and a long project name.',
+    iconUrl: undefined,
+    downloads: 27_118,
+    dateCreated: '2026-03-19T07:10:00.000Z',
+    dateModified: '2026-04-14T16:45:00.000Z',
+  },
+  {
+    platform: 'modrinth',
+    projectId: 'night-transit',
+    slug: 'night-transit',
+    title: 'Night Transit Lighting Review',
+    description: 'Compact but still long enough to stress horizontal card rhythm in the same result set.',
+    iconUrl: ICON_PATH,
+    downloads: 14_280,
+    dateCreated: '2026-03-11T12:00:00.000Z',
+    dateModified: '2026-04-12T10:00:00.000Z',
+  },
+  {
+    platform: 'modrinth',
+    projectId: 'dense-ui-observer',
+    slug: 'dense-ui-observer',
+    title: 'Dense UI Observer Toolkit for Multiplayer Crews',
+    description: 'Supportive metadata block meant to produce visible card stacking instead of single-line happy paths.',
+    iconUrl: undefined,
+    downloads: 12_084,
+    dateCreated: '2026-02-28T10:00:00.000Z',
+    dateModified: '2026-04-10T08:30:00.000Z',
+  },
+  {
+    platform: 'modrinth',
+    projectId: 'relay-ops',
+    slug: 'relay-ops',
+    title: 'Relay Operations Map Pack',
+    description: 'Shorter trailing card to make the dense browser view feel like a real mixed catalog.',
+    iconUrl: ICON_PATH,
+    downloads: 9_816,
+    dateCreated: '2026-02-17T15:20:00.000Z',
+    dateModified: '2026-04-09T18:20:00.000Z',
+  },
+];
+
 function getManualVerificationView() {
   return new URLSearchParams(window.location.search).get('view') ?? 'overview';
 }
 
 function getMetadataForView(view: string): Record<string, ModpackMetadata> {
   const metadata = structuredClone(baseMetadata);
+
+  if (PHASE_21_DETAIL_VIEWS.has(view)) {
+    metadata.alpha = {
+      ...metadata.alpha,
+      name: PHASE_21_RUNTIME_FIXTURE.name,
+      version: PHASE_21_RUNTIME_FIXTURE.version,
+      minecraftVersion: PHASE_21_RUNTIME_FIXTURE.minecraftVersion,
+      modLoader: structuredClone(PHASE_21_RUNTIME_FIXTURE.modLoader),
+      description:
+        'Constrained-width details proof with intentionally long metadata, crowded supporting copy, and the shared runtime truth fixture.',
+      author: 'FMCL Dense Surface Validation Crew',
+      updatedAt: '2026-04-18T08:30:00.000Z',
+    };
+  }
 
   if (view !== PHASE_17_POLISH_VIEW) {
     return metadata;
@@ -142,17 +278,31 @@ function getMetadataForView(view: string): Record<string, ModpackMetadata> {
 }
 
 function getBrowserResultsForView(view: string): ModpackSearchResultItem[] {
+  if (view === PHASE_21_BROWSER_DENSITY_VIEW) {
+    return structuredClone(phase21BrowserResults);
+  }
+
   const results = structuredClone(browserResults);
 
-  if (view !== PHASE_17_POLISH_VIEW) {
+  if (view === PHASE_17_POLISH_VIEW) {
+    results[0] = {
+      ...results[0],
+      iconUrl: undefined,
+      description: 'No-art launcher mark fallback fixture for the constrained browser state.',
+    };
+
     return results;
   }
 
-  results[0] = {
-    ...results[0],
-    iconUrl: undefined,
-    description: 'No-art launcher mark fallback fixture for the constrained browser state.',
-  };
+  if (view === 'modpack-browser' || view === PHASE_21_BROWSER_DENSITY_VIEW || PHASE_24_BROWSER_PROOF_VIEWS.has(view)) {
+    results[0] = {
+      ...results[0],
+      iconUrl: undefined,
+      description: PHASE_24_BROWSER_PROOF_VIEWS.has(view)
+        ? 'Phase 24 closeout browser fixture with deterministic neutral artwork fallback for final review.'
+        : 'Phase 20 neutral artwork fallback fixture for the shell-integrated browser proof.',
+    };
+  }
 
   return results;
 }
@@ -186,7 +336,7 @@ const modEntries: ModEntry[] = [
       path: '/mock/.minecraft/mods/alpha.jar',
       name: 'alpha.jar',
       size: 1024,
-      mtimeMs: Date.now() - 10_000,
+      mtimeMs: secondsAgo(10),
     },
     hash: {
       sha1: 'alpha-sha1',
@@ -203,7 +353,7 @@ const modEntries: ModEntry[] = [
       path: '/mock/.minecraft/mods/beta.jar.disabled',
       name: 'beta.jar.disabled',
       size: 768,
-      mtimeMs: Date.now() - 7_500,
+      mtimeMs: secondsAgo(7.5),
     },
     hash: {
       sha1: 'beta-sha1',
@@ -225,7 +375,7 @@ const modEntries: ModEntry[] = [
       path: '/mock/.minecraft/mods/gamma.jar',
       name: 'gamma.jar',
       size: 1536,
-      mtimeMs: Date.now() - 5_000,
+      mtimeMs: secondsAgo(5),
     },
     hash: {
       sha1: 'gamma-sha1',
@@ -234,26 +384,109 @@ const modEntries: ModEntry[] = [
   },
 ];
 
+const phase21DenseModEntries: ModEntry[] = [
+  {
+    id: 'atlas-bootstrap',
+    name: 'Atlas Bootstrap Sequencer',
+    version: '4.2.1',
+    loaders: ['fabric'],
+    deps: [],
+    file: {
+      path: '/mock/.minecraft/mods/atlas-bootstrap.jar',
+      name: 'atlas-bootstrap.jar',
+      size: 2_048,
+      mtimeMs: secondsAgo(12),
+    },
+    hash: {
+      sha1: 'atlas-bootstrap-sha1',
+    },
+    enabled: true,
+  },
+  {
+    id: 'signal-panels',
+    name: 'Signal Panels and Dense Status Labels',
+    version: '2.9.0',
+    loaders: ['fabric'],
+    deps: [],
+    file: {
+      path: '/mock/.minecraft/mods/signal-panels.jar',
+      name: 'signal-panels.jar',
+      size: 1_536,
+      mtimeMs: secondsAgo(10.5),
+    },
+    hash: {
+      sha1: 'signal-panels-sha1',
+    },
+    enabled: true,
+  },
+  {
+    id: 'crowded-routing',
+    name: 'Crowded Routing Diagnostics Companion',
+    version: '1.7.3',
+    loaders: ['fabric'],
+    deps: [
+      { id: 'minecraft', versionRange: '[1.20.1]', kind: 'depends' },
+      { id: 'fabricloader', versionRange: '[0.16.9]', kind: 'depends' },
+      { id: 'atlas-bootstrap', versionRange: '[4.2.1]', kind: 'depends' },
+    ],
+    file: {
+      path: '/mock/.minecraft/mods/crowded-routing.jar',
+      name: 'crowded-routing.jar',
+      size: 2_560,
+      mtimeMs: secondsAgo(9),
+    },
+    hash: {
+      sha1: 'crowded-routing-sha1',
+    },
+    enabled: true,
+  },
+  {
+    id: 'overworld-reports',
+    name: 'Overworld Reports and Warning Panels',
+    version: '6.0.4',
+    loaders: ['fabric'],
+    deps: [],
+    file: {
+      path: '/mock/.minecraft/mods/overworld-reports.jar.disabled',
+      name: 'overworld-reports.jar.disabled',
+      size: 1_280,
+      mtimeMs: secondsAgo(7.5),
+    },
+    hash: {
+      sha1: 'overworld-reports-sha1',
+    },
+    enabled: false,
+  },
+];
+
 export function getManualVerificationModpackMetadata(view: string): ModpackMetadata {
   return structuredClone(getMetadataForView(view).alpha);
 }
 
-export function getManualVerificationModEntries(): ModEntry[] {
+function getModEntriesForView(view: string): ModEntry[] {
+  if (PHASE_21_DETAIL_VIEWS.has(view)) {
+    return structuredClone(phase21DenseModEntries);
+  }
+
   return structuredClone(modEntries);
+}
+
+export function getManualVerificationModEntries(view = 'overview'): ModEntry[] {
+  return getModEntriesForView(view);
 }
 
 const statistics: StatisticsOverview = {
   global: {
     totalPlayTime: 7_200_000,
     totalLaunches: 18,
-    lastPlayed: Date.now() - 3_600_000,
+    lastPlayed: hoursAgo(1),
   },
   instances: {
     alpha: {
       name: 'Alpha Pack',
       playTime: 4_200_000,
       launches: 11,
-      lastPlayed: Date.now() - 3_600_000,
+      lastPlayed: hoursAgo(1),
     },
   },
   history: {
@@ -267,7 +500,7 @@ const statistics: StatisticsOverview = {
       name: 'Alpha Pack',
       playTime: 4_200_000,
       launches: 11,
-      lastPlayed: Date.now() - 3_600_000,
+      lastPlayed: hoursAgo(1),
     },
   ],
   usageTrend: [
@@ -309,14 +542,14 @@ const screenshots: Screenshot[] = [
     name: 'mountain-sunrise.png',
     path: '/mock/.minecraft/instances/alpha/screenshots/mountain-sunrise.png',
     url: ICON_PATH,
-    createdAt: Date.now() - 720_000,
+    createdAt: minutesAgo(12),
     size: 256_000,
   },
   {
     name: 'village-evening.png',
     path: '/mock/.minecraft/instances/alpha/screenshots/village-evening.png',
     url: ICON_PATH,
-    createdAt: Date.now() - 360_000,
+    createdAt: minutesAgo(6),
     size: 248_000,
   },
 ];
@@ -350,6 +583,80 @@ const datapackSearchResults = {
   total_hits: 1,
 };
 
+const resourcePacks: ResourcePack[] = [
+  {
+    fileName: 'painterly-depth.zip',
+    name: 'Painterly Depth',
+    description: 'Missing-art proof pack for the Phase 20 brand fallback route.',
+    packFormat: 34,
+    path: '/mock/.minecraft/instances/alpha/resourcepacks/painterly-depth.zip',
+    iconUrl: undefined,
+    isEnabled: true,
+    size: 1_572_864,
+  },
+  {
+    fileName: 'grid-notes.zip',
+    name: 'Grid Notes',
+    description: 'Secondary pack with bundled art for reorder and state contrast.',
+    packFormat: 34,
+    path: '/mock/.minecraft/instances/alpha/resourcepacks/grid-notes.zip',
+    iconUrl: ICON_PATH,
+    isEnabled: false,
+    size: 1_048_576,
+  },
+];
+
+const phase21DenseResourcePacks: ResourcePack[] = [
+  {
+    fileName: 'painterly-depth-annotated-ui-pack.zip',
+    name: 'Painterly Depth Annotated UI Pack',
+    description: 'Missing-art proof pack with a deliberately long label for dense secondary-content review.',
+    packFormat: 34,
+    path: '/mock/.minecraft/instances/alpha/resourcepacks/painterly-depth-annotated-ui-pack.zip',
+    iconUrl: undefined,
+    isEnabled: true,
+    size: 1_572_864,
+  },
+  {
+    fileName: 'status-ribbon-contrast-calibration-sheets.zip',
+    name: 'Status Ribbon Contrast Calibration Sheets',
+    description: 'Long secondary label used to expose multi-line list rhythm and CTA stacking.',
+    packFormat: 34,
+    path: '/mock/.minecraft/instances/alpha/resourcepacks/status-ribbon-contrast-calibration-sheets.zip',
+    iconUrl: ICON_PATH,
+    isEnabled: true,
+    size: 1_848_320,
+  },
+  {
+    fileName: 'dense-inventory-labels-companion.zip',
+    name: 'Dense Inventory Labels Companion',
+    description: 'Support pack with enough metadata to keep the secondary route visibly busy.',
+    packFormat: 34,
+    path: '/mock/.minecraft/instances/alpha/resourcepacks/dense-inventory-labels-companion.zip',
+    iconUrl: undefined,
+    isEnabled: false,
+    size: 1_228_800,
+  },
+  {
+    fileName: 'night-transit-lighting-proof.zip',
+    name: 'Night Transit Lighting Proof',
+    description: 'Trailing pack that keeps reorder and enable controls visible under density pressure.',
+    packFormat: 34,
+    path: '/mock/.minecraft/instances/alpha/resourcepacks/night-transit-lighting-proof.zip',
+    iconUrl: ICON_PATH,
+    isEnabled: false,
+    size: 1_009_664,
+  },
+];
+
+function getResourcePacksForView(view: string): ResourcePack[] {
+  if (view === PHASE_21_SECONDARY_DENSITY_VIEW) {
+    return structuredClone(phase21DenseResourcePacks);
+  }
+
+  return structuredClone(resourcePacks);
+}
+
 type ManualState = {
   selectedModpackId: string;
   selectedAccountId: string;
@@ -358,11 +665,32 @@ type ManualState = {
   accounts: Account[];
 };
 
+function getConfigsForView(view: string): Record<string, ModpackConfig> {
+  const configs = structuredClone(baseConfigs);
+
+  if (PHASE_21_DETAIL_VIEWS.has(view)) {
+    configs.alpha = {
+      ...configs.alpha,
+      name: PHASE_21_RUNTIME_FIXTURE.name,
+      runtime: {
+        minecraft: PHASE_21_RUNTIME_FIXTURE.minecraftVersion,
+        modLoader: structuredClone(PHASE_21_RUNTIME_FIXTURE.modLoader),
+      },
+      memory: { maxMb: 8192, minMb: 6144 },
+      updatedAt: '2026-04-18T08:30:00.000Z',
+    };
+  }
+
+  return configs;
+}
+
 function createState(view: string): ManualState {
+  const configs = getConfigsForView(view);
+
   return {
     selectedModpackId: 'alpha',
     selectedAccountId: 'account-1',
-    modpacks: [structuredClone(baseConfigs.alpha), structuredClone(baseConfigs.classic)],
+    modpacks: [structuredClone(configs.alpha), structuredClone(configs.classic)],
     metadata: getMetadataForView(view),
     accounts: structuredClone(baseAccounts),
   };
@@ -401,18 +729,25 @@ function createSearchResponse(query: string, offset = 0, limit = 12, view = 'ove
 }
 
 export function seedManualVerificationStorage(view: string) {
-  const simpleViews = new Set(['welcome', 'tour', 'dashboard']);
+  const simpleViews = new Set(['welcome', 'tour', 'dashboard', ...PHASE_24_SIMPLE_VIEWS]);
   const isPhase17Polish = view === PHASE_17_POLISH_VIEW;
+  const isPhase22ThemeDark = view === PHASE_22_THEME_DARK_VIEW;
+  const isPhase22ThemeLight = view === PHASE_22_THEME_LIGHT_VIEW;
+  const isPhase22LocaleRu = view === PHASE_22_LOCALE_RU_VIEW;
+  const isPhase24ThemeDark = view === PHASE_24_THEME_DARK_VIEW;
+  const isPhase24ThemeLight = view === PHASE_24_THEME_LIGHT_VIEW;
+  const isPhase24LocaleRu = view === PHASE_24_LOCALE_RU_VIEW;
   const seededBrowserResults = getBrowserResultsForView(view);
 
-  localStorage.setItem('settings_language', isPhase17Polish ? 'ru' : 'en');
-  localStorage.setItem('settings_theme', 'dark');
-  if (isPhase17Polish) {
+  localStorage.setItem('settings_language', isPhase17Polish || isPhase22LocaleRu || isPhase24LocaleRu ? 'ru' : 'en');
+  localStorage.setItem('settings_theme', isPhase22ThemeLight || isPhase24ThemeLight ? 'light' : 'dark');
+  if (isPhase17Polish || isPhase22ThemeDark || isPhase24ThemeDark) {
     localStorage.setItem('settings_themePresetId', 'forest');
   } else {
     localStorage.removeItem('settings_themePresetId');
   }
-  localStorage.setItem('settings_accentColor', 'emerald');
+  localStorage.setItem('settings_accentColor', isPhase22ThemeLight || isPhase24ThemeLight ? 'rose' : 'emerald');
+  localStorage.setItem('settings_disableAnimations', PHASE_24_CLOSEOUT_VIEWS.has(view) ? 'true' : 'false');
   localStorage.setItem('settings_minecraftPath', '/mock/.minecraft');
   localStorage.setItem('settings_uiMode', simpleViews.has(view) ? 'simple' : 'modpacks');
   localStorage.setItem('simple_play_welcome_dismissed', 'false');
@@ -541,33 +876,33 @@ export function installManualVerificationEnvironment() {
     getModrinthModpackVersions: async () => structuredClone(modpackVersions),
     installCurseForgeModpack: async () => ({
       modpackId: 'alpha',
-      config: structuredClone(baseConfigs.alpha),
-      metadata: structuredClone(baseMetadata.alpha),
+      config: structuredClone(getConfigsForView(view).alpha),
+      metadata: structuredClone(getMetadataForView(view).alpha),
     }),
     installModrinthModpack: async () => ({
       modpackId: 'alpha',
-      config: structuredClone(baseConfigs.alpha),
-      metadata: structuredClone(baseMetadata.alpha),
+      config: structuredClone(getConfigsForView(view).alpha),
+      metadata: structuredClone(getMetadataForView(view).alpha),
     }),
-    exportModpackFromInstance: async () => structuredClone(baseMetadata.alpha),
+    exportModpackFromInstance: async () => structuredClone(getMetadataForView(view).alpha),
     createLocalModpack: async () => ({
       id: 'alpha',
-      config: structuredClone(baseConfigs.alpha),
-      metadata: structuredClone(baseMetadata.alpha),
+      config: structuredClone(getConfigsForView(view).alpha),
+      metadata: structuredClone(getMetadataForView(view).alpha),
     }),
     createFromManifest: async () => ({ id: 'alpha' }),
     exportModpack: async () => ({ ok: true }),
-    getModpackInfoFromFile: async () => ({ format: 'modrinth' as const, manifest: null }),
+    getModpackInfoFromFile: async () => ({ format: 'modrinth' as const, manifest: structuredClone(sharedManifest) }),
     importModpack: async () => ({
       id: 'alpha',
-      config: structuredClone(baseConfigs.alpha),
-      metadata: structuredClone(baseMetadata.alpha),
+      config: structuredClone(getConfigsForView(view).alpha),
+      metadata: structuredClone(getMetadataForView(view).alpha),
     }),
     addModToModpack: async () => ({ ok: true }),
     removeModFromModpack: async () => ({ ok: true }),
     setModEnabled: async () => ({ ok: true }),
     updateModpackOverrides: async () => ({ ok: true }),
-    getModpackMods: async () => structuredClone(modEntries),
+    getModpackMods: async () => getModEntriesForView(view),
     backupModpack: async () => ({ backupPath: '/mock/.minecraft/backups/alpha.zip' }),
     resolvePath: async (modpackId: string) => `/mock/.minecraft/instances/${modpackId}`,
     scanJava: async () => [
@@ -648,24 +983,35 @@ export function installManualVerificationEnvironment() {
   };
 
   const shareApi = {
-    generateCode: async (modpackId: string) => `fmcl://share/${modpackId}?v=1.4.2`,
+    generateCode: async (modpackId: string) => {
+      if (view === PHASE_24_DEGRADED_CLOSEOUT_VIEW) {
+        throw new Error('[shareIPC] generateCode failed: ${file.jarVersion}');
+      }
+      return `fmcl://share/${modpackId}?v=1.4.2`;
+    },
     importCode: async () => structuredClone(sharedManifest),
   };
 
   const modsApi = {
-    searchMods: async () => ({
-      items: [
-        {
-          platform: 'modrinth' as const,
-          projectId: 'sodium',
-          title: 'Sodium',
-          description: 'Client performance improvements',
-          iconUrl: ICON_PATH,
-          downloads: 10_000,
-        },
-      ],
-      total: 1,
-    }),
+    searchMods: async () => {
+      if (view === PHASE_24_DEGRADED_CLOSEOUT_VIEW) {
+        throw new Error('[modsIPC] searchMods failed: ${file.jarVersion}');
+      }
+
+      return {
+        items: [
+          {
+            platform: 'modrinth' as const,
+            projectId: 'sodium',
+            title: 'Sodium',
+            description: 'Client performance improvements',
+            iconUrl: ICON_PATH,
+            downloads: 10_000,
+          },
+        ],
+        total: 1,
+      };
+    },
     getModVersions: async () => [
       {
         platform: 'modrinth' as const,
@@ -680,7 +1026,12 @@ export function installManualVerificationEnvironment() {
   };
 
   const statisticsApi = {
-    getStats: async () => structuredClone(statistics),
+    getStats: async () => {
+      if (view === PHASE_24_DEGRADED_CLOSEOUT_VIEW) {
+        throw new Error('[IPC] getStats failed: Statistics store unavailable');
+      }
+      return structuredClone(statistics);
+    },
     exportStats: async (filePath: string) => ({
       filePath,
       exportedAt: new Date().toISOString(),
@@ -757,6 +1108,17 @@ export function installManualVerificationEnvironment() {
       if (channel === 'datapacks:install') {
         return { ok: true } as T;
       }
+      if (channel === 'resourcePacks:list') {
+        return getResourcePacksForView(view) as T;
+      }
+      if (
+        channel === 'resourcePacks:enable'
+        || channel === 'resourcePacks:disable'
+        || channel === 'resourcePacks:reorder'
+        || channel === 'resourcePacks:delete'
+      ) {
+        return { ok: true } as T;
+      }
       throw new Error(`Unhandled manual verification ipc channel: ${channel}`);
     },
   };
@@ -788,7 +1150,12 @@ export function installManualVerificationEnvironment() {
   window.mirrors = mirrorsApi as unknown as Window['mirrors'];
   window.share = shareApi as unknown as Window['share'];
   window.screenshots = {
-    list: async () => structuredClone(screenshots),
+    list: async () => {
+      if (view === PHASE_24_DEGRADED_CLOSEOUT_VIEW) {
+        throw new Error('[IPC] screenshots failed: Screenshots folder unavailable');
+      }
+      return structuredClone(screenshots);
+    },
     delete: async () => ({ ok: true }),
     rename: async () => ({ ok: true }),
     openFolder: async () => ({ ok: true }),

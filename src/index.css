@@ -42,6 +42,18 @@
     /* emerald-600 */
     --accent-content: 255 255 255;
     /* white */
+
+    --brand-shell-glow: 107 139 111;
+    --brand-mark-frame: 238 242 232;
+    --brand-mark-border: 203 213 194;
+    --brand-mark-glow: 49 67 56;
+    --brand-media-frame: 237 241 232;
+    --brand-media-border: 210 218 208;
+    --surface-shadow-panel: 0 24px 80px rgba(24, 31, 27, 0.16);
+    --surface-shadow-card: 0 14px 48px rgba(24, 31, 27, 0.12);
+    --surface-shadow-soft: 0 8px 24px rgba(24, 31, 27, 0.08);
+    --brand-wordmark-weight: 820;
+    --brand-wordmark-spacing: 0.08em;
   }
 
   .dark {
@@ -68,6 +80,18 @@
     /* zinc-500 */
     --color-error: 220 38 38;
     /* red-600 */
+
+    --brand-shell-glow: 122 165 125;
+    --brand-mark-frame: 19 25 22;
+    --brand-mark-border: 52 65 56;
+    --brand-mark-glow: 142 183 149;
+    --brand-media-frame: 26 34 28;
+    --brand-media-border: 54 67 58;
+    --surface-shadow-panel: 0 24px 80px rgba(0, 0, 0, 0.26);
+    --surface-shadow-card: 0 14px 48px rgba(0, 0, 0, 0.22);
+    --surface-shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.18);
+    --brand-wordmark-weight: 820;
+    --brand-wordmark-spacing: 0.08em;
   }
 
   body {
@@ -78,8 +102,8 @@
     min-height: 100dvh;
     margin: 0;
     background:
-      radial-gradient(circle at top center, rgb(var(--accent-main) / 0.14), transparent 42%),
-      radial-gradient(circle at bottom left, rgb(var(--accent-main) / 0.08), transparent 36%),
+      radial-gradient(circle at top center, rgb(var(--brand-shell-glow) / 0.18), transparent 44%),
+      radial-gradient(circle at bottom left, rgb(var(--brand-shell-glow) / 0.08), transparent 38%),
       rgb(var(--bg-app));
   }
 
@@ -115,11 +139,13 @@
 
 @layer components {
   .surface-panel {
-    @apply rounded-3xl border border-border/80 bg-card/92 text-foreground shadow-[0_24px_80px_rgba(0,0,0,0.18)] backdrop-blur-xl;
+    @apply rounded-3xl border border-border/80 bg-card/92 text-foreground backdrop-blur-xl;
+    box-shadow: var(--surface-shadow-panel);
   }
 
   .surface-card {
-    @apply rounded-2xl border border-border/75 bg-card/88 text-foreground shadow-[0_14px_48px_rgba(0,0,0,0.16)] backdrop-blur-lg;
+    @apply rounded-2xl border border-border/75 bg-card/88 text-foreground backdrop-blur-lg;
+    box-shadow: var(--surface-shadow-card);
   }
 
   .surface-muted {
@@ -135,7 +161,8 @@
   }
 
   .control-frame {
-    @apply rounded-xl border border-border/70 bg-card/82 text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-md transition-all;
+    @apply rounded-xl border border-border/70 bg-card/82 text-foreground backdrop-blur-md transition-all;
+    box-shadow: var(--surface-shadow-soft);
   }
 
   .control-label {
@@ -147,12 +174,46 @@
   }
 
   .surface-soft {
-    @apply rounded-xl border border-border/60 bg-card/72 text-foreground shadow-[0_8px_24px_rgba(0,0,0,0.08)] backdrop-blur-md;
+    @apply rounded-xl border border-border/60 bg-card/72 text-foreground backdrop-blur-md;
+    box-shadow: var(--surface-shadow-soft);
   }
 
   .launcher-content-width {
     width: min(100%, 72rem);
     margin-inline: auto;
+  }
+
+  .brand-wordmark {
+    font-weight: var(--brand-wordmark-weight);
+    letter-spacing: var(--brand-wordmark-spacing);
+    line-height: 1;
+  }
+
+  .brand-wordmark-shell {
+    @apply text-[11px] uppercase;
+    letter-spacing: calc(var(--brand-wordmark-spacing) + 0.08em);
+  }
+
+  .brand-wordmark-hero {
+    @apply text-3xl md:text-4xl;
+    letter-spacing: calc(var(--brand-wordmark-spacing) - 0.02em);
+    text-shadow: 0 18px 40px rgb(var(--brand-mark-glow) / 0.18);
+  }
+
+  .brand-mark-frame {
+    @apply p-3 backdrop-blur-md;
+    background: linear-gradient(180deg, rgb(var(--brand-mark-frame) / 0.96), rgb(var(--bg-card) / 0.84));
+    border-color: rgb(var(--brand-mark-border) / 0.72);
+    box-shadow:
+      0 0 0 1px rgb(var(--brand-mark-border) / 0.18),
+      0 22px 50px rgb(var(--brand-mark-glow) / 0.24);
+  }
+
+  .brand-media-frame {
+    @apply p-3 backdrop-blur-md;
+    background: linear-gradient(180deg, rgb(var(--brand-media-frame) / 0.96), rgb(var(--bg-card) / 0.76));
+    border-color: rgb(var(--brand-media-border) / 0.72);
+    box-shadow: var(--surface-shadow-soft);
   }
 }
 

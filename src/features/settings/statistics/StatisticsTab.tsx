@@ -7,34 +7,72 @@ import { Button } from '../../../components/ui/Button';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { dialogIPC } from '../../../services/ipc/dialogIPC';
 import { statisticsIPC } from '../../../services/ipc/statisticsIPC';
+import { DegradedStateView } from '../../../components/layout/DegradedStateView';
+import { toDisplayErrorMessage } from '../../../utils/displayError';
 
-function formatTime(ms: number): string {
+function formatTime(
+    ms: number,
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string,
+    labels: { hours: string; minutes: string; seconds: string },
+): string {
     const seconds = Math.floor((ms / 1000) % 60);
     const minutes = Math.floor((ms / (1000 * 60)) % 60);
     const hours = Math.floor(ms / (1000 * 60 * 60));
 
-    return `${hours}h ${minutes}m ${seconds}s`;
+    return `${formatNumber(hours)}${labels.hours} ${formatNumber(minutes)}${labels.minutes} ${formatNumber(seconds)}${labels.seconds}`;
 }
 
-function formatTrendDate(date: string): string {
+function formatTrendDate(
+    date: string,
+    formatDate: (timestamp: number | undefined, unknownText?: string, options?: Intl.DateTimeFormatOptions) => string,
+): string {
     const value = new Date(`${date}T00:00:00`);
-    return value.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return formatDate(value.getTime(), '', { month: 'short', day: 'numeric' });
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+    const normalized = hex.startsWith('#') ? hex.slice(1) : hex;
+    const r = Number.parseInt(normalized.slice(0, 2), 16);
+    const g = Number.parseInt(normalized.slice(2, 4), 16);
+    const b = Number.parseInt(normalized.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 export const StatisticsTab: React.FC = () => {
-    const { t } = useSettings();
+    const { t, formatDate, formatNumber, getAccentHex } = useSettings();
     const toast = useToast();
     const [stats, setStats] = useState<StatisticsOverview | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<unknown | null>(null);
     const [isExporting, setIsExporting] = useState(false);
+    const accentHex = getAccentHex();
+    const durationLabels = {
+        hours: t('stats.hours_short') === 'stats.hours_short' ? 'h' : t('stats.hours_short'),
+        minutes: t('stats.minutes_short') === 'stats.minutes_short' ? 'm' : t('stats.minutes_short'),
+        seconds: t('stats.seconds_short') === 'stats.seconds_short' ? 's' : t('stats.seconds_short'),
+    };
 
     const loadStats = useCallback(async () => {
+        setLoading(true);
+        setLoadError(null);
         try {
             const data = await statisticsIPC.getStats();
             setStats(data);
         } catch (error) {
             console.error('Failed to load statistics:', error);
+            setStats(null);
+            setLoadError(error);
+        } finally {
+            setLoading(false);
         }
     }, []);
+    const statisticsErrorTitle = t('error.inline_fallback');
+    const statisticsErrorDescription = loadError
+        ? (() => {
+            const detail = toDisplayErrorMessage(loadError, statisticsErrorTitle);
+            return detail !== statisticsErrorTitle ? detail : t('stats.description');
+        })()
+        : '';
 
     useEffect(() => {
         void loadStats();
@@ -64,13 +102,33 @@ export const StatisticsTab: React.FC = () => {
         }
     };
 
-    if (!stats) {
+    if (loading) {
         return (
             <div role="status" className="surface-inline flex items-center justify-center gap-3 p-4 text-center text-secondary">
                 <LoadingSpinner size="sm" variant="accent" />
                 {t('stats.loading')}
             </div>
         );
+    }
+
+    if (loadError) {
+        return (
+            <DegradedStateView
+                variant="error"
+                label={t('degraded.error_label')}
+                title={statisticsErrorTitle}
+                description={statisticsErrorDescription}
+                footer={(
+                    <Button variant="secondary" size="sm" onClick={() => void loadStats()}>
+                        {t('modpacks.world_refresh')}
+                    </Button>
+                )}
+            />
+        );
+    }
+
+    if (!stats) {
+        return null;
     }
 
     const averageSessionTime = stats.global.totalLaunches > 0
@@ -102,15 +160,15 @@ export const StatisticsTab: React.FC = () => {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                 <div className="surface-card p-4">
                     <div className="text-sm text-secondary">{t('stats.total_play_time')}</div>
-                    <div className="text-2xl font-bold text-foreground">{formatTime(stats.global.totalPlayTime)}</div>
+                    <div className="text-2xl font-bold text-foreground">{formatTime(stats.global.totalPlayTime, formatNumber, durationLabels)}</div>
                 </div>
                 <div className="surface-card p-4">
                     <div className="text-sm text-secondary">{t('stats.total_launches')}</div>
-                    <div className="text-2xl font-bold text-foreground">{stats.global.totalLaunches}</div>
+                    <div className="text-2xl font-bold text-foreground">{formatNumber(stats.global.totalLaunches)}</div>
                 </div>
                 <div className="surface-card p-4">
                     <div className="text-sm text-secondary">{t('stats.average_session')}</div>
-                    <div className="text-2xl font-bold text-foreground">{formatTime(averageSessionTime)}</div>
+                    <div className="text-2xl font-bold text-foreground">{formatTime(averageSessionTime, formatNumber, durationLabels)}</div>
                 </div>
             </div>
 
@@ -133,13 +191,13 @@ export const StatisticsTab: React.FC = () => {
                                         {index + 1}. {modpack.name}
                                     </div>
                                     <div className="text-xs text-secondary">
-                                        {t('stats.launches')}: {modpack.launches}
+                                        {t('stats.launches')}: {formatNumber(modpack.launches)}
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="font-mono text-foreground">{formatTime(modpack.playTime)}</div>
+                                    <div className="font-mono text-foreground">{formatTime(modpack.playTime, formatNumber, durationLabels)}</div>
                                     <div className="text-xs text-secondary">
-                                        {t('stats.last_played')}: {modpack.lastPlayed ? new Date(modpack.lastPlayed).toLocaleDateString() : '—'}
+                                        {t('stats.last_played')}: {modpack.lastPlayed ? formatDate(modpack.lastPlayed, '—', { dateStyle: 'medium' }) : '—'}
                                     </div>
                                 </div>
                             </div>
@@ -160,33 +218,39 @@ export const StatisticsTab: React.FC = () => {
                         {trendPoints.map((point) => (
                             <div key={point.date} role="listitem" className="surface-muted space-y-2 p-3">
                                 <div className="flex items-center justify-between text-sm text-foreground">
-                                    <span>{formatTrendDate(point.date)}</span>
+                                    <span>{formatTrendDate(point.date, formatDate)}</span>
                                     <span>
-                                        {point.launches} {t('stats.trend_launches')} · {formatTime(point.playTime)}
+                                        {formatNumber(point.launches)} {t('stats.trend_launches')} · {formatTime(point.playTime, formatNumber, durationLabels)}
                                     </span>
                                 </div>
                                 <div className="space-y-2">
                                     <div>
                                         <div className="mb-1 flex justify-between text-xs text-secondary">
                                             <span>{t('stats.trend_launches')}</span>
-                                            <span>{point.launches}</span>
+                                            <span>{formatNumber(point.launches)}</span>
                                         </div>
                                         <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-background/80">
                                             <div
-                                                className="h-full rounded-full bg-emerald-500"
-                                                style={{ width: `${(point.launches / maxTrendLaunches) * 100}%` }}
+                                                className="h-full rounded-full"
+                                                style={{
+                                                    width: `${(point.launches / maxTrendLaunches) * 100}%`,
+                                                    backgroundColor: accentHex,
+                                                }}
                                             />
                                         </div>
                                     </div>
                                     <div>
                                         <div className="mb-1 flex justify-between text-xs text-secondary">
                                             <span>{t('stats.trend_play_time')}</span>
-                                            <span>{formatTime(point.playTime)}</span>
+                                            <span>{formatTime(point.playTime, formatNumber, durationLabels)}</span>
                                         </div>
                                         <div aria-hidden="true" className="h-2 overflow-hidden rounded-full bg-background/80">
                                             <div
-                                                className="h-full rounded-full bg-blue-500"
-                                                style={{ width: `${(point.playTime / maxTrendPlayTime) * 100}%` }}
+                                                className="h-full rounded-full"
+                                                style={{
+                                                    width: `${(point.playTime / maxTrendPlayTime) * 100}%`,
+                                                    backgroundColor: hexToRgba(accentHex, 0.48),
+                                                }}
                                             />
                                         </div>
                                     </div>
@@ -212,11 +276,11 @@ export const StatisticsTab: React.FC = () => {
                             <div>
                                 <div className="font-medium text-foreground">{instance.name || id}</div>
                                 <div className="text-xs text-secondary">
-                                    {t('stats.launches')}: {instance.launches}
+                                    {t('stats.launches')}: {formatNumber(instance.launches)}
                                 </div>
                             </div>
                             <div className="font-mono text-foreground">
-                                {formatTime(instance.playTime)}
+                                {formatTime(instance.playTime, formatNumber, durationLabels)}
                             </div>
                         </div>
                     ))}

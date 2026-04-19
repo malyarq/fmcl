@@ -4,9 +4,11 @@ import { useSettings } from '../../contexts/SettingsContext';
 import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Textarea } from '../../components/ui/Textarea';
-import { Download, AlertCircle } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { ModpackManifest } from '@shared/types';
 import { shareIPC } from '../../services/ipc/shareIPC';
+import { DegradedStateView } from '../../components/layout/DegradedStateView';
+import { toDisplayErrorMessage } from '../../utils/displayError';
 
 interface ImportShareModalProps {
     isOpen: boolean;
@@ -41,7 +43,7 @@ export function ImportShareModal({ isOpen, onClose, onImport }: ImportShareModal
             handleClose();
         } catch (err: unknown) {
             console.error(err);
-            setError(err instanceof Error ? err.message : t('share.error_desc'));
+            setError(toDisplayErrorMessage(err, t('share.error_desc')));
         } finally {
             setLoading(false);
         }
@@ -73,10 +75,13 @@ export function ImportShareModal({ isOpen, onClose, onImport }: ImportShareModal
                 />
 
                 {error && (
-                    <div className="flex items-center gap-2 rounded-2xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200" role="alert">
-                        <AlertCircle className="h-4 w-4" />
-                        <span>{error}</span>
-                    </div>
+                    <DegradedStateView
+                        variant="error"
+                        layout="inline"
+                        label={t('degraded.error_label')}
+                        title={t('share.error_title')}
+                        description={error}
+                    />
                 )}
             </div>
 

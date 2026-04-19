@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { assetsIPC } from '../../services/ipc/assetsIPC';
-import { APP_ICON_PATH } from '../assets/branding';
+import { getBrandAssetPath } from '../assets/branding';
+
+const APP_ICON_PATH = getBrandAssetPath('app-icon');
 
 export function useAppIcon() {
   const [iconPath, setIconPath] = useState(APP_ICON_PATH);

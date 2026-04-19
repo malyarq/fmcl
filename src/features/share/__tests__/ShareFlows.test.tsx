@@ -87,12 +87,14 @@ describe('share flows', () => {
   });
 
   it('surfaces share-generation failures inline instead of falling back to browser errors', async () => {
-    generateCodeMock.mockRejectedValue(new Error('Share backend unavailable'));
+    generateCodeMock.mockRejectedValue(new Error('[shareIPC] generateCode failed: ${file.jarVersion}'));
 
     render(<ShareModal isOpen={true} onClose={vi.fn()} modpackId="broken-pack" />);
 
     const alert = await screen.findByRole('alert');
-    expect(alert.textContent).toContain('Share backend unavailable');
+    expect(alert.textContent).toContain('Failed to generate a share code.');
+    expect(alert.textContent).not.toContain('generateCode failed');
+    expect(alert.textContent).not.toContain('${file.jarVersion}');
   });
 
   it('keeps import disabled until a code is provided and imports through the typed IPC wrapper', async () => {
@@ -136,5 +138,23 @@ describe('share flows', () => {
     await waitFor(() => {
       expect(onImportMock).toHaveBeenCalledWith(manifest);
     });
+  });
+
+  it('sanitizes import wrapper failures before showing them inline', async () => {
+    const onImportMock = vi.fn().mockResolvedValue(undefined);
+    importCodeMock.mockRejectedValue(new Error('[shareIPC] importCode failed: ${file.jarVersion}'));
+
+    render(<ImportShareModal isOpen={true} onClose={vi.fn()} onImport={onImportMock} />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Paste fmcl://share/... code here' }), {
+      target: { value: 'fmcl://share/broken-pack' },
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Import' }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('Failed to import the modpack. The code may be invalid or incomplete.');
+    expect(alert.textContent).not.toContain('importCode failed');
+    expect(alert.textContent).not.toContain('${file.jarVersion}');
   });
 });

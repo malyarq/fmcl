@@ -302,7 +302,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
   if (!modpack) return null;
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex flex-col border-b border-border/70 bg-card/78 px-6 py-4 gap-4 backdrop-blur-md flex-shrink-0">
         <Breadcrumbs
           items={[
@@ -324,130 +324,136 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <LoadingSpinner size="lg" />
             <p className="text-sm text-zinc-500 dark:text-zinc-400">{t('modpacks.loading')}</p>
           </div>
         ) : (
-          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            <ModpackDetailsHeader
-              modpackName={modpack.name}
-              metadata={metadata}
-              effectiveConfig={effectiveConfig}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              t={t}
-              getAccentStyles={getAccentStyles}
-              getAccentHex={getAccentHex}
-            />
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+              <div className="flex min-h-full flex-col gap-6 p-6 pb-8">
+                <div
+                  className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]"
+                  data-testid="modpack-details-hero"
+                >
+                  <ModpackDetailsHeader
+                    modpackName={modpack.name}
+                    metadata={metadata}
+                    effectiveConfig={effectiveConfig}
+                    activeTab={activeTab}
+                    onTabChange={setActiveTab}
+                    t={t}
+                    getAccentStyles={getAccentStyles}
+                    getAccentHex={getAccentHex}
+                  />
 
-            <div className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
-              <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                <div className="p-6 pb-4 min-h-0 min-w-0">
-                  <div className={cn(secondarySurfaceTab && 'surface-panel p-4')}>
-                    {activeTab === 'info' && (
-                      <ModpackDetailsInfoTab
-                        descriptionDraft={descriptionDraft}
-                        onDescriptionChange={setDescriptionDraft}
-                        onSaveDescription={handleSaveDescription}
-                        metadata={metadata}
-                        t={t}
-                      />
-                    )}
-
-                    {activeTab === 'mods' && hasModloader && (
-                      <ModpackDetailsModsTab
-                        mods={mods}
-                        loadingMods={loadingMods}
-                        initialExpandedModId={initialExpandedModId}
-                        modSearchQuery={modSearchQuery}
-                        onModSearchQueryChange={setModSearchQuery}
-                        modFilterStatus={modFilterStatus}
-                        onModFilterStatusChange={setModFilterStatus}
-                        onAddMod={() => onNavigate({ type: 'addMod', modpackId })}
-                        onRemoveMod={handleRemoveMod}
-                        onModToggle={handleModToggle}
-                        onRefresh={loadMods}
-                        runtimeContext={{
-                          minecraft: effectiveConfig?.runtime.minecraft ?? metadata?.minecraftVersion,
-                          modLoader: effectiveConfig?.runtime.modLoader ?? metadata?.modLoader,
-                        }}
-                        t={t}
-                        getAccentStyles={getAccentStyles}
-                      />
-                    )}
-
-                    {activeTab === 'resourcepacks' && modpack && (
-                      <ResourcePacksTab
-                        instancePath={modpack.path}
-                        onUpdate={refresh}
-                        onAddResourcePack={() => onNavigate({ type: 'addResourcePack', modpackId })}
-                      />
-                    )}
-
-                    {activeTab === 'shaders' && modpack && (
-                      <ShadersTab
-                        instancePath={modpack.path}
-                        onUpdate={refresh}
-                        onAddShader={() => onNavigate({ type: 'addShader', modpackId })}
-                      />
-                    )}
-
-                    {activeTab === 'worlds' && modpack && (
-                      <WorldsTab
-                        instancePath={modpack.path}
-                        mcVersion={effectiveConfig?.runtime?.minecraft}
-                        onUpdate={refresh}
-                      />
-                    )}
-
-                    {activeTab === 'screenshots' && modpack && (
-                      <ScreenshotsTab
-                        instancePath={modpack.path}
-                      />
-                    )}
-
-                    {activeTab === 'settings' && (
-                      <ModpackDetailsSettingsTab
-                        effectiveConfig={effectiveConfig}
-                        setters={setters}
-                        versions={versions}
-                        forgeVersions={forgeVersions}
-                        fabricVersions={fabricVersions}
-                        neoForgeVersions={neoForgeVersions}
-                        optiFineVersions={optiFineVersions}
-                        onRefresh={async () => {
-                          await refresh();
-                          await loadModpackConfig();
-                        }}
-                        minecraftPath={minecraftPath}
-                        t={t}
-                        getAccentStyles={getAccentStyles}
-                      />
-                    )}
+                  <div className="xl:self-start">
+                    <ModpackDetailsActions
+                      onLaunch={async () => {
+                        await select(modpackId);
+                        onBack();
+                        // Defer launch to next tick so ModpackContext has time to update config
+                        if (onLaunch) setTimeout(() => onLaunch(), 0);
+                      }}
+                      hasUpdate={hasUpdate && !!metadata?.source && !!metadata?.sourceId && metadata.source !== 'local'}
+                      onShowUpdate={() => setShowUpdateModal(true)}
+                      onRename={handleRename}
+                      onDuplicate={handleDuplicate}
+                      onExport={() => onNavigate({ type: 'export', modpackId })}
+                      canDelete={modpacks.length > 1}
+                      onDelete={handleDelete}
+                      t={t}
+                      getAccentStyles={getAccentStyles}
+                    />
                   </div>
                 </div>
-              </div>
 
-              <ModpackDetailsActions
-                onLaunch={async () => {
-                  await select(modpackId);
-                  onBack();
-                  // Defer launch to next tick so ModpackContext has time to update config
-                  if (onLaunch) setTimeout(() => onLaunch(), 0);
-                }}
-                hasUpdate={hasUpdate && !!metadata?.source && !!metadata?.sourceId && metadata.source !== 'local'}
-                onShowUpdate={() => setShowUpdateModal(true)}
-                onRename={handleRename}
-                onDuplicate={handleDuplicate}
-                onExport={() => onNavigate({ type: 'export', modpackId })}
-                canDelete={modpacks.length > 1}
-                onDelete={handleDelete}
-                t={t}
-                getAccentStyles={getAccentStyles}
-              />
+                <div className={cn('min-w-0', secondarySurfaceTab ? 'space-y-4' : 'surface-panel p-4 sm:p-5')}>
+                  {activeTab === 'info' && (
+                    <ModpackDetailsInfoTab
+                      descriptionDraft={descriptionDraft}
+                      onDescriptionChange={setDescriptionDraft}
+                      onSaveDescription={handleSaveDescription}
+                      metadata={metadata}
+                      t={t}
+                    />
+                  )}
+
+                  {activeTab === 'mods' && hasModloader && (
+                    <ModpackDetailsModsTab
+                      mods={mods}
+                      loadingMods={loadingMods}
+                      initialExpandedModId={initialExpandedModId}
+                      modSearchQuery={modSearchQuery}
+                      onModSearchQueryChange={setModSearchQuery}
+                      modFilterStatus={modFilterStatus}
+                      onModFilterStatusChange={setModFilterStatus}
+                      onAddMod={() => onNavigate({ type: 'addMod', modpackId })}
+                      onRemoveMod={handleRemoveMod}
+                      onModToggle={handleModToggle}
+                      onRefresh={loadMods}
+                      runtimeContext={{
+                        minecraft: effectiveConfig?.runtime.minecraft ?? metadata?.minecraftVersion,
+                        modLoader: effectiveConfig?.runtime.modLoader ?? metadata?.modLoader,
+                      }}
+                      t={t}
+                      getAccentStyles={getAccentStyles}
+                    />
+                  )}
+
+                  {activeTab === 'resourcepacks' && modpack && (
+                    <ResourcePacksTab
+                      instancePath={modpack.path}
+                      onUpdate={refresh}
+                      onAddResourcePack={() => onNavigate({ type: 'addResourcePack', modpackId })}
+                    />
+                  )}
+
+                  {activeTab === 'shaders' && modpack && (
+                    <ShadersTab
+                      instancePath={modpack.path}
+                      onUpdate={refresh}
+                      onAddShader={() => onNavigate({ type: 'addShader', modpackId })}
+                    />
+                  )}
+
+                  {activeTab === 'worlds' && modpack && (
+                    <WorldsTab
+                      instancePath={modpack.path}
+                      mcVersion={effectiveConfig?.runtime?.minecraft}
+                      onUpdate={refresh}
+                    />
+                  )}
+
+                  {activeTab === 'screenshots' && modpack && (
+                    <ScreenshotsTab
+                      instancePath={modpack.path}
+                    />
+                  )}
+
+                  {activeTab === 'settings' && (
+                    <ModpackDetailsSettingsTab
+                      effectiveConfig={effectiveConfig}
+                      setters={setters}
+                      versions={versions}
+                      forgeVersions={forgeVersions}
+                      fabricVersions={fabricVersions}
+                      neoForgeVersions={neoForgeVersions}
+                      optiFineVersions={optiFineVersions}
+                      onRefresh={async () => {
+                        await refresh();
+                        await loadModpackConfig();
+                      }}
+                      minecraftPath={minecraftPath}
+                      t={t}
+                      getAccentStyles={getAccentStyles}
+                    />
+                  )}
+                </div>
+
+              </div>
             </div>
           </div>
         )}

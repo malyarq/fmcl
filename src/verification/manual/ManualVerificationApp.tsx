@@ -17,7 +17,7 @@ export function ManualVerificationApp() {
     view,
     ready: view === 'overview',
     step: view === 'overview' ? 'rendered' : 'mounting',
-    message: view === 'overview' ? 'Manual verification hub rendered.' : 'Mounting scenario...',
+    message: view === 'overview' ? 'v0.5.0 closeout verification hub rendered.' : 'Mounting closeout scenario...',
   });
 
   const markReady = useCallback((message: string) => {
@@ -37,10 +37,10 @@ export function ManualVerificationApp() {
         <header className="surface-panel rounded-3xl p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
-              <div className="kicker-label">Milestone v0.4.0</div>
+              <div className="kicker-label">Milestone v0.5.0 Closeout</div>
               <h1 className="text-3xl font-black tracking-tight text-foreground">FriendLauncher Manual Verification</h1>
               <p className="max-w-3xl text-sm leading-6 text-secondary">
-                Stable browser entry for milestone walkthroughs. Each view mounts real launcher components on deterministic fixture data so live screenshots and DOM dumps stay reusable beyond one phase.
+                Stable browser entry for the `v0.5.0` closeout matrix. Closeout views mount real launcher surfaces on deterministic fixture data so screenshot review, DOM capture, and final release proof all point at the same shell-owned evidence.
               </p>
             </div>
             <div className="surface-muted rounded-2xl px-4 py-3 text-sm">

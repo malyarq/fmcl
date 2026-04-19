@@ -18,6 +18,7 @@ describe('SimplePlayHome visual truth', () => {
 
     const logo = screen.getByTestId('classic-launcher-mark')
     expect(logo.getAttribute('src')).toBe(LAUNCHER_MARK_PATH)
+    expect(screen.getByText('FriendLauncher').closest('[data-brand-wordmark]')).toBeTruthy()
 
     const logoButton = logo.closest('.logo-container')
     expect(logoButton).toBeTruthy()

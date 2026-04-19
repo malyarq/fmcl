@@ -16,6 +16,9 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
     t,
     getAccentStyles: () => ({ className: '', style: undefined }),
+    formatDate: (timestamp: number | undefined, unknownText = 'Unknown', options?: Intl.DateTimeFormatOptions) =>
+      timestamp ? new Date(timestamp).toLocaleDateString('en-US', options) : unknownText,
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-US', options).format(value),
   }),
 }));
 
@@ -81,7 +84,8 @@ describe('ModpackBrowser accessibility', () => {
   it('exposes accessible search, favorite, and result activation controls', async () => {
     const { onNavigate } = renderBrowser();
 
-    await screen.findByRole('search', { name: 'Enter modpack name...' });
+    await screen.findByRole('search', { name: t('modpacks.search') || 'Search modpacks' });
+    await screen.findByRole('textbox', { name: t('modpacks.search_placeholder') || 'Enter modpack name...' });
 
     const resultButton = await screen.findByRole('button', { name: 'Alpha Pack' });
     const favoriteButton = screen.getByRole('button', { name: 'Add to favorites: Alpha Pack' });

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { CreateModpackModal } from '../CreateModpackModal';
@@ -8,6 +8,8 @@ import { ModpackCreationWizard } from '../ModpackCreationWizard';
 
 const createLocalMock = vi.fn();
 const updateMetadataMock = vi.fn();
+const getConfigMock = vi.fn();
+const saveConfigMock = vi.fn();
 const refreshMock = vi.fn();
 
 let currentLanguage: 'en' | 'ru' = 'en';
@@ -60,6 +62,8 @@ vi.mock('../../../services/ipc/modpacksIPC', () => ({
   modpacksIPC: {
     createLocal: (...args: unknown[]) => createLocalMock(...args),
     updateMetadata: (...args: unknown[]) => updateMetadataMock(...args),
+    getConfig: (...args: unknown[]) => getConfigMock(...args),
+    saveConfig: (...args: unknown[]) => saveConfigMock(...args),
     getMods: vi.fn().mockResolvedValue([]),
     removeMod: vi.fn(),
   },
@@ -98,9 +102,21 @@ describe('Create-modpack dependency truth', () => {
     localStorage.clear();
     createLocalMock.mockReset();
     updateMetadataMock.mockReset();
+    getConfigMock.mockReset();
+    saveConfigMock.mockReset();
     refreshMock.mockReset();
     createLocalMock.mockResolvedValue({ id: 'pack-1' });
     updateMetadataMock.mockResolvedValue(undefined);
+    getConfigMock.mockResolvedValue({
+      id: 'pack-1',
+      name: 'Alpha Pack',
+      runtime: {
+        minecraft: '1.20.1',
+        modLoader: { type: 'forge' },
+      },
+      game: {},
+    });
+    saveConfigMock.mockResolvedValue({ ok: true });
     refreshMock.mockResolvedValue(undefined);
   });
 
@@ -114,23 +130,37 @@ describe('Create-modpack dependency truth', () => {
 
     fireEvent.change(screen.getByLabelText('Modpack name'), { target: { value: 'Alpha Pack' } });
     fireEvent.click(screen.getByRole('button', { name: 'Forge' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Enable OptiFine' }));
 
     const summary = screen.getByTestId('modpack-dependency-summary');
     const summaryQueries = within(summary);
     expect(summary).toBeTruthy();
     expect(summaryQueries.getByText('Runtime dependencies')).toBeTruthy();
+    expect(screen.getByTestId('modpack-dependency-count').textContent).toBe('3');
     expect(summaryQueries.getByText('Minecraft Version')).toBeTruthy();
     expect(summaryQueries.getByText('1.20.1')).toBeTruthy();
     expect(summaryQueries.getByText('Forge')).toBeTruthy();
-    expect(summaryQueries.queryByText('Modloader Version')).toBeNull();
+    expect(summaryQueries.getByText('Modloader Version')).toBeTruthy();
+    expect(summaryQueries.getByText('Unverified')).toBeTruthy();
+    expect(summaryQueries.getByText('OptiFine')).toBeTruthy();
+    expect(screen.queryByTestId('modpack-dependency-warnings')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
-    expect(createLocalMock).toHaveBeenCalledWith(
-      'Alpha Pack',
-      '1.0.0',
-      '1.20.1',
-      { type: 'forge', version: undefined },
+    await waitFor(() => {
+      expect(createLocalMock).toHaveBeenCalledWith(
+        'Alpha Pack',
+        '1.0.0',
+        '1.20.1',
+        { type: 'forge', version: undefined },
+        '/minecraft',
+      );
+    });
+    expect(getConfigMock).toHaveBeenCalledWith('pack-1', '/minecraft');
+    expect(saveConfigMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        game: expect.objectContaining({ useOptiFine: true }),
+      }),
       '/minecraft',
     );
   });
@@ -149,9 +179,11 @@ describe('Create-modpack dependency truth', () => {
     const summary = screen.getByTestId('modpack-dependency-summary');
     const summaryQueries = within(summary);
     expect(summaryQueries.getByText('Runtime dependencies')).toBeTruthy();
+    expect(screen.getByTestId('modpack-dependency-count').textContent).toBe('2');
     expect(summaryQueries.getByText('Minecraft Version')).toBeTruthy();
     expect(summaryQueries.getByText('1.20.1')).toBeTruthy();
     expect(summaryQueries.getByText('NeoForge')).toBeTruthy();
-    expect(summaryQueries.queryByText('Modloader Version')).toBeNull();
+    expect(summaryQueries.getByText('Modloader Version')).toBeTruthy();
+    expect(summaryQueries.getByText('Unverified')).toBeTruthy();
   });
 });

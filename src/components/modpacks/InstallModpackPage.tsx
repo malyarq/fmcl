@@ -116,14 +116,11 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
         <div className="space-y-4 max-w-2xl mx-auto">
           {/* Modpack Info */}
           <div className="surface-card flex gap-4 p-5">
-            {modpack.iconUrl && (
-              <LazyImage
-                src={modpack.iconUrl}
-                alt={modpack.title}
-                className="h-20 w-20 rounded-2xl border border-border/70 object-cover"
-                fallback="/icon.png"
-              />
-            )}
+            <LazyImage
+              src={modpack.iconUrl}
+              alt={modpack.title}
+              className="h-20 w-20 rounded-2xl border border-border/70 object-cover"
+            />
             <div className="flex-1">
               <h3 className="text-lg font-bold text-foreground">{modpack.title}</h3>
               {modpack.description && (
