@@ -1,13 +1,45 @@
-import { ipcMain, shell, dialog } from 'electron';
-import { shadersService } from '../../services/shaders/shaderService';
-import * as path from 'path';
+import { dialog, ipcMain, shell } from 'electron';
 import * as fs from 'fs';
+import type { ShaderPackAcquisitionResult } from '../../../shared/contracts/shaders';
 import { assertChildName } from '../../security/pathGuards';
 import {
     resolveApprovedInstancePath,
     resolveShaderPacksDir,
 } from '../../services/instances/paths';
-import { resolvePathWithinRoot } from '../../security/pathGuards';
+import { shadersService } from '../../services/shaders/shaderService';
+
+function summarizeShaderPackAcquisition(
+    results: ShaderPackAcquisitionResult[],
+): ShaderPackAcquisitionResult {
+    const importedFileNames = results.flatMap((result) => result.importedFileNames);
+    const issues = results.flatMap((result) => result.issues);
+
+    if (importedFileNames.length === 0 && issues.length === 0) {
+        return { status: 'cancelled', importedFileNames, issues };
+    }
+
+    if (importedFileNames.length > 0 && issues.length === 0) {
+        return { status: 'success', importedFileNames, issues };
+    }
+
+    if (importedFileNames.length > 0) {
+        return { status: 'partial-success', importedFileNames, issues };
+    }
+
+    if (issues.every((issue) => issue.status === 'duplicate')) {
+        return { status: 'duplicate', importedFileNames, issues };
+    }
+
+    if (issues.every((issue) => issue.status === 'invalid-archive')) {
+        return { status: 'invalid-archive', importedFileNames, issues };
+    }
+
+    if (issues.every((issue) => issue.status === 'runtime-blocked')) {
+        return { status: 'runtime-blocked', importedFileNames, issues };
+    }
+
+    return { status: 'failure', importedFileNames, issues };
+}
 
 export function registerShadersHandlers() {
     ipcMain.removeHandler('shaders:list');
@@ -39,12 +71,12 @@ export function registerShadersHandlers() {
     ipcMain.removeHandler('shaders:openFolder');
     ipcMain.handle('shaders:openFolder', async (_evt, instancePath: string) => {
         const safeInstancePath = resolveApprovedInstancePath(instancePath);
-
         const folder = resolveShaderPacksDir(safeInstancePath);
 
-
         if (!fs.existsSync(folder)) {
-            try { fs.mkdirSync(folder, { recursive: true }); } catch (e) {
+            try {
+                fs.mkdirSync(folder, { recursive: true });
+            } catch (e) {
                 console.error('Failed to create shaderpacks folder', e);
             }
         }
@@ -58,31 +90,36 @@ export function registerShadersHandlers() {
 
         const { canceled, filePaths } = await dialog.showOpenDialog({
             properties: ['openFile', 'multiSelections'],
-            filters: [{ name: 'Shader Packs', extensions: ['zip'] }]
+            filters: [{ name: 'Shader Packs', extensions: ['zip'] }],
         });
 
-        if (canceled || filePaths.length === 0) return false;
+        if (canceled || filePaths.length === 0) {
+            return summarizeShaderPackAcquisition([]);
+        }
 
         const folder = resolveShaderPacksDir(safeInstancePath);
         if (!fs.existsSync(folder)) {
-            try { fs.mkdirSync(folder, { recursive: true }); } catch (e) {
-                console.error('Failed to create shaderpacks folder', e);
-                return false;
-            }
-        }
-
-        let success = true;
-        for (const filePath of filePaths) {
             try {
-                const fileName = assertChildName(path.basename(filePath), 'Shader pack name');
-                const destPath = resolvePathWithinRoot(folder, fileName, 'Shader pack path');
-                fs.copyFileSync(filePath, destPath);
-            } catch (err) {
-                console.error('Failed to copy shader pack', err);
-                success = false;
+                fs.mkdirSync(folder, { recursive: true });
+            } catch (e) {
+                console.error('Failed to create shaderpacks folder', e);
+                return {
+                    status: 'failure',
+                    importedFileNames: [],
+                    issues: [
+                        {
+                            fileName: 'shaderpacks',
+                            status: 'failure',
+                            message: 'FMCL could not prepare the shaderpacks folder for imports.',
+                        },
+                    ],
+                };
             }
         }
 
-        return success;
+        const results = await Promise.all(
+            filePaths.map((filePath) => shadersService.import(filePath, safeInstancePath)),
+        );
+        return summarizeShaderPackAcquisition(results);
     });
 }

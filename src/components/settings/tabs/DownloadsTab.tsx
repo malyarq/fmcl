@@ -10,6 +10,7 @@ export interface DownloadsTabProps {
   maxSockets: number;
   setMaxSockets: (val: number) => void;
   t: (key: string) => string;
+  embedded?: boolean;
 }
 
 export const DownloadsTab: React.FC<DownloadsTabProps> = ({
@@ -20,41 +21,50 @@ export const DownloadsTab: React.FC<DownloadsTabProps> = ({
   maxSockets,
   setMaxSockets,
   t,
+  embedded = false,
 }) => {
   return (
     <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
       <div className="space-y-4">
-        <div className="surface-card space-y-2 p-5">
-          <div className="kicker-label">{t('settings.downloads')}</div>
-          <h3 className="text-lg font-bold text-foreground">{t('settings.downloads')}</h3>
-          <p className="text-sm text-secondary">{t('settings.downloadsHint')}</p>
-        </div>
+        {!embedded && (
+          <div className="settings-section-shell settings-section-copy p-5">
+            <div className="kicker-label">{t('settings.downloads')}</div>
+            <h3 className="text-lg font-bold text-foreground">{t('settings.downloads')}</h3>
+            <p className="settings-embedded-copy">{t('settings.downloadsHint')}</p>
+          </div>
+        )}
 
-        <MirrorsSettings />
+        <MirrorsSettings embedded={embedded} />
       </div>
 
-      <div className="surface-card space-y-4 p-5">
-        <div className="space-y-1">
-          <h4 className="text-sm font-semibold text-foreground">{t('settings.downloadsTuningTitle')}</h4>
-          <p className="text-sm text-secondary">{t('settings.downloadsTuningHint')}</p>
+      <div className="settings-section-shell settings-section-stack p-5">
+        <div className="settings-section-copy">
+          <h4 className="settings-embedded-title">{t('settings.downloadsTuningTitle')}</h4>
+          <p className="settings-embedded-copy">{t('settings.downloadsTuningHint')}</p>
         </div>
 
-        <div className="surface-muted p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div className="space-y-1">
-              <h5 className="text-sm font-semibold text-foreground">{t('settings.download_threads_auto')}</h5>
-              <p id="settings-auto-threads-hint" className="text-sm text-secondary">
-                {t('settings.download_threads_auto_desc')}
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              checked={autoDownloadThreads}
-              onChange={(e) => setAutoDownloadThreads(e.target.checked)}
-              aria-describedby="settings-auto-threads-hint"
-              className="mt-1 h-5 w-5 shrink-0 cursor-pointer rounded-md border border-border/70 bg-card text-[rgb(var(--accent-main))] accent-[rgb(var(--accent-main))] shadow-sm transition-all focus:ring-2 focus:ring-[rgb(var(--accent-main))] focus:ring-offset-2 focus:ring-offset-background disabled:cursor-not-allowed disabled:border-border/50 disabled:opacity-100"
-            />
+        <div className="settings-toggle-row">
+          <div className="settings-toggle-copy">
+            <h5 className="settings-toggle-title">{t('settings.download_threads_auto')}</h5>
+            <p id="settings-auto-threads-hint" className="settings-toggle-description">
+              {t('settings.download_threads_auto_desc')}
+            </p>
           </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={autoDownloadThreads}
+            aria-describedby="settings-auto-threads-hint"
+            aria-label={t('settings.download_threads_auto')}
+            data-state={autoDownloadThreads ? 'checked' : 'unchecked'}
+            onClick={() => setAutoDownloadThreads(!autoDownloadThreads)}
+            className="settings-toggle-switch"
+          >
+            <span
+              className="settings-toggle-thumb"
+              data-state={autoDownloadThreads ? 'checked' : 'unchecked'}
+            />
+          </button>
         </div>
 
         <div className="grid grid-cols-1 gap-4">

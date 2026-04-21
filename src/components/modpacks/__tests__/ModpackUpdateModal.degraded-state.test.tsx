@@ -118,4 +118,33 @@ describe('ModpackUpdateModal degraded states', () => {
     expect(screen.getByRole('heading', { name: 'Changelog unavailable' })).toBeTruthy();
     expect(screen.queryByText(/\$\{file\.jarVersion\}/)).toBeNull();
   });
+
+  it('keeps the review flow local to the modpack modal when updates are available', async () => {
+    getModrinthVersionsMock.mockResolvedValue([
+      {
+        platform: 'modrinth',
+        versionId: 'release-2',
+        name: '1.2.0',
+        versionNumber: '1.2.0',
+        changelog: 'Bug fixes',
+        mcVersions: ['1.20.1'],
+        loaders: ['fabric'],
+        files: [],
+      },
+    ]);
+
+    render(
+      <ModpackUpdateModal
+        modpackId="alpha"
+        sourceId="alpha-pack"
+        source="modrinth"
+        isOpen
+        onClose={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText('Review modpack update')).toBeTruthy();
+    expect(screen.getByTestId('modpack-update-modal').getAttribute('data-update-scope')).toBe('modpack-local');
+    expect(screen.queryByText('Launcher update available')).toBeNull();
+  });
 });

@@ -135,7 +135,8 @@ describe('Modpack details density', () => {
     );
 
     const hero = screen.getByTestId('modpack-details-hero');
-    expect(hero.className).toContain('xl:grid-cols-[minmax(0,1fr)_20rem]');
+    expect(hero.className).toContain('surface-card');
+    expect(hero.className).toContain('lg:grid-cols-[minmax(0,1fr)_16rem]');
 
     const metadata = screen.getByTestId('modpack-details-metadata');
     expect(metadata.textContent).toContain('Version');
@@ -145,13 +146,16 @@ describe('Modpack details density', () => {
 
     const tablist = screen.getByTestId('modpack-details-tablist');
     expect(tablist.className).toContain('grid');
-    expect(screen.getByText('Manage mods, packs, shaders, and worlds from one consistent content workspace.')).toBeTruthy();
+    expect(screen.queryByText('Manage mods, packs, shaders, and worlds from one consistent content workspace.')).toBeNull();
     expect(screen.getByRole('tab', { name: 'Resource packs' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Screenshots' })).toBeTruthy();
+    expect(tablist.closest('[data-testid="modpack-details-hero"]')).toBe(hero);
 
     const actions = screen.getByTestId('modpack-details-actions');
+    expect(actions.className).not.toContain('surface-card');
     expect(actions.textContent).toContain('More actions');
     expect(actions.textContent).toContain('Play');
+    expect(screen.getByRole('button', { name: 'Play' }).closest('[data-testid="modpack-details-hero"]')).toBe(hero);
     expect(document.querySelectorAll('[data-primary-action="route"]')).toHaveLength(1);
   });
 });

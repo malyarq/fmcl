@@ -1,5 +1,5 @@
 import { useSettings } from '../../contexts/SettingsContext';
-import { LAUNCHER_MARK_PATH, isBundledAssetSource } from '../../app/assets/branding';
+import { APP_ICON_PATH, isBundledAssetSource } from '../../app/assets/branding';
 import { BrandMark } from '../branding/BrandMark';
 import { BrandWordmark } from '../branding/BrandWordmark';
 
@@ -14,9 +14,9 @@ export function EmptyStateView(props: {
       <div className="surface-card flex max-w-md flex-col items-center px-10 py-12 text-center">
         <div className="relative mb-6">
           <BrandMark
-            role="product-mark"
+            role="app-icon"
             src={iconPath}
-            alt="FriendLauncher mark"
+            alt="FriendLauncher app icon"
             data-testid="empty-state-brand-mark"
             frame="brand"
             size="xl"
@@ -26,8 +26,8 @@ export function EmptyStateView(props: {
               filter: `drop-shadow(0 0 30px ${getAccentHex()}) drop-shadow(0 0 60px ${getAccentHex()}40)`,
             }}
             onError={(e) => {
-              if (!isBundledAssetSource(e.currentTarget.currentSrc || e.currentTarget.src, LAUNCHER_MARK_PATH)) {
-                e.currentTarget.src = LAUNCHER_MARK_PATH;
+              if (!isBundledAssetSource(e.currentTarget.currentSrc || e.currentTarget.src, APP_ICON_PATH)) {
+                e.currentTarget.src = APP_ICON_PATH;
               }
             }}
           />

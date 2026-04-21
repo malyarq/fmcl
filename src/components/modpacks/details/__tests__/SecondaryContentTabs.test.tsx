@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../../contexts/settings/i18n';
 import { ModpackDetailsModsTab } from '../ModpackDetailsModsTab';
 import { ResourcePacksTab } from '../ResourcePacksTab';
+import { ShadersTab } from '../ShadersTab';
 import { WorldDatapacksModal } from '../WorldDatapacksModal';
 
 const t = createTranslator('en');
@@ -24,6 +25,7 @@ const resourcePackEnableMock = vi.fn();
 const resourcePackDisableMock = vi.fn();
 const resourcePackDeleteMock = vi.fn();
 const resourcePackReorderMock = vi.fn();
+const shaderListMock = vi.fn();
 
 vi.mock('react-virtuoso', () => ({
   Virtuoso: ({
@@ -84,6 +86,15 @@ vi.mock('../../../../services/ipc/resourcePacksIPC', () => ({
     disable: (...args: unknown[]) => resourcePackDisableMock(...args),
     delete: (...args: unknown[]) => resourcePackDeleteMock(...args),
     reorder: (...args: unknown[]) => resourcePackReorderMock(...args),
+  },
+}));
+
+vi.mock('../../../../services/ipc/shadersIPC', () => ({
+  shadersIPC: {
+    list: (...args: unknown[]) => shaderListMock(...args),
+    setActive: vi.fn(),
+    disable: vi.fn(),
+    delete: vi.fn(),
   },
 }));
 
@@ -253,6 +264,7 @@ describe('secondary content tabs', () => {
     resourcePackDisableMock.mockReset();
     resourcePackDeleteMock.mockReset();
     resourcePackReorderMock.mockReset();
+    shaderListMock.mockReset();
 
     confirmMock.mockResolvedValue(true);
     listMock.mockResolvedValue([
@@ -307,6 +319,13 @@ describe('secondary content tabs', () => {
     resourcePackDisableMock.mockResolvedValue({ ok: true });
     resourcePackDeleteMock.mockResolvedValue({ ok: true });
     resourcePackReorderMock.mockResolvedValue({ ok: true });
+    shaderListMock.mockResolvedValue([
+      {
+        fileName: 'complementary.zip',
+        name: 'Complementary Reimagined',
+        isActive: true,
+      },
+    ]);
   });
 
   it('keeps the details mods tab filterable without breaking the refreshed surface copy', async () => {
@@ -378,6 +397,34 @@ describe('secondary content tabs', () => {
     expect(screen.getByRole('heading', { name: 'Failed to load resource packs' })).toBeTruthy();
     expect(errorState.textContent).toContain('Unavailable');
     expect(errorState.textContent).not.toContain('No resource packs installed');
+  });
+
+  it('offers the guided resource-pack route as the next step when installed packs fail to load', async () => {
+    const onAddResourcePack = vi.fn();
+    resourcePackListMock.mockRejectedValue(new Error('[IPC] resource packs failed: Packs directory unavailable'));
+
+    render(<ResourcePacksTab instancePath="/instances/alpha" onAddResourcePack={onAddResourcePack} />);
+
+    expect(await screen.findByRole('heading', { name: 'Failed to load resource packs' })).toBeTruthy();
+    const unavailableState = screen.getByRole('status');
+
+    fireEvent.click(within(unavailableState).getByRole('button', { name: '+ Add Resource Pack' }));
+
+    expect(onAddResourcePack).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers the guided shader route as the next step when installed shaders fail to load', async () => {
+    const onAddShader = vi.fn();
+    shaderListMock.mockRejectedValue(new Error('[IPC] shaders failed: Packs directory unavailable'));
+
+    render(<ShadersTab instancePath="/instances/alpha" onAddShader={onAddShader} />);
+
+    expect(await screen.findByRole('heading', { name: 'Failed to load shader packs' })).toBeTruthy();
+    const unavailableState = screen.getByRole('status');
+
+    fireEvent.click(within(unavailableState).getByRole('button', { name: '+ Add Shader' }));
+
+    expect(onAddShader).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the datapacks modal on the shared modal scroll region with labeled installed counts', async () => {

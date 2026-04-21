@@ -17,6 +17,24 @@ export interface LazyImageProps extends React.ImgHTMLAttributes<HTMLImageElement
   useNativeLazy?: boolean;
 }
 
+type LazyImageState = {
+  key: string;
+  isLoaded: boolean;
+  hasError: boolean;
+  resolvedSrc: string | undefined;
+  triedSourceUrl: boolean;
+};
+
+function createLazyImageState(key: string): LazyImageState {
+  return {
+    key,
+    isLoaded: false,
+    hasError: false,
+    resolvedSrc: undefined,
+    triedSourceUrl: false,
+  };
+}
+
 /**
  * Lazy-loaded image component using Intersection Observer
  * Falls back to native lazy loading if Intersection Observer is not supported
@@ -36,12 +54,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   const [isInView, setIsInView] = useState(false);
   const safeFallback = fallback ?? ArtworkFallback.getSrc(fallbackKind);
   const sourceKey = `${src ?? ''}::${safeFallback}`;
-  const [imageState, setImageState] = useState(() => ({
-    key: sourceKey,
-    isLoaded: false,
-    hasError: false,
-    resolvedSrc: undefined as string | undefined,
-  }));
+  const [imageState, setImageState] = useState<LazyImageState>(() => createLazyImageState(sourceKey));
   const imgRef = useRef<HTMLImageElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -53,7 +66,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   const isRemoteImage = typeof src === 'string' && /^https?:\/\//i.test(src);
   const currentImageState = imageState.key === sourceKey
     ? imageState
-    : { key: sourceKey, isLoaded: false, hasError: false, resolvedSrc: undefined as string | undefined };
+    : createLazyImageState(sourceKey);
 
   useEffect(() => {
     // If no src but fallback exists, load immediately
@@ -156,7 +169,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
         setImageState((previous) => {
           const nextState = previous.key === sourceKey
             ? previous
-            : { key: sourceKey, isLoaded: false, hasError: false, resolvedSrc: undefined as string | undefined };
+            : createLazyImageState(sourceKey);
 
           return {
             ...nextState,
@@ -173,7 +186,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
         setImageState((previous) => {
           const nextState = previous.key === sourceKey
             ? previous
-            : { key: sourceKey, isLoaded: false, hasError: false, resolvedSrc: undefined as string | undefined };
+            : createLazyImageState(sourceKey);
 
           return {
             ...nextState,
@@ -188,12 +201,37 @@ export const LazyImage: React.FC<LazyImageProps> = ({
   }, [currentImageState.resolvedSrc, isInView, isRemoteImage, sourceKey, src]);
 
   const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    if (!currentImageState.hasError && safeFallback && !isBundledAssetSource(e.currentTarget.currentSrc || e.currentTarget.src, safeFallback)) {
-      // Try fallback if not already using it
+    const currentSrc = e.currentTarget.currentSrc || e.currentTarget.src;
+    const isUsingCachedResolvedSource = Boolean(
+      src &&
+      isRemoteImage &&
+      currentImageState.resolvedSrc &&
+      currentImageState.resolvedSrc !== src &&
+      currentSrc === currentImageState.resolvedSrc,
+    );
+
+    if (isUsingCachedResolvedSource && !currentImageState.triedSourceUrl) {
+      setImageState((previous) => {
+        const nextState = previous.key === sourceKey
+          ? previous
+          : createLazyImageState(sourceKey);
+
+        return {
+          ...nextState,
+          isLoaded: false,
+          hasError: false,
+          resolvedSrc: src,
+          triedSourceUrl: true,
+        };
+      });
+      return;
+    }
+
+    if (!currentImageState.hasError && safeFallback && !isBundledAssetSource(currentSrc, safeFallback)) {
       setImageState((previous) => ({
         ...(previous.key === sourceKey
           ? previous
-          : { key: sourceKey, isLoaded: false, hasError: false, resolvedSrc: undefined as string | undefined }),
+          : createLazyImageState(sourceKey)),
         hasError: true,
         isLoaded: false,
       }));
@@ -206,7 +244,7 @@ export const LazyImage: React.FC<LazyImageProps> = ({
     setImageState((previous) => ({
       ...(previous.key === sourceKey
         ? previous
-        : { key: sourceKey, isLoaded: false, hasError: false, resolvedSrc: undefined as string | undefined }),
+        : createLazyImageState(sourceKey)),
       isLoaded: true,
     }));
   };

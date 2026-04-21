@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { AddModModal } from '../AddModModal';
@@ -11,6 +11,7 @@ const getModVersionsMock = vi.fn();
 const getMetadataMock = vi.fn();
 const getConfigMock = vi.fn();
 const t = createTranslator('en');
+const marketplaceFramingPattern = /\b(marketplace|wishlist|store|storefront)\b/i;
 
 function mockMatchMedia() {
   Object.defineProperty(window, 'matchMedia', {
@@ -126,7 +127,15 @@ describe('Add-mod placeholder truth', () => {
 
     fireEvent.click(screen.getByRole('checkbox'));
 
-    expect(await screen.findByText('1.2.0 (1.20.1)')).toBeTruthy();
+    const results = await screen.findByTestId('add-mod-modal-results');
+    await waitFor(() => {
+      expect(
+        within(results).getByText((_, element) => (
+          element?.tagName === 'P'
+          && (element.textContent ?? '').includes('1.2.0 (1.20.1)')
+        )),
+      ).toBeTruthy();
+    });
     expect(screen.queryByText(/\$\{file\.jarVersion\}/)).toBeNull();
   });
 
@@ -142,5 +151,90 @@ describe('Add-mod placeholder truth', () => {
     expect(await screen.findByRole('heading', { name: 'Unable to search right now' })).toBeTruthy();
     expect(screen.getByRole('alert').textContent).toContain('We could not load catalog results right now.');
     expect(screen.queryByText(/\$\{file\.jarVersion\}/)).toBeNull();
+  });
+
+  it('uses resource-pack route copy instead of mod-centric empty-state placeholders', async () => {
+    searchModsMock.mockResolvedValue({ items: [], total: 0 });
+
+    render(<AddModPage modpackId="alpha" onBack={vi.fn()} contentType="resourcepack" />);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 550));
+    });
+
+    expect(await screen.findByRole('heading', { name: 'Browse resource packs' })).toBeTruthy();
+    expect(screen.getByText('Search Modrinth or import a local .zip to add a resource pack to this modpack.')).toBeTruthy();
+    expect(screen.queryByText(/loader-compatible files/i)).toBeNull();
+    expect(screen.queryByText(/No mods found/i)).toBeNull();
+    expect(document.body.textContent ?? '').not.toMatch(marketplaceFramingPattern);
+  });
+
+  it('uses resource-pack-specific add action labels on the guided route', async () => {
+    searchModsMock.mockResolvedValue({
+      items: [
+        {
+          platform: 'modrinth',
+          projectId: 'faithful',
+          title: 'Faithful 64x',
+          description: 'Sharper textures',
+        },
+      ],
+      total: 1,
+    });
+    getModVersionsMock.mockResolvedValue([
+      {
+        platform: 'modrinth',
+        versionId: 'resourcepack-1',
+        name: '1.0.0',
+        mcVersions: ['1.20.1'],
+        loaders: [],
+      },
+    ]);
+
+    render(<AddModPage modpackId="alpha" onBack={vi.fn()} contentType="resourcepack" />);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 550));
+    });
+
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    expect(await screen.findByRole('button', { name: 'Add selected resource packs (1)' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add selected (1)' })).toBeNull();
+  });
+
+  it('uses shader-specific add action labels on the guided route', async () => {
+    searchModsMock.mockResolvedValue({
+      items: [
+        {
+          platform: 'modrinth',
+          projectId: 'complementary',
+          title: 'Complementary Reimagined',
+          description: 'Cinematic lighting',
+        },
+      ],
+      total: 1,
+    });
+    getModVersionsMock.mockResolvedValue([
+      {
+        platform: 'modrinth',
+        versionId: 'shader-1',
+        name: '1.0.0',
+        mcVersions: ['1.20.1'],
+        loaders: [],
+      },
+    ]);
+
+    render(<AddModPage modpackId="alpha" onBack={vi.fn()} contentType="shader" />);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 550));
+    });
+
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    expect(await screen.findByRole('button', { name: 'Add selected shaders (1)' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Add selected (1)' })).toBeNull();
+    expect(document.body.textContent ?? '').not.toMatch(marketplaceFramingPattern);
   });
 });

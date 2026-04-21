@@ -9,6 +9,40 @@ import type { UpdateInfo, UpdateStatus } from '../../../features/updater/hooks/u
 import { formatSize } from '../../../utils/format';
 import type { ImageCacheState } from '@shared/contracts/cache';
 
+function translateWithFallback(t: (key: string) => string, key: string, fallback: string) {
+  const translated = t(key);
+  return translated === key ? fallback : translated;
+}
+
+function ToggleRow(props: {
+  label: string;
+  description: string;
+  checked: boolean;
+  onToggle: () => void;
+}) {
+  const { label, description, checked, onToggle } = props;
+
+  return (
+    <div className="settings-toggle-row">
+      <div className="settings-toggle-copy">
+        <p className="settings-toggle-title">{label}</p>
+        <p className="settings-toggle-description">{description}</p>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        aria-label={label}
+        data-state={checked ? 'checked' : 'unchecked'}
+        onClick={onToggle}
+        className="settings-toggle-switch"
+      >
+        <span className="settings-toggle-thumb" data-state={checked ? 'checked' : 'unchecked'} />
+      </button>
+    </div>
+  );
+}
+
 export interface LauncherTabProps {
   hideLauncher: boolean;
   setHideLauncher: (val: boolean) => void;
@@ -17,11 +51,20 @@ export interface LauncherTabProps {
   minecraftPath: string;
   setMinecraftPath: (val: string) => void;
   t: (key: string) => string;
+  uiScale: number;
+  setUiScale: (val: number) => void;
+  disableAnimations: boolean;
+  setDisableAnimations: (val: boolean) => void;
+  sidebarPosition: 'left' | 'right';
+  setSidebarPosition: (val: 'left' | 'right') => void;
+  compactMode: boolean;
+  setCompactMode: (val: boolean) => void;
 
   status: UpdateStatus;
   updateInfo: UpdateInfo | null;
   onCheckForUpdates: () => Promise<void>;
   onBeforeCheckForUpdates: () => void;
+  embedded?: boolean;
 }
 
 export const LauncherTab: React.FC<LauncherTabProps> = ({
@@ -32,10 +75,19 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
   minecraftPath,
   setMinecraftPath,
   t,
+  uiScale,
+  setUiScale,
+  disableAnimations,
+  setDisableAnimations,
+  sidebarPosition,
+  setSidebarPosition,
+  compactMode,
+  setCompactMode,
   status,
   updateInfo,
   onCheckForUpdates,
   onBeforeCheckForUpdates,
+  embedded = false,
 }) => {
   const toast = useToast();
   const confirm = useConfirm();
@@ -104,60 +156,129 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
     }
   }, [t, toast]);
 
+  const accentRangeStyles = useMemo(() => ({ accentColor: 'rgb(var(--accent-main))' }), []);
+
   return (
     <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
       <div className="space-y-4">
-        <div className="surface-card space-y-4 p-5">
-          <div className="space-y-2">
+        {!embedded && (
+          <div className="settings-section-shell settings-section-copy p-5">
             <div className="kicker-label">{t('settings.tab_launcher')}</div>
             <h3 className="text-lg font-bold text-foreground">{t('settings.tab_launcher')}</h3>
-            <p className="text-sm text-secondary">{t('settings.launcherHint')}</p>
+            <p className="settings-embedded-copy">{t('settings.launcherHint')}</p>
+          </div>
+        )}
+
+        <div className="settings-section-shell settings-section-stack p-5">
+          <div className="settings-section-copy">
+            <h4 className="settings-embedded-title">
+              {translateWithFallback(t, 'settings.launcher_runtime_title', 'Launcher Runtime')}
+            </h4>
+            <p className="settings-embedded-copy">
+              {translateWithFallback(
+                t,
+                'settings.launcher_runtime_desc',
+                'Tune how the launcher behaves while you play, debug issues, and navigate the shell.',
+              )}
+            </p>
           </div>
 
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            <div className="surface-muted p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{t('settings.performance')}</p>
-                  <p id="settings-performance-hint" className="text-sm text-secondary">{t('settings.performance_desc')}</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={hideLauncher}
-                  onChange={(e) => setHideLauncher(e.target.checked)}
-                  aria-describedby="settings-performance-hint"
-                  className="mt-1 h-4 w-4 cursor-pointer rounded border-border/70 bg-card text-[rgb(var(--accent-main))] focus:ring-[rgb(var(--accent-main))] focus:ring-offset-background"
-                />
+            <ToggleRow
+              label={t('settings.performance')}
+              description={t('settings.performance_desc')}
+              checked={hideLauncher}
+              onToggle={() => setHideLauncher(!hideLauncher)}
+            />
+            <ToggleRow
+              label={t('settings.console')}
+              description={t('settings.console_desc')}
+              checked={showConsole}
+              onToggle={() => setShowConsole(!showConsole)}
+            />
+            <ToggleRow
+              label={translateWithFallback(t, 'settings.animations', 'Enable Animations')}
+              description={translateWithFallback(
+                t,
+                'settings.animations_scope_desc',
+                'Controls launcher motion and background effects without changing preset colors or surfaces.',
+              )}
+              checked={!disableAnimations}
+              onToggle={() => setDisableAnimations(!disableAnimations)}
+            />
+            <ToggleRow
+              label={translateWithFallback(t, 'settings.compact_mode', 'Compact Mode')}
+              description={translateWithFallback(
+                t,
+                'settings.compact_mode_desc',
+                'Tightens launcher spacing and list density; it does not change the active preset.',
+              )}
+              checked={compactMode}
+              onToggle={() => setCompactMode(!compactMode)}
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
+            <div className="settings-control-card space-y-3">
+              <label className="flex justify-between text-sm font-medium text-foreground">
+                <span>{translateWithFallback(t, 'settings.ui_zoom', 'Interface Zoom')}</span>
+                <span>{uiScale}%</span>
+              </label>
+              <input
+                type="range"
+                min="70"
+                max="150"
+                step="5"
+                value={uiScale}
+                onChange={(event) => setUiScale(parseInt(event.target.value, 10))}
+                className="settings-slider"
+                style={accentRangeStyles}
+              />
+              <div className="flex justify-end">
+                <Button size="sm" variant="secondary" onClick={() => setUiScale(100)} disabled={uiScale === 100}>
+                  {translateWithFallback(t, 'settings.reset', 'Reset')}
+                </Button>
               </div>
             </div>
 
-            <div className="surface-muted p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{t('settings.console')}</p>
-                  <p id="settings-console-hint" className="text-sm text-secondary">{t('settings.console_desc')}</p>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={showConsole}
-                  onChange={(e) => setShowConsole(e.target.checked)}
-                  aria-describedby="settings-console-hint"
-                  className="mt-1 h-4 w-4 cursor-pointer rounded border-border/70 bg-card text-[rgb(var(--accent-main))] focus:ring-[rgb(var(--accent-main))] focus:ring-offset-background"
-                />
+            <div className="settings-control-card space-y-3">
+              <p className="settings-toggle-title">{translateWithFallback(t, 'settings.sidebar_position', 'Sidebar Position')}</p>
+              <div className="settings-segmented-row">
+                {(['left', 'right'] as const).map((position) => (
+                  <button
+                    key={position}
+                    type="button"
+                    onClick={() => setSidebarPosition(position)}
+                    aria-pressed={sidebarPosition === position}
+                    data-state={sidebarPosition === position ? 'active' : 'inactive'}
+                    className="settings-segmented-option"
+                  >
+                    {position === 'left'
+                      ? translateWithFallback(t, 'settings.sidebar_position_left', 'Left')
+                      : translateWithFallback(t, 'settings.sidebar_position_right', 'Right')}
+                  </button>
+                ))}
               </div>
+              <p className="settings-embedded-copy">
+                {translateWithFallback(
+                  t,
+                  'settings.sidebar_position_desc',
+                  'Moves launcher navigation only; preset visuals stay unchanged.',
+                )}
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="surface-card p-4">
+        <div className="settings-section-shell p-4">
           <MinecraftPathSection minecraftPath={minecraftPath} setMinecraftPath={setMinecraftPath} t={t} />
         </div>
 
-        <div className="surface-card flex flex-col gap-4 p-5">
+        <div className="settings-section-shell flex flex-col gap-4 p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
-              <p className="text-sm font-semibold text-foreground">{t('settings.updatesTitle')}</p>
-              <p className="text-sm text-secondary">{t('settings.updatesDesc')}</p>
+              <p className="settings-embedded-title">{t('settings.updatesTitle')}</p>
+              <p className="settings-embedded-copy">{t('settings.updatesDesc')}</p>
             </div>
             {(status === 'checking' || status === 'available' || status === 'up-to-date' || status === 'error') && (
               <div className="surface-inline px-3 py-2 text-xs">

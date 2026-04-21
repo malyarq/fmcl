@@ -10,7 +10,7 @@ Goal: document the live IPC, preload, and renderer contract surface for the ship
 - Unified renderer API type: `shared/contracts/windowApi.ts`
 - Renderer wrappers: `src/services/ipc/*`
 
-Snapshot date: **2026-04-12**
+Snapshot date: **2026-04-21**
 
 ---
 
@@ -54,6 +54,8 @@ Notes:
 - `window.api.cache`
 - `window.api.settings`
 - `window.api.assets`
+- `window.api.resourcePacks`
+- `window.api.shaders`
 - `window.api.ipcRenderer`
 - `window.api.account`
 - `window.api.mirrors`
@@ -86,6 +88,8 @@ Preferred rule: new renderer code should use `window.api.*` or the typed wrapper
 - `src/services/ipc/shareIPC.ts` → `window.api.share`
 - `src/services/ipc/externalLinksIPC.ts` → `window.api.externalLinks`
 - `src/services/ipc/screenshotsIPC.ts` → `window.screenshots`
+- `src/services/ipc/resourcePacksIPC.ts` → `window.api.resourcePacks`
+- `src/services/ipc/shadersIPC.ts` → `window.api.shaders`
 
 ### 2.3 Native browser `window.*` usage (not Electron contracts)
 
@@ -252,6 +256,11 @@ Preferred rule: new renderer code should use `window.api.*` or the typed wrapper
 - `datapacks:search`
 - `datapacks:install`
 - `datapacks:getVersions`
+
+Outcome notes:
+
+- `resourcePacks:import` and `resourcePacks:add` now return `ResourcePackAcquisitionResult` with named statuses instead of booleans.
+- `shaders:add` now returns `ShaderPackAcquisitionResult` with named statuses instead of booleans.
 
 ### 3.11 App, account, mirrors, screenshots
 

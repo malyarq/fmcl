@@ -464,7 +464,8 @@ export class ModpackService extends BaseModpackService {
       versionId: string | number;
     },
   ): void {
-    const modpackDir = this.getModpackDir(rootPath, modpackId);
+    const safeRootPath = this.resolveSafeRootPath(rootPath);
+    const modpackDir = this.resolveSafeModpackDir(safeRootPath, modpackId);
     const manifestPath = path.join(modpackDir, 'manifest.json');
 
     let manifest: ModpackManifest;
@@ -484,6 +485,14 @@ export class ModpackService extends BaseModpackService {
         files: [],
       };
     }
+
+    manifest.files = manifest.files.filter((entry) => {
+      if (mod.platform === 'curseforge') {
+        return !(entry.projectID === mod.projectId && entry.fileID === mod.versionId);
+      }
+
+      return !(entry.projectId === mod.projectId && entry.versionId === mod.versionId);
+    });
 
     // Добавить мод в манифест
     if (mod.platform === 'curseforge') {

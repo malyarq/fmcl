@@ -29,6 +29,10 @@ export type ManualVerificationView =
   | 'phase-21-secondary-density'
   | 'modpack-export'
   | 'modpack-add'
+  | 'guided-resourcepacks'
+  | 'guided-resourcepacks-recovery'
+  | 'guided-shaders'
+  | 'guided-shaders-recovery'
   | 'modpack-install'
   | 'modpack-import-preview'
   | 'modpack-add-modal'
@@ -142,7 +146,7 @@ export const GENERAL_VIEWS: ManualVerificationViewMeta[] = [
   { id: 'welcome', label: 'Welcome', description: 'First-run welcome overlay.', group: 'general' },
   { id: 'tour', label: 'Tour', description: 'Onboarding spotlight with stable targets.', group: 'general' },
   { id: 'dashboard', label: 'Launcher Home', description: 'Phase 20 launcher-home proof inside the real shell for one canonical mark, one wordmark, and one shell-owned Play CTA.', group: 'general' },
-  { id: 'settings-appearance', label: 'Settings -> Appearance', description: 'Shell-integrated appearance proof for shared launcher branding and the accent-vs-brand boundary.', group: 'general' },
+  { id: 'settings-appearance', label: 'Settings -> Appearance', description: 'Shell-integrated appearance proof for preset ancestry, bounded customization, and honest launcher-runtime control boundaries.', group: 'general' },
   { id: 'settings-accounts', label: 'Settings -> Accounts', description: 'Settings shell with accounts continuity.', group: 'general' },
   { id: 'accounts', label: 'Accounts', description: 'Standalone account management and skin panel.', group: 'general' },
   { id: 'modpack-list', label: 'Modpack List', description: 'Installed modpack cards and actions.', group: 'general' },
@@ -151,6 +155,30 @@ export const GENERAL_VIEWS: ManualVerificationViewMeta[] = [
   { id: 'modpack-details', label: 'Modpack Details', description: 'Shell-integrated details proof for route-owned CTA hierarchy and bottom-edge visibility.', group: 'general' },
   { id: 'modpack-export', label: 'Export', description: 'Shell-integrated export-route proof for flow-first actions and visible final content edges.', group: 'general' },
   { id: 'modpack-add', label: 'Add Content', description: 'Shell-integrated add-content route proof with demoted shell launch and visible result endings.', group: 'general' },
+  {
+    id: 'guided-resourcepacks',
+    label: 'Guided Resource Packs',
+    description: 'Phase 31 guided resource-pack browser proof with direct route-owned browsing, explicit local .zip fallback, and instance-scoped copy.',
+    group: 'general',
+  },
+  {
+    id: 'guided-resourcepacks-recovery',
+    label: 'Guided Resource Pack Recovery',
+    description: 'Phase 31 guided resource-pack fallback proof showing partial local import recovery without leaving the guided route shell.',
+    group: 'general',
+  },
+  {
+    id: 'guided-shaders',
+    label: 'Guided Shaders',
+    description: 'Phase 31 guided shader browser proof with needs-setup runtime guidance, explicit local fallback, and shader-specific catalog fixtures.',
+    group: 'general',
+  },
+  {
+    id: 'guided-shaders-recovery',
+    label: 'Guided Shader Recovery',
+    description: 'Phase 31 guided shader recovery proof with unsupported-runtime guidance and retry-ready blocked install state.',
+    group: 'general',
+  },
   { id: 'modpack-install', label: 'Install', description: 'Shell-integrated install-route proof for route-owned CTA hierarchy.', group: 'general' },
   { id: 'modpack-import-preview', label: 'Import Preview', description: 'Shell-integrated import-preview proof with visible final import controls.', group: 'general' },
   { id: 'modpack-add-modal', label: 'Add Mod Modal', description: 'Shell-integrated modal proof showing add-mod overlay state above the real shell.', group: 'general' },

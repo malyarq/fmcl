@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
+import type { ModLoaderType } from '../../contexts/instances/types';
 import { useDebounce } from '../../hooks/useDebounce';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -15,6 +16,8 @@ import { DEFAULT_MODPACK_BROWSER_STATE, normalizeModpackBrowserState, type Modpa
 import { ArrowLeft, History, Import, Star } from 'lucide-react';
 import { DegradedStateView } from '../layout/DegradedStateView';
 import { toDisplayErrorMessage } from '../../utils/displayError';
+import { ModpackCatalogControls } from './ModpackCatalogControls';
+import { getModloaderDisplayLabel } from '../sidebar/modpackRuntimeDependencies';
 
 type Platform = ModpackBrowserState['platform'];
 type SortOption = ModpackBrowserState['sortBy'];
@@ -53,16 +56,6 @@ function translateWithFallback(
   return value === key ? fallback : value;
 }
 
-function formatCompactCount(
-  value: number,
-  formatNumber: (input: number, options?: Intl.NumberFormatOptions) => string,
-): string {
-  return formatNumber(value, {
-    notation: 'compact',
-    maximumFractionDigits: 1,
-  });
-}
-
 function formatDateLabel(
   value: string | undefined,
   formatDate: (timestamp: number | undefined, unknownText?: string, options?: Intl.DateTimeFormatOptions) => string,
@@ -83,22 +76,22 @@ function formatLoaderLabel(
   t: (key: string, params?: Record<string, string | number>) => string,
   loader: string,
 ): string {
-  const normalizedLoader = loader.toLowerCase();
-
-  switch (normalizedLoader) {
-    case 'forge':
-      return translateWithFallback(t, 'modpacks.loader_forge', 'Forge');
-    case 'fabric':
-      return translateWithFallback(t, 'modpacks.loader_fabric', 'Fabric');
-    case 'quilt':
-      return translateWithFallback(t, 'modpacks.loader_quilt', 'Quilt');
-    case 'neoforge':
-      return translateWithFallback(t, 'modpacks.loader_neoforge', 'NeoForge');
-    case 'vanilla':
-      return translateWithFallback(t, 'modpacks.loader_vanilla', 'Vanilla (no modloader)');
-    default:
-      return loader;
+  if (!loader) {
+    return loader;
   }
+
+  return getModloaderDisplayLabel({ type: loader.toLowerCase() as ModLoaderType }, t);
+}
+
+function resolveResultMinecraftVersion(modpack: ModpackSearchResultItem, activeFilter: FilterMCVersion): string | null {
+  const explicitVersion = modpack.minecraftVersion?.trim();
+  if (explicitVersion) {
+    return explicitVersion;
+  }
+
+  return activeFilter !== DEFAULT_MODPACK_BROWSER_STATE.filterMCVersion
+    ? activeFilter
+    : null;
 }
 
 export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, onBack, onNavigate, onStateChange }) => {
@@ -337,6 +330,53 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
   const formattedCurrentPage = formatNumber(currentPage);
   const formattedTotalPages = formatNumber(Math.max(totalPages, 1));
   const recentHistory = useMemo(() => history.slice(0, 3), [history]);
+  const remoteCatalogStatus = useMemo(() => {
+    if (searchError) {
+      return [t('degraded.error_label')];
+    }
+
+    const items = [
+      totalResults > 0
+        ? translateWithFallback(
+            t,
+            'modpacks.results_summary',
+            `Showing ${formattedShowingStart}-${formattedShowingEnd} of ${formattedTotalResults}`,
+            { start: formattedShowingStart, end: formattedShowingEnd, total: formattedTotalResults },
+          )
+        : translateWithFallback(t, 'modpacks.results_summary_empty', 'No results yet'),
+    ];
+
+    if (totalPages > 1) {
+      items.push(
+        translateWithFallback(
+          t,
+          'modpacks.results_page_summary',
+          `Page ${formattedCurrentPage} of ${formattedTotalPages}`,
+          { current: formattedCurrentPage, total: formattedTotalPages },
+        ),
+      );
+    }
+
+    if (recentHistory.length > 0) {
+      items.push(
+        `${translateWithFallback(t, 'modpacks.recently_viewed', 'Recently viewed')}: ${formatNumber(recentHistory.length)}`,
+      );
+    }
+
+    return items;
+  }, [
+    formattedCurrentPage,
+    formattedShowingEnd,
+    formattedShowingStart,
+    formattedTotalPages,
+    formattedTotalResults,
+    formatNumber,
+    recentHistory.length,
+    searchError,
+    t,
+    totalPages,
+    totalResults,
+  ]);
   const browserErrorTitle = t('error.inline_fallback');
   const browserErrorDescription = searchError
     ? (() => {
@@ -402,6 +442,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
     const providerLabel = modpack.platform === 'curseforge'
       ? translateWithFallback(t, 'modpacks.platform_curseforge', 'CurseForge')
       : translateWithFallback(t, 'modpacks.platform_modrinth', 'Modrinth');
+    const minecraftVersion = resolveResultMinecraftVersion(modpack, filterMCVersion);
     const updatedLabel = formatDateLabel(modpack.dateModified ?? modpack.dateCreated, formatDate);
     const favoritesActionLabel = isFavorited
       ? translateWithFallback(t, 'modpacks.remove_favorite', 'Remove favorite')
@@ -417,7 +458,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
         onClick={() => {
           void handleModpackClick(modpack);
         }}
-        className="surface-card relative flex min-h-[20rem] cursor-pointer flex-col p-4 transition-colors hover:border-border-active hover:bg-card focus-within:ring-2 focus-within:ring-[rgb(var(--accent-main))] focus-within:ring-offset-2 focus-within:ring-offset-background"
+        className="surface-card relative flex min-h-[17rem] cursor-pointer flex-col p-4 transition-colors hover:border-border-active hover:bg-card focus-within:ring-2 focus-within:ring-[rgb(var(--accent-main))] focus-within:ring-offset-2 focus-within:ring-offset-background"
       >
         <div
           role="button"
@@ -488,23 +529,18 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
               <h4 className="truncate font-semibold text-foreground">
                 {modpack.title}
               </h4>
-              {modpack.description && (
-                <p className="mt-1 line-clamp-2 text-sm text-secondary">
-                  {modpack.description}
-                </p>
-              )}
             </div>
           </div>
 
-          {(modpack.downloads !== undefined || updatedLabel) && (
+          {(minecraftVersion || updatedLabel) && (
             <div className="grid gap-2 text-xs text-secondary sm:grid-cols-2">
-              {modpack.downloads !== undefined && (
+              {minecraftVersion && (
                 <div className="rounded-2xl border border-border/70 bg-background/72 px-3 py-2">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                    {translateWithFallback(t, 'modpacks.downloads', 'Downloads')}
+                    {translateWithFallback(t, 'modpacks.minecraft_version', 'Minecraft Version')}
                   </div>
                   <div className="mt-1 text-sm font-medium text-foreground">
-                    {formatCompactCount(modpack.downloads, formatNumber)}
+                    {minecraftVersion}
                   </div>
                 </div>
               )}
@@ -538,7 +574,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
         </div>
       </div>
     );
-  }, [formatDate, formatNumber, getAccentStyles, handleCardKeyDown, handleModpackClick, isFavorite, t, toggleFavorite]);
+  }, [filterMCVersion, formatDate, getAccentStyles, handleCardKeyDown, handleModpackClick, isFavorite, t, toggleFavorite]);
 
 
   return (
@@ -634,229 +670,139 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
 
       <div className="flex-1 overflow-y-auto p-6 min-h-0 custom-scrollbar">
         {!showHistory && (
-          <div className="surface-muted mb-4 space-y-4 p-4" data-testid="remote-modpack-summary">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                <div className="rounded-2xl border border-border/70 bg-background/72 px-4 py-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                    {translateWithFallback(t, 'modpacks.results', 'Results')}
-                  </div>
-                  <div className="mt-1 text-sm font-medium text-foreground">
-                    {searchError
-                      ? t('degraded.error_label')
-                      : totalResults > 0
-                        ? translateWithFallback(
-                          t,
-                          'modpacks.results_summary',
-                          `Showing ${formattedShowingStart}-${formattedShowingEnd} of ${formattedTotalResults}`,
-                          { start: formattedShowingStart, end: formattedShowingEnd, total: formattedTotalResults }
-                        )
-                      : translateWithFallback(t, 'modpacks.results_summary_empty', 'No results yet')}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-border/70 bg-background/72 px-4 py-3">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                    {translateWithFallback(t, 'modpacks.page', 'Page')}
-                  </div>
-                  <div className="mt-1 text-sm font-medium text-foreground">
-                    {searchError
-                      ? t('degraded.error_label')
-                      : totalPages > 1
-                        ? translateWithFallback(
-                          t,
-                          'modpacks.results_page_summary',
-                          `Page ${formattedCurrentPage} of ${formattedTotalPages}`,
-                          { current: formattedCurrentPage, total: formattedTotalPages }
-                        )
-                        : translateWithFallback(
-                          t,
-                          'modpacks.results_page_summary',
-                          'Page {{current}} of {{total}}',
-                          { current: formatNumber(1), total: formatNumber(1) }
-                        )}
-                  </div>
-                </div>
-                {recentHistory.length > 0 && (
-                  <div className="rounded-2xl border border-border/70 bg-background/72 px-4 py-3">
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                      {translateWithFallback(t, 'modpacks.history', 'History')}
-                    </div>
-                    <div className="mt-1 text-sm font-medium text-foreground">
-                      {formatNumber(recentHistory.length)} / {formatNumber(history.length)}
-                    </div>
-                  </div>
-                )}
-              </div>
-              {hasActiveFilters && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResetFilters}
-                  className="shrink-0"
-                >
-                  {translateWithFallback(t, 'modpacks.clear_filters', 'Clear filters')}
-                </Button>
-              )}
-            </div>
-
-            {activeFilterTokens.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-xs font-medium text-foreground">
-                  {translateWithFallback(t, 'modpacks.active_filters', 'Active filters')}
-                </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-secondary">
-                  {activeFilterTokens.map((token) => (
-                    <span key={token} className="rounded-full border border-border/70 bg-background/72 px-2.5 py-1">
-                      {token}
-                    </span>
-                  ))}
-                </div>
-              </div>
+          <ModpackCatalogControls
+            rootTestId="remote-modpack-filters"
+            controlsTestId="remote-modpack-filter-controls"
+            searchLabel={t('modpacks.search') || 'Search modpacks'}
+            searchControl={(
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={t('modpacks.search_placeholder')}
+                aria-label={t('modpacks.search_placeholder') || 'Search modpacks'}
+                className="w-full"
+                data-testid="remote-modpack-search"
+              />
             )}
-
-            {recentHistory.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-xs font-medium uppercase tracking-[0.16em] text-secondary">
-                  {translateWithFallback(t, 'modpacks.recently_viewed', 'Recently viewed')}
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {recentHistory.map((modpack) => (
-                    <button
-                      key={getModpackIdentity(modpack)}
-                      type="button"
-                      onClick={() => {
-                        void handleModpackClick(modpack);
-                      }}
-                      className="inline-flex min-w-0 items-center gap-2 rounded-full border border-border/70 bg-background/72 px-3 py-2 text-sm text-foreground transition-colors hover:bg-card"
-                      aria-label={translateWithFallback(
-                        t,
-                        'modpacks.recent_open',
-                        `Open recent modpack ${modpack.title}`,
-                        { name: modpack.title }
-                      )}
-                    >
-                      <span className={cn(
-                        'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]',
-                        modpack.platform === 'curseforge'
-                          ? 'border border-amber-500/30 bg-amber-500/10 text-amber-300'
-                          : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                      )}>
-                        {modpack.platform === 'curseforge'
-                          ? translateWithFallback(t, 'modpacks.platform_curseforge', 'CurseForge')
-                          : translateWithFallback(t, 'modpacks.platform_modrinth', 'Modrinth')}
-                      </span>
-                      <span className="max-w-[14rem] truncate">{modpack.title}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Search and Filters */}
-        {!showHistory && (
-          <div
-            className="surface-muted mb-4 space-y-3 p-4"
-            role="search"
-            aria-label={t('modpacks.search') || 'Search modpacks'}
-            data-testid="remote-modpack-filters"
-          >
-            <div className="grid gap-3 xl:grid-cols-4" data-testid="remote-modpack-filter-controls">
-              <div className="space-y-1 xl:col-span-4">
-                <div className="text-xs font-medium text-secondary">
-                  {t('modpacks.search') || 'Search modpacks'}
-                </div>
-                <Input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder={t('modpacks.search_placeholder')}
-                  aria-label={t('modpacks.search_placeholder') || 'Search modpacks'}
-                  className="w-full"
-                  data-testid="remote-modpack-search"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-xs font-medium text-secondary">
-                  {sortBy === 'alphabetical'
+            controls={[
+              {
+                key: 'sort',
+                label:
+                  sortBy === 'alphabetical'
                     ? translateWithFallback(t, 'modpacks.sort_alphabetical', 'Alphabetical')
                     : sortBy === 'date'
                       ? translateWithFallback(t, 'modpacks.sort_date', 'Date')
-                      : translateWithFallback(t, 'modpacks.sort_popularity', 'Popularity')}
-                </div>
-                <Select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  aria-label={t('modpacks.sort_popularity') || 'Sort modpacks'}
-                  className="w-full"
-                  data-testid="remote-modpack-sort"
-                >
-                  <option value="popularity">{t('modpacks.sort_popularity') || 'По популярности'}</option>
-                  <option value="alphabetical">{t('modpacks.sort_alphabetical') || 'По алфавиту'}</option>
-                  <option value="date">{t('modpacks.sort_date') || 'По дате'}</option>
-                </Select>
+                      : translateWithFallback(t, 'modpacks.sort_popularity', 'Popularity'),
+                control: (
+                  <Select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    aria-label={t('modpacks.sort_popularity') || 'Sort modpacks'}
+                    className="w-full"
+                    data-testid="remote-modpack-sort"
+                  >
+                    <option value="popularity">{t('modpacks.sort_popularity') || 'По популярности'}</option>
+                    <option value="alphabetical">{t('modpacks.sort_alphabetical') || 'По алфавиту'}</option>
+                    <option value="date">{t('modpacks.sort_date') || 'По дате'}</option>
+                  </Select>
+                ),
+              },
+              {
+                key: 'version',
+                label: translateWithFallback(t, 'modpacks.minecraft_version', 'Minecraft Version'),
+                control: (
+                  <Select
+                    value={filterMCVersion}
+                    onChange={(e) => setFilterMCVersion(e.target.value as FilterMCVersion)}
+                    aria-label={t('modpacks.filter_all') || 'Filter by Minecraft version'}
+                    className="w-full"
+                    data-testid="remote-modpack-version-filter"
+                  >
+                    <option value="all">{t('modpacks.filter_all') || 'Все версии MC'}</option>
+                    {MINECRAFT_VERSIONS.filter((v) => v.type === 'release').map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.id}
+                      </option>
+                    ))}
+                  </Select>
+                ),
+              },
+              {
+                key: 'loader',
+                label: translateWithFallback(t, 'modpacks.loader', 'Modloader'),
+                control: (
+                  <Select
+                    value={filterLoader}
+                    onChange={(e) => setFilterLoader(e.target.value as FilterLoader)}
+                    aria-label={t('modpacks.filter_all_loaders') || 'Filter by modloader'}
+                    className="w-full"
+                    data-testid="remote-modpack-loader-filter"
+                  >
+                    <option value="all">{t('modpacks.filter_all_loaders') || 'Все модлоадеры'}</option>
+                    <option value="forge">Forge</option>
+                    <option value="fabric">Fabric</option>
+                    <option value="neoforge">NeoForge</option>
+                  </Select>
+                ),
+              },
+              {
+                key: 'items-per-page',
+                label: translateWithFallback(t, 'modpacks.items_per_page', 'Items per page'),
+                control: (
+                  <Select
+                    value={String(itemsPerPage)}
+                    onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
+                    aria-label={t('modpacks.items_per_page') || 'Items per page'}
+                    className="w-full"
+                    title={t('modpacks.items_per_page') || 'Элементов на странице'}
+                    data-testid="remote-modpack-items-per-page"
+                  >
+                    <option value="12">12</option>
+                    <option value="24">24</option>
+                    <option value="48">48</option>
+                  </Select>
+                ),
+              },
+            ]}
+            activeFilterTokens={activeFilterTokens}
+            onReset={hasActiveFilters ? handleResetFilters : undefined}
+            resetLabel={translateWithFallback(t, 'modpacks.clear_filters', 'Clear filters')}
+            status={remoteCatalogStatus.map((item) => (
+              <span key={item}>{item}</span>
+            ))}
+            footer={recentHistory.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {recentHistory.map((modpack) => (
+                  <button
+                    key={getModpackIdentity(modpack)}
+                    type="button"
+                    onClick={() => {
+                      void handleModpackClick(modpack);
+                    }}
+                    className="inline-flex min-w-0 items-center gap-2 rounded-full border border-border/70 bg-background/72 px-3 py-2 text-sm text-foreground transition-colors hover:bg-card"
+                    aria-label={translateWithFallback(
+                      t,
+                      'modpacks.recent_open',
+                      `Open recent modpack ${modpack.title}`,
+                      { name: modpack.title },
+                    )}
+                  >
+                    <span className={cn(
+                      'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em]',
+                      modpack.platform === 'curseforge'
+                        ? 'border border-amber-500/30 bg-amber-500/10 text-amber-300'
+                        : 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+                    )}>
+                      {modpack.platform === 'curseforge'
+                        ? translateWithFallback(t, 'modpacks.platform_curseforge', 'CurseForge')
+                        : translateWithFallback(t, 'modpacks.platform_modrinth', 'Modrinth')}
+                    </span>
+                    <span className="max-w-[14rem] truncate">{modpack.title}</span>
+                  </button>
+                ))}
               </div>
-
-              <div className="space-y-1">
-                <div className="text-xs font-medium text-secondary">
-                  {translateWithFallback(t, 'modpacks.minecraft_version', 'Minecraft Version')}
-                </div>
-                <Select
-                  value={filterMCVersion}
-                  onChange={(e) => setFilterMCVersion(e.target.value as FilterMCVersion)}
-                  aria-label={t('modpacks.filter_all') || 'Filter by Minecraft version'}
-                  className="w-full"
-                  data-testid="remote-modpack-version-filter"
-                >
-                  <option value="all">{t('modpacks.filter_all') || 'Все версии MC'}</option>
-                  {MINECRAFT_VERSIONS.filter(v => v.type === 'release').map((v) => (
-                    <option key={v.id} value={v.id}>
-                      {v.id}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-xs font-medium text-secondary">
-                  {translateWithFallback(t, 'modpacks.loader', 'Modloader')}
-                </div>
-                <Select
-                  value={filterLoader}
-                  onChange={(e) => setFilterLoader(e.target.value as FilterLoader)}
-                  aria-label={t('modpacks.filter_all_loaders') || 'Filter by modloader'}
-                  className="w-full"
-                  data-testid="remote-modpack-loader-filter"
-                >
-                  <option value="all">{t('modpacks.filter_all_loaders') || 'Все модлоадеры'}</option>
-                  <option value="forge">Forge</option>
-                  <option value="fabric">Fabric</option>
-                  <option value="neoforge">NeoForge</option>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <div className="text-xs font-medium text-secondary">
-                  {translateWithFallback(t, 'modpacks.items_per_page', 'Items per page')}
-                </div>
-                <Select
-                  value={String(itemsPerPage)}
-                  onChange={(e) => handleItemsPerPageChange(Number(e.target.value))}
-                  aria-label={t('modpacks.items_per_page') || 'Items per page'}
-                  className="w-full"
-                  title={t('modpacks.items_per_page') || 'Элементов на странице'}
-                  data-testid="remote-modpack-items-per-page"
-                >
-                  <option value="12">12</option>
-                  <option value="24">24</option>
-                  <option value="48">48</option>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-
+            ) : null}
+          />
         )}
 
         {/* History View */}

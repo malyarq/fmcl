@@ -1,5 +1,9 @@
 import { cn } from '../../utils/cn';
 import {
+  getModpackRuntimeStatusLabel,
+  type ModpackRuntimeSummaryStatus,
+} from '../../features/modpacks/hooks/useModpackRuntimeSummary';
+import {
   getRuntimeDependencyWarningMessage,
   getModloaderDisplayLabel,
   type RuntimeDependencyState,
@@ -14,9 +18,18 @@ export function ModpackDependencySummary(props: {
   runtime: RuntimeDependencyState;
   t: (key: string) => string;
   className?: string;
+  status?: ModpackRuntimeSummaryStatus;
 }) {
-  const { runtime, t, className } = props;
+  const { runtime, t, className, status } = props;
   const runtimeWarnings = runtime.warnings.map((warning) => getRuntimeDependencyWarningMessage(warning, t));
+  const resolvedStatus =
+    status ?? (!runtime.minecraftVersion ? 'error' : runtimeWarnings.length > 0 ? 'warning' : 'healthy');
+  const statusToneClasses =
+    resolvedStatus === 'healthy'
+      ? 'border-border/70 bg-background/75 text-foreground'
+      : resolvedStatus === 'warning'
+        ? 'border-amber-500/35 bg-amber-500/12 text-amber-950 dark:text-amber-100'
+        : 'border-red-500/35 bg-red-500/12 text-red-900 dark:text-red-100';
 
   return (
     <div className={cn('surface-muted rounded-2xl border border-border/70 p-4', className)} data-testid="modpack-dependency-summary">
@@ -24,12 +37,21 @@ export function ModpackDependencySummary(props: {
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-secondary">
           {translateWithFallback(t, 'modpacks.runtime_dependencies', 'Runtime dependencies')}
         </p>
-        <span
-          className="rounded-full border border-border/70 bg-background/75 px-2.5 py-1 text-xs font-semibold text-foreground"
-          data-testid="modpack-dependency-count"
-        >
-          {runtime.dependencyCount}
-        </span>
+        <div className="flex items-center gap-2">
+          <span
+            className={cn('rounded-full border px-2.5 py-1 text-xs font-semibold', statusToneClasses)}
+            data-testid="modpack-dependency-status"
+            data-tone={resolvedStatus}
+          >
+            {getModpackRuntimeStatusLabel(resolvedStatus, t)}
+          </span>
+          <span
+            className="rounded-full border border-border/70 bg-background/75 px-2.5 py-1 text-xs font-semibold text-foreground"
+            data-testid="modpack-dependency-count"
+          >
+            {runtime.dependencyCount}
+          </span>
+        </div>
       </div>
       <dl className="space-y-3">
         <div className="flex items-center justify-between gap-4">

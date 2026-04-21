@@ -1,6 +1,14 @@
 type WindowControlsApi = Window['windowControls'];
 type NamespacedWindowControlsApi = Window['api']['windowControls'];
 
+function usesNativeMacWindowControls(): boolean {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+
+  return /(Mac|iPhone|iPad|iPod)/i.test(navigator.platform || navigator.userAgent || '');
+}
+
 function hasWindowControls(): boolean {
   return typeof window !== 'undefined' && Boolean(window.api?.windowControls || window.windowControls);
 }
@@ -29,6 +37,10 @@ export const windowControlsIPC = {
     return hasWindowControls();
   },
 
+  usesNativeWindowControls(): boolean {
+    return usesNativeMacWindowControls();
+  },
+
   has<K extends keyof WindowControlsApi>(key: K): boolean {
     return hasMethod(key);
   },
@@ -45,4 +57,3 @@ export const windowControlsIPC = {
 };
 
 export type WindowControlsIPC = typeof windowControlsIPC;
-

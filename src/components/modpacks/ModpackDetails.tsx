@@ -9,7 +9,6 @@ import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { ModpackUpdateModal } from './ModpackUpdateModal';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import type { ModpackMetadata } from '@shared/types/modpack';
-import type { ModpackVersionDescriptor } from '@shared/contracts';
 import { useModpackDetailsConfig } from '../../features/modpacks/hooks/useModpackDetailsConfig';
 import {
   ModpackDetailsHeader,
@@ -28,6 +27,8 @@ import { useVersions } from '../../features/launcher/hooks/useVersions';
 import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
 import { cn } from '../../utils/cn';
 import { ArrowLeft } from 'lucide-react';
+import { resolveModpackUpdateInfo, type ModpackUpdateInfo } from '../../features/modpacks/hooks/useModpackUpdates';
+import { buildModpackRuntimeSummary } from '../../features/modpacks/hooks/useModpackRuntimeSummary';
 
 interface ModpackDetailsProps {
   modpackId: string;
@@ -63,7 +64,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
   const [loading, setLoading] = useState(initialMetadata ? false : true);
   const [activeTab, setActiveTab] = useState<ModpackDetailsTab>(initialTab);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [hasUpdate, setHasUpdate] = useState(false);
+  const [availableUpdate, setAvailableUpdate] = useState<ModpackUpdateInfo | null>(null);
   const [mods, setMods] = useState<ModpackModEntry[]>(initialMods ?? []);
   const [loadingMods, setLoadingMods] = useState(false);
   const [modSearchQuery, setModSearchQuery] = useState('');
@@ -75,8 +76,17 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
   const { forgeVersions, fabricVersions, neoForgeVersions, optiFineVersions } = useModSupportedVersions();
 
   const modpack = modpacks.find((m) => m.id === modpackId);
+  const runtimeSummary = React.useMemo(
+    () =>
+      buildModpackRuntimeSummary({
+        config: effectiveConfig,
+        metadata,
+        optiFineVersions: optiFineVersions.length > 0 ? optiFineVersions : undefined,
+      }),
+    [effectiveConfig, metadata, optiFineVersions],
+  );
 
-  const loaderType = effectiveConfig?.runtime?.modLoader?.type ?? metadata?.modLoader?.type;
+  const loaderType = runtimeSummary.modLoader?.type;
   const hasModloader = !!loaderType && loaderType !== 'vanilla';
   const secondarySurfaceTab =
     activeTab === 'mods' ||
@@ -108,35 +118,24 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
       const meta = await modpacksIPC.getMetadata(modpackId, minecraftPath);
       setMetadata(meta);
       setDescriptionDraft(meta.description || '');
-
-      if (meta.source && meta.source !== 'local' && meta.sourceId) {
-        try {
-          let versionsList: ModpackVersionDescriptor[];
-          if (meta.source === 'curseforge') {
-            versionsList = await modpacksIPC.getCurseForgeVersions(Number(meta.sourceId));
-          } else if (meta.source === 'modrinth') {
-            versionsList = await modpacksIPC.getModrinthVersions(meta.sourceId);
-          } else {
-            return;
-          }
-          if (versionsList.length > 0) {
-            const latest = versionsList[0];
-            const currentVersionId = meta.sourceVersionId || meta.version;
-            if (latest.versionId !== currentVersionId) {
-              setHasUpdate(true);
-            }
-          }
-        } catch (error) {
-          console.error('Error checking for updates:', error);
-        }
+      try {
+        const update = await resolveModpackUpdateInfo(
+          { id: modpackId, name: modpack?.name ?? modpackId, metadata: meta },
+          minecraftPath,
+        );
+        setAvailableUpdate(update);
+      } catch (error) {
+        console.error('Error checking for updates:', error);
+        setAvailableUpdate(null);
       }
     } catch (error) {
       console.error('Error loading modpack details:', error);
       setMetadata(null);
+      setAvailableUpdate(null);
     } finally {
       setLoading(false);
     }
-  }, [hydrateFromIpc, modpackId, minecraftPath]);
+  }, [hydrateFromIpc, minecraftPath, modpack?.name, modpackId]);
 
   useEffect(() => {
     if (!modpackId || !hydrateFromIpc) return;
@@ -301,6 +300,15 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
 
   if (!modpack) return null;
 
+  const updateVersionLabel = availableUpdate
+    ? availableUpdate.latestVersion.versionNumber || availableUpdate.latestVersion.name || availableUpdate.latestVersion.versionId
+    : null;
+  const updateVersionSummary = availableUpdate && updateVersionLabel
+    ? (t('modpacks.update_version_summary') || '{{current}} → {{latest}}')
+      .replace('{{current}}', availableUpdate.currentVersion)
+      .replace('{{latest}}', updateVersionLabel)
+    : null;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <div className="flex flex-col border-b border-border/70 bg-card/78 px-6 py-4 gap-4 backdrop-blur-md flex-shrink-0">
@@ -334,8 +342,8 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
               <div className="flex min-h-full flex-col gap-6 p-6 pb-8">
-                <div
-                  className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]"
+                <section
+                  className="surface-card grid gap-4 overflow-hidden p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start"
                   data-testid="modpack-details-hero"
                 >
                   <ModpackDetailsHeader
@@ -349,26 +357,25 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
                     getAccentHex={getAccentHex}
                   />
 
-                  <div className="xl:self-start">
-                    <ModpackDetailsActions
-                      onLaunch={async () => {
-                        await select(modpackId);
-                        onBack();
-                        // Defer launch to next tick so ModpackContext has time to update config
-                        if (onLaunch) setTimeout(() => onLaunch(), 0);
-                      }}
-                      hasUpdate={hasUpdate && !!metadata?.source && !!metadata?.sourceId && metadata.source !== 'local'}
-                      onShowUpdate={() => setShowUpdateModal(true)}
-                      onRename={handleRename}
-                      onDuplicate={handleDuplicate}
-                      onExport={() => onNavigate({ type: 'export', modpackId })}
-                      canDelete={modpacks.length > 1}
-                      onDelete={handleDelete}
-                      t={t}
-                      getAccentStyles={getAccentStyles}
-                    />
-                  </div>
-                </div>
+                  <ModpackDetailsActions
+                    onLaunch={async () => {
+                      await select(modpackId);
+                      onBack();
+                      // Defer launch to next tick so ModpackContext has time to update config
+                      if (onLaunch) setTimeout(() => onLaunch(), 0);
+                    }}
+                    hasUpdate={!!availableUpdate}
+                    onShowUpdate={() => setShowUpdateModal(true)}
+                    updateVersionSummary={updateVersionSummary}
+                    onRename={handleRename}
+                    onDuplicate={handleDuplicate}
+                    onExport={() => onNavigate({ type: 'export', modpackId })}
+                    canDelete={modpacks.length > 1}
+                    onDelete={handleDelete}
+                    t={t}
+                    getAccentStyles={getAccentStyles}
+                  />
+                </section>
 
                 <div className={cn('min-w-0', secondarySurfaceTab ? 'space-y-4' : 'surface-panel p-4 sm:p-5')}>
                   {activeTab === 'info' && (
@@ -395,8 +402,8 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
                       onModToggle={handleModToggle}
                       onRefresh={loadMods}
                       runtimeContext={{
-                        minecraft: effectiveConfig?.runtime.minecraft ?? metadata?.minecraftVersion,
-                        modLoader: effectiveConfig?.runtime.modLoader ?? metadata?.modLoader,
+                        minecraft: runtimeSummary.minecraftVersion || undefined,
+                        modLoader: runtimeSummary.modLoader,
                       }}
                       t={t}
                       getAccentStyles={getAccentStyles}
@@ -414,6 +421,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
                   {activeTab === 'shaders' && modpack && (
                     <ShadersTab
                       instancePath={modpack.path}
+                      runtimeSummary={runtimeSummary}
                       onUpdate={refresh}
                       onAddShader={() => onNavigate({ type: 'addShader', modpackId })}
                     />
@@ -422,7 +430,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
                   {activeTab === 'worlds' && modpack && (
                     <WorldsTab
                       instancePath={modpack.path}
-                      mcVersion={effectiveConfig?.runtime?.minecraft}
+                      mcVersion={runtimeSummary.minecraftVersion || undefined}
                       onUpdate={refresh}
                     />
                   )}
@@ -458,12 +466,12 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
           </div>
         )}
 
-        {showUpdateModal && metadata?.source && metadata?.sourceId && metadata.source !== 'local' && (
+        {showUpdateModal && availableUpdate && (
           <ModpackUpdateModal
             modpackId={modpackId}
-            sourceId={metadata.sourceId}
-            source={metadata.source as 'curseforge' | 'modrinth'}
-            currentVersion={metadata.sourceVersionId || metadata.version}
+            sourceId={availableUpdate.sourceId}
+            source={availableUpdate.source}
+            currentVersion={availableUpdate.currentVersion}
             isOpen={showUpdateModal}
             onClose={() => setShowUpdateModal(false)}
             onUpdated={async () => {

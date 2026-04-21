@@ -1,13 +1,10 @@
 import type { RefObject } from 'react';
-import { useMemo } from 'react';
 import TitleBar from './TitleBar';
 import Sidebar from './Sidebar';
 import { UpdateNotification } from './UpdateNotification';
-import { ModpackUpdateNotification } from './modpacks/ModpackUpdateNotification';
 
 import { ModpackRouter } from './modpacks/ModpackRouter';
 import type { UpdateInfo, UpdateStatus } from '../features/updater/hooks/useAppUpdater';
-import type { ModpackUpdateInfo } from '../features/modpacks/hooks/useModpackUpdates';
 import { useUIMode } from '../contexts/SettingsContext';
 import { SimplePlayDashboard } from './SimplePlayDashboard';
 import type { MCVersion } from '../services/versions/types';
@@ -26,10 +23,6 @@ export type AppLayoutProps = {
     status: UpdateStatus;
     info: UpdateInfo | null;
     onInstall: () => void;
-  };
-  modpackUpdates?: {
-    updates: ModpackUpdateInfo[];
-    onDismiss?: () => void;
   };
   modpackOnLaunch?: () => void | Promise<void>;
   overlays: {
@@ -88,12 +81,10 @@ export type AppLayoutProps = {
 import { BackgroundLayer } from './layout/BackgroundLayer';
 
 export const APP_LAYOUT_SAFE_AREA_TEST_ID = 'app-layout-safe-area';
+export const APP_LAYOUT_NOTIFICATIONS_TEST_ID = 'app-layout-notifications';
 
 export function AppLayout(props: AppLayoutProps) {
-  const { theme, updates, modpackUpdates, modpackOnLaunch, overlays, actions, launch, runtime } = props;
-
-  // Memoize modpackUpdates check to prevent unnecessary re-renders
-  const hasModpackUpdates = useMemo(() => modpackUpdates && modpackUpdates.updates.length > 0, [modpackUpdates]);
+  const { theme, updates, modpackOnLaunch, overlays, actions, launch, runtime } = props;
   const { uiMode } = useUIMode();
   const { sidebarPosition } = useSettings();
 
@@ -108,14 +99,14 @@ export function AppLayout(props: AppLayoutProps) {
             data-testid="app-shell-frame"
             className="relative flex h-full w-full min-w-0 flex-col overflow-hidden border border-border shadow-2xl transition-colors duration-300 sm:rounded-[28px]"
           >
-            {/* ... UpdateNotification and TitleBar ... */}
-            <UpdateNotification status={updates.status} updateInfo={updates.info} onInstall={updates.onInstall} />
-            {hasModpackUpdates && modpackUpdates && <ModpackUpdateNotification updates={modpackUpdates.updates} onDismiss={modpackUpdates.onDismiss} />}
             <TitleBar />
+            <div data-testid={APP_LAYOUT_NOTIFICATIONS_TEST_ID} className="relative z-[90] flex shrink-0 flex-col">
+              <UpdateNotification status={updates.status} updateInfo={updates.info} onInstall={updates.onInstall} />
+            </div>
 
             <div
               data-testid={APP_LAYOUT_SAFE_AREA_TEST_ID}
-              data-shell-safe-area="title-bar"
+              data-shell-safe-area="shell-chrome"
               className="relative flex min-h-0 flex-1 flex-col overflow-hidden pt-2"
             >
               {overlays.showSettings && (

@@ -71,7 +71,7 @@ describe('LazyImage image cache integration', () => {
     })
   })
 
-  it('switches to the provided fallback when a cached remote image fails to load', async () => {
+  it('retries the original remote source before using the provided fallback when a cached image fails to load', async () => {
     resolveImageMock.mockResolvedValue({
       localUrl: 'file:///tmp/fmcl-cache/broken-modpack.png',
       sourceUrl: 'https://cdn.example.com/broken-modpack.png',
@@ -97,11 +97,17 @@ describe('LazyImage image cache integration', () => {
     fireEvent.error(image)
 
     await waitFor(() => {
+      expect(image.getAttribute('src')).toBe('https://cdn.example.com/broken-modpack.png')
+    })
+
+    fireEvent.error(image)
+
+    await waitFor(() => {
       expect(image.getAttribute('src')).toBe('/icon.png')
     })
   })
 
-  it('uses the neutral artwork fallback when a remote image fails without an explicit fallback', async () => {
+  it('retries the original remote source before the neutral fallback when a cached image fails without an explicit fallback', async () => {
     resolveImageMock.mockResolvedValue({
       localUrl: 'file:///tmp/fmcl-cache/missing-mark.png',
       sourceUrl: 'https://cdn.example.com/missing-mark.png',
@@ -121,6 +127,12 @@ describe('LazyImage image cache integration', () => {
 
     await waitFor(() => {
       expect(image.getAttribute('src')).toBe('file:///tmp/fmcl-cache/missing-mark.png')
+    })
+
+    fireEvent.error(image)
+
+    await waitFor(() => {
+      expect(image.getAttribute('src')).toBe('https://cdn.example.com/missing-mark.png')
     })
 
     fireEvent.error(image)

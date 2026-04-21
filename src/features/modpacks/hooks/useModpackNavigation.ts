@@ -53,6 +53,8 @@ export type ModpackView =
   | { type: 'importPreview'; filePath: string }
   | { type: 'create' };
 
+let queuedInitialModpackView: ModpackView | null = null;
+
 function normalizeView(view: ModpackView): ModpackView {
   if (view.type !== 'browser') {
     return view;
@@ -64,9 +66,19 @@ function normalizeView(view: ModpackView): ModpackView {
   };
 }
 
-export function useModpackNavigation() {
-  const [view, setView] = useState<ModpackView>({ type: 'list' });
-  const [history, setHistory] = useState<ModpackView[]>([{ type: 'list' }]);
+export function queueInitialModpackView(view: ModpackView) {
+  queuedInitialModpackView = normalizeView(view);
+}
+
+export function consumeQueuedInitialModpackView() {
+  const nextView = queuedInitialModpackView;
+  queuedInitialModpackView = null;
+  return nextView;
+}
+
+export function useModpackNavigation(initialView: ModpackView = { type: 'list' }) {
+  const [view, setView] = useState<ModpackView>(() => normalizeView(initialView));
+  const [history, setHistory] = useState<ModpackView[]>(() => [normalizeView(initialView)]);
 
   const navigate = useCallback((newView: ModpackView) => {
     const normalizedView = normalizeView(newView);

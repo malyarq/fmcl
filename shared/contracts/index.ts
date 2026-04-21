@@ -30,4 +30,18 @@ export type { MirrorsAPI } from './mirrors';
 export type { StatisticsAPI, StatisticsExportPayload, StatisticsExportResult, StatisticsOverview } from './statistics';
 export type { ShareAPI } from './share';
 export type { ExternalLinksAPI, ExternalLinkRequest, ExternalLinkOpenResult, ExternalLinkOpenStatus } from './externalLinks';
+export type {
+  ResourcePacksAPI,
+  ResourcePackAcquisitionIssue,
+  ResourcePackAcquisitionIssueStatus,
+  ResourcePackAcquisitionResult,
+  ResourcePackAcquisitionStatus,
+} from './resourcePacks';
+export type {
+  ShadersAPI,
+  ShaderPackAcquisitionIssue,
+  ShaderPackAcquisitionIssueStatus,
+  ShaderPackAcquisitionResult,
+  ShaderPackAcquisitionStatus,
+} from './shaders';
 export type { WorldInfo, WorldsAPI } from './worlds';

@@ -13,10 +13,22 @@ const PRODUCT_MARK_PATH = getBrandAssetPath('product-mark');
 // Custom draggable title bar with window controls.
 const TitleBar = () => {
     const { iconPath } = useAppIcon();
+    const usesNativeWindowControls = windowControlsIPC.usesNativeWindowControls();
+
+    if (usesNativeWindowControls) {
+        return (
+            <div
+                data-testid={TITLE_BAR_TEST_ID}
+                data-platform="macos"
+                className="app-drag-region relative z-[100] h-8 shrink-0 select-none border-b border-border/50 bg-background/78 backdrop-blur-lg"
+            />
+        );
+    }
 
     return (
         <div
             data-testid={TITLE_BAR_TEST_ID}
+            data-platform="default"
             className="app-drag-region relative z-[100] flex h-9 select-none items-center justify-between border-b border-border/70 bg-card/82 px-2 shadow-[0_6px_18px_rgba(0,0,0,0.1)] backdrop-blur-xl"
         >
             <div className="flex items-center gap-2 px-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary">
@@ -39,7 +51,7 @@ const TitleBar = () => {
                 <BrandWordmark tone="shell" className="text-secondary" />
             </div>
 
-            <div className="flex h-full items-center gap-1">
+            <div data-testid="title-bar-window-controls" className="flex h-full items-center gap-1">
                 <button
                     onClick={() => windowControlsIPC.minimize()}
                     className="no-drag flex h-7 w-8 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-background/80 hover:text-foreground"

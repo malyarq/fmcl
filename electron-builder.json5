@@ -24,6 +24,14 @@
     {
       "from": "public/icon.png",
       "to": "icon.png"
+    },
+    {
+      "from": "public/icon.ico",
+      "to": "icon.ico"
+    },
+    {
+      "from": "public/icon-macos.png",
+      "to": "icon-macos.png"
     }
   ],
   "mac": {
@@ -31,7 +39,7 @@
       "dmg"
     ],
     "artifactName": "${productName}-Mac-${version}-Installer.${ext}",
-    "icon": "public/icon.png"
+    "icon": "public/icon-macos.png"
   },
   "win": {
     "target": [

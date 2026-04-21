@@ -16,6 +16,8 @@ import { MirrorsBridge } from './preload/bridges/MirrorsBridge'
 import { statistics } from './preload/bridges/StatisticsBridge'
 import { ShareBridge } from './preload/bridges/ShareBridge'
 import { ExternalLinksBridge } from './preload/bridges/ExternalLinksBridge'
+import { resourcePacks } from './preload/bridges/ResourcePacksBridge'
+import { shaders } from './preload/bridges/ShadersBridge'
 import type { FriendLauncherApi } from '@shared/contracts'
 
 // Expose a minimal, typed surface for the renderer process.
@@ -48,6 +50,8 @@ const api: FriendLauncherApi = {
   cache,
   settings,
   assets,
+  resourcePacks,
+  shaders,
   ipcRenderer: ipcRendererBridge,
   account: AccountBridge,
   mirrors: MirrorsBridge,

@@ -1,7 +1,6 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
-import { pathToFileURL } from 'node:url'
 
 export interface ImageCacheState {
   entryCount: number
@@ -85,7 +84,7 @@ export class ImageCacheService {
           await this.saveIndex()
 
           return {
-            localUrl: pathToFileURL(existingPath).toString(),
+            localUrl: this.buildRenderableLocalUrl(existingPath, existingEntry.contentType),
             sourceUrl: normalizedUrl,
             cacheHit: true,
             stale: false,
@@ -99,7 +98,7 @@ export class ImageCacheService {
           await this.saveIndex()
 
           return {
-            localUrl: pathToFileURL(existingPath).toString(),
+            localUrl: this.buildRenderableLocalUrl(existingPath, existingEntry.contentType),
             sourceUrl: normalizedUrl,
             cacheHit: true,
             stale: true,
@@ -263,11 +262,19 @@ export class ImageCacheService {
     await this.cleanupToLimit({ protectedKeys: [key] })
 
     return {
-      localUrl: pathToFileURL(finalPath).toString(),
+      localUrl: this.buildRenderableLocalUrl(finalPath, contentType),
       sourceUrl,
       cacheHit: false,
       stale: false,
     }
+  }
+
+  private buildRenderableLocalUrl(entryPath: string, contentType: string): string {
+    const buffer = fs.readFileSync(entryPath)
+    const renderableContentType = this.resolveRenderableContentType(buffer, entryPath, contentType)
+
+    // Electron renderer runs under http:// in dev, so file:// cache paths can fail to render.
+    return `data:${renderableContentType};base64,${buffer.toString('base64')}`
   }
 
   private ensureRoots(): void {
@@ -390,6 +397,81 @@ export class ImageCacheService {
       default:
         return null
     }
+  }
+
+  private getContentTypeForExtension(extension: string): string | null {
+    switch (extension) {
+      case 'png':
+        return 'image/png'
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg'
+      case 'webp':
+        return 'image/webp'
+      case 'gif':
+        return 'image/gif'
+      case 'svg':
+        return 'image/svg+xml'
+      case 'avif':
+        return 'image/avif'
+      default:
+        return null
+    }
+  }
+
+  private resolveRenderableContentType(buffer: Buffer, entryPath: string, contentType: string): string {
+    const normalizedContentType = contentType.split(';', 1)[0]?.trim().toLowerCase()
+    if (normalizedContentType?.startsWith('image/')) {
+      return normalizedContentType
+    }
+
+    const detectedContentType = this.detectContentTypeFromBuffer(buffer)
+    if (detectedContentType) {
+      return detectedContentType
+    }
+
+    const extension = path.extname(entryPath).replace('.', '').toLowerCase()
+    return this.getContentTypeForExtension(extension) ?? 'image/png'
+  }
+
+  private detectContentTypeFromBuffer(buffer: Buffer): string | null {
+    if (buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) {
+      return 'image/png'
+    }
+
+    if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+      return 'image/jpeg'
+    }
+
+    if (buffer.length >= 6) {
+      const gifHeader = buffer.subarray(0, 6).toString('ascii')
+      if (gifHeader === 'GIF87a' || gifHeader === 'GIF89a') {
+        return 'image/gif'
+      }
+    }
+
+    if (
+      buffer.length >= 12 &&
+      buffer.subarray(0, 4).toString('ascii') === 'RIFF' &&
+      buffer.subarray(8, 12).toString('ascii') === 'WEBP'
+    ) {
+      return 'image/webp'
+    }
+
+    if (
+      buffer.length >= 12 &&
+      buffer.subarray(4, 8).toString('ascii') === 'ftyp' &&
+      ['avif', 'avis'].includes(buffer.subarray(8, 12).toString('ascii'))
+    ) {
+      return 'image/avif'
+    }
+
+    const utf8Preview = buffer.subarray(0, 512).toString('utf-8').trimStart()
+    if (utf8Preview.startsWith('<svg') || utf8Preview.includes('<svg')) {
+      return 'image/svg+xml'
+    }
+
+    return null
   }
 
   private clampMaxSizeBytes(value: number): number {

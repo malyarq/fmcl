@@ -1,7 +1,6 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { ImageCacheService } from '../imageCacheService'
 
@@ -16,6 +15,26 @@ function createResponse(body: string, contentType = 'image/png'): Response {
       'content-type': contentType,
     },
   })
+}
+
+function getCachedEntryPaths(rootDir: string): string[] {
+  const entriesRoot = path.join(rootDir, 'image-cache', 'entries')
+  if (!fs.existsSync(entriesRoot)) {
+    return []
+  }
+
+  return fs.readdirSync(entriesRoot)
+    .filter((name) => !name.includes('.tmp-'))
+    .map((name) => path.join(entriesRoot, name))
+}
+
+function decodeDataUrlPayload(dataUrl: string): Buffer {
+  const encodedPayload = dataUrl.split(',', 2)[1]
+  if (!encodedPayload) {
+    throw new Error(`Expected a data URL payload, received: ${dataUrl}`)
+  }
+
+  return Buffer.from(encodedPayload, 'base64')
 }
 
 describe('ImageCacheService', () => {
@@ -37,10 +56,16 @@ describe('ImageCacheService', () => {
     })
 
     const firstResult = await firstService.resolveImage(imageUrl)
-    const firstPath = fileURLToPath(firstResult.localUrl)
+    const [firstPath] = getCachedEntryPaths(rootDir)
+
+    expect(firstPath).toBeDefined()
+    if (!firstPath) {
+      throw new Error('Expected a cached file to be written to disk')
+    }
 
     expect(firstResult.cacheHit).toBe(false)
-    expect(fs.existsSync(firstPath)).toBe(true)
+    expect(firstResult.localUrl.startsWith('data:image/png;base64,')).toBe(true)
+    expect(decodeDataUrlPayload(firstResult.localUrl).toString('utf-8')).toBe('fresh image')
     expect(fs.readFileSync(firstPath, 'utf-8')).toBe('fresh image')
 
     const secondService = new ImageCacheService(rootDir, {
@@ -76,13 +101,20 @@ describe('ImageCacheService', () => {
     })
 
     const firstResult = await service.resolveImage('https://cdn.example.com/icons/one.png')
+    const [firstPath] = getCachedEntryPaths(rootDir)
+
+    expect(firstPath).toBeDefined()
+    if (!firstPath) {
+      throw new Error('Expected the first cached image to exist on disk')
+    }
+
     await service.resolveImage('https://cdn.example.com/icons/two.png')
 
     const state = await service.setMaxSizeBytes(32 * 1024 * 1024)
-    const firstPath = fileURLToPath(firstResult.localUrl)
 
     expect(state.entryCount).toBe(1)
     expect(state.totalSizeBytes).toBeLessThanOrEqual(32 * 1024 * 1024)
+    expect(firstResult.localUrl.startsWith('data:image/png;base64,')).toBe(true)
     expect(fs.existsSync(firstPath)).toBe(false)
   })
 
@@ -115,9 +147,15 @@ describe('ImageCacheService', () => {
 
     await service.setMaxSizeBytes(32 * 1024 * 1024)
     const result = await service.resolveImage('https://cdn.example.com/icons/oversized.png')
-    const resolvedPath = fileURLToPath(result.localUrl)
+    const [resolvedPath] = getCachedEntryPaths(rootDir)
     const state = await service.getState()
 
+    expect(resolvedPath).toBeDefined()
+    if (!resolvedPath) {
+      throw new Error('Expected the oversized image to remain cached on disk')
+    }
+
+    expect(result.localUrl.startsWith('data:image/png;base64,')).toBe(true)
     expect(fs.existsSync(resolvedPath)).toBe(true)
     expect(state.entryCount).toBe(1)
     expect(state.totalSizeBytes).toBeGreaterThan(32 * 1024 * 1024)

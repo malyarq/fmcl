@@ -4,10 +4,10 @@ import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { GameTab } from '../../settings/tabs/GameTab';
 import { ModloaderSection } from '../../sidebar/ModloaderSection';
 import { ModpackDependencySummary } from '../../sidebar/ModpackDependencySummary';
-import { buildRuntimeDependencyState } from '../../sidebar/modpackRuntimeDependencies';
 import { OptifineToggle } from '../../sidebar/OptifineToggle';
 import type { ModpackConfig } from '../../../contexts/ModpackContext';
 import type { ModpackDetailsConfigSetters } from '../../../features/modpacks/hooks/useModpackDetailsConfig';
+import { buildModpackRuntimeSummary } from '../../../features/modpacks/hooks/useModpackRuntimeSummary';
 
 export interface VersionOption {
   id: string;
@@ -53,14 +53,11 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
     );
   }
 
-  const isOptiFineSupported = optiFineVersions.includes(effectiveConfig.runtime.minecraft);
-  const runtimeDependencies = buildRuntimeDependencyState({
-    minecraftVersion: effectiveConfig.runtime.minecraft,
-    modLoaderType: effectiveConfig.runtime.modLoader?.type ?? 'vanilla',
-    modLoaderVersion: effectiveConfig.runtime.modLoader?.version,
-    useOptiFine: Boolean(effectiveConfig.game?.useOptiFine),
-    isOptiFineSupported,
+  const runtimeSummary = buildModpackRuntimeSummary({
+    config: effectiveConfig,
+    optiFineVersions,
   });
+  const isOptiFineSupported = optiFineVersions.includes(effectiveConfig.runtime.minecraft);
 
   const handleMinecraftVersionChange = async (minecraftVersion: string) => {
     await setters.setRuntimeMinecraft(minecraftVersion);
@@ -123,7 +120,7 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
           getAccentStyles={getAccentStyles}
         />
 
-        <ModpackDependencySummary runtime={runtimeDependencies} t={t} />
+        <ModpackDependencySummary runtime={runtimeSummary.runtime} status={runtimeSummary.status} t={t} />
       </div>
 
       <div className="surface-card p-1">

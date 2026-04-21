@@ -18,15 +18,15 @@ export function useLaunchState(params: {
 
   const [nickname, setNickname] = useState(() => loadNickname());
   const { isOffline } = useNetworkStatus();
-  const { config: modpackConfig, setRuntimeMinecraft, setRuntimeLoader, patchConfig } = useModpack();
+  const { config: modpackConfig, isReady: modpackReady, setRuntimeMinecraft, setRuntimeLoader, patchConfig } = useModpack();
 
   // Persist nickname across sessions.
   useEffect(() => {
     saveNickname(nickname);
   }, [nickname]);
 
-  const version = modpackConfig?.runtime?.minecraft || '1.12.2';
-  const loaderType = (modpackConfig?.runtime?.modLoader?.type || 'vanilla') as LoaderType;
+  const version = modpackReady ? (modpackConfig?.runtime?.minecraft ?? '') : '';
+  const loaderType = (modpackReady ? (modpackConfig?.runtime?.modLoader?.type ?? 'vanilla') : 'vanilla') as LoaderType;
 
   const useForge = loaderType === 'forge';
   const useFabric = loaderType === 'fabric';
@@ -114,4 +114,3 @@ export function useLaunchState(params: {
     launchVersion,
   };
 }
-

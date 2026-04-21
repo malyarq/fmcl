@@ -1,5 +1,6 @@
-import React, { memo, useCallback, useEffect } from 'react';
+import React, { memo, useCallback, useEffect, useState } from 'react';
 import {
+  consumeQueuedInitialModpackView,
   DEFAULT_MODPACK_BROWSER_STATE,
   useModpackNavigation,
 } from '../../features/modpacks/hooks/useModpackNavigation';
@@ -21,7 +22,8 @@ interface ModpackRouterProps {
 }
 
 const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
-  const { view, goBack, navigate, replace } = useModpackNavigation();
+  const [initialView] = useState(() => consumeQueuedInitialModpackView() ?? { type: 'list' as const });
+  const { view, goBack, navigate, replace } = useModpackNavigation(initialView);
   const handleCreateWizard = useCallback(() => navigate({ type: 'create' }), [navigate]);
   const handleOpenBrowser = useCallback(() => {
     navigate({ type: 'browser', state: DEFAULT_MODPACK_BROWSER_STATE });

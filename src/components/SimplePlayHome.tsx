@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BrandMark } from './branding/BrandMark';
-import { BrandWordmark } from './branding/BrandWordmark';
 import { useSettings } from '../contexts/SettingsContext';
 
 interface Particle {
@@ -14,7 +13,7 @@ interface Particle {
 
 // Main screen for Classic mode (legacy): логотип лаунчера с иконкой.
 export const SimplePlayHome: React.FC = () => {
-  const { getAccentHex } = useSettings();
+  const { getAccentHex, t } = useSettings();
   const [showEasterEgg, setShowEasterEgg] = useState(false);
   const [particles, setParticles] = useState<Particle[]>([]);
   const clickTimestampsRef = useRef<number[]>([]);
@@ -24,6 +23,10 @@ export const SimplePlayHome: React.FC = () => {
   const lastFireworksTimeRef = useRef<number>(0);
 
   const accentHex = getAccentHex();
+  const classicSurfaceTitle = t('dashboard.classic_surface_title') || 'Launch Minecraft from one focused surface.';
+  const classicSurfaceDescription =
+    t('dashboard.classic_surface_desc') ||
+    'Use the sidebar to choose your version, nickname, and launch settings before you play.';
 
   const generateParticles = (baseId: number): Particle[] => {
     const count = 15; // Уменьшил количество частиц для производительности
@@ -116,94 +119,101 @@ export const SimplePlayHome: React.FC = () => {
   return (
     <div className="h-full w-full overflow-y-auto overflow-x-hidden">
       <div className="launcher-content-width relative flex min-h-full items-center justify-center px-4 py-10 text-center sm:px-6">
-        <div className="relative z-10 flex flex-col items-center gap-4 animate-fade-in-up">
-        <div
-          onClick={handleLogoClick}
-          className="logo-container relative w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-visible cursor-pointer transition-all duration-300 ease-out hover:scale-110 active:scale-105"
-          style={{
-            filter: showEasterEgg
-              ? `drop-shadow(0 0 24px ${accentHex}65) drop-shadow(0 0 48px ${accentHex}40)`
-              : 'drop-shadow(0 0 20px rgb(var(--brand-mark-glow) / 0.28)) drop-shadow(0 0 44px rgb(var(--brand-mark-glow) / 0.18))',
-          }}
-        >
-          <div
-            className="absolute inset-0 rounded-2xl animate-pulse-slow"
-            style={{
-              background: showEasterEgg
-                ? `radial-gradient(circle, ${accentHex}30 0%, transparent 70%)`
-                : 'radial-gradient(circle, rgb(var(--brand-shell-glow) / 0.2) 0%, transparent 70%)',
-              animation: showEasterEgg ? 'easter-egg-glow 0.5s ease-in-out infinite' : undefined,
-            }}
-          />
-          <BrandMark
-            role="product-mark"
-            alt="FriendLauncher mark"
-            data-testid="classic-launcher-mark"
-            frame="brand"
-            wrapperClassName="relative h-full w-full"
-            className="h-16 w-16 md:h-20 md:w-20 transition-transform duration-300"
-            style={{
-              transform: showEasterEgg ? 'rotate(360deg) scale(1.2)' : 'none',
-              filter: showEasterEgg ? `drop-shadow(0 0 15px ${accentHex})` : undefined,
-            }}
-          />
-        </div>
+        <div className="relative z-10 w-full max-w-xl animate-fade-in-up">
+          <section className="surface-panel relative overflow-visible p-6 text-left sm:p-7">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+              <div className="relative shrink-0 overflow-visible">
+                <button
+                  type="button"
+                  onClick={handleLogoClick}
+                  aria-label="FriendLauncher app icon"
+                  className="logo-container relative rounded-2xl border border-border/60 bg-background/80 p-3 transition-all duration-300 ease-out hover:scale-105 active:scale-[0.98]"
+                  style={{
+                    filter: showEasterEgg
+                      ? `drop-shadow(0 0 18px ${accentHex}55) drop-shadow(0 0 34px ${accentHex}35)`
+                      : 'drop-shadow(0 0 18px rgb(var(--brand-mark-glow) / 0.18)) drop-shadow(0 0 34px rgb(var(--brand-mark-glow) / 0.1))',
+                  }}
+                >
+                  <div
+                    className="absolute -inset-3 rounded-2xl animate-pulse-slow"
+                    style={{
+                      background: showEasterEgg
+                        ? `radial-gradient(circle, ${accentHex}24 0%, transparent 75%)`
+                        : 'radial-gradient(circle, rgb(var(--brand-shell-glow) / 0.14) 0%, transparent 75%)',
+                      animation: showEasterEgg ? 'easter-egg-glow 0.5s ease-in-out infinite' : undefined,
+                    }}
+                  />
+                  <BrandMark
+                    role="app-icon"
+                    alt="FriendLauncher app icon"
+                    data-testid="classic-launcher-mark"
+                    className="h-10 w-10 transition-transform duration-300 md:h-11 md:w-11"
+                    style={{
+                      transform: showEasterEgg ? 'rotate(360deg) scale(1.12)' : 'none',
+                      filter: showEasterEgg ? `drop-shadow(0 0 10px ${accentHex})` : undefined,
+                    }}
+                  />
+                </button>
 
-        <BrandWordmark
-          as="h1"
-          tone="hero"
-          className={`text-foreground transition-all duration-300 ${showEasterEgg ? 'animate-pulse scale-110' : ''}`}
-          style={{
-            textShadow: showEasterEgg
-              ? `0 0 20px ${accentHex}, 0 0 40px ${accentHex}, 0 4px 14px ${accentHex}80`
-              : '0 4px 18px rgb(var(--brand-mark-glow) / 0.24)',
-          }}
-        >
-        </BrandWordmark>
-        </div>
+                {particles.map((particle) => {
+                  const angleRad = (particle.angle * Math.PI) / 180;
+                  const x = Math.cos(angleRad) * particle.distance;
+                  const y = Math.sin(angleRad) * particle.distance;
+                  const rotation = particle.angle + 360;
 
-      {/* Фейерверк из иконок */}
-      {particles.map((particle) => {
-        const angleRad = (particle.angle * Math.PI) / 180;
-        const x = Math.cos(angleRad) * particle.distance;
-        const y = Math.sin(angleRad) * particle.distance;
-        const rotation = particle.angle + 360;
-        
-        return (
-          <div
-            key={particle.id}
-            className="absolute pointer-events-none firework-particle"
-            style={{
-              left: '50%',
-              top: '50%',
-              width: `${particle.size}px`,
-              height: `${particle.size}px`,
-              '--particle-x': `${x}px`,
-              '--particle-y': `${y}px`,
-              '--particle-rotation': `${rotation}deg`,
-              '--particle-duration': `${particle.duration}s`,
-              '--particle-delay': `${particle.delay}s`,
-              '--accent-color': accentHex,
-            } as React.CSSProperties & {
-              '--particle-x': string;
-              '--particle-y': string;
-              '--particle-rotation': string;
-              '--particle-duration': string;
-              '--particle-delay': string;
-              '--accent-color': string;
-            }}
-          >
-            <BrandMark
-              role="product-mark"
-              decorative
-              className="w-full h-full"
-              style={{
-                filter: `drop-shadow(0 0 6px ${accentHex}) drop-shadow(0 0 12px ${accentHex}60)`,
-              }}
-            />
-          </div>
-        );
-      })}
+                  return (
+                    <div
+                      key={particle.id}
+                      className="absolute pointer-events-none firework-particle"
+                      style={{
+                        left: '50%',
+                        top: '50%',
+                        width: `${particle.size}px`,
+                        height: `${particle.size}px`,
+                        '--particle-x': `${x}px`,
+                        '--particle-y': `${y}px`,
+                        '--particle-rotation': `${rotation}deg`,
+                        '--particle-duration': `${particle.duration}s`,
+                        '--particle-delay': `${particle.delay}s`,
+                        '--accent-color': accentHex,
+                      } as React.CSSProperties & {
+                        '--particle-x': string;
+                        '--particle-y': string;
+                        '--particle-rotation': string;
+                        '--particle-duration': string;
+                        '--particle-delay': string;
+                        '--accent-color': string;
+                      }}
+                    >
+                      <BrandMark
+                        role="app-icon"
+                        decorative
+                        className="h-full w-full"
+                        style={{
+                          filter: `drop-shadow(0 0 6px ${accentHex}) drop-shadow(0 0 12px ${accentHex}60)`,
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="space-y-3">
+                <div className="inline-flex items-center rounded-full border border-border/60 bg-background/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary">
+                  {t('ui_mode.simple') || 'Classic'}
+                </div>
+                <div className="space-y-2">
+                  <h1 className="text-2xl font-semibold text-foreground sm:text-[1.75rem]">
+                    {classicSurfaceTitle}
+                  </h1>
+                  <p className="max-w-lg text-sm leading-6 text-secondary">
+                    {classicSurfaceDescription}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
 
         <style>{`
         @keyframes pulse-slow {
@@ -257,8 +267,8 @@ export const SimplePlayHome: React.FC = () => {
 
         .logo-container:hover {
           filter: ${showEasterEgg
-            ? `drop-shadow(0 0 30px ${accentHex}80) drop-shadow(0 0 60px ${accentHex}60)`
-            : 'drop-shadow(0 0 26px rgb(var(--brand-mark-glow) / 0.34)) drop-shadow(0 0 58px rgb(var(--brand-mark-glow) / 0.2))'} !important;
+            ? `drop-shadow(0 0 20px ${accentHex}60) drop-shadow(0 0 36px ${accentHex}40)`
+            : 'drop-shadow(0 0 20px rgb(var(--brand-mark-glow) / 0.2)) drop-shadow(0 0 36px rgb(var(--brand-mark-glow) / 0.12))'} !important;
         }
       `}</style>
       </div>

@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { ModpackService } from '../instanceService';
 import { loadModpacksMetadata, saveModpacksMetadata } from '../../modpacks/storage';
 import type { ModpackMetadata } from '../../../../shared/types/modpack';
+import { getModpackConfigPath, getModpacksIndexPath } from '../paths';
 
 function createRootDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-instance-metadata-'));
@@ -103,5 +104,65 @@ describe('ModpackService metadata CRUD', () => {
     });
     expect(duplicatedMetadata.createdAt).not.toBe(seededMetadata.createdAt);
     expect(duplicatedMetadata.updatedAt).not.toBe(seededMetadata.updatedAt);
+  });
+
+  it('rebuilds a missing selected modpack config from persisted metadata truth instead of stale defaults', () => {
+    const rootDir = createRootDir();
+    tempDirs.push(rootDir);
+
+    const created = service.createModpack(rootDir, 'Original Pack', {
+      runtime: { minecraft: '1.20.1', modLoader: { type: 'fabric', version: '0.16.0' } },
+    });
+    const seededMetadata = {
+      ...createSeedMetadata(created.id, 'Recovered Pack'),
+      minecraftVersion: '1.21.1',
+      modLoader: { type: 'neoforge' as const, version: '21.1.1' },
+    };
+    saveModpacksMetadata(rootDir, {
+      selectedModpack: created.id,
+      modpacks: {
+        [created.id]: seededMetadata,
+      },
+    });
+
+    fs.rmSync(getModpackConfigPath(rootDir, created.id), { force: true });
+
+    const recovered = service.loadModpackConfig(rootDir, created.id);
+    const persisted = JSON.parse(
+      fs.readFileSync(getModpackConfigPath(rootDir, created.id), 'utf-8'),
+    ) as { runtime: { minecraft: string; modLoader?: { type: string } }; name: string };
+
+    expect(recovered.name).toBe('Recovered Pack');
+    expect(recovered.runtime).toEqual({
+      minecraft: '1.21.1',
+      modLoader: { type: 'neoforge', version: '21.1.1' },
+    });
+    expect(persisted.name).toBe('Recovered Pack');
+    expect(persisted.runtime).toEqual({
+      minecraft: '1.21.1',
+      modLoader: { type: 'neoforge', version: '21.1.1' },
+    });
+  });
+
+  it('preserves an existing default config when rebuilding a missing index', () => {
+    const rootDir = createRootDir();
+    tempDirs.push(rootDir);
+
+    const initial = service.bootstrapModpacks(rootDir, {
+      name: 'Primary Pack',
+      runtime: { minecraft: '1.21.1', modLoader: { type: 'fabric', version: '0.16.0' } },
+    });
+
+    fs.rmSync(getModpacksIndexPath(rootDir), { force: true });
+
+    const bootstrapped = service.bootstrapModpacks(rootDir);
+
+    expect(bootstrapped.selectedId).toBe('default');
+    expect(initial.selectedId).toBe('default');
+    expect(bootstrapped.config.name).toBe('Primary Pack');
+    expect(bootstrapped.config.runtime).toEqual({
+      minecraft: '1.21.1',
+      modLoader: { type: 'fabric', version: '0.16.0' },
+    });
   });
 });

@@ -1,5 +1,5 @@
 export const BRAND_WORDMARK = 'FriendLauncher'
-export const APP_ICON_PATH = '/icon.png'
+export const APP_ICON_PATH = '/icon.ico'
 export const LAUNCHER_MARK_PATH = '/launcher-mark.svg'
 
 function createSvgDataUri(svg: string) {

@@ -10,14 +10,21 @@ import { Button } from '../../ui/Button';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { DegradedStateView } from '../../layout/DegradedStateView';
 import { toDisplayErrorMessage } from '../../../utils/displayError';
+import type { ModpackRuntimeSummary } from '../../../features/modpacks/hooks/useModpackRuntimeSummary';
+import {
+    getModpackShaderCapabilityDescription,
+    getModpackShaderCapabilityLabel,
+    getModpackShaderCapabilityTone,
+} from '../../../features/modpacks/hooks/useModpackRuntimeSummary';
 
 interface ShadersTabProps {
     instancePath: string;
+    runtimeSummary?: ModpackRuntimeSummary | null;
     onUpdate?: () => void;
     onAddShader?: () => void;
 }
 
-export function ShadersTab({ instancePath, onUpdate, onAddShader }: ShadersTabProps) {
+export function ShadersTab({ instancePath, runtimeSummary, onUpdate, onAddShader }: ShadersTabProps) {
     const { t } = useSettings();
     const confirm = useConfirm();
     const [packs, setPacks] = useState<ShaderPack[]>([]);
@@ -98,6 +105,18 @@ export function ShadersTab({ instancePath, onUpdate, onAddShader }: ShadersTabPr
     const shaderLoadDescription = loadError
         ? toDisplayErrorMessage(loadError, t('error.inline_fallback'))
         : t('error.inline_fallback');
+    const shaderCapabilityStatus = runtimeSummary?.shaderCapability.status ?? 'unverified';
+    const shaderCapabilityTone = getModpackShaderCapabilityTone(shaderCapabilityStatus);
+    const shaderCapabilityLabel = getModpackShaderCapabilityLabel(shaderCapabilityStatus, t);
+    const shaderCapabilityDescription = runtimeSummary
+        ? getModpackShaderCapabilityDescription(runtimeSummary, t)
+        : (
+            t('modpacks.shader_capability_missing_runtime_desc')
+            || 'FMCL could not verify this modpack runtime yet, so shader compatibility is still unverified.'
+        );
+    const shaderCapabilityHint =
+        t('modpacks.shader_capability_active_hint')
+        || 'An active shader file only means FMCL stored the selection. It is not proof that the pack will render correctly.';
 
     return (
         <div className="space-y-4">
@@ -133,6 +152,37 @@ export function ShadersTab({ instancePath, onUpdate, onAddShader }: ShadersTabPr
                         </Button>
                     )}
                 </div>
+
+                <div
+                    className={cn(
+                        'surface-inline space-y-3 rounded-2xl border p-3',
+                        shaderCapabilityTone === 'positive' && 'border-emerald-500/30 bg-emerald-500/10',
+                        shaderCapabilityTone === 'warning' && 'border-amber-500/35 bg-amber-500/12',
+                        shaderCapabilityTone === 'error' && 'border-red-500/35 bg-red-500/12',
+                        shaderCapabilityTone === 'neutral' && 'border-border/70 bg-background/60',
+                    )}
+                    data-testid="shader-capability-summary"
+                    data-status={shaderCapabilityStatus}
+                >
+                    <div className="flex flex-wrap items-center gap-2">
+                        <div className="kicker-label">
+                            {t('modpacks.shader_capability_heading') || 'Shader runtime'}
+                        </div>
+                        <span
+                            className={cn(
+                                'rounded-full border px-2 py-0.5 text-xs font-medium',
+                                shaderCapabilityTone === 'positive' && 'border-emerald-500/30 bg-emerald-500/12 text-emerald-300',
+                                shaderCapabilityTone === 'warning' && 'border-amber-500/30 bg-amber-500/12 text-amber-200',
+                                shaderCapabilityTone === 'error' && 'border-red-500/30 bg-red-500/12 text-red-200',
+                                shaderCapabilityTone === 'neutral' && 'border-border/70 bg-background/70 text-secondary',
+                            )}
+                        >
+                            {shaderCapabilityLabel}
+                        </span>
+                    </div>
+                    <p className="text-sm text-foreground">{shaderCapabilityDescription}</p>
+                    <p className="text-xs text-secondary">{shaderCapabilityHint}</p>
+                </div>
             </div>
 
             {loading ? (
@@ -147,10 +197,18 @@ export function ShadersTab({ instancePath, onUpdate, onAddShader }: ShadersTabPr
                     title={t('modpacks.shader_load_error')}
                     description={shaderLoadDescription}
                     footer={(
-                        <Button variant="secondary" size="sm" onClick={() => void loadPacks()}>
-                            <RefreshCw className="h-4 w-4" />
-                            {t('modpacks.update')}
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            {onAddShader && (
+                                <Button variant="primary" size="sm" onClick={onAddShader}>
+                                    <Sparkles className="h-4 w-4" />
+                                    {t('modpacks.add_shader_btn')}
+                                </Button>
+                            )}
+                            <Button variant="secondary" size="sm" onClick={() => void loadPacks()}>
+                                <RefreshCw className="h-4 w-4" />
+                                {t('modpacks.update')}
+                            </Button>
+                        </div>
                     )}
                 />
             ) : packs.length === 0 ? (

@@ -166,6 +166,19 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
                         <p className="mt-2 text-base font-semibold text-foreground">{loadError ? t('degraded.unavailable_label') : packs.length}</p>
                     </div>
                 </div>
+
+                <div
+                    className="surface-inline rounded-2xl border border-border/70 bg-background/60 p-3"
+                    data-testid="resourcepacks-scope-note"
+                >
+                    <p className="text-sm font-medium text-foreground">
+                        {t('modpacks.resourcepack_scope_title') || 'Instance-scoped resource packs'}
+                    </p>
+                    <p className="mt-1 text-sm text-secondary">
+                        {t('modpacks.resourcepack_scope_desc')
+                            || 'Resource packs added here only affect this modpack. FMCL does not mark them compatible or incompatible for you.'}
+                    </p>
+                </div>
             </div>
 
             {loading ? (
@@ -180,10 +193,18 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
                     title={t('modpacks.resourcepack_load_error')}
                     description={resourcePackLoadDescription}
                     footer={(
-                        <Button variant="secondary" size="sm" onClick={() => void loadPacks()}>
-                            <RefreshCw className="h-4 w-4" />
-                            {t('modpacks.update')}
-                        </Button>
+                        <div className="flex flex-wrap gap-2">
+                            {onAddResourcePack && (
+                                <Button variant="primary" size="sm" onClick={onAddResourcePack}>
+                                    <ImagePlus className="h-4 w-4" />
+                                    {t('modpacks.add_resourcepack_btn')}
+                                </Button>
+                            )}
+                            <Button variant="secondary" size="sm" onClick={() => void loadPacks()}>
+                                <RefreshCw className="h-4 w-4" />
+                                {t('modpacks.update')}
+                            </Button>
+                        </div>
                     )}
                 />
             ) : packs.length === 0 ? (

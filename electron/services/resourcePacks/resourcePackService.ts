@@ -1,6 +1,11 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import AdmZip from 'adm-zip';
+import type {
+    ResourcePackAcquisitionIssue,
+    ResourcePackAcquisitionIssueStatus,
+    ResourcePackAcquisitionResult,
+} from '../../../shared/contracts/resourcePacks';
 import { ResourcePack } from '../../../shared/types/resourcePack';
 import {
     assertAbsolutePath,
@@ -11,6 +16,22 @@ import {
 import { resolveApprovedInstancePath, resolveResourcePacksDir } from '../instances/paths';
 
 export class ResourcePacksService {
+    private createAcquisitionIssue(
+        fileName: string,
+        status: ResourcePackAcquisitionIssueStatus,
+        message: string,
+    ): ResourcePackAcquisitionIssue {
+        return { fileName, status, message };
+    }
+
+    private createAcquisitionResult(
+        status: ResourcePackAcquisitionResult['status'],
+        importedFileNames: string[] = [],
+        issues: ResourcePackAcquisitionIssue[] = [],
+    ): ResourcePackAcquisitionResult {
+        return { status, importedFileNames, issues };
+    }
+
     /**
      * Get the resourcepacks directory for an instance
      */
@@ -267,14 +288,49 @@ export class ResourcePacksService {
         return true;
     }
 
-    async import(filePath: string, instancePath: string): Promise<boolean> {
-        const dir = this.getResourcePacksDir(instancePath);
-        await fs.ensureDir(dir);
-        const safeSourcePath = assertAbsolutePath(filePath, 'Resource pack source path');
-        const fileName = assertChildName(path.basename(safeSourcePath), 'Resource pack name');
-        const destinationPath = resolvePathWithinRoot(dir, fileName, 'Resource pack path');
-        await fs.copy(safeSourcePath, destinationPath);
-        return true;
+    async import(filePath: string, instancePath: string): Promise<ResourcePackAcquisitionResult> {
+        const fallbackFileName = path.basename(filePath || 'resource-pack.zip') || 'resource-pack.zip';
+
+        try {
+            const dir = this.getResourcePacksDir(instancePath);
+            await fs.ensureDir(dir);
+
+            const safeSourcePath = assertAbsolutePath(filePath, 'Resource pack source path');
+            const fileName = assertChildName(path.basename(safeSourcePath), 'Resource pack name');
+            const destinationPath = resolvePathWithinRoot(dir, fileName, 'Resource pack path');
+
+            if (await fs.pathExists(destinationPath)) {
+                return this.createAcquisitionResult('duplicate', [], [
+                    this.createAcquisitionIssue(
+                        fileName,
+                        'duplicate',
+                        'A resource pack with this file name already exists in the instance.',
+                    ),
+                ]);
+            }
+
+            const metadata = await this.getPackMetadata(safeSourcePath);
+            if (!metadata) {
+                return this.createAcquisitionResult('invalid-archive', [], [
+                    this.createAcquisitionIssue(
+                        fileName,
+                        'invalid-archive',
+                        'The selected archive is missing a readable pack.mcmeta file.',
+                    ),
+                ]);
+            }
+
+            await fs.copy(safeSourcePath, destinationPath);
+            return this.createAcquisitionResult('success', [fileName], []);
+        } catch {
+            return this.createAcquisitionResult('failure', [], [
+                this.createAcquisitionIssue(
+                    fallbackFileName,
+                    'failure',
+                    'FMCL could not import the selected resource pack into this instance.',
+                ),
+            ]);
+        }
     }
 
     async delete(fileName: string, instancePath: string): Promise<boolean> {

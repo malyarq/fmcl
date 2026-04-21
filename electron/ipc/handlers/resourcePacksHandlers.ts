@@ -1,14 +1,45 @@
-
-import { ipcMain, shell, dialog } from 'electron';
-import { resourcePacksService } from '../../services/resourcePacks/resourcePackService';
-import * as path from 'path';
+import { dialog, ipcMain, shell } from 'electron';
 import * as fs from 'fs';
+import type { ResourcePackAcquisitionResult } from '../../../shared/contracts/resourcePacks';
 import { assertChildName, assertChildNameList } from '../../security/pathGuards';
 import {
     resolveApprovedInstancePath,
     resolveResourcePacksDir,
 } from '../../services/instances/paths';
-import { resolvePathWithinRoot } from '../../security/pathGuards';
+import { resourcePacksService } from '../../services/resourcePacks/resourcePackService';
+
+function summarizeResourcePackAcquisition(
+    results: ResourcePackAcquisitionResult[],
+): ResourcePackAcquisitionResult {
+    const importedFileNames = results.flatMap((result) => result.importedFileNames);
+    const issues = results.flatMap((result) => result.issues);
+
+    if (importedFileNames.length === 0 && issues.length === 0) {
+        return { status: 'cancelled', importedFileNames, issues };
+    }
+
+    if (importedFileNames.length > 0 && issues.length === 0) {
+        return { status: 'success', importedFileNames, issues };
+    }
+
+    if (importedFileNames.length > 0) {
+        return { status: 'partial-success', importedFileNames, issues };
+    }
+
+    if (issues.every((issue) => issue.status === 'duplicate')) {
+        return { status: 'duplicate', importedFileNames, issues };
+    }
+
+    if (issues.every((issue) => issue.status === 'invalid-archive')) {
+        return { status: 'invalid-archive', importedFileNames, issues };
+    }
+
+    if (issues.every((issue) => issue.status === 'runtime-blocked')) {
+        return { status: 'runtime-blocked', importedFileNames, issues };
+    }
+
+    return { status: 'failure', importedFileNames, issues };
+}
 
 export function registerResourcePacksHandlers() {
     ipcMain.handle('resourcePacks:list', async (_, instancePath: string) => {
@@ -39,9 +70,7 @@ export function registerResourcePacksHandlers() {
 
     ipcMain.handle('resourcePacks:import', async (_, filePath: string, instancePath: string) => {
         const safeInstancePath = resolveApprovedInstancePath(instancePath);
-        assertChildName(path.basename(filePath), 'Resource pack name');
-        const ok = await resourcePacksService.import(filePath, safeInstancePath);
-        return { ok };
+        return await resourcePacksService.import(filePath, safeInstancePath);
     });
 
     ipcMain.handle('resourcePacks:delete', async (_, fileName: string, instancePath: string) => {
@@ -54,47 +83,54 @@ export function registerResourcePacksHandlers() {
     ipcMain.handle('resourcePacks:openFolder', async (_, instancePath: string) => {
         const safeInstancePath = resolveApprovedInstancePath(instancePath);
         const folder = resolveResourcePacksDir(safeInstancePath);
-        // Ensure folder exists? shell.openPath doesn't create it, but usually it exists if game ran.
-        // We could create it if not exists using fs/promises but let's assume existence or handle error.
 
         if (!fs.existsSync(folder)) {
-            try { fs.mkdirSync(folder, { recursive: true }); } catch (e) {
+            try {
+                fs.mkdirSync(folder, { recursive: true });
+            } catch (e) {
                 console.error('Failed to create resourcepacks folder', e);
             }
         }
+
         await shell.openPath(folder);
         return { ok: true };
     });
+
     ipcMain.handle('resourcePacks:add', async (_, instancePath: string) => {
         const safeInstancePath = resolveApprovedInstancePath(instancePath);
 
         const { canceled, filePaths } = await dialog.showOpenDialog({
             properties: ['openFile', 'multiSelections'],
-            filters: [{ name: 'Resource Packs', extensions: ['zip'] }]
+            filters: [{ name: 'Resource Packs', extensions: ['zip'] }],
         });
 
-        if (canceled || filePaths.length === 0) return false;
+        if (canceled || filePaths.length === 0) {
+            return summarizeResourcePackAcquisition([]);
+        }
 
         const folder = resolveResourcePacksDir(safeInstancePath);
         if (!fs.existsSync(folder)) {
-            try { fs.mkdirSync(folder, { recursive: true }); } catch (e) {
-                console.error('Failed to create resourcepacks folder', e);
-                return false;
-            }
-        }
-
-        let success = true;
-        for (const filePath of filePaths) {
             try {
-                const fileName = assertChildName(path.basename(filePath), 'Resource pack name');
-                const destPath = resolvePathWithinRoot(folder, fileName, 'Resource pack path');
-                fs.copyFileSync(filePath, destPath);
-            } catch (err) {
-                console.error('Failed to copy resource pack', err);
-                success = false;
+                fs.mkdirSync(folder, { recursive: true });
+            } catch (e) {
+                console.error('Failed to create resourcepacks folder', e);
+                return {
+                    status: 'failure',
+                    importedFileNames: [],
+                    issues: [
+                        {
+                            fileName: 'resourcepacks',
+                            status: 'failure',
+                            message: 'FMCL could not prepare the resourcepacks folder for imports.',
+                        },
+                    ],
+                };
             }
         }
 
-        return success;
+        const results = await Promise.all(
+            filePaths.map((filePath) => resourcePacksService.import(filePath, safeInstancePath)),
+        );
+        return summarizeResourcePackAcquisition(results);
     });
 }

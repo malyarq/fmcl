@@ -137,6 +137,7 @@ describe('Create-modpack dependency truth', () => {
     expect(summary).toBeTruthy();
     expect(summaryQueries.getByText('Runtime dependencies')).toBeTruthy();
     expect(screen.getByTestId('modpack-dependency-count').textContent).toBe('3');
+    expect(screen.getByTestId('modpack-dependency-status').getAttribute('data-tone')).toBe('healthy');
     expect(summaryQueries.getByText('Minecraft Version')).toBeTruthy();
     expect(summaryQueries.getByText('1.20.1')).toBeTruthy();
     expect(summaryQueries.getByText('Forge')).toBeTruthy();
@@ -180,6 +181,7 @@ describe('Create-modpack dependency truth', () => {
     const summaryQueries = within(summary);
     expect(summaryQueries.getByText('Runtime dependencies')).toBeTruthy();
     expect(screen.getByTestId('modpack-dependency-count').textContent).toBe('2');
+    expect(screen.getByTestId('modpack-dependency-status').getAttribute('data-tone')).toBe('healthy');
     expect(summaryQueries.getByText('Minecraft Version')).toBeTruthy();
     expect(summaryQueries.getByText('1.20.1')).toBeTruthy();
     expect(summaryQueries.getByText('NeoForge')).toBeTruthy();

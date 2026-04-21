@@ -2,23 +2,34 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import { LAUNCHER_MARK_PATH } from '../../app/assets/branding'
+import { APP_ICON_PATH } from '../../app/assets/branding'
 import { SimplePlayHome } from '../SimplePlayHome'
 
 vi.mock('../../contexts/SettingsContext', () => ({
   useSettings: () => ({
     getAccentStyles: () => ({ className: '', style: undefined }),
     getAccentHex: () => '#10b981',
+    t: (key: string) =>
+      ({
+        'ui_mode.simple': 'Classic',
+        'dashboard.classic_surface_title': 'Launch Minecraft from one focused surface.',
+        'dashboard.classic_surface_desc': 'Use the sidebar to choose your version, nickname, and launch settings before you play.',
+      }[key] ?? key),
   }),
 }))
 
 describe('SimplePlayHome visual truth', () => {
-  it('uses the shipped launcher mark for both the classic logo and easter-egg particles', async () => {
+  it('uses the shipped app icon for a restrained classic surface and easter-egg particles', async () => {
     const { container } = render(<SimplePlayHome />)
 
     const logo = screen.getByTestId('classic-launcher-mark')
-    expect(logo.getAttribute('src')).toBe(LAUNCHER_MARK_PATH)
-    expect(screen.getByText('FriendLauncher').closest('[data-brand-wordmark]')).toBeTruthy()
+    expect(logo.getAttribute('data-brand-role')).toBe('app-icon')
+    expect(logo.getAttribute('src')).toBe(APP_ICON_PATH)
+    expect(screen.getByText('Launch Minecraft from one focused surface.')).toBeTruthy()
+    expect(
+      screen.getByText('Use the sidebar to choose your version, nickname, and launch settings before you play.'),
+    ).toBeTruthy()
+    expect(container.querySelector('[data-brand-wordmark]')).toBeNull()
 
     const logoButton = logo.closest('.logo-container')
     expect(logoButton).toBeTruthy()
@@ -32,6 +43,6 @@ describe('SimplePlayHome visual truth', () => {
     })
 
     const particleImages = Array.from(container.querySelectorAll<HTMLImageElement>('.firework-particle img'))
-    expect(particleImages.every((image) => image.getAttribute('src') === LAUNCHER_MARK_PATH)).toBe(true)
+    expect(particleImages.every((image) => image.getAttribute('src') === APP_ICON_PATH)).toBe(true)
   })
 })

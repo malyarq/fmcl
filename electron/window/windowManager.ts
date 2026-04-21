@@ -1,4 +1,5 @@
 import { BrowserWindow, nativeImage } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
 import { openExternalUrl } from '../security/externalUrls';
 
@@ -7,6 +8,11 @@ export type CreateMainWindowParams = {
   rendererDevUrl?: string;
   rendererDist: string;
   vitePublicPath: string;
+};
+
+type MainWindowChromeOptions = {
+  frame: boolean;
+  titleBarStyle: 'hidden' | 'hiddenInset';
 };
 
 function buildAllowedOrigins(rendererDevUrl?: string): Set<string> {
@@ -34,6 +40,40 @@ function allowInternalWindowUrl(url: string, allowedOrigins: ReadonlySet<string>
   } catch {
     return false;
   }
+}
+
+function resolveWindowIconPath(vitePublicPath: string): string {
+  const candidates =
+    process.platform === 'darwin'
+      ? ['icon-macos.png', 'icon.png', 'icon.ico']
+      : process.platform === 'win32'
+        ? ['icon.ico', 'icon.png', 'icon-macos.png']
+        : ['icon.png', 'icon.ico', 'icon-macos.png'];
+
+  for (const iconFileName of candidates) {
+    const candidatePath = path.join(vitePublicPath, iconFileName);
+    if (fs.existsSync(candidatePath)) {
+      return candidatePath;
+    }
+  }
+
+  return path.join(vitePublicPath, 'icon.png');
+}
+
+function resolveMainWindowChromeOptions(): MainWindowChromeOptions {
+  if (process.platform === 'darwin') {
+    return {
+      // Native traffic lights require the real macOS frame; the renderer only owns
+      // the clearance/drag strip underneath that chrome.
+      frame: true,
+      titleBarStyle: 'hiddenInset',
+    };
+  }
+
+  return {
+    frame: false,
+    titleBarStyle: 'hidden',
+  };
 }
 
 function attachExternalNavigationGuards(
@@ -65,9 +105,10 @@ function attachExternalNavigationGuards(
 export function createMainWindow(params: CreateMainWindowParams): BrowserWindow {
   const { preloadPath, rendererDevUrl, rendererDist, vitePublicPath } = params;
 
-  const iconPath = path.join(vitePublicPath, 'icon.png');
+  const iconPath = resolveWindowIconPath(vitePublicPath);
   const appIcon = nativeImage.createFromPath(iconPath);
   const allowedOrigins = buildAllowedOrigins(rendererDevUrl);
+  const chromeOptions = resolveMainWindowChromeOptions();
 
   // Размер окна: width/height — стартовый размер, minWidth/minHeight — минимум при ресайзе
   const win = new BrowserWindow({
@@ -94,8 +135,7 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
       devTools: Boolean(rendererDevUrl),
       webviewTag: false,
     },
-    frame: false,
-    titleBarStyle: 'hidden',
+    ...chromeOptions,
   });
 
   attachExternalNavigationGuards(win, allowedOrigins, 'Main window');
@@ -117,7 +157,7 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
 export function createConsoleWindow(params: CreateMainWindowParams): BrowserWindow {
   const { preloadPath, rendererDevUrl, rendererDist, vitePublicPath } = params;
 
-  const iconPath = path.join(vitePublicPath, 'icon.png');
+  const iconPath = resolveWindowIconPath(vitePublicPath);
   const appIcon = nativeImage.createFromPath(iconPath);
   const allowedOrigins = buildAllowedOrigins(rendererDevUrl);
 

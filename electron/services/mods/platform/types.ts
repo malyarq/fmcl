@@ -96,10 +96,38 @@ export interface ModInstallRequest {
   contentType?: ContentType;
 }
 
-export interface ModInstallResult {
+export interface LegacyModInstallResult {
   destination: string;
   filename: string;
   usedUrl: string;
   skipped?: boolean;
 }
 
+export type GuidedContentInstallStatus =
+  | 'success'
+  | 'duplicate'
+  | 'invalid-archive'
+  | 'runtime-blocked'
+  | 'failure';
+
+export type GuidedContentInstallIssueStatus = Exclude<GuidedContentInstallStatus, 'success'>;
+
+export interface GuidedContentInstallIssue {
+  fileName: string;
+  status: GuidedContentInstallIssueStatus;
+  message: string;
+}
+
+export interface GuidedContentInstallResult {
+  status: GuidedContentInstallStatus;
+  destination?: string;
+  filename?: string;
+  usedUrl?: string;
+  issues: GuidedContentInstallIssue[];
+}
+
+export type ModInstallResult = LegacyModInstallResult | GuidedContentInstallResult;
+
+export function isManifestManagedContentType(contentType?: ContentType): boolean {
+  return (contentType ?? 'mod') === 'mod';
+}

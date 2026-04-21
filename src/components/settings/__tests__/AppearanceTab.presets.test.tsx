@@ -47,7 +47,7 @@ describe('AppearanceTab preset contract', () => {
     expect(getRootVar('--bg-app')).toBe('5 46 22');
     expect(getRootVar('--bg-card')).toBe('6 78 59');
     expect(getRootVar('--text-main')).toBe('236 253 245');
-    expect(screen.getByText('Forest · Dark')).toBeTruthy();
+    expect(screen.getAllByText('Forest · Dark').length).toBeGreaterThan(0);
   });
 
   it('keeps the preset identity when switching theme mode and repaints to that preset variant', async () => {
@@ -65,7 +65,7 @@ describe('AppearanceTab preset contract', () => {
     expect(getRootVar('--bg-app')).toBe('236 253 245');
     expect(getRootVar('--bg-card')).toBe('209 250 229');
     expect(getRootVar('--text-main')).toBe('6 78 59');
-    expect(screen.getByText('Forest · Light')).toBeTruthy();
+    expect(screen.getAllByText('Forest · Light').length).toBeGreaterThan(0);
   });
 
   it('exports the localized preset summary while keeping the stable preset identity', async () => {
@@ -89,11 +89,15 @@ describe('AppearanceTab preset contract', () => {
     expect(exportBlob).toBeTruthy();
 
     const exportedTheme = JSON.parse(await exportBlob!.text()) as {
+      accentColor: string;
+      customTheme: Record<string, unknown>;
       name: string;
       presetId?: string;
       theme: string;
     };
 
+    expect(exportedTheme.accentColor).toBe('emerald');
+    expect(exportedTheme.customTheme).toEqual({});
     expect(exportedTheme.name).toBe('Forest · Dark');
     expect(exportedTheme.presetId).toBe('forest');
     expect(exportedTheme.theme).toBe('dark');
@@ -134,6 +138,8 @@ describe('AppearanceTab preset contract', () => {
         this.onload?.({
           target: {
             result: JSON.stringify({
+              accentColor: '#123456',
+              customTheme: {},
               presetId: 'forest',
               theme: 'dark',
               config: resolveThemeConfig('dark', 'forest'),
@@ -161,6 +167,39 @@ describe('AppearanceTab preset contract', () => {
     });
 
     expect(getPresetSelect().value).toBe('forest');
-    expect(screen.getByText('Forest · Dark')).toBeTruthy();
+    expect(screen.getAllByText('Forest · Dark').length).toBeGreaterThan(0);
+    expect(localStorage.getItem('settings_accentColor')).toBe('#123456');
+  });
+
+  it('keeps preset ownership when a bounded advanced override is applied', async () => {
+    const { container } = renderAppearanceTab();
+
+    fireEvent.change(getPresetSelect(), { target: { value: 'forest' } });
+
+    await waitFor(() => {
+      expect(localStorage.getItem('settings_themePresetId')).toBe('forest');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Advanced Appearance' }));
+
+    const backgroundColorRow = screen.getByText('Background Color').closest('div');
+    const backgroundColorInput = backgroundColorRow?.querySelector('input[type="color"]') as HTMLInputElement | null;
+    expect(backgroundColorInput).toBeTruthy();
+    if (!backgroundColorInput) {
+      throw new Error('Expected background color input');
+    }
+
+    fireEvent.change(backgroundColorInput, { target: { value: '#112233' } });
+
+    await waitFor(() => {
+      expect(localStorage.getItem('settings_themePresetId')).toBe('forest');
+    });
+
+    expect(JSON.parse(localStorage.getItem('settings_customTheme') ?? '{}')).toEqual({
+      colors: {
+        background: '#112233',
+      },
+    });
+    expect(container.textContent).toContain('Forest · Dark');
   });
 });

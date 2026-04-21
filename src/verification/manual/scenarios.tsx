@@ -6,7 +6,7 @@ import { ConfirmProvider } from '../../contexts/ConfirmContext';
 import { ModpackProvider } from '../../contexts/ModpackContext';
 import { createTranslator } from '../../contexts/settings/i18n';
 import type { UIMode } from '../../contexts/settings/types';
-import { LAUNCHER_MARK_PATH, MEDIA_FALLBACK_PATH } from '../../app/assets/branding';
+import { APP_ICON_PATH, LAUNCHER_MARK_PATH, MEDIA_FALLBACK_PATH } from '../../app/assets/branding';
 import TitleBar from '../../components/TitleBar';
 import Sidebar, { type SidebarLaunchModel, type SidebarRuntimeModel } from '../../components/Sidebar';
 import SettingsPage from '../../components/SettingsPage';
@@ -152,7 +152,7 @@ const MANUAL_BROWSER_RESULT: ModpackSearchResultItem = {
   slug: 'alpha-pack',
   title: 'Alpha Pack',
   description: 'Route-owned install proof fixture for the Phase 19 shell-integrated harness.',
-  iconUrl: '/icon.png',
+  iconUrl: APP_ICON_PATH,
   downloads: 1337,
   dateCreated: '2026-04-01T10:00:00.000Z',
   dateModified: '2026-04-13T08:30:00.000Z',
@@ -292,6 +292,111 @@ function findButtonByText(needle: string): HTMLButtonElement | null {
   );
 }
 
+function findCheckboxByResultTitle(title: string): HTMLInputElement | null {
+  return (
+    Array.from(document.querySelectorAll<HTMLDivElement>('div')).find((element) =>
+      element.textContent?.includes(title) && Boolean(element.querySelector('input[type="checkbox"]')),
+    )?.querySelector<HTMLInputElement>('input[type="checkbox"]') ?? null
+  );
+}
+
+function useGuidedSelectionAndSubmitReady(params: {
+  onReady: (message: string) => void;
+  selectionNeedle: string;
+  actionNeedle: string;
+  expectedNeedles: string[];
+  message: string;
+}) {
+  const { actionNeedle, expectedNeedles, message, onReady, selectionNeedle } = params;
+  const needlesText = expectedNeedles.join('\n');
+  const readyKey = `${selectionNeedle}:${actionNeedle}:${needlesText}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    let selectionTriggered = false;
+    let actionTriggered = false;
+    const deadline = Date.now() + 6_000;
+
+    const tick = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const text = document.body.textContent ?? '';
+      const hasAllNeedles = needlesText.split('\n').every((needle) => text.includes(needle));
+      if (hasAllNeedles) {
+        onReady(message);
+        return;
+      }
+
+      const checkbox = findCheckboxByResultTitle(selectionNeedle);
+      if (!selectionTriggered && checkbox && !checkbox.disabled && !checkbox.checked) {
+        checkbox.click();
+        selectionTriggered = true;
+      }
+
+      const actionButton = findButtonByText(actionNeedle);
+      if (selectionTriggered && !actionTriggered && actionButton && !actionButton.disabled) {
+        actionButton.click();
+        actionTriggered = true;
+      }
+
+      if (Date.now() < deadline) {
+        window.setTimeout(tick, 75);
+      }
+    };
+
+    tick();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [actionNeedle, message, needlesText, onReady, readyKey, selectionNeedle]);
+}
+
+function useGuidedActionNoticeReady(params: {
+  onReady: (message: string) => void;
+  actionNeedle: string;
+  message: string;
+}) {
+  const { actionNeedle, message, onReady } = params;
+  const readyKey = `${actionNeedle}:${message}`;
+
+  useEffect(() => {
+    let cancelled = false;
+    let actionTriggered = false;
+    const deadline = Date.now() + 6_000;
+
+    const tick = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const notice = document.querySelector<HTMLElement>('[data-testid="add-mod-page-notice"]');
+      if (notice) {
+        onReady(message);
+        return;
+      }
+
+      const actionButton = findButtonByText(actionNeedle);
+      if (!actionTriggered && actionButton && !actionButton.disabled) {
+        actionButton.click();
+        actionTriggered = true;
+      }
+
+      if (Date.now() < deadline) {
+        window.setTimeout(tick, 75);
+      }
+    };
+
+    tick();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [actionNeedle, message, onReady, readyKey]);
+}
+
 function usePhase21CreateSummaryReady(onReady: (message: string) => void) {
   useEffect(() => {
     let cancelled = false;
@@ -395,6 +500,16 @@ function Phase24ProofCallout(props: { title: string; detail: string }) {
   return (
     <div className="surface-inline rounded-3xl p-4 sm:p-5">
       <div className="kicker-label mb-2">Phase 24 closeout proof</div>
+      <h2 className="text-lg font-semibold text-foreground">{props.title}</h2>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary">{props.detail}</p>
+    </div>
+  );
+}
+
+function Phase31ProofCallout(props: { title: string; detail: string }) {
+  return (
+    <div className="surface-inline rounded-3xl p-4 sm:p-5">
+      <div className="kicker-label mb-2">Phase 31 guided content proof</div>
       <h2 className="text-lg font-semibold text-foreground">{props.title}</h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary">{props.detail}</p>
     </div>
@@ -620,8 +735,8 @@ function Phase24HomeCloseoutScenario({ onReady }: ManualVerificationScenarioProp
 function SettingsAppearanceScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Launcher Settings', 'Shared launcher brand'],
-    'Phase 20 appearance proof rendered above the real shell so reviewers can verify the shared mark, wordmark, and accent boundary without leaving live composition.',
+    ['FriendLauncher', 'Launcher Settings', 'Theme Presets', 'Visible Background Scope'],
+    'Phase 30 appearance proof rendered above the real shell so reviewers can verify preset ancestry, bounded customization, and honest launcher-runtime control boundaries without leaving live composition.',
   );
 
   return (
@@ -634,7 +749,7 @@ function SettingsAppearanceScenario({ onReady }: ManualVerificationScenarioProps
 function Phase24ThemeDarkScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Launcher Settings', 'Shared launcher brand', 'Dark closeout pair'],
+    ['FriendLauncher', 'Launcher Settings', 'Theme Presets', 'Dark closeout pair'],
     'Phase 24 dark-theme closeout rendered inside the real shell with deterministic appearance state for release review.',
   );
 
@@ -654,7 +769,7 @@ function Phase24ThemeDarkScenario({ onReady }: ManualVerificationScenarioProps) 
 function Phase24ThemeLightScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Launcher Settings', 'Shared launcher brand', 'Light closeout pair'],
+    ['FriendLauncher', 'Launcher Settings', 'Theme Presets', 'Light closeout pair'],
     'Phase 24 light-theme closeout rendered inside the real shell with deterministic appearance state for release review.',
   );
 
@@ -674,7 +789,7 @@ function Phase24ThemeLightScenario({ onReady }: ManualVerificationScenarioProps)
 function Phase22ThemeDarkScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Launcher Settings', 'Shared launcher brand'],
+    ['FriendLauncher', 'Launcher Settings', 'Theme Presets'],
     'Phase 22 dark-theme proof rendered inside the real shell with a shipped preset so shared appearance controls can be inspected under the final state contract.',
   );
 
@@ -694,7 +809,7 @@ function Phase22ThemeDarkScenario({ onReady }: ManualVerificationScenarioProps) 
 function Phase22ThemeLightScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Launcher Settings', 'Shared launcher brand'],
+    ['FriendLauncher', 'Launcher Settings', 'Theme Presets'],
     'Phase 22 light-theme proof rendered inside the real shell with a custom accent so shared appearance controls can be compared against the preset state.',
   );
 
@@ -1108,6 +1223,98 @@ function AddModScenario({ onReady }: ManualVerificationScenarioProps) {
   return (
     <Phase19ShellFrame mode="modpacks" ownership="route">
       <AddModPage modpackId="alpha" onBack={() => undefined} />
+    </Phase19ShellFrame>
+  );
+}
+
+function GuidedResourcePacksScenario({ onReady }: ManualVerificationScenarioProps) {
+  useReadyByText(
+    onReady,
+    ['FriendLauncher', 'Painterly Depth Reloaded', 'Have a local resource pack .zip already?', 'Instance-scoped resource packs'],
+    'Phase 31 guided resource-pack browser proof rendered with direct catalog fixtures and explicit in-route local fallback.',
+  );
+
+  return (
+    <Phase19ShellFrame mode="modpacks" ownership="route">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
+        <Phase31ProofCallout
+          title="Guided resource-pack browsing stays specific to the launcher story"
+          detail="Use this route to verify that resource-pack guidance is no longer hidden behind the generic add-content shell: the catalog is resource-pack specific, local .zip fallback stays on-route, and the copy remains instance-scoped instead of pretending compatibility proof."
+        />
+        <AddModPage modpackId="alpha" contentType="resourcepack" onBack={() => undefined} />
+      </div>
+    </Phase19ShellFrame>
+  );
+}
+
+function GuidedResourcePacksRecoveryScenario({ onReady }: ManualVerificationScenarioProps) {
+  useReadyByText(
+    onReady,
+    ['Local fallback now proves recoverable resource-pack failure', 'Have a local resource pack .zip already?'],
+    'Phase 31 guided resource-pack fallback proof rendered with partial local-import recovery that stays on-surface.',
+  );
+
+  useGuidedActionNoticeReady({
+    onReady: () => undefined,
+    actionNeedle: 'Import local .zip',
+    message: 'Phase 31 guided resource-pack fallback proof rendered with partial local-import recovery that stays on-surface.',
+  });
+
+  return (
+    <Phase19ShellFrame mode="modpacks" ownership="route">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
+        <Phase31ProofCallout
+          title="Local fallback now proves recoverable resource-pack failure"
+          detail="This proof auto-opens the guided local import path and lands in a partial-success recovery state, so reviewers can see fallback and actionable failure copy together without stepping outside the route shell."
+        />
+        <AddModPage modpackId="alpha" contentType="resourcepack" onBack={() => undefined} />
+      </div>
+    </Phase19ShellFrame>
+  );
+}
+
+function GuidedShadersScenario({ onReady }: ManualVerificationScenarioProps) {
+  useReadyByText(
+    onReady,
+    ['FriendLauncher', 'Shader runtime', 'Needs setup', 'Photon Bloom Lite', 'Have a local shader pack .zip already?'],
+    'Phase 31 guided shader browser proof rendered with needs-setup runtime guidance and shader-specific fixtures.',
+  );
+
+  return (
+    <Phase19ShellFrame mode="modpacks" ownership="route">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
+        <Phase31ProofCallout
+          title="Guided shader browsing now carries honest capability guidance"
+          detail="Use this route to verify that the shader browser mounts with runtime-aware needs-setup messaging, keeps local .zip import secondary, and avoids reading like a generic mod or marketplace screen."
+        />
+        <AddModPage modpackId="alpha" contentType="shader" onBack={() => undefined} />
+      </div>
+    </Phase19ShellFrame>
+  );
+}
+
+function GuidedShadersRecoveryScenario({ onReady }: ManualVerificationScenarioProps) {
+  useGuidedSelectionAndSubmitReady({
+    onReady,
+    selectionNeedle: 'Photon Bloom Lite',
+    actionNeedle: 'Add selected shaders',
+    expectedNeedles: [
+      'Unsupported',
+      'FMCL kept these shader installs blocked for the current runtime: Photon Bloom Lite.',
+      'Review the shader runtime card above, then retry.',
+    ],
+    message: 'Phase 31 guided shader recovery proof rendered with unsupported runtime guidance and retry-ready blocked install copy.',
+  });
+
+  return (
+    <Phase19ShellFrame mode="modpacks" ownership="route">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
+        <Phase31ProofCallout
+          title="Blocked shader installs stay on-surface with the runtime reason"
+          detail="This proof auto-selects a shader fixture and triggers the guided install path under an unsupported runtime so reviewers can see the red runtime card and retry-ready recovery language together."
+        />
+        <AddModPage modpackId="alpha" contentType="shader" onBack={() => undefined} />
+      </div>
     </Phase19ShellFrame>
   );
 }
@@ -1587,6 +1794,22 @@ export function ManualVerificationScenarios(props: { view: ManualVerificationVie
 
   if (props.view === 'modpack-add') {
     return <AddModScenario {...scenarioProps} />;
+  }
+
+  if (props.view === 'guided-resourcepacks') {
+    return <GuidedResourcePacksScenario {...scenarioProps} />;
+  }
+
+  if (props.view === 'guided-resourcepacks-recovery') {
+    return <GuidedResourcePacksRecoveryScenario {...scenarioProps} />;
+  }
+
+  if (props.view === 'guided-shaders') {
+    return <GuidedShadersScenario {...scenarioProps} />;
+  }
+
+  if (props.view === 'guided-shaders-recovery') {
+    return <GuidedShadersRecoveryScenario {...scenarioProps} />;
   }
 
   if (props.view === 'modpack-install') {

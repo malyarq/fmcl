@@ -84,7 +84,7 @@ describe('MirrorsSettings accessibility', () => {
     expect(await screen.findByRole('list', { name: 'mirrors.description' })).toBeTruthy();
     expect(screen.getByText('mirrors.priorityHint')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'mirrors.testSpeed: Primary Mirror' })).toBeTruthy();
-    expect(screen.getByRole('checkbox', { name: 'mirrors.autoSelect' })).toBeTruthy();
+    expect(screen.getByRole('switch', { name: 'mirrors.autoSelect' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'mirrors.addCustom' }));
 

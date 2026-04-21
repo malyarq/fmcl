@@ -3,8 +3,6 @@ import { Boxes, Settings2, Sparkles } from 'lucide-react';
 import { useSettings, useUIMode } from '../contexts/SettingsContext';
 import { useModpack } from '../contexts/ModpackContext';
 import { modpacksIPC } from '../services/ipc/modpacksIPC';
-import { resourcePacksIPC } from '../services/ipc/resourcePacksIPC';
-import { shadersIPC } from '../services/ipc/shadersIPC';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { ModsTab } from './modpacks/details/ModsTab';
 import { Button } from './ui/Button';
@@ -16,9 +14,13 @@ import { WorldsTab } from './modpacks/details/WorldsTab';
 import { cn } from '../utils/cn';
 import { ProgressBar } from './ui/ProgressBar';
 import { getLaunchStageTitle, type LaunchStage } from '../features/launcher/services/launcherService';
-import { buildRuntimeDependencyState, getModloaderDisplayLabel } from './sidebar/modpackRuntimeDependencies';
 import { BrandMark } from './branding/BrandMark';
-import { BrandWordmark } from './branding/BrandWordmark';
+import { queueInitialModpackView } from '../features/modpacks/hooks/useModpackNavigation';
+import {
+  buildModpackRuntimeSummary,
+  getModpackRuntimeLoaderLabel,
+} from '../features/modpacks/hooks/useModpackRuntimeSummary';
+import { useModSupportedVersions } from '../features/launcher/hooks/useModSupportedVersions';
 
 interface Particle {
   id: string;
@@ -152,13 +154,22 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
   const lastFireworksTimeRef = useRef(0);
 
   const accentHex = getAccentHex();
-  const runtimeDependencyState = buildRuntimeDependencyState(
-    launch.version,
-    launch.loaderType,
-    modpackConfig?.runtime?.modLoader?.version,
-  );
-  const loaderLabel = getModloaderDisplayLabel(runtimeDependencyState.modLoader, t);
-  const showMods = launch.loaderType !== 'vanilla';
+  const { optiFineVersions } = useModSupportedVersions();
+  const runtimeSummary = buildModpackRuntimeSummary({
+    config: modpackConfig,
+    metadata,
+    fallback: {
+      minecraftVersion: launch.version,
+      modLoader: {
+        type: launch.loaderType,
+        version: modpackConfig?.runtime?.modLoader?.version,
+      },
+      useOptiFine: modpackConfig?.game?.useOptiFine,
+    },
+    optiFineVersions: optiFineVersions.length > 0 ? optiFineVersions : undefined,
+  });
+  const loaderLabel = getModpackRuntimeLoaderLabel(runtimeSummary, t);
+  const showMods = Boolean(runtimeSummary.modLoader);
   const reducedMotion = disableAnimations || prefersReducedMotion;
   const launchStage = runtime.launchStage ?? (runtime.isLaunching ? 'launching' : 'idle');
   const launchStatusTitle = runtime.statusText || getLaunchStageTitle(launchStage, t);
@@ -173,8 +184,17 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
       : launchStage === 'running'
         ? 'border-emerald-500/30 bg-emerald-500/10'
         : 'border-border/70 bg-card/82';
-  const heroName = metadata?.name || currentModpack?.name || modpackConfig?.name || 'FriendLauncher';
-  const heroSubtitle = `${launch.version} • ${loaderLabel}`;
+  const classicSurfaceDescription = translateWithFallback(
+    t,
+    'dashboard.classic_surface_desc',
+    'Use the sidebar to choose your version, nickname, and launch settings before you play.',
+  );
+  const heroName =
+    metadata?.name ||
+    currentModpack?.name ||
+    modpackConfig?.name ||
+    (t('ui_mode.simple') || 'Classic');
+  const heroSubtitle = `${runtimeSummary.minecraftVersion || launch.version} • ${loaderLabel}`;
   const advancedSettingsTitle = translateWithFallback(t, 'dashboard.advanced_settings', 'Advanced settings');
   const advancedSettingsContent = (
     <GameTab
@@ -190,6 +210,21 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
       getAccentStyles={getAccentStyles}
       isReadOnly={lockLaunchSurface}
     />
+  );
+
+  const handleOpenGuidedContent = useCallback(
+    (contentType: 'resourcepack' | 'shader') => {
+      if (!modpackId) {
+        return;
+      }
+
+      queueInitialModpackView({
+        type: contentType === 'resourcepack' ? 'addResourcePack' : 'addShader',
+        modpackId,
+      });
+      setMode('modpacks');
+    },
+    [modpackId, setMode],
   );
 
   useEffect(() => {
@@ -362,104 +397,107 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
         </section>
       )}
 
-      {/* Logo + easter egg — на фоне, без жёсткого бокса */}
-      <div className="relative flex flex-col items-center gap-2 mb-6 overflow-visible w-full">
-        <button
-          type="button"
-          onClick={handleLogoClick}
-          aria-label="FriendLauncher logo"
-          className={cn(
-            'logo-container motion-safe-transform relative w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-visible cursor-pointer',
-            reducedMotion
-              ? 'transition-none'
-              : 'transition-all duration-300 ease-out hover:scale-110 active:scale-105'
-          )}
-          style={{
-            filter: showEasterEgg
-              ? `drop-shadow(0 0 24px ${accentHex}55) drop-shadow(0 0 48px ${accentHex}35)`
-              : 'drop-shadow(0 0 24px rgb(var(--brand-mark-glow) / 0.2)) drop-shadow(0 0 48px rgb(var(--brand-mark-glow) / 0.14))'
-          }}
-        >
-          <div
-            className="absolute -inset-6 rounded-full animate-pulse-slow pointer-events-none"
-            style={{
-              background: !reducedMotion && showEasterEgg
-                ? `radial-gradient(circle, ${accentHex}20 0%, transparent 60%)`
-                : 'radial-gradient(circle, rgb(var(--brand-shell-glow) / 0.18) 0%, transparent 60%)',
-              animation: !reducedMotion && showEasterEgg ? 'easter-egg-glow 0.5s ease-in-out infinite' : undefined,
-            }}
-          />
-          <BrandMark
-            role="product-mark"
-            alt="FriendLauncher mark"
-            data-testid="dashboard-launcher-mark"
-            frame="brand"
-            wrapperClassName="relative h-full w-full"
-            className="h-16 w-16 md:h-20 md:w-20 transition-transform duration-300"
-            style={{
-              transform: !reducedMotion && showEasterEgg ? 'rotate(360deg) scale(1.2)' : 'none',
-              filter: !reducedMotion && showEasterEgg ? `drop-shadow(0 0 15px ${accentHex})` : undefined,
-            }}
-          />
-        </button>
-        <BrandWordmark
-          as="h1"
-          tone="hero"
-          className={cn(
-            'relative z-10 text-foreground transition-all duration-300',
-            !reducedMotion && showEasterEgg && 'animate-pulse scale-110'
-          )}
-          style={{
-            textShadow: !reducedMotion && showEasterEgg
-              ? `0 0 20px ${accentHex}, 0 0 40px ${accentHex}, 0 4px 14px ${accentHex}80`
-              : '0 4px 18px rgb(var(--brand-mark-glow) / 0.24)',
-          }}
-        >
-        </BrandWordmark>
-        <div className="surface-inline relative z-10 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 py-2 text-center">
-          <p className="text-sm font-semibold text-foreground">{heroName}</p>
-          <span aria-hidden="true" className="text-secondary/60">•</span>
-          <p className="text-xs text-secondary">{heroSubtitle}</p>
-        </div>
-        {!reducedMotion && particles.map((p) => {
-          const ar = (p.angle * Math.PI) / 180;
-          const x = Math.cos(ar) * p.distance;
-          const y = Math.sin(ar) * p.distance;
-          return (
-            <div
-              key={p.id}
-              className="absolute pointer-events-none firework-particle"
-              style={
-                {
-                  left: '50%',
-                  top: '50%',
-                  width: `${p.size}px`,
-                  height: `${p.size}px`,
-                  '--particle-x': `${x}px`,
-                  '--particle-y': `${y}px`,
-                  '--particle-rotation': `${p.angle + 360}deg`,
-                  '--particle-duration': `${p.duration}s`,
-                  '--particle-delay': `${p.delay}s`,
-                  '--accent-color': accentHex,
-                } as React.CSSProperties & {
-                  '--particle-x': string;
-                  '--particle-y': string;
-                  '--particle-rotation': string;
-                  '--particle-duration': string;
-                  '--particle-delay': string;
-                  '--accent-color': string;
-                }
-              }
-            >
-              <BrandMark
-                role="product-mark"
-                decorative
-                className="w-full h-full"
-                style={{ filter: `drop-shadow(0 0 6px ${accentHex}) drop-shadow(0 0 12px ${accentHex}60)` }}
-              />
+      <div className="relative mb-6 w-full max-w-2xl overflow-visible">
+        <section className="surface-panel relative overflow-visible border border-border/70 bg-card/82 p-5">
+          <div className="flex flex-col gap-4 text-left sm:flex-row sm:items-start">
+            <div className="relative shrink-0 overflow-visible">
+              <button
+                type="button"
+                onClick={handleLogoClick}
+                aria-label="FriendLauncher app icon"
+                className={cn(
+                  'logo-container motion-safe-transform relative rounded-2xl border border-border/60 bg-background/80 p-3',
+                  reducedMotion
+                    ? 'transition-none'
+                    : 'transition-all duration-300 ease-out hover:scale-105 active:scale-[0.98]'
+                )}
+                style={{
+                  filter: showEasterEgg
+                    ? `drop-shadow(0 0 18px ${accentHex}45) drop-shadow(0 0 32px ${accentHex}30)`
+                    : 'drop-shadow(0 0 18px rgb(var(--brand-mark-glow) / 0.16)) drop-shadow(0 0 32px rgb(var(--brand-mark-glow) / 0.1))'
+                }}
+              >
+                <div
+                  className="absolute -inset-3 rounded-2xl animate-pulse-slow pointer-events-none"
+                  style={{
+                    background: !reducedMotion && showEasterEgg
+                      ? `radial-gradient(circle, ${accentHex}20 0%, transparent 70%)`
+                      : 'radial-gradient(circle, rgb(var(--brand-shell-glow) / 0.14) 0%, transparent 70%)',
+                    animation: !reducedMotion && showEasterEgg ? 'easter-egg-glow 0.5s ease-in-out infinite' : undefined,
+                  }}
+                />
+                <BrandMark
+                  role="app-icon"
+                  alt="FriendLauncher app icon"
+                  data-testid="dashboard-launcher-mark"
+                  className="h-10 w-10 transition-transform duration-300 md:h-11 md:w-11"
+                  style={{
+                    transform: !reducedMotion && showEasterEgg ? 'rotate(360deg) scale(1.12)' : 'none',
+                    filter: !reducedMotion && showEasterEgg ? `drop-shadow(0 0 10px ${accentHex})` : undefined,
+                  }}
+                />
+              </button>
+              {!reducedMotion && particles.map((p) => {
+                const ar = (p.angle * Math.PI) / 180;
+                const x = Math.cos(ar) * p.distance;
+                const y = Math.sin(ar) * p.distance;
+                return (
+                  <div
+                    key={p.id}
+                    className="absolute pointer-events-none firework-particle"
+                    style={
+                      {
+                        left: '50%',
+                        top: '50%',
+                        width: `${p.size}px`,
+                        height: `${p.size}px`,
+                        '--particle-x': `${x}px`,
+                        '--particle-y': `${y}px`,
+                        '--particle-rotation': `${p.angle + 360}deg`,
+                        '--particle-duration': `${p.duration}s`,
+                        '--particle-delay': `${p.delay}s`,
+                        '--accent-color': accentHex,
+                      } as React.CSSProperties & {
+                        '--particle-x': string;
+                        '--particle-y': string;
+                        '--particle-rotation': string;
+                        '--particle-duration': string;
+                        '--particle-delay': string;
+                        '--accent-color': string;
+                      }
+                    }
+                  >
+                    <BrandMark
+                      role="app-icon"
+                      decorative
+                      className="h-full w-full"
+                      style={{ filter: `drop-shadow(0 0 6px ${accentHex}) drop-shadow(0 0 12px ${accentHex}60)` }}
+                    />
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+
+            <div className="min-w-0 flex-1 space-y-3">
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary">
+                <Sparkles className="h-3.5 w-3.5" />
+                {t('ui_mode.simple') || 'Classic'}
+              </div>
+
+              <div className="space-y-1">
+                <h1 className="text-2xl font-semibold text-foreground sm:text-[1.75rem]">
+                  {heroName}
+                </h1>
+                <p className="text-sm text-secondary">{heroSubtitle}</p>
+              </div>
+
+              <p className="max-w-xl text-sm leading-6 text-secondary">
+                {classicSurfaceDescription}
+              </p>
+            </div>
+          </div>
+        </section>
+
         <style>{`
           @keyframes pulse-slow {
             0%, 100% { opacity: 0.3; transform: scale(1); }
@@ -477,8 +515,8 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
           .firework-particle { animation: firework-particle var(--particle-duration) ease-out var(--particle-delay) forwards; will-change: transform, opacity; }
           .animate-pulse-slow { animation: pulse-slow 3s ease-in-out infinite; }
           .logo-container:hover { filter: ${showEasterEgg
-            ? (reducedMotion ? `drop-shadow(0 0 24px ${accentHex}50) drop-shadow(0 0 48px ${accentHex}30)` : `drop-shadow(0 0 30px ${accentHex}80) drop-shadow(0 0 60px ${accentHex}60)`)
-            : 'drop-shadow(0 0 28px rgb(var(--brand-mark-glow) / 0.24)) drop-shadow(0 0 56px rgb(var(--brand-mark-glow) / 0.16))'} !important; }
+            ? (reducedMotion ? `drop-shadow(0 0 18px ${accentHex}45) drop-shadow(0 0 32px ${accentHex}28)` : `drop-shadow(0 0 20px ${accentHex}60) drop-shadow(0 0 36px ${accentHex}40)`)
+            : 'drop-shadow(0 0 20px rgb(var(--brand-mark-glow) / 0.18)) drop-shadow(0 0 36px rgb(var(--brand-mark-glow) / 0.12))'} !important; }
         `}</style>
       </div>
 
@@ -522,7 +560,7 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <InfoCard
             label={t('modpacks.minecraft_version') || 'Minecraft version'}
-            value={launch.version}
+            value={runtimeSummary.minecraftVersion || launch.version}
           />
           <InfoCard
             label={t('general.modloader') || 'Modloader'}
@@ -573,8 +611,10 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
           t={t}
           showMods={showMods}
           modpackId={modpackId}
-          defaultMCVersion={launch.version}
-          defaultLoader={launch.loaderType}
+          defaultMCVersion={runtimeSummary.minecraftVersion || launch.version}
+          defaultLoader={runtimeSummary.modLoader?.type ?? 'vanilla'}
+          runtimeSummary={runtimeSummary}
+          onOpenGuidedContent={handleOpenGuidedContent}
         />
       </CollapsibleSection>
 
@@ -632,6 +672,8 @@ function ContentManagerSection({
   modpackId,
   defaultMCVersion,
   defaultLoader,
+  runtimeSummary,
+  onOpenGuidedContent,
 }: {
   minecraftPath?: string;
   t: (k: string) => string;
@@ -639,26 +681,13 @@ function ContentManagerSection({
   modpackId?: string;
   defaultMCVersion?: string;
   defaultLoader?: string;
+  runtimeSummary?: ReturnType<typeof buildModpackRuntimeSummary>;
+  onOpenGuidedContent: (contentType: 'resourcepack' | 'shader') => void;
 }) {
   const { getAccentHex } = useSettings();
   const accentHex = getAccentHex();
   const [activeTab, setActiveTab] = useState<ContentTab>(showMods ? 'mods' : 'resourcepacks');
   const instancePath = minecraftPath || '';
-
-  const [rpUpdateKey, setRpUpdateKey] = useState(0);
-  const [shUpdateKey, setShUpdateKey] = useState(0);
-
-  const onAddRP = useCallback(async () => {
-    if (!instancePath) return;
-    await resourcePacksIPC.add(instancePath);
-    setRpUpdateKey(k => k + 1);
-  }, [instancePath]);
-
-  const onAddSH = useCallback(async () => {
-    if (!instancePath) return;
-    await shadersIPC.add(instancePath);
-    setShUpdateKey(k => k + 1);
-  }, [instancePath]);
 
   if (!instancePath) {
     return (
@@ -731,16 +760,15 @@ function ContentManagerSection({
         )}
         {activeTab === 'resourcepacks' && (
           <ResourcePacksTab
-            key={rpUpdateKey}
             instancePath={instancePath}
-            onAddResourcePack={onAddRP}
+            onAddResourcePack={() => onOpenGuidedContent('resourcepack')}
           />
         )}
         {activeTab === 'shaders' && (
           <ShadersTab
-            key={shUpdateKey}
             instancePath={instancePath}
-            onAddShader={onAddSH}
+            runtimeSummary={runtimeSummary}
+            onAddShader={() => onOpenGuidedContent('shader')}
           />
         )}
         {activeTab === 'worlds' && <WorldsTab instancePath={instancePath} mcVersion={defaultMCVersion} />}

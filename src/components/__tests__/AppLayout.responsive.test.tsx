@@ -2,7 +2,13 @@
 
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { APP_LAYOUT_SAFE_AREA_TEST_ID, AppLayout, type AppLayoutProps } from '../AppLayout';
+import { APP_ICON_PATH } from '../../app/assets/branding';
+import {
+  APP_LAYOUT_NOTIFICATIONS_TEST_ID,
+  APP_LAYOUT_SAFE_AREA_TEST_ID,
+  AppLayout,
+  type AppLayoutProps,
+} from '../AppLayout';
 
 const uiModeState = { value: 'simple' as 'simple' | 'modpacks' };
 const settingsState = { sidebarPosition: 'left' as 'left' | 'right' };
@@ -33,10 +39,6 @@ vi.mock('../UpdateNotification', () => ({
   UpdateNotification: () => <div>Update notification</div>,
 }));
 
-vi.mock('../modpacks/ModpackUpdateNotification', () => ({
-  ModpackUpdateNotification: () => <div>Modpack update notification</div>,
-}));
-
 vi.mock('../modpacks/ModpackRouter', () => ({
   ModpackRouter: () => <div>Modpack router</div>,
 }));
@@ -60,10 +62,6 @@ function createProps(): AppLayoutProps {
       status: 'idle',
       info: null,
       onInstall: vi.fn(),
-    },
-    modpackUpdates: {
-      updates: [],
-      onDismiss: vi.fn(),
     },
     overlays: {
       showSettings: false,
@@ -114,7 +112,7 @@ function createProps(): AppLayoutProps {
       logs: [],
       logEndRef: { current: document.createElement('div') },
       onCopyLogs: vi.fn(),
-      iconPath: '/icon.png',
+      iconPath: APP_ICON_PATH,
     },
   };
 }
@@ -130,14 +128,17 @@ describe('AppLayout responsive shell', () => {
 
     const shellFrame = screen.getByTestId('app-shell-frame');
     const titleBar = screen.getByTestId('app-title-bar');
+    const notifications = screen.getByTestId(APP_LAYOUT_NOTIFICATIONS_TEST_ID);
     const safeArea = screen.getByTestId(APP_LAYOUT_SAFE_AREA_TEST_ID);
     const main = screen.getByTestId('app-layout-main');
     const split = screen.getByTestId('app-layout-split');
 
     expect(shellFrame.className).toContain('min-w-0');
     expect(shellFrame.className).toContain('sm:rounded-[28px]');
-    expect(titleBar.nextElementSibling).toBe(safeArea);
-    expect(safeArea.getAttribute('data-shell-safe-area')).toBe('title-bar');
+    expect(titleBar.nextElementSibling).toBe(notifications);
+    expect(notifications.nextElementSibling).toBe(safeArea);
+    expect(notifications.textContent).toContain('Update notification');
+    expect(safeArea.getAttribute('data-shell-safe-area')).toBe('shell-chrome');
     expect(split.parentElement).toBe(safeArea);
     expect(main.className).toContain('min-w-0');
     expect(split.className).toContain('flex-row');
@@ -154,8 +155,10 @@ describe('AppLayout responsive shell', () => {
     render(<AppLayout {...props} />);
 
     const safeArea = screen.getByTestId(APP_LAYOUT_SAFE_AREA_TEST_ID);
+    const notifications = screen.getByTestId(APP_LAYOUT_NOTIFICATIONS_TEST_ID);
 
-    expect(safeArea.getAttribute('data-shell-safe-area')).toBe('title-bar');
+    expect(safeArea.getAttribute('data-shell-safe-area')).toBe('shell-chrome');
+    expect(notifications.previousElementSibling).toBe(screen.getByTestId('app-title-bar'));
     expect(screen.getByTestId('app-layout-split').className).toContain('flex-row-reverse');
     expect(safeArea.contains(screen.getByText('Settings page'))).toBe(true);
     expect(safeArea.contains(screen.getByText('Multiplayer page'))).toBe(true);

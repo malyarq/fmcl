@@ -10,6 +10,10 @@ import { statisticsIPC } from '../../../services/ipc/statisticsIPC';
 import { DegradedStateView } from '../../../components/layout/DegradedStateView';
 import { toDisplayErrorMessage } from '../../../utils/displayError';
 
+interface StatisticsTabProps {
+    embedded?: boolean;
+}
+
 function formatTime(
     ms: number,
     formatNumber: (value: number, options?: Intl.NumberFormatOptions) => string,
@@ -38,7 +42,7 @@ function hexToRgba(hex: string, alpha: number): string {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-export const StatisticsTab: React.FC = () => {
+export const StatisticsTab: React.FC<StatisticsTabProps> = ({ embedded = false }) => {
     const { t, formatDate, formatNumber, getAccentHex } = useSettings();
     const toast = useToast();
     const [stats, setStats] = useState<StatisticsOverview | null>(null);
@@ -140,11 +144,15 @@ export const StatisticsTab: React.FC = () => {
 
     return (
         <div className="space-y-4">
-            <div className="surface-card flex flex-col gap-4 p-4 md:flex-row md:items-start md:justify-between">
-                <div className="space-y-2">
-                    <div className="kicker-label">{t('settings.tab_statistics')}</div>
-                    <h3 className="text-lg font-bold text-foreground">{t('stats.global_stats')}</h3>
-                    <p className="text-sm text-secondary">{t('stats.description')}</p>
+            <div className="settings-section-shell flex flex-col gap-4 p-4 md:flex-row md:items-start md:justify-between">
+                <div className="space-y-1">
+                    {!embedded && (
+                        <div className="kicker-label">{t('settings.tab_statistics')}</div>
+                    )}
+                    <h3 className={embedded ? 'settings-embedded-title' : 'text-lg font-bold text-foreground'}>
+                        {t('stats.global_stats')}
+                    </h3>
+                    <p className="settings-embedded-copy">{t('stats.description')}</p>
                 </div>
                 <Button
                     onClick={() => void handleExport()}
@@ -158,15 +166,15 @@ export const StatisticsTab: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="surface-card p-4">
+                <div className="settings-stat-card">
                     <div className="text-sm text-secondary">{t('stats.total_play_time')}</div>
                     <div className="text-2xl font-bold text-foreground">{formatTime(stats.global.totalPlayTime, formatNumber, durationLabels)}</div>
                 </div>
-                <div className="surface-card p-4">
+                <div className="settings-stat-card">
                     <div className="text-sm text-secondary">{t('stats.total_launches')}</div>
                     <div className="text-2xl font-bold text-foreground">{formatNumber(stats.global.totalLaunches)}</div>
                 </div>
-                <div className="surface-card p-4">
+                <div className="settings-stat-card">
                     <div className="text-sm text-secondary">{t('stats.average_session')}</div>
                     <div className="text-2xl font-bold text-foreground">{formatTime(averageSessionTime, formatNumber, durationLabels)}</div>
                 </div>

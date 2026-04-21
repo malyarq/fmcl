@@ -12,13 +12,6 @@ vi.mock('../../app/hooks/useAppIcon', () => ({
   }),
 }))
 
-vi.mock('../../services/ipc/windowControlsIPC', () => ({
-  windowControlsIPC: {
-    minimize: vi.fn(),
-    close: vi.fn(),
-  },
-}))
-
 function getRootVar(name: string) {
   return document.documentElement.style.getPropertyValue(name)
 }
@@ -29,6 +22,10 @@ describe('TitleBar brand contract', () => {
     document.body.className = ''
     document.documentElement.removeAttribute('style')
     document.body.removeAttribute('style')
+    Object.defineProperty(window.navigator, 'platform', {
+      configurable: true,
+      value: 'Win32',
+    })
   })
 
   it('renders the shared app-icon and shell wordmark primitives', () => {
@@ -48,6 +45,23 @@ describe('TitleBar brand contract', () => {
     fireEvent.error(icon)
 
     expect(icon.src.endsWith(LAUNCHER_MARK_PATH)).toBe(true)
+  })
+
+  it('renders a minimal native-friendly drag strip on macOS', () => {
+    Object.defineProperty(window.navigator, 'platform', {
+      configurable: true,
+      value: 'MacIntel',
+    })
+
+    render(<TitleBar />)
+
+    const titleBar = screen.getByTestId('app-title-bar')
+    expect(titleBar.getAttribute('data-platform')).toBe('macos')
+    expect(titleBar.className).toContain('h-8')
+    expect(titleBar.className).toContain('bg-background/78')
+    expect(screen.queryByTestId('title-bar-window-controls')).toBeNull()
+    expect(screen.queryByTestId('title-bar-brand-icon')).toBeNull()
+    expect(screen.queryByText('FriendLauncher')).toBeNull()
   })
 
   it('keeps product brand tokens separate from the active accent token', () => {

@@ -8,6 +8,7 @@ export interface ModpackSearchResultItem {
   title: string;
   description?: string;
   iconUrl?: string;
+  minecraftVersion?: string;
   downloads?: number;
   dateCreated?: string; // ISO date string for sorting by date
   dateModified?: string; // ISO date string for sorting by date
@@ -176,4 +177,3 @@ export interface DetectedJava {
   valid: boolean;
   arch?: string; // x86, x64, arm64
 }
-

@@ -22,7 +22,7 @@ type BackgroundMockConfig = {
 };
 
 const settingsState: {
-  customTheme: {
+  activeThemeConfig: {
     background: BackgroundMockConfig;
     colors: {
       background: string;
@@ -30,7 +30,7 @@ const settingsState: {
   };
   disableAnimations: boolean;
 } = {
-  customTheme: {
+  activeThemeConfig: {
     background: {
       type: 'video',
       video: {
@@ -79,7 +79,7 @@ describe('BackgroundLayer reduced motion handling', () => {
   beforeEach(() => {
     mockMatchMedia(false);
     settingsState.disableAnimations = false;
-    settingsState.customTheme = {
+    settingsState.activeThemeConfig = {
       background: {
         type: 'video',
         video: {
@@ -107,7 +107,7 @@ describe('BackgroundLayer reduced motion handling', () => {
 
   it('skips particle engine initialization when launcher animations are disabled', () => {
     settingsState.disableAnimations = true;
-    settingsState.customTheme = {
+    settingsState.activeThemeConfig = {
       background: {
         type: 'particles',
         particles: {

@@ -163,7 +163,7 @@ describe('SettingsPage accounts route', () => {
 
     const panel = await screen.findByRole('tabpanel', { name: 'Accounts' })
     expect(panel).toBeTruthy()
-    expect(await screen.findByRole('heading', { name: 'Accounts' })).toBeTruthy()
+    expect(screen.queryByRole('heading', { name: 'Accounts' })).toBeNull()
     expect(screen.getByText('Current account')).toBeTruthy()
     expect(screen.getByText('Blessing Skin and LittleSkin are supported for provider-aware skin management.')).toBeTruthy()
     expect(await screen.findByText('Skin Management')).toBeTruthy()

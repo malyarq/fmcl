@@ -14,6 +14,8 @@ import type { MirrorsAPI } from './mirrors'
 import type { StatisticsAPI } from './statistics'
 import type { ShareAPI } from './share'
 import type { ExternalLinksAPI } from './externalLinks'
+import type { ResourcePacksAPI } from './resourcePacks'
+import type { ShadersAPI } from './shaders'
 
 /**
  * Supported, namespaced preload surface for renderer code.
@@ -30,6 +32,8 @@ export type FriendLauncherApi = {
   cache: CacheAPI
   settings: SettingsAPI
   assets: AssetsAPI
+  resourcePacks: ResourcePacksAPI
+  shaders: ShadersAPI
   appUpdater: AppUpdaterAPI
   ipcRenderer: IpcRendererAPI
   account: AccountAPI

@@ -4,7 +4,7 @@ import type { ComponentProps } from 'react';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SimplePlayDashboard } from '../SimplePlayDashboard';
-import { LAUNCHER_MARK_PATH } from '../../app/assets/branding';
+import { APP_ICON_PATH } from '../../app/assets/branding';
 
 const setModeMock = vi.fn();
 const getMetadataMock = vi.fn();
@@ -24,6 +24,7 @@ vi.mock('../../contexts/SettingsContext', () => ({
         'dashboard.go_to_modpacks': 'Go to Modpacks',
         'dashboard.info_panel': 'Current settings',
         'dashboard.current_settings': 'Current settings',
+        'dashboard.classic_surface_desc': 'Use the sidebar to choose your version, nickname, and launch settings before you play.',
         'dashboard.ram': 'RAM',
         'dashboard.connection': 'Connection',
         'dashboard.advanced_settings': 'Advanced settings',
@@ -183,15 +184,21 @@ describe('SimplePlayDashboard launch-state seam', () => {
     expect(screen.queryByText('0%')).toBeNull();
   });
 
-  it('renders the canonical launcher mark and shared wordmark contract on the classic surface', async () => {
+  it('keeps the classic surface oriented around pack context with only the restrained app icon', async () => {
     const { container } = renderDashboard();
 
     const heroImage = await screen.findByTestId('dashboard-launcher-mark');
-    expect(heroImage.getAttribute('data-brand-role')).toBe('product-mark');
-    expect(heroImage.getAttribute('src')).toBe(LAUNCHER_MARK_PATH);
-    expect(heroImage.closest('.brand-mark-frame')).toBeTruthy();
-    expect(container.querySelector('[data-brand-wordmark]')).toBeTruthy();
+    expect(heroImage.getAttribute('data-brand-role')).toBe('app-icon');
+    expect(heroImage.getAttribute('src')).toBe(APP_ICON_PATH);
+    expect(heroImage.closest('.logo-container')).toBeTruthy();
+    expect(container.querySelector('[data-brand-wordmark]')).toBeNull();
     expect(screen.getByText('Classic Pack')).toBeTruthy();
+    expect(screen.queryByText('1.12.2')).toBeNull();
     expect(screen.getAllByText('Fabric').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Vanilla')).toBeNull();
+    expect(screen.getByText('Use the sidebar to choose your version, nickname, and launch settings before you play.')).toBeTruthy();
+    expect(screen.queryByTestId('app-update-notification')).toBeNull();
+    expect(screen.queryByText('Review update')).toBeNull();
+    expect(screen.queryByText('Launcher update available')).toBeNull();
   });
 });

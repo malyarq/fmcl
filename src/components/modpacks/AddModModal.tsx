@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useDebounce } from '../../hooks/useDebounce';
@@ -47,6 +47,7 @@ interface ModVersion {
 }
 
 type CheckedEntry = { mod: ModSearchResult; version: ModVersion } | 'loading';
+type FlowNoticeTone = 'warning' | 'error';
 
 function getSafeModVersionLabel(version: ModVersion, fallback: string) {
   return sanitizeUiText(
@@ -78,7 +79,9 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   const [filterSort, setFilterSort] = useState<'popularity' | 'date' | 'alphabetical'>('popularity');
   const [total, setTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [flowNotice, setFlowNotice] = useState<{ tone: FlowNoticeTone; message: string } | null>(null);
   const modalBodyRef = useRef<HTMLDivElement>(null);
+  const searchRequestIdRef = useRef(0);
   const PAGE_SIZE = 20;
 
   const effectiveLoader = filterLoader || defaultLoader || modpackMetadata?.modLoader?.type || '';
@@ -91,7 +94,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
         modpacksIPC.getConfig(modpackId, minecraftPath),
       ]);
       setModpackMetadata(metadata);
-      const mcVersion = defaultMCVersion || metadata?.minecraftVersion || config?.runtime?.minecraft || '';
+      const mcVersion = defaultMCVersion || config?.runtime?.minecraft || metadata?.minecraftVersion || '';
       const loader = defaultLoader || config?.runtime?.modLoader?.type || metadata?.modLoader?.type || '';
       setFilterMCVersion(mcVersion);
       setFilterLoader(loader);
@@ -107,14 +110,39 @@ export const AddModModal: React.FC<AddModModalProps> = ({
     loadModpackMetadataAndConfig();
   }, [isOpen, loadModpackMetadataAndConfig]);
 
+  const resetTransientState = useCallback(() => {
+    setQuery('');
+    setSearchResults([]);
+    setSearchError(null);
+    setCheckedMods(new Map());
+    setTotal(0);
+    setFlowNotice(null);
+    setPlatform('modrinth');
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) {
+      resetTransientState();
+    }
+  }, [isOpen, resetTransientState]);
+
   const debouncedQuery = useDebounce(query, 500);
+  const searchErrorDescription =
+    t('modpacks.add_mod_search_error_desc') || 'We could not load catalog results right now.';
 
   const searchMods = useCallback(async (offset: number, append: boolean) => {
+    const requestId = searchRequestIdRef.current + 1;
+    searchRequestIdRef.current = requestId;
+
     if (offset === 0) setLoading(true);
     else setLoadingMore(true);
     try {
       if (!append) {
         setSearchError(null);
+        setSearchResults([]);
+        setTotal(0);
+        setCheckedMods(new Map());
+        setFlowNotice(null);
       }
       const result = await modsIPC.searchMods({
         platform,
@@ -125,10 +153,16 @@ export const AddModModal: React.FC<AddModModalProps> = ({
         offset,
         limit: PAGE_SIZE,
       });
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
       const data = result as { items: ModSearchResult[]; total?: number };
       setSearchResults((prev) => (append ? [...prev, ...(data.items || [])] : (data.items || [])));
       setTotal(data.total ?? 0);
     } catch (error) {
+      if (requestId !== searchRequestIdRef.current) {
+        return;
+      }
       console.error('Error searching mods:', error);
       if (!append) {
         setSearchResults([]);
@@ -136,15 +170,17 @@ export const AddModModal: React.FC<AddModModalProps> = ({
         setSearchError(
           toDisplayErrorMessage(
             error,
-            t('modpacks.add_mod_search_error_desc') || 'We could not load catalog results right now.',
+            searchErrorDescription,
           ),
         );
       }
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (requestId === searchRequestIdRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
-  }, [debouncedQuery, platform, effectiveMCVersion, effectiveLoader, filterSort, t]);
+  }, [debouncedQuery, platform, effectiveMCVersion, effectiveLoader, filterSort, searchErrorDescription]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -154,6 +190,15 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   useEffect(() => {
     setCheckedMods(new Map());
   }, [platform]);
+
+  useEffect(() => {
+    setFlowNotice(null);
+  }, [platform, filterMCVersion, filterLoader, filterSort, debouncedQuery]);
+
+  const visibleResultKeys = useMemo(
+    () => new Set(searchResults.map((mod) => `${mod.platform}:${mod.projectId}`)),
+    [searchResults],
+  );
 
   const handleScroll = useCallback(() => {
     const el = modalBodyRef.current;
@@ -197,9 +242,18 @@ export const AddModModal: React.FC<AddModModalProps> = ({
       });
       const versionsList = versionsResult as ModVersion[];
       if (versionsList.length > 0) {
-        setCheckedMods((prev) => new Map(prev).set(key, { mod, version: versionsList[0] }));
+        setCheckedMods((prev) => {
+          if (prev.get(key) !== 'loading') {
+            return prev;
+          }
+
+          return new Map(prev).set(key, { mod, version: versionsList[0] });
+        });
       } else {
         setCheckedMods((prev) => {
+          if (!prev.has(key)) {
+            return prev;
+          }
           const next = new Map(prev);
           next.delete(key);
           return next;
@@ -208,6 +262,9 @@ export const AddModModal: React.FC<AddModModalProps> = ({
       }
     } catch {
       setCheckedMods((prev) => {
+        if (!prev.has(key)) {
+          return prev;
+        }
         const next = new Map(prev);
         next.delete(key);
         return next;
@@ -216,8 +273,16 @@ export const AddModModal: React.FC<AddModModalProps> = ({
     }
   };
 
-  const readyToAdd = Array.from(checkedMods.values()).filter((v): v is { mod: ModSearchResult; version: ModVersion } => v !== 'loading');
-  const hasLoading = Array.from(checkedMods.values()).some((v) => v === 'loading');
+  const readyToAdd = Array.from(checkedMods.entries()).flatMap(([key, value]) => {
+    if (!visibleResultKeys.has(key) || value === 'loading') {
+      return [];
+    }
+
+    return [value];
+  });
+  const hasLoading = Array.from(checkedMods.entries()).some(
+    ([key, value]) => visibleResultKeys.has(key) && value === 'loading',
+  );
   const activeStateBackground = getAccentStyles('soft-bg');
   const activeStateBorder = getAccentStyles('soft-border');
   const activeStateLabel = getAccentStyles('title');
@@ -226,7 +291,9 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   const handleAddBulk = async () => {
     if (readyToAdd.length === 0) return;
     setInstalling(true);
+    setFlowNotice(null);
     let added = 0;
+    let failed = 0;
     try {
       for (const { mod, version } of readyToAdd) {
         try {
@@ -244,14 +311,36 @@ export const AddModModal: React.FC<AddModModalProps> = ({
           }, minecraftPath);
           added++;
         } catch {
-          toast.error(`${mod.title}: ${t('modpacks.add_mod_error') || 'Ошибка'}`);
+          failed++;
         }
       }
-      if (added > 0) {
+      setCheckedMods(new Map());
+      if (added > 0 && failed === 0) {
         onAdded?.();
+        resetTransientState();
         onClose();
-        setCheckedMods(new Map());
-        setQuery('');
+        return;
+      }
+
+      if (added > 0 && failed > 0) {
+        setFlowNotice({
+          tone: 'warning',
+          message:
+            (t('modpacks.add_mod_partial_recovery') || 'Added {{added}} items, but {{failed}} failed. Review the current results and retry only what you still need.')
+              .replace('{{added}}', String(added))
+              .replace('{{failed}}', String(failed)),
+        });
+        return;
+      }
+
+      if (failed > 0) {
+        setFlowNotice({
+          tone: 'error',
+          message:
+            (t('modpacks.add_mod_failed_recovery') || 'Nothing was added. {{failed}} items failed. Review the current results and try again.')
+              .replace('{{failed}}', String(failed)),
+        });
+        toast.error(t('modpacks.add_mod_error') || 'Ошибка при добавлении');
       }
     } finally {
       setInstalling(false);
@@ -264,6 +353,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      closeDisabled={installing}
       title={
         <div className="flex items-center gap-3 flex-wrap min-w-0">
           <PackagePlus className="h-4 w-4 text-secondary" />
@@ -318,6 +408,21 @@ export const AddModModal: React.FC<AddModModalProps> = ({
       bodyProps={{ onScroll: handleScroll }}
     >
       <div className="space-y-4">
+        {flowNotice && (
+          <div
+            className={cn(
+              'rounded-2xl border px-4 py-3 text-sm',
+              flowNotice.tone === 'warning'
+                ? 'border-amber-500/35 bg-amber-500/12 text-foreground'
+                : 'border-red-500/35 bg-red-500/12 text-foreground',
+            )}
+            data-testid="add-mod-modal-notice"
+            data-tone={flowNotice.tone}
+          >
+            {flowNotice.message}
+          </div>
+        )}
+
         <div className="surface-muted flex flex-wrap items-center gap-4 p-4 text-sm text-secondary">
           <div className="min-w-0 flex-1">
             <p className="text-xs uppercase tracking-[0.18em] text-muted">

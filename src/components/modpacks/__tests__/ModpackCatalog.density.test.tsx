@@ -119,6 +119,7 @@ describe('Modpack catalog density', () => {
           projectId: 'alpha-remote',
           title: denseBrowserTitle,
           description: 'Long-form pack summary with enough detail to stress the catalog card and footer layout.',
+          minecraftVersion: '1.20.1',
           downloads: 148600,
           dateModified: '2026-04-11T10:00:00.000Z',
         },
@@ -127,6 +128,7 @@ describe('Modpack catalog density', () => {
           projectId: 'beta-remote',
           title: 'Secondary Pack with Dependency Warnings and Server Notes',
           description: 'Another crowded result to keep the results grid under pressure.',
+          minecraftVersion: '1.20.1',
           downloads: 84200,
           dateModified: '2026-04-10T08:30:00.000Z',
         },
@@ -185,19 +187,23 @@ describe('Modpack catalog density', () => {
 
     await screen.findByText(denseBrowserTitle);
 
-    const summary = screen.getByTestId('remote-modpack-summary');
-    expect(within(summary).getByText('Active filters')).toBeTruthy();
-    expect(within(summary).getByText('Search modpacks: "dense"')).toBeTruthy();
-    expect(within(summary).getByText('Minecraft Version: 1.20.1')).toBeTruthy();
-    expect(within(summary).getByText('Modloader: Fabric')).toBeTruthy();
+    const searchRegion = screen.getByTestId('remote-modpack-filters');
+    expect(searchRegion.getAttribute('data-catalog-controls')).toBe('shared');
+    expect(screen.queryByTestId('remote-modpack-summary')).toBeNull();
+    expect(within(searchRegion).getByText('Search modpacks: "dense"')).toBeTruthy();
+    expect(within(searchRegion).getByText('Minecraft Version: 1.20.1')).toBeTruthy();
+    expect(within(searchRegion).getByText('Modloader: Fabric')).toBeTruthy();
 
     const card = screen
       .getByRole('button', { name: `Open details: ${denseBrowserTitle}` })
       .closest('[role="listitem"]');
 
     expect(card).not.toBeNull();
-    expect(within(card as HTMLElement).getByText('Downloads')).toBeTruthy();
+    expect(within(card as HTMLElement).getByText('Minecraft Version')).toBeTruthy();
+    expect(within(card as HTMLElement).getByText('1.20.1')).toBeTruthy();
     expect(within(card as HTMLElement).getByText('Updated')).toBeTruthy();
+    expect(within(card as HTMLElement).queryByText('Downloads')).toBeNull();
+    expect(screen.queryByText('Long-form pack summary with enough detail to stress the catalog card and footer layout.')).toBeNull();
   });
 
   it('keeps installed summaries, metadata blocks, and action ownership readable under dense filters', async () => {
@@ -210,14 +216,16 @@ describe('Modpack catalog density', () => {
     fireEvent.change(screen.getByRole('combobox', { name: 'All Modloaders' }), { target: { value: 'fabric' } });
 
     await waitFor(() => {
-      const summary = screen.getByTestId('installed-modpack-summary');
-      expect(within(summary).getByText('Search modpacks: "Dense"')).toBeTruthy();
+      const controls = screen.getByTestId('installed-modpack-filters');
+      expect(within(controls).getByText('Search modpacks: "Dense"')).toBeTruthy();
     });
 
-    const summary = screen.getByTestId('installed-modpack-summary');
-    expect(within(summary).getByText('Minecraft Version: 1.20.1')).toBeTruthy();
-    expect(within(summary).getByText('Modloader: Fabric')).toBeTruthy();
-    expect(within(summary).getByText('Secondary Archive Pack with Old Save Compatibility')).toBeTruthy();
+    const controls = screen.getByTestId('installed-modpack-filters');
+    expect(controls.getAttribute('data-catalog-controls')).toBe('shared');
+    expect(screen.queryByTestId('installed-modpack-summary')).toBeNull();
+    expect(within(controls).getByText('Minecraft Version: 1.20.1')).toBeTruthy();
+    expect(within(controls).getByText('Modloader: Fabric')).toBeTruthy();
+    expect(within(controls).getByText('Active: Secondary Archive Pack with Old Save Compatibility')).toBeTruthy();
 
     const actionShell = screen.getByTestId('installed-modpack-actions-alpha');
     const card = screen
@@ -228,8 +236,10 @@ describe('Modpack catalog density', () => {
     expect(within(actionShell).getByRole('button', { name: `Make active: ${denseInstalledTitle}` })).toBeTruthy();
     expect(within(actionShell).getByRole('button', { name: `Open details: ${denseInstalledTitle}` }).className).toContain('col-span-2');
     expect(card).not.toBeNull();
-    expect(within(card as HTMLElement).getByText('Version')).toBeTruthy();
     expect(within(card as HTMLElement).getByText('Minecraft Version')).toBeTruthy();
-    expect(within(card as HTMLElement).getByText('Modloader')).toBeTruthy();
+    expect(within(card as HTMLElement).getByText('Updated')).toBeTruthy();
+    expect(within(card as HTMLElement).queryByText('Version')).toBeNull();
+    expect(within(card as HTMLElement).queryByText('Modloader')).toBeNull();
+    expect(screen.queryByText('Installed pack summary with enough words to compete with metadata tiles and action buttons.')).toBeNull();
   });
 });

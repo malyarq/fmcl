@@ -59,6 +59,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
   const [currentStep, setCurrentStep] = useState<WizardStep>(1);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [postCommitNotice, setPostCommitNotice] = useState<string | null>(null);
   const [step3ModpackId, setStep3ModpackId] = useState<string | null>(null);
   const [step3Mods, setStep3Mods] = useState<ModpackModEntry[]>([]);
   const [step3LoadingMods, setStep3LoadingMods] = useState(false);
@@ -111,6 +112,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     setCurrentStep(1);
     setStep3ModpackId(null);
     setError(null);
+    setPostCommitNotice(null);
   }, []);
 
   // Auto-save draft on changes (только для восстановления при случайном закрытии в течение сессии)
@@ -175,23 +177,39 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     );
   }, [minecraftPath, runtimeDependencies.useOptiFine]);
 
-  const createModpackForStep3 = useCallback(async (): Promise<string | null> => {
+  const createModpackForStep3 = useCallback(async (): Promise<{ id: string | null; postCommitIssue: boolean }> => {
     const nameValidation = validateName(draft.name);
-    if (nameValidation) return null;
-    const result = await modpacksIPC.createLocal(
-      draft.name.trim(),
-      draft.version.trim(),
-      draft.minecraftVersion.trim(),
-      runtimeDependencies.modLoader,
-      minecraftPath
-    );
-    if (result?.id && draft.description.trim()) {
-      await modpacksIPC.updateMetadata(result.id, { description: draft.description.trim() }, minecraftPath);
+    if (nameValidation) {
+      return { id: null, postCommitIssue: false };
     }
-    if (result?.id) {
-      await persistCreatedGameSettings(result.id);
+
+    let committedId: string | null = null;
+
+    try {
+      const result = await modpacksIPC.createLocal(
+        draft.name.trim(),
+        draft.version.trim(),
+        draft.minecraftVersion.trim(),
+        runtimeDependencies.modLoader,
+        minecraftPath
+      );
+      committedId = result?.id ?? null;
+
+      if (result?.id && draft.description.trim()) {
+        await modpacksIPC.updateMetadata(result.id, { description: draft.description.trim() }, minecraftPath);
+      }
+      if (result?.id) {
+        await persistCreatedGameSettings(result.id);
+      }
+
+      return { id: committedId, postCommitIssue: false };
+    } catch (error) {
+      if (committedId) {
+        return { id: committedId, postCommitIssue: true };
+      }
+
+      throw error;
     }
-    return result?.id ?? null;
   }, [
     draft.description,
     draft.minecraftVersion,
@@ -243,12 +261,19 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
       }
       setCreating(true);
       setError(null);
+      setPostCommitNotice(null);
       try {
-        const id = await createModpackForStep3();
+        const { id, postCommitIssue } = await createModpackForStep3();
         if (id) {
           setStep3ModpackId(id);
           await refresh();
           setCurrentStep(3);
+          if (postCommitIssue) {
+            setPostCommitNotice(
+              t('modpacks.create_post_commit_recovery') ||
+                'The modpack was created, but follow-up setup failed. You can finish now and adjust the pack later.',
+            );
+          }
         } else {
           setNameError(validateName(draft.name));
           setCurrentStep(1);
@@ -265,6 +290,10 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
   };
 
   const handleBack = () => {
+    if (creating) {
+      return;
+    }
+
     if (currentStep > 1) {
       setCurrentStep((prev) => (prev - 1) as WizardStep);
     }
@@ -292,7 +321,9 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     setCreating(true);
     setError(null);
     setNameError(null);
+    setPostCommitNotice(null);
 
+    let committedId: string | null = null;
     try {
       const result = await modpacksIPC.createLocal(
         draft.name.trim(),
@@ -301,6 +332,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
         runtimeDependencies.modLoader,
         minecraftPath
       );
+      committedId = result?.id ?? null;
 
       if (result?.id && draft.description.trim()) {
         await modpacksIPC.updateMetadata(result.id, { description: draft.description.trim() }, minecraftPath);
@@ -316,6 +348,16 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
       onCreated?.(result.id);
     } catch (err) {
       console.error('Error creating modpack:', err);
+      if (committedId) {
+        setStep3ModpackId(committedId);
+        await refresh();
+        setCurrentStep(3);
+        setPostCommitNotice(
+          t('modpacks.create_post_commit_recovery') ||
+            'The modpack was created, but follow-up setup failed. You can finish now and adjust the pack later.',
+        );
+        return;
+      }
       const errorMessage = t('modpacks.create_error') || 'Ошибка при создании модпака';
       setError(errorMessage);
       toast.error(errorMessage);
@@ -346,6 +388,10 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
   };
 
   const handleClose = () => {
+    if (creating) {
+      return;
+    }
+
     // Draft is auto-saved, so we can just go back
     onBack();
   };
@@ -493,8 +539,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
           isOpen={showAddModModal}
           onClose={() => setShowAddModModal(false)}
           onAdded={() => {
-            loadStep3Mods();
-            setShowAddModModal(false);
+            void loadStep3Mods();
           }}
           defaultMCVersion={draft.minecraftVersion}
           defaultLoader={modLoaderType !== 'vanilla' ? modLoaderType : undefined}
@@ -509,7 +554,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
       <div className="flex flex-col border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40 px-6 py-4 gap-4">
         <Breadcrumbs
           items={[
-            { label: t('modpacks.title') || 'Modpacks', onClick: handleClose },
+            { label: t('modpacks.title') || 'Modpacks', onClick: creating ? undefined : handleClose },
             { label: t('modpacks.create_new') || 'Create New', active: true }
           ]}
         />
@@ -518,6 +563,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
             variant="secondary"
             size="sm"
             onClick={handleClose}
+            disabled={creating}
             className="flex items-center gap-2"
           >
             <span>←</span>
@@ -588,13 +634,21 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
           {error && !nameError && (
             <ErrorMessage message={error} />
           )}
+          {postCommitNotice && (
+            <div
+              className="rounded-2xl border border-amber-500/35 bg-amber-500/12 px-4 py-3 text-sm text-foreground"
+              data-testid="modpack-creation-recovery"
+            >
+              {postCommitNotice}
+            </div>
+          )}
 
           <div
             className="surface-card mt-auto flex flex-col gap-2 p-4 sm:flex-row sm:flex-wrap sm:items-center"
             data-testid="modpack-creation-actions"
           >
             {currentStep > 1 && (
-              <Button variant="secondary" onClick={handleBack} className="w-full sm:w-auto">
+              <Button variant="secondary" onClick={handleBack} className="w-full sm:w-auto" disabled={creating}>
                 {t('wizard.back') || 'Back'}
               </Button>
             )}
@@ -624,10 +678,14 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
                 style={getAccentStyles('bg').style}
                 isLoading={creating}
               >
-                {creating ? t('modpacks.creating') || 'Создание...' : t('modpacks.create')}
+                {creating
+                  ? t('modpacks.creating') || 'Создание...'
+                  : step3ModpackId
+                    ? t('wizard.finish') || 'Finish'
+                    : t('modpacks.create')}
               </Button>
             )}
-            <Button variant="secondary" onClick={handleClose} className="w-full sm:w-auto">
+            <Button variant="secondary" onClick={handleClose} className="w-full sm:w-auto" disabled={creating}>
               {t('general.cancel')}
             </Button>
           </div>

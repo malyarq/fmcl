@@ -250,7 +250,6 @@ export function ModsTab({
                     onClose={() => setShowAddModModal(false)}
                     onAdded={() => {
                         void loadMods();
-                        setShowAddModModal(false);
                     }}
                     defaultMCVersion={defaultMCVersion}
                     defaultLoader={defaultLoader}

@@ -9,7 +9,11 @@ import { useConfirm } from '../../../contexts/ConfirmContext';
 import { mirrorsIPC } from '../../../services/ipc/mirrorsIPC';
 import { Input } from '../../../components/ui/Input';
 
-export const MirrorsSettings: React.FC = () => {
+interface MirrorsSettingsProps {
+    embedded?: boolean;
+}
+
+export const MirrorsSettings: React.FC<MirrorsSettingsProps> = ({ embedded = false }) => {
     const { t } = useSettings();
     const confirm = useConfirm();
     const [mirrors, setMirrors] = useState<Mirror[]>([]);
@@ -128,39 +132,46 @@ export const MirrorsSettings: React.FC = () => {
     const activeMirror = mirrors.find((mirror) => mirror.isActive) ?? null;
 
     return (
-        <div className="space-y-6">
-            <div className="surface-card flex flex-col gap-4 p-5">
-                <div className="space-y-2">
-                    <div className="kicker-label">{t('mirrors.sectionTitle')}</div>
-                    <h2 className="text-lg font-bold text-foreground">{t('mirrors.sectionTitle')}</h2>
-                    <p className="text-sm text-secondary">
-                        {t('mirrors.description')}
-                    </p>
-                </div>
+        <div className={embedded ? 'space-y-4' : 'space-y-6'}>
+            <div className="settings-section-shell space-y-4 p-5">
+                {!embedded && (
+                    <div className="settings-section-copy">
+                        <div className="kicker-label">{t('mirrors.sectionTitle')}</div>
+                        <h2 className="text-lg font-bold text-foreground">{t('mirrors.sectionTitle')}</h2>
+                        <p className="settings-embedded-copy">
+                            {t('mirrors.description')}
+                        </p>
+                    </div>
+                )}
 
                 <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
                     <div className="grid gap-3 md:grid-cols-2">
-                        <div className="surface-muted p-4">
-                            <div className="flex items-start justify-between gap-4">
-                                <div className="space-y-1">
-                                    <p className="text-sm font-semibold text-foreground">{t('mirrors.autoSelect')}</p>
-                                    <p id="mirrors-auto-select-hint" className="text-sm text-secondary">
-                                        {t('mirrors.priorityHint')}
-                                    </p>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    checked={autoSelect}
-                                    onChange={(e) => handleAutoSelectChange(e.target.checked)}
-                                    aria-label={t('mirrors.autoSelect')}
-                                    aria-describedby="mirrors-auto-select-hint"
-                                    className="h-4 w-4 cursor-pointer rounded border-border bg-card text-[rgb(var(--accent-main))] focus:ring-[rgb(var(--accent-main))] focus:ring-offset-background"
-                                />
+                        <div className="settings-toggle-row">
+                            <div className="settings-toggle-copy">
+                                <p className="settings-toggle-title">{t('mirrors.autoSelect')}</p>
+                                <p id="mirrors-auto-select-hint" className="settings-toggle-description">
+                                    {t('mirrors.priorityHint')}
+                                </p>
                             </div>
+                            <button
+                                type="button"
+                                role="switch"
+                                aria-checked={autoSelect}
+                                aria-label={t('mirrors.autoSelect')}
+                                aria-describedby="mirrors-auto-select-hint"
+                                data-state={autoSelect ? 'checked' : 'unchecked'}
+                                onClick={() => void handleAutoSelectChange(!autoSelect)}
+                                className="settings-toggle-switch"
+                            >
+                                <span
+                                    className="settings-toggle-thumb"
+                                    data-state={autoSelect ? 'checked' : 'unchecked'}
+                                />
+                            </button>
                         </div>
 
-                        <div className="surface-muted p-4">
-                            <p className="text-sm font-semibold text-foreground">{t('mirrors.current')}</p>
+                        <div className="settings-control-card">
+                            <p className="settings-toggle-title">{t('mirrors.current')}</p>
                             {activeMirror ? (
                                 <div className="mt-1 space-y-1">
                                     <p className="text-sm text-foreground">{activeMirror.name}</p>

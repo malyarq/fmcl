@@ -107,10 +107,10 @@ export function SettingsTabsHeader(props: {
             tabIndex={isActive ? 0 : -1}
             data-state={isActive ? 'active' : 'inactive'}
             className={cn(
-              'flex min-h-[5.75rem] flex-col items-start rounded-2xl border px-4 py-3 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+              'flex min-h-[4.5rem] flex-col items-start rounded-xl border px-3.5 py-3 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
               isActive
-                ? 'border-border bg-card/90 text-foreground shadow-[0_18px_36px_rgba(0,0,0,0.16)]'
-                : 'border-border/60 bg-background/68 text-secondary hover:border-[rgb(var(--accent-main)/0.18)] hover:bg-card/78 hover:text-foreground'
+                ? 'border-border bg-card/92 text-foreground shadow-[0_10px_24px_rgba(0,0,0,0.12)]'
+                : 'border-border/60 bg-background/72 text-secondary hover:border-[rgb(var(--accent-main)/0.18)] hover:bg-card/82 hover:text-foreground'
             )}
             style={
               isActive
@@ -124,7 +124,7 @@ export function SettingsTabsHeader(props: {
             <span
               id={tabLabelId}
               className={cn(
-                'text-sm font-semibold',
+                'text-sm font-semibold leading-5',
                 isActive ? activeLabel?.className ?? 'text-foreground' : 'text-foreground'
               )}
               style={isActive ? activeLabel?.style : undefined}
@@ -134,7 +134,7 @@ export function SettingsTabsHeader(props: {
             <span
               id={tabDescriptionId}
               className={cn(
-                'mt-1 text-xs leading-5',
+                'mt-1 text-[11px] leading-4.5',
                 isActive ? 'text-foreground/78' : 'text-secondary'
               )}
             >

@@ -9,7 +9,11 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { accountIPC } from '../../services/ipc/accountIPC';
 import { AccountSkinPanel } from './AccountSkinPanel';
 
-export const AccountsPage: React.FC = () => {
+interface AccountsPageProps {
+    embedded?: boolean;
+}
+
+export const AccountsPage: React.FC<AccountsPageProps> = ({ embedded = false }) => {
     const { t } = useSettings();
     const confirm = useConfirm();
     const [accounts, setAccounts] = useState<Account[]>([]);
@@ -114,22 +118,24 @@ export const AccountsPage: React.FC = () => {
 
     return (
         <div className="space-y-6">
-            <div className="surface-card flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
-                <div className="space-y-2">
-                    <div className="kicker-label flex items-center gap-2">
-                        <ShieldCheck size={14} />
-                        {t('accounts.providerSupportHint') || 'Blessing Skin and LittleSkin are supported for provider-aware skin management.'}
+            {!embedded && (
+                <div className="settings-section-shell flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-2">
+                        <div className="kicker-label flex items-center gap-2">
+                            <ShieldCheck size={14} />
+                            {t('accounts.providerSupportHint') || 'Blessing Skin and LittleSkin are supported for provider-aware skin management.'}
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-bold text-foreground">{t('accounts.title')}</h2>
+                            <p className="mt-1 max-w-2xl text-sm leading-6 text-secondary">{t('accounts.description')}</p>
+                        </div>
                     </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-foreground">{t('accounts.title')}</h2>
-                        <p className="mt-1 max-w-2xl text-sm leading-6 text-secondary">{t('accounts.description')}</p>
-                    </div>
+                    <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 self-start">
+                        <Plus size={18} />
+                        {t('accounts.addAccount')}
+                    </Button>
                 </div>
-                <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 self-start">
-                    <Plus size={18} />
-                    {t('accounts.addAccount')}
-                </Button>
-            </div>
+            )}
 
             {error && (
                 <div
@@ -142,14 +148,33 @@ export const AccountsPage: React.FC = () => {
 
             <div className="grid gap-4 xl:grid-cols-[1.05fr_0.95fr]">
                 <div className="space-y-4">
-                    <div className="surface-inline flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="settings-section-shell flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                         <div className="space-y-1">
-                            <p className="text-sm font-semibold text-foreground">{t('accounts.title')}</p>
-                            <p className="text-sm text-secondary">{t('accounts.description')}</p>
+                            {embedded ? (
+                                <>
+                                    <p className="settings-embedded-title">{t('accounts.savedCountLabel')}</p>
+                                    <p className="settings-embedded-copy">
+                                        {t('accounts.providerSupportHint') || 'Blessing Skin and LittleSkin are supported for provider-aware skin management.'}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="settings-embedded-title">{t('accounts.title')}</p>
+                                    <p className="settings-embedded-copy">{t('accounts.description')}</p>
+                                </>
+                            )}
                         </div>
-                        <div className="text-right">
-                            <div className="text-xs text-secondary">{t('accounts.savedCountLabel')}</div>
-                            <div className="text-lg font-semibold text-foreground">{accounts.length}</div>
+                        <div className="flex items-center gap-4">
+                            <div className="text-right">
+                                <div className="text-xs text-secondary">{t('accounts.savedCountLabel')}</div>
+                                <div className="text-lg font-semibold text-foreground">{accounts.length}</div>
+                            </div>
+                            {embedded && (
+                                <Button onClick={() => setIsAddDialogOpen(true)} className="gap-2 self-start">
+                                    <Plus size={18} />
+                                    {t('accounts.addAccount')}
+                                </Button>
+                            )}
                         </div>
                     </div>
 

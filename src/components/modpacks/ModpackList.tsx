@@ -19,6 +19,12 @@ import { Compass, Download, FolderOpen, MoreHorizontal, PackagePlus, Share2 } fr
 import type { ModLoaderType } from '../../contexts/instances/types';
 import { DegradedStateView } from '../layout/DegradedStateView';
 import { toDisplayErrorMessage } from '../../utils/displayError';
+import { ModpackCatalogControls } from './ModpackCatalogControls';
+import { buildModpackRuntimeSummary } from '../../features/modpacks/hooks/useModpackRuntimeSummary';
+import {
+  resolveInstalledModpackUpdates,
+  type ModpackUpdateInfo,
+} from '../../features/modpacks/hooks/useModpackUpdates';
 
 interface ModpackListItemWithMetadata {
   id: string;
@@ -118,6 +124,7 @@ const ModpackListComponentInternal: React.FC<{
   const [modpacks, setModpacks] = useState<ModpackListItemWithMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<unknown | null>(null);
+  const [availableUpdatesById, setAvailableUpdatesById] = useState<Record<string, ModpackUpdateInfo>>({});
   const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
     anchorRect: AnchoredRect;
@@ -157,6 +164,29 @@ const ModpackListComponentInternal: React.FC<{
   useEffect(() => {
     loadModpacks();
   }, [loadModpacks]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (loading || loadError || modpacks.length === 0) {
+      setAvailableUpdatesById({});
+      return;
+    }
+
+    void resolveInstalledModpackUpdates(modpacks, minecraftPath).then((updates) => {
+      if (cancelled) {
+        return;
+      }
+
+      setAvailableUpdatesById(
+        Object.fromEntries(updates.map((update) => [update.modpackId, update])),
+      );
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadError, loading, minecraftPath, modpacks]);
 
   // Sync with context modpacks list changes (only when list actually changes, not config)
   // Use a ref to track previous modpacks list to avoid unnecessary reloads
@@ -579,6 +609,7 @@ const ModpackListComponentInternal: React.FC<{
   // Мемоизированный компонент карточки модпака
   interface ModpackCardProps {
     modpack: ModpackListItemWithMetadata;
+    availableUpdate?: ModpackUpdateInfo;
     index: number;
     isSelected: boolean;
     isMenuOpen: boolean;
@@ -591,6 +622,7 @@ const ModpackListComponentInternal: React.FC<{
 
   const ModpackCard = React.memo<ModpackCardProps>(({
     modpack,
+    availableUpdate,
     index,
     isSelected,
     isMenuOpen,
@@ -602,14 +634,18 @@ const ModpackListComponentInternal: React.FC<{
   }) => {
     const { t, getAccentStyles, formatDate } = useSettings();
     const iconSrc = useMemo(() => getModpackIcon(modpack), [modpack]);
+    const iconFallbackKind = useMemo(
+      () => (!modpack.metadata?.source || modpack.metadata.source === 'local' ? 'app-icon' : 'content-artwork'),
+      [modpack.metadata?.source],
+    );
     const sourceBadge = useMemo(() => getModpackSourceBadge(modpack.metadata?.source), [modpack.metadata?.source]);
+    const runtimeSummary = useMemo(
+      () => buildModpackRuntimeSummary({ metadata: modpack.metadata ?? null }),
+      [modpack.metadata],
+    );
     const updatedLabel = useMemo(
       () => formatDateLabel(modpack.metadata?.updatedAt ?? modpack.metadata?.createdAt, formatDate),
       [formatDate, modpack.metadata?.createdAt, modpack.metadata?.updatedAt],
-    );
-    const modLoaderLabel = useMemo(
-      () => (modpack.metadata?.modLoader?.type ? formatLoaderLabel(t, modpack.metadata.modLoader.type) : null),
-      [modpack.metadata?.modLoader?.type, t],
     );
     const activeBackground = useMemo(() => getAccentStyles('soft-bg'), [getAccentStyles]);
     const activeBorder = useMemo(() => getAccentStyles('soft-border'), [getAccentStyles]);
@@ -619,11 +655,12 @@ const ModpackListComponentInternal: React.FC<{
     const openDetailsText = translateWithFallback(t, 'modpacks.open_details', 'Open details');
     const makeActiveText = translateWithFallback(t, 'modpacks.make_active', 'Make active');
     const activeNowText = translateWithFallback(t, 'modpacks.active_now', 'Active now');
+    const updateBadgeText = translateWithFallback(t, 'modpacks.update_available', 'Update available');
 
     return (
       <div
         className={cn(
-          'surface-card relative flex min-h-[220px] cursor-pointer flex-col p-5 transition-all duration-300 ease-out',
+          'surface-card relative flex min-h-[19rem] cursor-pointer flex-col p-5 transition-all duration-300 ease-out',
           'transform hover:scale-[1.02] hover:shadow-lg',
           'hover:-translate-y-1',
           'animate-fade-in-up',
@@ -680,6 +717,7 @@ const ModpackListComponentInternal: React.FC<{
               <LazyImage
                 src={iconSrc}
                 alt={modpack.name}
+                fallbackKind={iconFallbackKind}
                 className="h-full w-full rounded-2xl border border-border/70 object-cover"
                 placeholder={
                   <SkeletonLoader variant="rounded" width={80} height={80} />
@@ -689,6 +727,15 @@ const ModpackListComponentInternal: React.FC<{
             <div className="flex-1 min-w-0">
               <div className="mb-2 flex flex-wrap items-start gap-2">
                 {sourceBadge}
+                {availableUpdate && (
+                  <div
+                    data-testid={`installed-modpack-update-indicator-${modpack.id}`}
+                    data-update-scope="modpack-local"
+                    className="inline-flex items-center rounded-full border border-blue-200/70 bg-blue-100/70 px-2.5 py-1 text-[11px] font-medium text-blue-900 dark:border-blue-900/80 dark:bg-blue-950/40 dark:text-blue-100"
+                  >
+                    {updateBadgeText}
+                  </div>
+                )}
                 {isSelected && (
                   <div
                     className={cn(
@@ -710,42 +757,17 @@ const ModpackListComponentInternal: React.FC<{
               <h3 className="truncate text-base font-semibold text-foreground">
                 {modpack.name}
               </h3>
-              {modpack.metadata?.description && (
-                <p className="mt-2 line-clamp-2 flex-shrink-0 text-sm text-secondary">
-                  {modpack.metadata.description}
-                </p>
-              )}
             </div>
           </div>
 
           <div className="grid gap-2 text-xs text-secondary sm:grid-cols-2">
-            {modpack.metadata?.version && (
-              <div className="rounded-2xl border border-border/70 bg-background/72 px-3 py-2">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                  {translateWithFallback(t, 'modpacks.version', 'Version')}
-                </div>
-                <div className="mt-1 text-sm font-medium text-foreground">
-                  {modpack.metadata.version}
-                </div>
-              </div>
-            )}
-            {modpack.metadata?.minecraftVersion && (
+            {runtimeSummary.minecraftVersion && (
               <div className="rounded-2xl border border-border/70 bg-background/72 px-3 py-2">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                   {translateWithFallback(t, 'modpacks.minecraft_version', 'Minecraft Version')}
                 </div>
                 <div className="mt-1 text-sm font-medium text-foreground">
-                  {modpack.metadata.minecraftVersion}
-                </div>
-              </div>
-            )}
-            {modLoaderLabel && (
-              <div className="rounded-2xl border border-border/70 bg-background/72 px-3 py-2">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                  {translateWithFallback(t, 'modpacks.loader', 'Modloader')}
-                </div>
-                <div className="mt-1 text-sm font-medium text-foreground">
-                  {modLoaderLabel}
+                  {runtimeSummary.minecraftVersion}
                 </div>
               </div>
             )}
@@ -822,15 +844,40 @@ const ModpackListComponentInternal: React.FC<{
       prevProps.modpack.metadata?.updatedAt === nextProps.modpack.metadata?.updatedAt &&
       prevProps.modpack.metadata?.createdAt === nextProps.modpack.metadata?.createdAt &&
       prevProps.modpack.metadata?.description === nextProps.modpack.metadata?.description &&
-      prevProps.modpack.metadata?.source === nextProps.modpack.metadata?.source
+      prevProps.modpack.metadata?.source === nextProps.modpack.metadata?.source &&
+      prevProps.availableUpdate?.latestVersion.versionId === nextProps.availableUpdate?.latestVersion.versionId
     );
   });
   ModpackCard.displayName = 'ModpackCard';
 
-  const formattedFilteredCount = formatNumber(sortedModpacks.length);
   const formattedTotalCount = formatNumber(modpacks.length);
   const formattedResultsStart = formatNumber(sortedModpacks.length > 0 ? 1 : 0);
   const formattedResultsEnd = formatNumber(sortedModpacks.length);
+  const installedCatalogStatus = useMemo(() => {
+    if (loadError) {
+      return [
+        t('degraded.error_label'),
+        `${translateWithFallback(t, 'modpacks.active', 'Active')}: ${t('degraded.unavailable_label')}`,
+      ];
+    }
+
+    return [
+      translateWithFallback(
+        t,
+        'modpacks.results_summary',
+        `Showing ${formattedResultsStart}-${formattedResultsEnd} of ${formattedTotalCount}`,
+        { start: formattedResultsStart, end: formattedResultsEnd, total: formattedTotalCount },
+      ),
+      `${translateWithFallback(t, 'modpacks.active', 'Active')}: ${selectedModpack?.name ?? '-'}`,
+    ];
+  }, [
+    formattedResultsEnd,
+    formattedResultsStart,
+    formattedTotalCount,
+    loadError,
+    selectedModpack?.name,
+    t,
+  ]);
 
 
   return (
@@ -858,6 +905,7 @@ const ModpackListComponentInternal: React.FC<{
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button
               variant="secondary"
+              size="sm"
               onClick={() => setImportShareModalOpen(true)}
               className="w-full sm:w-auto"
               title={t('share.import_title')}
@@ -867,6 +915,7 @@ const ModpackListComponentInternal: React.FC<{
             </Button>
             <Button
               variant="secondary"
+              size="sm"
               onClick={() => onCreateWizard?.()}
               className="w-full sm:w-auto"
             >
@@ -875,6 +924,7 @@ const ModpackListComponentInternal: React.FC<{
             </Button>
             <Button
               variant="primary"
+              size="sm"
               onClick={() => onNavigate?.({ type: 'browser' })}
               className={cn("w-full sm:w-auto", getAccentStyles('bg').className)}
               style={getAccentStyles('bg').style}
@@ -885,151 +935,93 @@ const ModpackListComponentInternal: React.FC<{
           </div>
         </div>
 
-        <div className="surface-muted mb-4 space-y-4 p-4" data-testid="installed-modpack-summary">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="grid flex-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <div className="rounded-2xl border border-border/70 bg-background/72 px-4 py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                  {translateWithFallback(t, 'modpacks.title', 'Modpacks')}
-                </div>
-                <div className="mt-1 text-sm font-medium text-foreground">
-                  {loadError ? t('degraded.error_label') : `${formattedFilteredCount} / ${formattedTotalCount}`}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-background/72 px-4 py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                  {translateWithFallback(t, 'modpacks.active', 'Active')}
-                </div>
-                <div className="mt-1 truncate text-sm font-medium text-foreground">
-                  {loadError ? t('degraded.unavailable_label') : selectedModpack?.name ?? '-'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-border/70 bg-background/72 px-4 py-3">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
-                  {translateWithFallback(t, 'modpacks.results', 'Results')}
-                </div>
-                <div className="mt-1 text-sm font-medium text-foreground">
-                  {loadError
-                    ? t('degraded.error_label')
-                    : translateWithFallback(
-                      t,
-                      'modpacks.results_summary',
-                      `Showing ${formattedResultsStart}-${formattedResultsEnd} of ${formattedTotalCount}`,
-                      { start: formattedResultsStart, end: formattedResultsEnd, total: formattedTotalCount },
-                    )}
-                </div>
-              </div>
-            </div>
-            {hasActiveFilters && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleResetFilters}
-                className="shrink-0"
-              >
-                {translateWithFallback(t, 'modpacks.clear_filters', 'Clear filters')}
-              </Button>
-            )}
-          </div>
-
-          {activeFilterTokens.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-xs font-medium text-foreground">
-                {translateWithFallback(t, 'modpacks.active_filters', 'Active filters')}
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs text-secondary">
-                {activeFilterTokens.map((token) => (
-                  <span key={token} className="rounded-full border border-border/70 bg-background/72 px-2.5 py-1">
-                    {token}
-                  </span>
-                ))}
-              </div>
-            </div>
+        <ModpackCatalogControls
+          rootTestId="installed-modpack-filters"
+          controlsTestId="installed-modpack-filter-controls"
+          searchLabel={t('modpacks.search') || 'Search modpacks'}
+          searchControl={(
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t('modpacks.search_placeholder') || 'Поиск модпаков...'}
+              aria-label={t('modpacks.search_placeholder') || 'Search modpacks'}
+              className="w-full"
+              data-testid="installed-modpack-search"
+            />
           )}
-        </div>
-
-        {/* Search and Filters */}
-        <div
-          className="surface-muted mb-6 space-y-3 p-4"
-          role="search"
-          aria-label={t('modpacks.search') || 'Search modpacks'}
-          data-testid="installed-modpack-filters"
-        >
-          <div className="grid gap-3 xl:grid-cols-4" data-testid="installed-modpack-filter-controls">
-            <div className="space-y-1 xl:col-span-4">
-              <div className="text-xs font-medium text-secondary">
-                {t('modpacks.search') || 'Search modpacks'}
-              </div>
-              <Input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('modpacks.search_placeholder') || 'Поиск модпаков...'}
-                aria-label={t('modpacks.search_placeholder') || 'Search modpacks'}
-                className="w-full"
-                data-testid="installed-modpack-search"
-              />
-            </div>
-            <div className="space-y-1">
-              <div className="text-xs font-medium text-secondary">
-                {sortOption === 'created'
+          controls={[
+            {
+              key: 'sort',
+              label:
+                sortOption === 'created'
                   ? translateWithFallback(t, 'modpacks.sort_created', 'By creation date')
                   : sortOption === 'updated'
                     ? translateWithFallback(t, 'modpacks.sort_updated', 'By update date')
-                    : translateWithFallback(t, 'modpacks.sort_name', 'By name')}
-              </div>
-              <Select
-                value={sortOption}
-                onChange={(e) => {
-                  const nextSortOption = e.target.value;
-                  if (SORT_OPTIONS.includes(nextSortOption as SortOption)) {
-                    setSortOption(nextSortOption as SortOption);
-                  }
-                }}
-                aria-label={t('modpacks.sort_name') || 'Sort modpacks'}
-                className="w-full"
-                data-testid="installed-modpack-sort"
-              >
-                <option value="name">{t('modpacks.sort_name') || 'По имени'}</option>
-                <option value="created">{t('modpacks.sort_created') || 'По дате создания'}</option>
-                <option value="updated">{t('modpacks.sort_updated') || 'По обновлению'}</option>
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <div className="text-xs font-medium text-secondary">
-                {translateWithFallback(t, 'modpacks.minecraft_version', 'Minecraft Version')}
-              </div>
-              <Select
-                value={filterMCVersion}
-                onChange={(e) => setFilterMCVersion(e.target.value)}
-                aria-label={t('modpacks.filter_all_versions') || 'Filter by Minecraft version'}
-                className="w-full"
-                data-testid="installed-modpack-version-filter"
-              >
-                <option value="all">{t('modpacks.filter_all_versions') || 'Все версии'}</option>
-                {availableVersions.map(v => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </Select>
-            </div>
-            <div className="space-y-1">
-              <div className="text-xs font-medium text-secondary">
-                {translateWithFallback(t, 'modpacks.loader', 'Modloader')}
-              </div>
-              <Select
-                value={filterLoader}
-                onChange={(e) => setFilterLoader(e.target.value)}
-                aria-label={t('modpacks.filter_all_loaders') || 'Filter by modloader'}
-                className="w-full"
-                data-testid="installed-modpack-loader-filter"
-              >
-                <option value="all">{t('modpacks.filter_all_loaders') || 'Все лоадеры'}</option>
-                {availableLoaders.map(l => (
-                  <option key={l} value={l}>{formatLoaderLabel(t, l)}</option>
-                ))}
-              </Select>
-            </div>
-          </div>
-        </div>
+                    : translateWithFallback(t, 'modpacks.sort_name', 'By name'),
+              control: (
+                <Select
+                  value={sortOption}
+                  onChange={(e) => {
+                    const nextSortOption = e.target.value;
+                    if (SORT_OPTIONS.includes(nextSortOption as SortOption)) {
+                      setSortOption(nextSortOption as SortOption);
+                    }
+                  }}
+                  aria-label={t('modpacks.sort_name') || 'Sort modpacks'}
+                  className="w-full"
+                  data-testid="installed-modpack-sort"
+                >
+                  <option value="name">{t('modpacks.sort_name') || 'По имени'}</option>
+                  <option value="created">{t('modpacks.sort_created') || 'По дате создания'}</option>
+                  <option value="updated">{t('modpacks.sort_updated') || 'По обновлению'}</option>
+                </Select>
+              ),
+            },
+            {
+              key: 'version',
+              label: translateWithFallback(t, 'modpacks.minecraft_version', 'Minecraft Version'),
+              control: (
+                <Select
+                  value={filterMCVersion}
+                  onChange={(e) => setFilterMCVersion(e.target.value)}
+                  aria-label={t('modpacks.filter_all_versions') || 'Filter by Minecraft version'}
+                  className="w-full"
+                  data-testid="installed-modpack-version-filter"
+                >
+                  <option value="all">{t('modpacks.filter_all_versions') || 'Все версии'}</option>
+                  {availableVersions.map((v) => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </Select>
+              ),
+            },
+            {
+              key: 'loader',
+              label: translateWithFallback(t, 'modpacks.loader', 'Modloader'),
+              control: (
+                <Select
+                  value={filterLoader}
+                  onChange={(e) => setFilterLoader(e.target.value)}
+                  aria-label={t('modpacks.filter_all_loaders') || 'Filter by modloader'}
+                  className="w-full"
+                  data-testid="installed-modpack-loader-filter"
+                >
+                  <option value="all">{t('modpacks.filter_all_loaders') || 'Все лоадеры'}</option>
+                  {availableLoaders.map((l) => (
+                    <option key={l} value={l}>{formatLoaderLabel(t, l)}</option>
+                  ))}
+                </Select>
+              ),
+            },
+          ]}
+          activeFilterTokens={activeFilterTokens}
+          onReset={hasActiveFilters ? handleResetFilters : undefined}
+          resetLabel={translateWithFallback(t, 'modpacks.clear_filters', 'Clear filters')}
+          status={installedCatalogStatus.map((item) => (
+            <span key={item}>{item}</span>
+          ))}
+          className="mb-6"
+        />
 
         {/* Drag & Drop Zone */}
         {isDragging && (
@@ -1099,6 +1091,7 @@ const ModpackListComponentInternal: React.FC<{
               <ModpackCard
                 key={modpack.id}
                 modpack={modpack}
+                availableUpdate={availableUpdatesById[modpack.id]}
                 index={index}
                 isSelected={modpack.id === selectedId}
                 isMenuOpen={contextMenu?.modpackId === modpack.id}

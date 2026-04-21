@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
-import type { AccentColor, AccentStyleType, BrandThemeConfig, DownloadProvider, Language, Theme, UIMode, CustomThemeConfig, ThemePresetId } from './settings/types';
+import type { AccentColor, AccentStyleType, AppearanceSettingsState, BrandThemeConfig, DownloadProvider, Language, Theme, UIMode, CustomThemeConfig, ThemePresetId } from './settings/types';
 import {
     deserializeBoolean,
     deserializeInt,
@@ -10,7 +10,7 @@ import {
         useLocalStorageState,
 } from './settings/persistence';
 import { getThemePreset, inferThemePresetId } from './settings/theme-presets';
-import { applyThemeToDocument, resolveThemeConfig } from './settings/theme';
+import { applyThemeToDocument, extractThemeOverrides, pruneThemeConfig, resolveThemeConfig } from './settings/theme';
 import { createTranslator, getLocaleForLanguage } from './settings/i18n';
 import { getAccentClassForColor, getAccentHexForColor, getAccentStylesForColor, getPresetAccentSafelistClassName } from './settings/accent';
 import { formatDateForLocale, formatNumberForLocale } from '../utils/format';
@@ -31,6 +31,7 @@ interface SettingsState {
     themePresetId: ThemePresetId | null;
     applyThemePreset: (presetId: ThemePresetId) => void;
     clearThemePreset: () => void;
+    applyAppearanceState: (val: AppearanceSettingsState) => void;
     downloadProvider: DownloadProvider;
     setDownloadProvider: (val: DownloadProvider) => void;
     autoDownloadThreads: boolean;
@@ -65,24 +66,99 @@ interface SettingsState {
 
 const SettingsContext = createContext<SettingsState | undefined>(undefined);
 
+const DEFAULT_APPEARANCE_STATE: AppearanceSettingsState = {
+    accentColor: 'emerald',
+    customTheme: {},
+    theme: 'dark',
+    themePresetId: null,
+};
+
+function parseStoredTheme(raw: string | null): Theme {
+    return raw === 'light' ? 'light' : 'dark';
+}
+
+function parseStoredThemePresetId(raw: string | null): ThemePresetId | null {
+    if (!raw) {
+        return null;
+    }
+
+    return getThemePreset(raw)?.id ?? null;
+}
+
+function parseStoredAccentColor(raw: string | null): AccentColor {
+    return raw || DEFAULT_APPEARANCE_STATE.accentColor;
+}
+
+function parseStoredCustomTheme(raw: string | null): CustomThemeConfig {
+    if (!raw) {
+        return {};
+    }
+
+    try {
+        return pruneThemeConfig(JSON.parse(raw) as CustomThemeConfig);
+    } catch {
+        return {};
+    }
+}
+
+function normalizeAppearanceState(state: AppearanceSettingsState): AppearanceSettingsState {
+    const normalizedTheme = state.theme === 'light' ? 'light' : 'dark';
+    const normalizedPresetId = state.themePresetId ? parseStoredThemePresetId(state.themePresetId) : null;
+    const sanitizedCustomTheme = normalizedPresetId
+        ? extractThemeOverrides(normalizedTheme, normalizedPresetId, state.customTheme)
+        : pruneThemeConfig(state.customTheme);
+
+    return {
+        accentColor: parseStoredAccentColor(state.accentColor),
+        customTheme: sanitizedCustomTheme,
+        theme: normalizedTheme,
+        themePresetId: normalizedPresetId,
+    };
+}
+
+function deserializeAppearanceState(raw: string | null): AppearanceSettingsState {
+    if (raw) {
+        try {
+            const parsed = JSON.parse(raw) as Partial<AppearanceSettingsState>;
+            return normalizeAppearanceState({
+                accentColor: parseStoredAccentColor(typeof parsed.accentColor === 'string' ? parsed.accentColor : null),
+                customTheme: pruneThemeConfig(parsed.customTheme),
+                theme: parsed.theme === 'light' ? 'light' : 'dark',
+                themePresetId: typeof parsed.themePresetId === 'string' ? parsed.themePresetId : null,
+            });
+        } catch {
+            // Fall through to legacy key migration.
+        }
+    }
+
+    const legacyTheme = parseStoredTheme(localStorage.getItem('settings_theme'));
+    const legacyAccentColor = parseStoredAccentColor(localStorage.getItem('settings_accentColor'));
+    const explicitPresetId = parseStoredThemePresetId(localStorage.getItem('settings_themePresetId'));
+    const legacyCustomTheme = parseStoredCustomTheme(localStorage.getItem('settings_customTheme'));
+    const inferredPresetId = explicitPresetId ?? inferThemePresetId(legacyTheme, legacyCustomTheme);
+
+    return normalizeAppearanceState({
+        accentColor: legacyAccentColor,
+        customTheme: explicitPresetId ? extractThemeOverrides(legacyTheme, explicitPresetId, legacyCustomTheme) : legacyCustomTheme,
+        theme: legacyTheme,
+        themePresetId: inferredPresetId,
+    });
+}
+
+function serializeAppearanceState(state: AppearanceSettingsState) {
+    return JSON.stringify(normalizeAppearanceState(state));
+}
+
 // Centralized UI settings with localStorage persistence.
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [minecraftPath, setMinecraftPath] = useLocalStorageState('settings_minecraftPath', deserializeString(''), serializeString);
     const [hideLauncher, setHideLauncher] = useLocalStorageState('settings_hideLauncher', deserializeBoolean(true), serializeBoolean);
-    const [accentColor, setAccentColor] = useLocalStorageState<AccentColor>('settings_accentColor', deserializeString('emerald'), serializeString);
     const [showConsole, setShowConsole] = useLocalStorageState('settings_showConsole', deserializeBoolean(false), serializeBoolean);
     const [language, setLanguage] = useLocalStorageState<Language>('settings_language', (raw) => (raw === 'ru' ? 'ru' : 'en'), serializeString);
-    const [theme, setTheme] = useLocalStorageState<Theme>('settings_theme', (raw) => (raw === 'light' ? 'light' : 'dark'), serializeString);
-    const [themePresetId, setThemePresetIdState] = useLocalStorageState<ThemePresetId | null>(
-        'settings_themePresetId',
-        (raw) => {
-            if (!raw) {
-                return null;
-            }
-
-            return getThemePreset(raw)?.id ?? null;
-        },
-        (val) => val,
+    const [appearanceState, setAppearanceStateRaw] = useLocalStorageState<AppearanceSettingsState>(
+        'settings_appearanceState',
+        deserializeAppearanceState,
+        serializeAppearanceState,
     );
     const [legacyDownloadProvider, setDownloadProvider] = useLocalStorageState<DownloadProvider>(
         'settings_downloadProvider',
@@ -93,36 +169,47 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [downloadThreads, setDownloadThreads] = useLocalStorageState('settings_downloadThreads', deserializeInt(8), serializeInt);
     const [maxSockets, setMaxSockets] = useLocalStorageState('settings_maxSockets', deserializeInt(64), serializeInt);
     const downloadProvider: DownloadProvider = 'auto';
-    // Custom theme configuration
-    const [customTheme, setCustomThemeState] = useLocalStorageState<CustomThemeConfig>(
-        'settings_customTheme',
-        (raw) => {
-            if (!raw) return {};
-            try {
-                return JSON.parse(raw);
-            } catch {
-                return {};
-            }
-        },
-        (val) => JSON.stringify(val)
-    );
+    const { accentColor, customTheme, theme, themePresetId } = appearanceState;
+    const applyAppearanceState = useCallback((nextState: AppearanceSettingsState) => {
+        setAppearanceStateRaw(normalizeAppearanceState(nextState));
+    }, [setAppearanceStateRaw]);
+    const setAccentColor = useCallback((val: AccentColor) => {
+        applyAppearanceState({
+            ...appearanceState,
+            accentColor: val,
+        });
+    }, [appearanceState, applyAppearanceState]);
+    const setTheme = useCallback((val: Theme) => {
+        applyAppearanceState({
+            ...appearanceState,
+            theme: val,
+        });
+    }, [appearanceState, applyAppearanceState]);
     const clearThemePreset = useCallback(() => {
-        setThemePresetIdState(null);
-    }, [setThemePresetIdState]);
+        applyAppearanceState({
+            ...appearanceState,
+            themePresetId: null,
+        });
+    }, [appearanceState, applyAppearanceState]);
     const setCustomTheme = useCallback((val: CustomThemeConfig) => {
-        clearThemePreset();
-        setCustomThemeState(val);
-    }, [clearThemePreset, setCustomThemeState]);
+        applyAppearanceState({
+            ...appearanceState,
+            customTheme: themePresetId ? extractThemeOverrides(theme, themePresetId, val) : pruneThemeConfig(val),
+        });
+    }, [appearanceState, applyAppearanceState, theme, themePresetId]);
     const applyThemePreset = useCallback((presetId: ThemePresetId) => {
         const preset = getThemePreset(presetId);
         if (!preset) {
             return;
         }
 
-        setThemePresetIdState(preset.id);
-        setTheme(preset.defaultTheme);
-        setCustomThemeState({});
-    }, [setCustomThemeState, setTheme, setThemePresetIdState]);
+        applyAppearanceState({
+            ...appearanceState,
+            customTheme: {},
+            theme: preset.defaultTheme,
+            themePresetId: preset.id,
+        });
+    }, [appearanceState, applyAppearanceState]);
     const activeThemeConfig = useMemo(
         () => resolveThemeConfig(theme, themePresetId, customTheme),
         [customTheme, theme, themePresetId],
@@ -146,23 +233,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, [theme, accentColor, activeThemeConfig]);
 
     useEffect(() => {
-        const persistedThemePresetId = localStorage.getItem('settings_themePresetId');
-        if (persistedThemePresetId === '') {
+        localStorage.setItem('settings_theme', theme);
+        localStorage.setItem('settings_accentColor', accentColor);
+        localStorage.setItem('settings_customTheme', JSON.stringify(customTheme));
+
+        if (themePresetId) {
+            localStorage.setItem('settings_themePresetId', themePresetId);
+        } else {
             localStorage.removeItem('settings_themePresetId');
         }
-
-        if ((persistedThemePresetId !== null && persistedThemePresetId !== '') || themePresetId !== null) {
-            return;
-        }
-
-        const inferredPresetId = inferThemePresetId(theme, customTheme);
-        if (!inferredPresetId) {
-            return;
-        }
-
-        setThemePresetIdState(inferredPresetId);
-        setCustomThemeState({});
-    }, [customTheme, theme, themePresetId, setCustomThemeState, setThemePresetIdState]);
+    }, [accentColor, customTheme, theme, themePresetId]);
 
     useEffect(() => {
         if (legacyDownloadProvider !== 'auto') {
@@ -233,6 +313,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             themePresetId,
             applyThemePreset,
             clearThemePreset,
+            applyAppearanceState,
             downloadProvider, setDownloadProvider,
             autoDownloadThreads, setAutoDownloadThreads,
             downloadThreads, setDownloadThreads,

@@ -10,7 +10,7 @@
 - Тип объединённого renderer API: `shared/contracts/windowApi.ts`
 - Renderer-обёртки: `src/services/ipc/*`
 
-Дата снимка: **2026-04-12**
+Дата снимка: **2026-04-21**
 
 ---
 
@@ -54,6 +54,8 @@
 - `window.api.cache`
 - `window.api.settings`
 - `window.api.assets`
+- `window.api.resourcePacks`
+- `window.api.shaders`
 - `window.api.ipcRenderer`
 - `window.api.account`
 - `window.api.mirrors`
@@ -86,6 +88,8 @@
 - `src/services/ipc/shareIPC.ts` → `window.api.share`
 - `src/services/ipc/externalLinksIPC.ts` → `window.api.externalLinks`
 - `src/services/ipc/screenshotsIPC.ts` → `window.screenshots`
+- `src/services/ipc/resourcePacksIPC.ts` → `window.api.resourcePacks`
+- `src/services/ipc/shadersIPC.ts` → `window.api.shaders`
 
 ### 2.3 Нативный браузерный `window.*` (не Electron contracts)
 
@@ -252,6 +256,11 @@
 - `datapacks:search`
 - `datapacks:install`
 - `datapacks:getVersions`
+
+Примечания по результатам:
+
+- `resourcePacks:import` и `resourcePacks:add` теперь возвращают `ResourcePackAcquisitionResult` с именованными статусами вместо boolean.
+- `shaders:add` теперь возвращает `ShaderPackAcquisitionResult` с именованными статусами вместо boolean.
 
 ### 3.11 App, account, mirrors, screenshots
 

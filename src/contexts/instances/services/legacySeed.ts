@@ -11,7 +11,6 @@ export function buildLegacySeedFromLocalStorage(): Partial<ModpackConfig> {
   const legacyNetworkMode = (localStorage.getItem('settings_networkMode') as NetworkMode) || undefined;
 
   return {
-    runtime: { minecraft: '1.12.2', modLoader: { type: 'vanilla' } },
     memory: { maxMb: toMbFromGb(clamp(Number.isFinite(legacyRamGb) ? legacyRamGb : 4, 1, 64)) },
     java: legacyJavaPath ? { path: legacyJavaPath } : undefined,
     vmOptions: [],

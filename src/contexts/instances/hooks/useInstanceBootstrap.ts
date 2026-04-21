@@ -17,6 +17,10 @@ export function useInstanceBootstrap(params: {
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
+      setIsReady(false);
+      setSelectedId('');
+      setConfig(null);
+
       const boot = await bootstrapModpacksIfSupported(rootPath);
       if (cancelled) return;
 
@@ -38,4 +42,3 @@ export function useInstanceBootstrap(params: {
     };
   }, [loadSelected, refresh, rootPath, setConfig, setIsReady, setSelectedId]);
 }
-

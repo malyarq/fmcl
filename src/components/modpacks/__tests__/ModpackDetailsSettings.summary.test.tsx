@@ -147,9 +147,10 @@ describe('Modpack details settings runtime summary', () => {
 
     const headerMetadata = screen.getByTestId('modpack-details-metadata');
     expect(within(headerMetadata).getByText('1.20.1')).toBeTruthy();
-    expect(within(headerMetadata).getByText('forge 47.2.0')).toBeTruthy();
+    expect(within(headerMetadata).getByText('Forge 47.2.0')).toBeTruthy();
 
     expect(screen.getByTestId('modpack-dependency-count').textContent).toBe('3');
+    expect(screen.getByTestId('modpack-dependency-status').getAttribute('data-tone')).toBe('healthy');
     expect(screen.getByText('Modloader Version')).toBeTruthy();
     expect(screen.getByText('47.2.0')).toBeTruthy();
     expect(screen.getByText('OptiFine')).toBeTruthy();
@@ -172,7 +173,8 @@ describe('Modpack details settings runtime summary', () => {
     });
     expect(within(screen.getByTestId('modpack-dependency-summary')).getByText('Modloader Version')).toBeTruthy();
     expect(within(screen.getByTestId('modpack-dependency-summary')).getByText('Unverified')).toBeTruthy();
-    expect(within(screen.getByTestId('modpack-details-metadata')).getByText('fabric')).toBeTruthy();
+    expect(screen.getByTestId('modpack-dependency-status').getAttribute('data-tone')).toBe('healthy');
+    expect(within(screen.getByTestId('modpack-details-metadata')).getByText('Fabric')).toBeTruthy();
     expect(screen.queryByTestId('modpack-dependency-warnings')).toBeNull();
   });
 });

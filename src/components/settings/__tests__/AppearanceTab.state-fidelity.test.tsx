@@ -38,17 +38,17 @@ describe('AppearanceTab state fidelity', () => {
 
     expect(darkThemeButton.getAttribute('aria-pressed')).toBe('true');
     expect(darkThemeButton.getAttribute('data-state')).toBe('active');
-    expect(darkThemeButton.className).toContain('bg-[rgb(var(--accent-main)/0.14)]');
-    expect(darkThemeButton.className).toContain('focus-visible:ring-2');
+    expect(darkThemeButton.className).toContain('settings-segmented-option');
 
     expect(lightThemeButton.getAttribute('aria-pressed')).toBe('false');
     expect(lightThemeButton.getAttribute('data-state')).toBe('inactive');
-    expect(lightThemeButton.className).toContain('hover:border-[rgb(var(--accent-main)/0.16)]');
+    expect(lightThemeButton.className).toContain('settings-segmented-option');
 
     expect(englishButton.getAttribute('aria-pressed')).toBe('true');
     expect(englishButton.getAttribute('data-state')).toBe('active');
     expect(russianButton.getAttribute('aria-pressed')).toBe('false');
-    expect(russianButton.className).toContain('hover:bg-card/92');
+    expect(russianButton.getAttribute('data-state')).toBe('inactive');
+    expect(russianButton.className).toContain('settings-segmented-option');
 
     expect(roseAccentChip.getAttribute('aria-pressed')).toBe('true');
     expect(roseAccentChip.getAttribute('data-state')).toBe('active');
@@ -59,21 +59,20 @@ describe('AppearanceTab state fidelity', () => {
     expect(advancedAppearanceToggle.className).toContain('focus-visible:ring-2');
   });
 
-  it('keeps sliders accent-bound and disabled actions readable for custom accents', () => {
+  it('keeps preset ancestry visible when bounded refinements are layered on top', () => {
     localStorage.setItem('settings_theme', 'dark');
     localStorage.setItem('settings_language', 'en');
-    localStorage.setItem('settings_accentColor', '#123456');
-    localStorage.setItem('settings_uiScale', '100');
+    localStorage.setItem('settings_themePresetId', 'forest');
+    localStorage.setItem('settings_customTheme', JSON.stringify({
+      colors: {
+        background: '#123456',
+      },
+    }));
 
     renderAppearanceTab();
 
-    const [uiScaleSlider] = screen.getAllByRole('slider');
-    const resetZoomButton = screen.getByRole('button', { name: 'Reset' });
-
-    expect(uiScaleSlider.className).toContain('accent-[rgb(var(--accent-main))]');
-    expect((uiScaleSlider as HTMLInputElement).style.accentColor).toBeTruthy();
-    expect((resetZoomButton as HTMLButtonElement).disabled).toBe(true);
-    expect(resetZoomButton.className).toContain('disabled:bg-background/72');
-    expect(resetZoomButton.className).toContain('disabled:text-muted');
+    expect(screen.getAllByText('Forest · Dark').length).toBeGreaterThan(0);
+    expect(screen.getByText('Customized')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Reset to Preset' })).toBeTruthy();
   });
 });

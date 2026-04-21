@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import { Globe2, LayoutGrid, Menu, PanelLeftClose, PanelsTopLeft, Settings2 } from 'lucide-react';
-import { BrandLockup } from '../branding/BrandLockup';
+import { BrandMark } from '../branding/BrandMark';
+import { BrandWordmark } from '../branding/BrandWordmark';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import type { UIMode } from '../../contexts/settings/types';
@@ -31,6 +32,7 @@ export function SidebarHeader(props: {
   } = props;
   const simpleLabel = t('ui_mode.simple') || 'Classic';
   const modpacksLabel = t('ui_mode.modpacks') || 'Modpacks';
+  const currentModeLabel = uiMode === 'simple' ? simpleLabel : modpacksLabel;
 
   return (
     <div className={cn("relative mb-3", isCollapsed && "mb-2")}>
@@ -59,16 +61,24 @@ export function SidebarHeader(props: {
         isCollapsed ? "opacity-0 h-0 overflow-hidden" : "opacity-100"
       )}>
         <div className="mb-2 flex items-start justify-between">
-          <div className="min-w-0">
-            <BrandLockup
-              align="start"
-              markFrame="brand"
-              markRole="product-mark"
-              markSize="sm"
-              className="max-w-full"
-              wordmarkClassName="truncate text-lg text-foreground sm:text-xl"
+          <div className="flex min-w-0 items-start gap-3">
+            <BrandMark
+              data-testid="sidebar-app-icon"
+              role="app-icon"
+              alt="FriendLauncher app icon"
+              frame="brand"
+              size="sm"
+              wrapperClassName="mt-0.5 shrink-0"
             />
-            <p className="mt-2 kicker-label">Build v{appVersion}</p>
+            <div className="min-w-0">
+              <BrandWordmark
+                tone="default"
+                className="truncate text-base text-foreground sm:text-lg"
+              />
+              <p className="mt-1 truncate text-xs text-secondary">
+                {currentModeLabel} • v{appVersion}
+              </p>
+            </div>
           </div>
           <div className={cn(
             "flex gap-1 transition-all duration-500 ease-out",

@@ -85,6 +85,47 @@ function getAccentContent(theme: Theme) {
   return theme === 'light' ? '24 24 27' : '255 255 255';
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function pruneThemeValue(value: unknown): unknown {
+  if (!isRecord(value)) {
+    return value === undefined || value === null || value === '' ? undefined : value;
+  }
+
+  const nextEntries = Object.entries(value).reduce<Record<string, unknown>>((acc, [key, entry]) => {
+    const pruned = pruneThemeValue(entry);
+    if (pruned !== undefined) {
+      acc[key] = pruned;
+    }
+    return acc;
+  }, {});
+
+  return Object.keys(nextEntries).length > 0 ? nextEntries : undefined;
+}
+
+function diffThemeValue(base: unknown, next: unknown): unknown {
+  if (!isRecord(next)) {
+    if (next === undefined || next === null || next === '') {
+      return undefined;
+    }
+
+    return base === next ? undefined : next;
+  }
+
+  const baseRecord = isRecord(base) ? base : undefined;
+  const diffEntries = Object.entries(next).reduce<Record<string, unknown>>((acc, [key, value]) => {
+    const diff = diffThemeValue(baseRecord?.[key], value);
+    if (diff !== undefined) {
+      acc[key] = diff;
+    }
+    return acc;
+  }, {});
+
+  return Object.keys(diffEntries).length > 0 ? diffEntries : undefined;
+}
+
 function mergeThemeConfig(base?: CustomThemeConfig, override?: CustomThemeConfig): CustomThemeConfig {
   const colors = {
     ...base?.colors,
@@ -119,6 +160,11 @@ function mergeThemeConfig(base?: CustomThemeConfig, override?: CustomThemeConfig
   };
 }
 
+export function pruneThemeConfig(config: CustomThemeConfig | null | undefined): CustomThemeConfig {
+  const pruned = pruneThemeValue(config) as CustomThemeConfig | undefined;
+  return pruned ?? {};
+}
+
 function buildThemeDocumentColors(theme: Theme, customTheme?: CustomThemeConfig): ThemeDocumentColors {
   const defaults = DEFAULT_THEME_DOCUMENT_COLORS[theme];
   const colors = customTheme?.colors;
@@ -150,7 +196,23 @@ export function resolveThemeConfig(
   customTheme?: CustomThemeConfig,
 ) {
   const presetConfig = getThemePresetConfig(themePresetId, theme);
-  return mergeThemeConfig(presetConfig, customTheme);
+  return pruneThemeConfig(mergeThemeConfig(presetConfig, customTheme));
+}
+
+export function extractThemeOverrides(
+  theme: Theme,
+  themePresetId: ThemePresetId | null | undefined,
+  config: CustomThemeConfig | null | undefined,
+) {
+  const prunedConfig = pruneThemeConfig(config);
+  const presetConfig = getThemePresetConfig(themePresetId, theme);
+
+  if (!presetConfig) {
+    return prunedConfig;
+  }
+
+  const diff = diffThemeValue(pruneThemeConfig(presetConfig), prunedConfig) as CustomThemeConfig | undefined;
+  return diff ?? {};
 }
 
 export function applyThemeToDocument(theme: Theme, accentColor: AccentColor, customTheme?: CustomThemeConfig) {

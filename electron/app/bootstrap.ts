@@ -1,4 +1,4 @@
-import { app, ipcMain, BrowserWindow } from 'electron';
+import { app, ipcMain, BrowserWindow, nativeImage } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -127,6 +127,39 @@ function createServices(deps: { authServerUrl: string; accountService: AccountSe
   };
 }
 
+function getPlatformIconCandidates(platform: NodeJS.Platform): string[] {
+  switch (platform) {
+    case 'darwin':
+      return ['icon-macos.png', 'icon.png', 'icon.ico'];
+    case 'win32':
+      return ['icon.ico', 'icon-macos.png', 'icon.png'];
+    default:
+      return ['icon.png', 'icon.ico', 'icon-macos.png'];
+  }
+}
+
+function resolveNativeIconPath(vitePublicPath: string): string {
+  for (const iconFileName of getPlatformIconCandidates(process.platform)) {
+    const iconPath = path.join(vitePublicPath, iconFileName);
+    if (fs.existsSync(iconPath)) {
+      return iconPath;
+    }
+  }
+
+  return path.join(vitePublicPath, 'icon.png');
+}
+
+function applyNativeAppIcon(vitePublicPath: string): string {
+  const iconPath = resolveNativeIconPath(vitePublicPath);
+  const appIcon = nativeImage.createFromPath(iconPath);
+
+  if (process.platform === 'darwin' && !appIcon.isEmpty()) {
+    app.dock?.setIcon(appIcon);
+  }
+
+  return iconPath;
+}
+
 export function bootstrapMain() {
   // Set app name BEFORE any calls to app.getPath('userData')
   // This ensures the userData folder uses the correct name
@@ -166,13 +199,13 @@ export function bootstrapMain() {
       return;
     }
 
+    const nativeIconPath = applyNativeAppIcon(paths.vitePublicPath);
     const { url: authServerUrl } = startAuthServer();
     const win = createWindow();
 
     // Tray menu keeps the window accessible when hidden.
-    const trayIconPath = path.join(process.env.VITE_PUBLIC!, 'icon.png');
     createTray({
-      iconPath: trayIconPath,
+      iconPath: nativeIconPath,
       onShowWindow: () => winRef?.show(),
       onQuit: () => app.quit(),
       onToggleWindowVisibility: () => {

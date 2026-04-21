@@ -1,30 +1,28 @@
 // @vitest-environment jsdom
 
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import { SettingsProvider } from '../../../contexts/SettingsContext'
 import { AppearanceTab } from '../tabs/AppearanceTab'
 
 describe('AppearanceTab brand contract', () => {
-  it('explains the shared brand boundary with the canonical mark and wordmark pair', () => {
+  it('keeps appearance guidance focused on presets and accent behavior without a dedicated brand card', () => {
     render(
       <SettingsProvider>
         <AppearanceTab />
       </SettingsProvider>,
     )
 
-    const brandCard = screen.getByTestId('appearance-brand-system-card')
-    expect(within(brandCard).getByText('Shared launcher brand')).toBeTruthy()
-    expect(within(brandCard).getByText(/FMCL keeps the same mark, wordmark, and shell surfaces/i)).toBeTruthy()
-    expect(within(brandCard).getByText('FriendLauncher').closest('[data-brand-wordmark]')).toBeTruthy()
-
-    const brandMarks = brandCard.querySelectorAll('[data-brand-role="product-mark"]')
-    const brandWordmarks = brandCard.querySelectorAll('[data-brand-wordmark]')
-    expect(brandMarks).toHaveLength(1)
-    expect(brandWordmarks).toHaveLength(1)
-
+    expect(screen.queryByTestId('appearance-brand-system-card')).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Theme Presets' })).toBeTruthy()
     expect(
-      screen.getByText(/Accent colors personalize launch highlights and active controls/i),
+      screen.getByText(/Choose the base shell mood of the launcher, then fine-tune accent and background behavior below/i),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/Accent colors tune highlights and active controls while the rest of the shell stays calm and consistent/i),
+    ).toBeTruthy()
+    expect(
+      screen.getByText(/Background controls only change the active backdrop layer/i),
     ).toBeTruthy()
   })
 })

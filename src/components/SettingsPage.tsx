@@ -39,6 +39,10 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
         autoDownloadThreads, setAutoDownloadThreads,
         downloadThreads, setDownloadThreads,
         maxSockets, setMaxSockets,
+        uiScale, setUiScale,
+        disableAnimations, setDisableAnimations,
+        sidebarPosition, setSidebarPosition,
+        compactMode, setCompactMode,
         getAccentStyles
     } = useSettings();
 
@@ -55,6 +59,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
     }, [status]);
 
     const activeTabConfig = getTranslatedSettingsTabConfig(activeTab, t);
+    const showPanelHint = activeTabConfig.panelHint !== activeTabConfig.description;
 
     const renderActiveTab = () => {
         if (activeTab === 'appearance') {
@@ -71,6 +76,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
                     maxSockets={maxSockets}
                     setMaxSockets={setMaxSockets}
                     t={t}
+                    embedded
                 />
             );
         }
@@ -87,8 +93,17 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
                     t={t}
                     status={status}
                     updateInfo={updateInfo}
+                    uiScale={uiScale}
+                    setUiScale={setUiScale}
+                    disableAnimations={disableAnimations}
+                    setDisableAnimations={setDisableAnimations}
+                    sidebarPosition={sidebarPosition}
+                    setSidebarPosition={setSidebarPosition}
+                    compactMode={compactMode}
+                    setCompactMode={setCompactMode}
                     onCheckForUpdates={checkForUpdates}
                     onBeforeCheckForUpdates={() => setShowUpdateModal(false)}
+                    embedded
                 />
             );
         }
@@ -99,15 +114,16 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
                     t={t}
                     getAccentStyles={getAccentStyles}
                     modpacksIPC={modpacksIPC}
+                    embedded
                 />
             );
         }
 
         if (activeTab === 'accounts') {
-            return <AccountsPage />;
+            return <AccountsPage embedded />;
         }
 
-        return <StatisticsTab />;
+        return <StatisticsTab embedded />;
     };
 
     return (
@@ -125,16 +141,27 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
                     getAccentStyles={(type) => getAccentStyles(type)}
                 />
 
-                <div className="surface-inline flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="surface-inline flex flex-col gap-3 p-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-1">
                         <div className="kicker-label">{activeTabConfig.label}</div>
                         <p className="text-sm leading-6 text-secondary">
                             {activeTabConfig.description}
                         </p>
                     </div>
-                    <p className="max-w-xl text-sm leading-6 text-secondary">
-                        {activeTabConfig.panelHint}
-                    </p>
+                    <div className="flex flex-col items-start gap-3 lg:max-w-sm lg:items-end">
+                        {showPanelHint && (
+                            <p className="text-sm leading-6 text-secondary lg:text-right">
+                                {activeTabConfig.panelHint}
+                            </p>
+                        )}
+                        <Button
+                            onClick={onClose}
+                            className={cn("text-white sm:min-w-[10rem]", getAccentStyles('bg').className)}
+                            style={getAccentStyles('bg').style}
+                        >
+                            {t('settings.done')}
+                        </Button>
+                    </div>
                 </div>
 
                 <div
@@ -145,19 +172,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
                     className="surface-panel min-h-[22rem] outline-none p-4 sm:p-5"
                 >
                     {renderActiveTab()}
-                </div>
-
-                <div className="surface-inline flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-sm text-secondary">
-                        {activeTabConfig.panelHint}
-                    </p>
-                    <Button
-                        onClick={onClose}
-                        className={cn("text-white sm:min-w-[10rem]", getAccentStyles('bg').className)}
-                        style={getAccentStyles('bg').style}
-                    >
-                        {t('settings.done')}
-                    </Button>
                 </div>
             </div>
 

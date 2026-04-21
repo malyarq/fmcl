@@ -6,8 +6,8 @@ import { loadSlim } from "@tsparticles/slim";
 import { useSettings } from '../../contexts/SettingsContext';
 
 export const BackgroundLayer = () => {
-    const { customTheme, disableAnimations } = useSettings();
-    const config = customTheme.background;
+    const { activeThemeConfig, disableAnimations } = useSettings();
+    const config = activeThemeConfig.background;
     const videoRef = useRef<HTMLVideoElement>(null);
     const [init, setInit] = useState(false);
     const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
@@ -15,7 +15,7 @@ export const BackgroundLayer = () => {
     const particleOptions = useMemo<ISourceOptions>(() => ({
         background: {
             color: {
-                value: customTheme.colors?.background || "#000000",
+                value: activeThemeConfig.colors?.background || "#000000",
             },
         },
         fpsLimit: 120,
@@ -79,7 +79,7 @@ export const BackgroundLayer = () => {
             },
         },
         detectRetina: true,
-    }), [customTheme.colors?.background, config?.particles]);
+    }), [activeThemeConfig.colors?.background, config?.particles]);
 
     useEffect(() => {
         if (typeof window === 'undefined') {

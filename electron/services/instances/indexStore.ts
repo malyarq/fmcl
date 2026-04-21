@@ -3,6 +3,19 @@ import path from 'node:path';
 import type { ModpackConfig, ModpackRuntime, ModpacksIndex } from './types';
 import { ensureXmclFolders, getModpackConfigPath, getModpackDir, getModpacksIndexPath } from './paths';
 
+function loadExistingDefaultConfig(rootPath: string): ModpackConfig | null {
+  const cfgPath = getModpackConfigPath(rootPath, 'default');
+  if (!fs.existsSync(cfgPath)) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(fs.readFileSync(cfgPath, 'utf-8')) as ModpackConfig;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Ensure XMCL-like modpack layout exists.
  * If there is no modpacks.json, create a `default` modpack.
@@ -13,10 +26,12 @@ export function ensureModpacksMigratedFile(rootPath: string, seedDefault?: Parti
   if (fs.existsSync(indexPath)) return;
 
   const now = new Date().toISOString();
+  const existingDefaultConfig = loadExistingDefaultConfig(rootPath);
+  const defaultName = existingDefaultConfig?.name ?? seedDefault?.name ?? 'Default';
   const index: ModpacksIndex = {
     selectedModpack: 'default',
     modpacks: {
-      default: { name: 'Default' },
+      default: { name: defaultName },
     },
   };
 
@@ -25,6 +40,7 @@ export function ensureModpacksMigratedFile(rootPath: string, seedDefault?: Parti
   fs.mkdirSync(path.join(modpackDir, 'mods'), { recursive: true });
 
   const mergedRuntime: ModpackRuntime =
+    existingDefaultConfig?.runtime ??
     seedDefault?.runtime ??
     ({
       minecraft: '1.12.2',
@@ -33,20 +49,22 @@ export function ensureModpacksMigratedFile(rootPath: string, seedDefault?: Parti
 
   const cfg: ModpackConfig = {
     id: 'default',
-    name: seedDefault?.name ?? 'Default',
+    name: defaultName,
     runtime: mergedRuntime,
-    java: seedDefault?.java,
-    memory: seedDefault?.memory ?? { maxMb: 4096 },
-    vmOptions: seedDefault?.vmOptions ?? [],
-    server: seedDefault?.server,
-    networkMode: seedDefault?.networkMode,
-    createdAt: now,
+    java: existingDefaultConfig?.java ?? seedDefault?.java,
+    memory: existingDefaultConfig?.memory ?? seedDefault?.memory ?? { maxMb: 4096 },
+    vmOptions: existingDefaultConfig?.vmOptions ?? seedDefault?.vmOptions ?? [],
+    server: existingDefaultConfig?.server ?? seedDefault?.server,
+    networkMode: existingDefaultConfig?.networkMode ?? seedDefault?.networkMode,
+    createdAt: existingDefaultConfig?.createdAt ?? now,
     updatedAt: now,
   };
 
   fs.writeFileSync(indexPath, JSON.stringify(index, null, 2), 'utf-8');
-  // Keep exact path behavior (modpack.json inside modpacks/default)
-  fs.writeFileSync(getModpackConfigPath(rootPath, 'default'), JSON.stringify(cfg, null, 2), 'utf-8');
+  if (!existingDefaultConfig) {
+    // Keep exact path behavior (modpack.json inside modpacks/default)
+    fs.writeFileSync(getModpackConfigPath(rootPath, 'default'), JSON.stringify(cfg, null, 2), 'utf-8');
+  }
 }
 
 export function loadModpacksIndexFile(rootPath: string): ModpacksIndex {
@@ -82,4 +100,3 @@ export function saveModpacksIndexFile(rootPath: string, index: ModpacksIndex) {
 export const ensureInstancesMigratedFile = ensureModpacksMigratedFile;
 export const loadInstancesIndexFile = loadModpacksIndexFile;
 export const saveInstancesIndexFile = saveModpacksIndexFile;
-

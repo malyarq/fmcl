@@ -37,7 +37,18 @@ vi.mock('../../../services/ipc/modpacksIPC', () => ({
     getMetadata: (...args: unknown[]) => getMetadataMock(...args),
     getConfig: (...args: unknown[]) => getConfigMock(...args),
     addMod: vi.fn(),
+    resolvePath: vi.fn(),
   },
+}));
+
+vi.mock('../../../features/launcher/hooks/useModSupportedVersions', () => ({
+  useModSupportedVersions: () => ({
+    forgeVersions: [],
+    fabricVersions: [],
+    neoForgeVersions: [],
+    optiFineVersions: ['1.20.1'],
+    isLoading: false,
+  }),
 }));
 
 describe('AddModPage flow layout', () => {
@@ -101,5 +112,66 @@ describe('AddModPage flow layout', () => {
     expect(results.className).not.toContain('max-h-96');
     expect(results.className).not.toContain('overflow-y-auto');
     expect(scrollContainer.contains(actions)).toBe(true);
+  });
+
+  it('keeps guided resource-pack browsing instance-scoped without modloader filters', async () => {
+    render(<AddModPage modpackId="alpha" onBack={vi.fn()} contentType="resourcepack" />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+    });
+
+    expect(searchModsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentType: 'resourcepack',
+        loader: undefined,
+      }),
+    );
+    expect(screen.getByRole('heading', { name: 'Add Resource Pack' })).toBeTruthy();
+    expect(screen.getByPlaceholderText('Search resource packs...')).toBeTruthy();
+    expect(screen.getByTestId('guided-content-resourcepack-scope').textContent).toContain('Resource packs added here only affect this modpack');
+    expect(screen.getByTestId('guided-content-local-fallback').textContent).toContain('Have a local resource pack .zip already?');
+    expect(screen.getByRole('button', { name: 'Import local .zip' })).toBeTruthy();
+    expect(screen.queryByText(/all modloaders/i)).toBeNull();
+  });
+
+  it('shows honest shader runtime guidance instead of implying catalog compatibility', async () => {
+    getConfigMock.mockResolvedValueOnce({
+      id: 'alpha',
+      name: 'Alpha Pack',
+      runtime: {
+        minecraft: '1.20.1',
+        modLoader: { type: 'forge', version: '47.2.0' },
+      },
+      game: {
+        useOptiFine: false,
+      },
+    });
+
+    render(<AddModPage modpackId="alpha" onBack={vi.fn()} contentType="shader" />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+    });
+
+    const guidance = screen.getByTestId('guided-content-shader-capability');
+    expect(guidance.getAttribute('data-status')).toBe('needs-setup');
+    expect(guidance.textContent).toContain('Needs setup');
+    expect(guidance.textContent).toContain('does not see shader support configured');
+    expect(guidance.textContent).toContain('not compatibility guarantees');
+  });
+
+  it('does not render the local zip fallback card for the regular mod route', async () => {
+    render(<AddModPage modpackId="alpha" onBack={vi.fn()} />);
+
+    await act(async () => {
+      vi.advanceTimersByTime(500);
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByTestId('guided-content-local-fallback')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Import local .zip' })).toBeNull();
   });
 });

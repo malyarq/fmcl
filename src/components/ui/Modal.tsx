@@ -11,6 +11,7 @@ interface ModalProps {
     bodyClassName?: string;
     bodyProps?: Omit<React.HTMLAttributes<HTMLDivElement>, 'children' | 'className' | 'id'>;
     bodyRef?: React.Ref<HTMLDivElement>;
+    closeDisabled?: boolean;
 }
 
 const FOCUSABLE_SELECTOR = [
@@ -99,6 +100,7 @@ export const Modal: React.FC<ModalProps> = ({
     bodyClassName,
     bodyProps,
     bodyRef,
+    closeDisabled = false,
 }) => {
     const dialogRef = useRef<HTMLDivElement>(null);
     const lastFocusedElementRef = useRef<HTMLElement | null>(null);
@@ -106,6 +108,10 @@ export const Modal: React.FC<ModalProps> = ({
     const contentId = useId();
     const prefersReducedMotion = useReducedMotionState(isOpen);
     const requestClose = useCallback(() => {
+        if (closeDisabled) {
+            return;
+        }
+
         const previousFocused = lastFocusedElementRef.current;
 
         onClose();
@@ -117,7 +123,7 @@ export const Modal: React.FC<ModalProps> = ({
                 }
             }, 0);
         }
-    }, [onClose]);
+    }, [closeDisabled, onClose]);
 
     const animationClasses = useMemo(() => ({
         overlay: prefersReducedMotion ? '' : 'animate-in fade-in duration-200',
@@ -251,6 +257,7 @@ export const Modal: React.FC<ModalProps> = ({
                             type="button"
                             onClick={requestClose}
                             aria-label="Close dialog"
+                            disabled={closeDisabled}
                             className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 ease-out hover:scale-105 hover:bg-background/70 hover:text-foreground active:scale-95"
                         >
                             <X className="h-4 w-4" />

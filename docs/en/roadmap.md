@@ -1,56 +1,33 @@
 # FriendLauncher Roadmap
 
-## Current Milestone
+## Latest Release
 
-- Milestone: `v0.5.0`
-- Theme: Experience Reinvention And Brand Reset
-- Status: Phase 24 complete, closeout verified, ready for milestone closure
-- Last updated: `2026-04-19`
+- Release: `v0.6.0`
+- Theme: Feedback-Driven Stabilization And Expansion
+- Status: shipped on `2026-04-21`
+- Current planning state: no active milestone; the next milestone starts from this shipped baseline
 
-## Why This Milestone Exists
+## Why v0.6.0 Shipped
 
-FMCL had reached the point where bugs were no longer only about correctness. The launcher was drifting visually and behaviorally: the shell could hide content, brand usage contradicted itself, dense routes fought for hierarchy, themes and locales were inconsistent, and degraded states still looked like technical leftovers. The `v0.5.0` milestone resets those surfaces into one deliberate, reviewable product language without expanding scope into new features.
+`v0.6.0` was a feedback-driven stabilization release. FMCL already had the broad launcher shape it needed, but the shipped product still felt noisy or untruthful in several critical places: shell behavior, modpack workflows, settings ownership, and content-management boundaries. This release removed that weirdness first and only then allowed one bounded capability expansion.
 
-## Verified Closeout Surface
+## What Landed
 
-The current closeout matrix is anchored on the browser-backed `manual-verification.html` seam and the committed `npm run test:visual:closeout` lane. The owned Phase 24 review set covers:
+- The launcher shell now behaves more like a native desktop surface and stops competing with platform chrome or loud fallback branding.
+- Modpack browsing, details, dependency state, and create/add flows are grounded in one smaller, more truthful runtime story.
+- Settings now use one explicit appearance-state contract, one lighter shell hierarchy, and controls that explain their real scope instead of overclaiming broad personalization.
+- Resource-pack and shader entry now route into the same in-app guided browser, that route carries its own explicit local `.zip` fallback, shader surfaces distinguish supported, needs-setup, unsupported, and unverified runtime states without overclaiming compatibility, and guided failures stay on-surface with named recovery paths.
 
-- `manual-verification.html?view=phase-24-home-closeout`
-- `manual-verification.html?view=phase-24-modpacks-closeout`
-- `manual-verification.html?view=phase-24-degraded-closeout`
-- `manual-verification.html?view=phase-24-theme-dark`
-- `manual-verification.html?view=phase-24-theme-light`
-- `manual-verification.html?view=phase-24-locale-en`
-- `manual-verification.html?view=phase-24-locale-ru`
-
-Together those views verify:
-
-- shared shell clearance and route-owned CTA hierarchy on the launcher home and modpack flows
-- dense modpack browse and details surfaces under realistic desktop pressure
-- representative degraded route and secondary-content failures on shipped productized fallback surfaces
-- explicit dark/light comparison on the same shell-owned appearance surface
-- explicit EN/RU comparison with visible dates, counts, translated copy, and secondary content
-
-## Phase Status
+## Phase Outcomes
 
 | Phase | Status | Outcome |
 |-------|--------|---------|
-| 19. Baseline Stability, Scope, And Shell Invariants | Complete | Shared safe-zone shell contract, one primary action per context, and flow-first dense-route geometry |
-| 20. Brand System, Shared Tokens, And Surface Migration | Complete | Canonical brand contract, shared launcher tokens, and neutral artwork fallback policy |
-| 21. Dense Surface IA, Navigation, And CTA Hierarchy | Complete | Readable dense catalog and details routes plus truthful runtime summaries for create and edit flows |
-| 22. Theme Truth And Interaction-State Fidelity | Complete | Legible dark/light states, consistent accent propagation, and locale-faithful metadata formatting |
-| 23. Fallback, Error, And Placeholder Productization | Complete | Productized empty/degraded/error states and a recovery-first fatal crash surface |
-| 24. Verification, Locale, And Release Truth | Complete | Curated closeout matrix, strict screenshot regression lane, release-truth sync, and final closeout verification |
+| 28. Product Restraint And Native Shell Truth | Shipped | Native shell behavior, restrained identity, scoped update signals, and truthful reopen-state recovery |
+| 29. Modpack Workflow Simplification And Runtime Truth | Shipped | Compact catalog controls, cleaner details hierarchy, config-first runtime truth, and stable async create/add recovery |
+| 30. Settings Truth And Honest Personalization | Shipped | Deterministic preset runtime, compact settings shell, honest control placement, and bounded preset-adjacent customization |
+| 31. Guided Content Browsers And Capability Expansion | Shipped | Canonical guided entry, explicit in-route local `.zip` fallback, honest shader capability guidance, named recoverable failure states, and bounded-scope closeout proof |
 
-## What `v0.5.0` Delivers
+## Residual Notes
 
-- The launcher shell now behaves like one coherent desktop frame instead of a stack of route-local spacing hacks.
-- Brand usage is deliberate again: launcher surfaces, onboarding, and fallback states share one restrained visual language.
-- Modpack flows stay readable under dense data, long labels, and constrained desktop widths without duplicating or hiding primary actions.
-- Theme and locale differences are reviewable on purpose, not only discoverable by accident.
-- Missing data, failed loads, and fatal crashes now communicate recovery-safe product truth instead of raw internals or decorative placeholders.
-- Release proof is no longer anecdotal: it lives in a reusable manual matrix plus a committed Playwright screenshot lane.
-
-## Bounded Residuals
-
-- The production build still emits the existing large renderer chunk warning. It remains explicitly non-blocking at closeout because the final gate is green and no user-facing regression in this milestone depends on it.
+- The milestone audit passed with all scoped requirements satisfied.
+- Browser-based manual walkthroughs were not rerun during this archive closeout, so real-shell sampling remains release-signoff debt rather than an implementation gap.

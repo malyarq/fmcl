@@ -15,7 +15,7 @@ function hasClassFragment(container: HTMLElement, fragment: string): boolean {
 }
 
 describe('Modpack details flow layout', () => {
-  it('renders route actions as a card-based flow section instead of an inline footer strip', () => {
+  it('renders route actions as a compact support rail instead of a competing card stack', () => {
     render(
       <ModpackDetailsActions
         onLaunch={vi.fn()}
@@ -35,7 +35,9 @@ describe('Modpack details flow layout', () => {
     const actionsSection = playButton.closest('section');
 
     expect(actionsSection).toBeTruthy();
-    expect(actionsSection?.className).toContain('surface-card');
+    expect(actionsSection?.className).toContain('rounded-2xl');
+    expect(actionsSection?.className).toContain('border');
+    expect(actionsSection?.className).not.toContain('surface-card');
     expect(actionsSection?.className).not.toContain('surface-inline mx-6');
   });
 

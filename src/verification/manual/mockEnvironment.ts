@@ -1,11 +1,14 @@
 import type { FriendLauncherApi, ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts';
+import type { ResourcePackAcquisitionResult } from '@shared/contracts/resourcePacks';
+import type { ShaderPack, ShaderPackAcquisitionResult } from '@shared/contracts/shaders';
 import type { Account, Mirror, ModpackManifest, ModpackMetadata, StatisticsOverview } from '@shared/types';
 import type { ModEntry } from '@shared/types/mods';
 import type { ResourcePack } from '@shared/types/resourcePack';
 import type { ModpackConfig } from '../../contexts/instances/types';
 import type { Screenshot } from '../../../electron/services/screenshots/screenshotService';
+import { APP_ICON_PATH } from '../../app/assets/branding';
 
-const ICON_PATH = '/icon.png';
+const ICON_PATH = APP_ICON_PATH;
 const DESKTOP_PATH = '/Users/manual/Desktop';
 const PHASE_17_POLISH_VIEW = 'phase-17-polish';
 const PHASE_21_BROWSER_DENSITY_VIEW = 'phase-21-browser-density';
@@ -22,6 +25,8 @@ const PHASE_24_THEME_DARK_VIEW = 'phase-24-theme-dark';
 const PHASE_24_THEME_LIGHT_VIEW = 'phase-24-theme-light';
 const PHASE_24_LOCALE_EN_VIEW = 'phase-24-locale-en';
 const PHASE_24_LOCALE_RU_VIEW = 'phase-24-locale-ru';
+const GUIDED_RESOURCEPACKS_RECOVERY_VIEW = 'guided-resourcepacks-recovery';
+const GUIDED_SHADERS_RECOVERY_VIEW = 'guided-shaders-recovery';
 
 const PHASE_21_DETAIL_VIEWS = new Set([PHASE_21_DETAILS_DENSITY_VIEW, PHASE_21_RUNTIME_EDIT_VIEW]);
 const PHASE_24_CLOSEOUT_VIEWS = new Set([
@@ -174,6 +179,83 @@ const browserResults: ModpackSearchResultItem[] = [
   },
 ];
 
+type ManualContentType = 'mod' | 'resourcepack' | 'shader';
+
+interface ManualModSearchResult {
+  platform: 'curseforge' | 'modrinth';
+  projectId: string;
+  title: string;
+  description?: string;
+  iconUrl?: string;
+  downloads?: number;
+}
+
+interface ManualModSearchQuery {
+  contentType?: ManualContentType;
+  query?: string;
+  offset?: number;
+  limit?: number;
+}
+
+interface ManualModVersionQuery {
+  contentType?: ManualContentType;
+  projectId: string;
+}
+
+interface ManualModVersion {
+  platform: 'curseforge' | 'modrinth';
+  versionId: string;
+  name: string;
+  versionNumber?: string;
+  mcVersions: string[];
+  loaders: string[];
+}
+
+interface ManualModInstallRequest {
+  contentType?: ManualContentType;
+  platform?: 'curseforge' | 'modrinth';
+  projectId: string;
+  versionId: string;
+}
+
+const guidedResourcePackResults: ManualModSearchResult[] = [
+  {
+    platform: 'modrinth',
+    projectId: 'painterly-depth-reloaded',
+    title: 'Painterly Depth Reloaded',
+    description: 'Painterly proof fixture for guided resource-pack browsing and local fallback review.',
+    iconUrl: undefined,
+    downloads: 22_410,
+  },
+  {
+    platform: 'modrinth',
+    projectId: 'grid-notes-ultra',
+    title: 'Grid Notes Ultra',
+    description: 'Secondary resource-pack fixture with enough metadata to keep the guided route from collapsing into generic mod copy.',
+    iconUrl: ICON_PATH,
+    downloads: 14_128,
+  },
+];
+
+const guidedShaderResults: ManualModSearchResult[] = [
+  {
+    platform: 'modrinth',
+    projectId: 'photon-bloom-lite',
+    title: 'Photon Bloom Lite',
+    description: 'Shader proof fixture for capability guidance and runtime-blocked recovery review.',
+    iconUrl: undefined,
+    downloads: 31_904,
+  },
+  {
+    platform: 'modrinth',
+    projectId: 'signal-bloom-night',
+    title: 'Signal Bloom Night',
+    description: 'Secondary shader fixture for the guided-browser proof route.',
+    iconUrl: ICON_PATH,
+    downloads: 12_604,
+  },
+];
+
 const phase21BrowserResults: ModpackSearchResultItem[] = [
   {
     platform: 'modrinth',
@@ -305,6 +387,108 @@ function getBrowserResultsForView(view: string): ModpackSearchResultItem[] {
   }
 
   return results;
+}
+
+function getGuidedContentResults(contentType: ManualContentType): ManualModSearchResult[] {
+  switch (contentType) {
+    case 'resourcepack':
+      return structuredClone(guidedResourcePackResults);
+    case 'shader':
+      return structuredClone(guidedShaderResults);
+    case 'mod':
+    default:
+      return [
+        {
+          platform: 'modrinth',
+          projectId: 'sodium',
+          title: 'Sodium',
+          description: 'Client performance improvements',
+          iconUrl: ICON_PATH,
+          downloads: 10_000,
+        },
+      ];
+  }
+}
+
+function createGuidedContentSearchResponse(query: ManualModSearchQuery) {
+  const contentType = query.contentType ?? 'mod';
+  const availableResults = getGuidedContentResults(contentType);
+  const normalizedQuery = query.query?.trim().toLowerCase() ?? '';
+  const filtered = normalizedQuery
+    ? availableResults.filter((item) => item.title.toLowerCase().includes(normalizedQuery))
+    : availableResults;
+  const offset = query.offset ?? 0;
+  const limit = query.limit ?? 20;
+
+  return {
+    items: filtered.slice(offset, offset + limit),
+    total: filtered.length,
+  };
+}
+
+function getGuidedContentVersions(query: ManualModVersionQuery): ManualModVersion[] {
+  const contentType = query.contentType ?? 'mod';
+  const baseVersion =
+    contentType === 'resourcepack'
+      ? {
+          versionId: `${query.projectId}-34`,
+          name: 'Pack Format 34',
+          versionNumber: '34',
+          mcVersions: ['1.20.1'],
+          loaders: [],
+        }
+      : contentType === 'shader'
+        ? {
+            versionId: `${query.projectId}-1.20.1`,
+            name: 'Runtime-ready build',
+            versionNumber: '1.20.1',
+            mcVersions: ['1.20.1'],
+            loaders: ['forge', 'fabric'],
+          }
+        : {
+            versionId: 'sodium-1.0.0',
+            name: 'Sodium 1.0.0',
+            versionNumber: '1.0.0',
+            mcVersions: ['1.20.1'],
+            loaders: ['fabric'],
+          };
+
+  return [
+    {
+      platform: 'modrinth',
+      ...baseVersion,
+    },
+  ];
+}
+
+function createResourcePackAcquisitionResult(view: string): ResourcePackAcquisitionResult {
+  if (view === GUIDED_RESOURCEPACKS_RECOVERY_VIEW) {
+    return {
+      status: 'partial-success',
+      importedFileNames: ['Painterly Depth Reloaded.zip'],
+      issues: [
+        {
+          fileName: 'Broken Painterly Draft.zip',
+          status: 'invalid-archive',
+          message: 'The selected archive does not contain a valid resource pack payload.',
+        },
+      ],
+    };
+  }
+
+  return {
+    status: 'success',
+    importedFileNames: ['Painterly Depth Reloaded.zip'],
+    issues: [],
+  };
+}
+
+function createShaderAcquisitionResult(): ShaderPackAcquisitionResult {
+  return {
+    status: 'success',
+    importedFileNames: ['Photon Bloom Lite.zip'],
+    issues: [],
+  };
 }
 
 const modpackVersions: ModpackVersionDescriptor[] = [
@@ -649,12 +833,29 @@ const phase21DenseResourcePacks: ResourcePack[] = [
   },
 ];
 
+const shaderPacks: ShaderPack[] = [
+  {
+    fileName: 'photon-bloom-lite.zip',
+    name: 'Photon Bloom Lite',
+    isActive: true,
+  },
+  {
+    fileName: 'signal-bloom-night.zip',
+    name: 'Signal Bloom Night',
+    isActive: false,
+  },
+];
+
 function getResourcePacksForView(view: string): ResourcePack[] {
   if (view === PHASE_21_SECONDARY_DENSITY_VIEW) {
     return structuredClone(phase21DenseResourcePacks);
   }
 
   return structuredClone(resourcePacks);
+}
+
+function getShadersForView(): ShaderPack[] {
+  return structuredClone(shaderPacks);
 }
 
 type ManualState = {
@@ -678,6 +879,16 @@ function getConfigsForView(view: string): Record<string, ModpackConfig> {
       },
       memory: { maxMb: 8192, minMb: 6144 },
       updatedAt: '2026-04-18T08:30:00.000Z',
+    };
+  }
+
+  if (view === GUIDED_SHADERS_RECOVERY_VIEW) {
+    configs.alpha = {
+      ...configs.alpha,
+      game: {
+        ...configs.alpha.game,
+        useOptiFine: true,
+      },
     };
   }
 
@@ -992,37 +1203,66 @@ export function installManualVerificationEnvironment() {
     importCode: async () => structuredClone(sharedManifest),
   };
 
+  const resourcePacksApi = {
+    list: async () => getResourcePacksForView(view),
+    enable: async () => ({ ok: true }),
+    disable: async () => ({ ok: true }),
+    reorder: async () => ({ ok: true }),
+    import: async () => createResourcePackAcquisitionResult(view),
+    delete: async () => ({ ok: true }),
+    openFolder: async () => ({ ok: true }),
+    add: async () => createResourcePackAcquisitionResult(view),
+  };
+
+  const shadersApi = {
+    list: async () => getShadersForView(),
+    setActive: async () => undefined,
+    disable: async () => undefined,
+    delete: async () => true,
+    openFolder: async () => undefined,
+    add: async () => createShaderAcquisitionResult(),
+  };
+
   const modsApi = {
-    searchMods: async () => {
+    searchMods: async (query: unknown) => {
       if (view === PHASE_24_DEGRADED_CLOSEOUT_VIEW) {
         throw new Error('[modsIPC] searchMods failed: ${file.jarVersion}');
       }
 
-      return {
-        items: [
-          {
-            platform: 'modrinth' as const,
-            projectId: 'sodium',
-            title: 'Sodium',
-            description: 'Client performance improvements',
-            iconUrl: ICON_PATH,
-            downloads: 10_000,
-          },
-        ],
-        total: 1,
-      };
+      return createGuidedContentSearchResponse(query as ManualModSearchQuery);
     },
-    getModVersions: async () => [
-      {
-        platform: 'modrinth' as const,
-        versionId: 'sodium-1.0.0',
-        name: 'Sodium 1.0.0',
-        versionNumber: '1.0.0',
-        mcVersions: ['1.20.1'],
-        loaders: ['fabric'],
-      },
-    ],
-    installModFile: async () => ({ ok: true }),
+    getModVersions: async (query: unknown) => getGuidedContentVersions(query as ManualModVersionQuery),
+    installModFile: async (request: unknown) => {
+      const parsedRequest = request as ManualModInstallRequest;
+
+      if (view === GUIDED_RESOURCEPACKS_RECOVERY_VIEW && parsedRequest.contentType === 'resourcepack') {
+        return {
+          status: 'failure',
+          issues: [
+            {
+              fileName: 'Painterly Depth Reloaded.zip',
+              status: 'failure',
+              message: 'FMCL could not add this resource pack right now.',
+            },
+          ],
+        };
+      }
+
+      if (view === GUIDED_SHADERS_RECOVERY_VIEW && parsedRequest.contentType === 'shader') {
+        return {
+          status: 'runtime-blocked',
+          issues: [
+            {
+              fileName: 'Photon Bloom Lite.zip',
+              status: 'runtime-blocked',
+              message: 'Shader runtime is blocked for the current modpack fixture.',
+            },
+          ],
+        };
+      }
+
+      return { ok: true };
+    },
   };
 
   const statisticsApi = {
@@ -1093,6 +1333,10 @@ export function installManualVerificationEnvironment() {
       if (channel === 'dialog:getDesktopPath') {
         return DESKTOP_PATH as T;
       }
+      if (channel === 'modpacks:resolvePath') {
+        const [modpackId] = _args as [string];
+        return `/mock/.minecraft/instances/${modpackId}` as T;
+      }
       if (channel === 'datapacks:list') {
         return structuredClone(installedDatapacks) as T;
       }
@@ -1119,8 +1363,26 @@ export function installManualVerificationEnvironment() {
       ) {
         return { ok: true } as T;
       }
+      if (channel === 'resourcePacks:add' || channel === 'resourcePacks:import') {
+        return createResourcePackAcquisitionResult(view) as T;
+      }
+      if (channel === 'shaders:list') {
+        return getShadersForView() as T;
+      }
+      if (channel === 'shaders:disable' || channel === 'shaders:setActive' || channel === 'shaders:openFolder') {
+        return undefined as T;
+      }
+      if (channel === 'shaders:delete') {
+        return true as T;
+      }
+      if (channel === 'shaders:add') {
+        return createShaderAcquisitionResult() as T;
+      }
       throw new Error(`Unhandled manual verification ipc channel: ${channel}`);
     },
+    on: () => undefined,
+    off: () => undefined,
+    send: () => undefined,
   };
 
   const windowControls = {
@@ -1139,10 +1401,13 @@ export function installManualVerificationEnvironment() {
     mirrors: mirrorsApi,
     share: shareApi,
     windowControls,
+    resourcePacks: resourcePacksApi,
+    shaders: shadersApi,
     ipcRenderer,
   } as unknown as FriendLauncherApi;
 
   window.api = api;
+  (window as typeof window & { ipcRenderer?: typeof ipcRenderer }).ipcRenderer = ipcRenderer;
   window.modpacks = modpacksApi as unknown as Window['modpacks'];
   window.account = accountApi as unknown as Window['account'];
   window.externalLinks = externalLinksApi as unknown as Window['externalLinks'];

@@ -3,6 +3,29 @@ import { toIpcError } from './ipcError';
 type ModsApi = Window['mods'];
 type NamespacedModsApi = Window['api']['mods'];
 
+export type GuidedContentInstallStatus =
+  | 'success'
+  | 'duplicate'
+  | 'invalid-archive'
+  | 'runtime-blocked'
+  | 'failure';
+
+export type GuidedContentInstallIssueStatus = Exclude<GuidedContentInstallStatus, 'success'>;
+
+export interface GuidedContentInstallIssue {
+  fileName: string;
+  status: GuidedContentInstallIssueStatus;
+  message: string;
+}
+
+export interface GuidedContentInstallResult {
+  status: GuidedContentInstallStatus;
+  destination?: string;
+  filename?: string;
+  usedUrl?: string;
+  issues: GuidedContentInstallIssue[];
+}
+
 type LegacyLauncherMods = Partial<{
   searchMods: (query: Parameters<ModsApi['searchMods']>[0]) => ReturnType<ModsApi['searchMods']>;
   getModVersions: (query: Parameters<ModsApi['getModVersions']>[0]) => ReturnType<ModsApi['getModVersions']>;
@@ -73,3 +96,11 @@ export const modsIPC = {
 
 export type ModsIPC = typeof modsIPC;
 
+export function isGuidedContentInstallResult(value: unknown): value is GuidedContentInstallResult {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return typeof record.status === 'string' && Array.isArray(record.issues);
+}

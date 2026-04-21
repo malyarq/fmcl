@@ -1,5 +1,31 @@
 import type { ResourcePack } from '../types/resourcePack';
 
+export type ResourcePackAcquisitionStatus =
+    | 'success'
+    | 'partial-success'
+    | 'cancelled'
+    | 'duplicate'
+    | 'invalid-archive'
+    | 'runtime-blocked'
+    | 'failure';
+
+export type ResourcePackAcquisitionIssueStatus = Exclude<
+    ResourcePackAcquisitionStatus,
+    'success' | 'partial-success' | 'cancelled'
+>;
+
+export interface ResourcePackAcquisitionIssue {
+    fileName: string;
+    status: ResourcePackAcquisitionIssueStatus;
+    message: string;
+}
+
+export interface ResourcePackAcquisitionResult {
+    status: ResourcePackAcquisitionStatus;
+    importedFileNames: string[];
+    issues: ResourcePackAcquisitionIssue[];
+}
+
 export interface ResourcePacksAPI {
     /**
      * List all resource packs in the instance's resourcepacks folder.
@@ -30,7 +56,7 @@ export interface ResourcePacksAPI {
     /**
      * Import a resource pack file
      */
-    import: (filePath: string, instancePath?: string) => Promise<{ ok: boolean }>;
+    import: (filePath: string, instancePath?: string) => Promise<ResourcePackAcquisitionResult>;
 
     /**
      * Delete a resource pack file
@@ -41,5 +67,5 @@ export interface ResourcePacksAPI {
      * Open the resource packs folder in the OS file explorer
      */
     openFolder: (instancePath?: string) => Promise<{ ok: boolean }>;
-    add: (instancePath?: string) => Promise<boolean>;
+    add: (instancePath?: string) => Promise<ResourcePackAcquisitionResult>;
 }

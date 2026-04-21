@@ -14,6 +14,71 @@ export interface ModpackUpdateInfo {
   sourceId: string;
 }
 
+type ModpackUpdateTarget = {
+  id: string;
+  name: string;
+  metadata?: ModpackMetadata;
+};
+
+export async function resolveModpackUpdateInfo(
+  target: ModpackUpdateTarget,
+  minecraftPath: string,
+): Promise<ModpackUpdateInfo | null> {
+  const metadata = target.metadata ?? await modpacksIPC.getMetadata(target.id, minecraftPath);
+
+  if (!metadata.source || metadata.source === 'local' || !metadata.sourceId) {
+    return null;
+  }
+
+  let versions: ModpackVersionDescriptor[];
+
+  if (metadata.source === 'curseforge') {
+    versions = await modpacksIPC.getCurseForgeVersions(Number(metadata.sourceId));
+  } else if (metadata.source === 'modrinth') {
+    versions = await modpacksIPC.getModrinthVersions(metadata.sourceId);
+  } else {
+    return null;
+  }
+
+  if (versions.length === 0) {
+    return null;
+  }
+
+  const latest = versions[0];
+  const currentVersionId = metadata.sourceVersionId || metadata.version;
+
+  if (latest.versionId === currentVersionId) {
+    return null;
+  }
+
+  return {
+    modpackId: target.id,
+    modpackName: target.name,
+    currentVersion: metadata.version || 'unknown',
+    latestVersion: latest,
+    source: metadata.source,
+    sourceId: metadata.sourceId,
+  };
+}
+
+export async function resolveInstalledModpackUpdates(
+  modpacks: ModpackUpdateTarget[],
+  minecraftPath: string,
+): Promise<ModpackUpdateInfo[]> {
+  const results = await Promise.all(
+    modpacks.map(async (modpack) => {
+      try {
+        return await resolveModpackUpdateInfo(modpack, minecraftPath);
+      } catch (error) {
+        console.error(`Error checking updates for modpack ${modpack.id}:`, error);
+        return null;
+      }
+    }),
+  );
+
+  return results.filter((update): update is ModpackUpdateInfo => update !== null);
+}
+
 export function useModpackUpdates(autoCheck = false) {
   const { modpacks } = useModpack();
   const { minecraftPath } = useSettings();
@@ -22,51 +87,14 @@ export function useModpackUpdates(autoCheck = false) {
 
   const checkUpdates = async () => {
     setChecking(true);
-    const availableUpdates: ModpackUpdateInfo[] = [];
 
     try {
-      for (const modpack of modpacks) {
-        try {
-          const metadata: ModpackMetadata = await modpacksIPC.getMetadata(modpack.id, minecraftPath);
-          
-          if (metadata.source && metadata.source !== 'local' && metadata.sourceId) {
-            let versions: ModpackVersionDescriptor[];
-            
-            if (metadata.source === 'curseforge') {
-              versions = await modpacksIPC.getCurseForgeVersions(Number(metadata.sourceId));
-            } else if (metadata.source === 'modrinth') {
-              versions = await modpacksIPC.getModrinthVersions(metadata.sourceId);
-            } else {
-              continue;
-            }
-
-            if (versions.length > 0) {
-              const latest = versions[0];
-              const currentVersionId = metadata.sourceVersionId || metadata.version;
-
-              if (latest.versionId !== currentVersionId) {
-                availableUpdates.push({
-                  modpackId: modpack.id,
-                  modpackName: modpack.name,
-                  currentVersion: metadata.version || 'unknown',
-                  latestVersion: latest,
-                  source: metadata.source,
-                  sourceId: metadata.sourceId,
-                });
-              }
-            }
-          }
-        } catch (error) {
-          console.error(`Error checking updates for modpack ${modpack.id}:`, error);
-          // Continue checking other modpacks
-        }
-      }
+      const availableUpdates = await resolveInstalledModpackUpdates(modpacks, minecraftPath);
+      setUpdates(availableUpdates);
+      return availableUpdates;
     } finally {
       setChecking(false);
     }
-
-    setUpdates(availableUpdates);
-    return availableUpdates;
   };
 
   useEffect(() => {

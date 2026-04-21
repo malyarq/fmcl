@@ -14,14 +14,15 @@ import { useAppUpdater } from './features/updater/hooks/useAppUpdater';
 import { useModSupportedVersions } from './features/launcher/hooks/useModSupportedVersions';
 import { useVersions } from './features/launcher/hooks/useVersions';
 import { getVersionHint } from './utils/minecraftVersions';
-import { useModpackUpdates } from './features/modpacks/hooks/useModpackUpdates';
 import { WelcomePage } from './components/onboarding/WelcomePage';
 import { OnboardingTour, type TourStep } from './components/onboarding/OnboardingTour';
 
 import { ConsoleWindow } from './components/ConsoleWindow';
 
+export const APP_STARTUP_PENDING_TEST_ID = 'app-startup-pending';
+
 function MainApp() {
-  const { config: modpackConfig } = useModpack();
+  const { config: modpackConfig, isReady: modpackReady } = useModpack();
   const { showSettings, showMultiplayer, openSettings, closeSettings, openMultiplayer, closeMultiplayer } = useAppOverlays();
   const { iconPath } = useAppIcon();
   const {
@@ -53,9 +54,6 @@ function MainApp() {
 
   // App updater with auto-check on mount
   const { status: updateStatus, updateInfo, installUpdate } = useAppUpdater(true);
-
-  // Modpack updates checker
-  const { updates: modpackUpdates } = useModpackUpdates(true);
 
   const {
     nickname,
@@ -94,8 +92,8 @@ function MainApp() {
   const stableOnLaunch = useCallback(() => onLaunchRef.current(), []);
 
   const currentHint = useMemo(
-    () => getVersionHint(modpackConfig?.runtime?.minecraft || '1.12.2', t, getAccentStyles('text')),
-    [modpackConfig?.runtime?.minecraft, t, getAccentStyles]
+    () => (version ? getVersionHint(version, t, getAccentStyles('text')) : null),
+    [version, t, getAccentStyles]
   );
 
   // Tour steps — порядок: классика, модпаки, настройки, мультиплеер, никнейм, версия, модлоадеры, запуск
@@ -158,6 +156,10 @@ function MainApp() {
     },
   ], [t]);
 
+  if (!modpackReady) {
+    return <div data-testid={APP_STARTUP_PENDING_TEST_ID} className="h-full w-full" />;
+  }
+
   return (
     <>
       {showWelcome && (
@@ -181,9 +183,6 @@ function MainApp() {
           status: updateStatus,
           info: updateInfo,
           onInstall: installUpdate,
-        }}
-        modpackUpdates={{
-          updates: modpackUpdates,
         }}
         overlays={{
           showSettings,

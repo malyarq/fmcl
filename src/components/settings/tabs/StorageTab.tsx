@@ -17,9 +17,10 @@ interface StorageSettingsProps {
     t: (key: string) => string;
     getAccentStyles: (type: 'bg' | 'text' | 'border') => { className?: string; style?: React.CSSProperties };
     modpacksIPC: ModpacksIPC;
+    embedded?: boolean;
 }
 
-export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentStyles, modpacksIPC }) => {
+export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentStyles, modpacksIPC, embedded = false }) => {
     const confirm = useConfirm();
     const [stats, setStats] = useState<StorageStats | null>(null);
     const [loading, setLoading] = useState(false);
@@ -83,24 +84,26 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
     return (
         <div className="grid gap-4 xl:grid-cols-[0.85fr_1.15fr]">
             <div className="space-y-4">
-                <div className="surface-card space-y-3 p-5">
-                    <div className="kicker-label">{t('settings.storage.title')}</div>
-                    <h3 className="text-lg font-bold text-foreground">{t('settings.storage.title')}</h3>
-                    <p className="text-sm text-secondary">{t('settings.storage.description')}</p>
-                </div>
+                {!embedded && (
+                    <div className="settings-section-shell settings-section-copy p-5">
+                        <div className="kicker-label">{t('settings.storage.title')}</div>
+                        <h3 className="text-lg font-bold text-foreground">{t('settings.storage.title')}</h3>
+                        <p className="settings-embedded-copy">{t('settings.storage.description')}</p>
+                    </div>
+                )}
 
-                <div className="surface-card space-y-4 p-5">
+                <div className="settings-section-shell settings-section-stack p-5">
                     {error && (
                         <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200" role="alert">
                             {error}
                         </div>
                     )}
 
-                    <div className="space-y-1">
-                        <h4 className="text-sm font-semibold text-foreground">
+                    <div className="settings-section-copy">
+                        <h4 className="settings-embedded-title">
                             {t('settings.storage.cleanup')}
                         </h4>
-                        <p className="text-sm text-secondary">
+                        <p className="settings-embedded-copy">
                             {t('settings.storage.cleanupDesc')}
                         </p>
                     </div>
@@ -126,8 +129,8 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
             </div>
 
             {stats && (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div className="surface-card p-4">
+                <div className="settings-stat-grid">
+                    <div className="settings-stat-card">
                         <div className="mb-1 text-sm text-secondary">
                             {t('settings.storage.totalSize')}
                         </div>
@@ -136,7 +139,7 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
                         </div>
                     </div>
 
-                    <div className="surface-card p-4">
+                    <div className="settings-stat-card">
                         <div className="mb-1 text-sm text-secondary">
                             {t('settings.storage.savedSize')}
                         </div>
@@ -148,7 +151,7 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
                         </div>
                     </div>
 
-                    <div className="surface-card p-4">
+                    <div className="settings-stat-card">
                         <div className="mb-1 text-sm text-secondary">
                             {t('settings.storage.storedFiles')}
                         </div>
@@ -157,7 +160,7 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
                         </div>
                     </div>
 
-                    <div className="surface-card p-4">
+                    <div className="settings-stat-card">
                         <div className="mb-1 text-sm text-secondary">
                             {t('settings.storage.totalLogicalFiles')}
                         </div>

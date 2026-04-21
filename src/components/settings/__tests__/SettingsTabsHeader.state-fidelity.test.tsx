@@ -35,7 +35,7 @@ describe('SettingsTabsHeader state fidelity', () => {
 
     expect(downloadsTab.getAttribute('data-state')).toBe('active');
     expect(downloadsTab.getAttribute('aria-selected')).toBe('true');
-    expect(downloadsTab.className).toContain('bg-card/90');
+    expect(downloadsTab.className).toContain('bg-card/92');
     expect(downloadsTab.style.backgroundColor).toContain('18, 52, 86');
     expect(downloadsTab.style.borderColor).toContain('18, 52, 86');
     expect(downloadsLabel.style.color).toBe('rgb(18, 52, 86)');
