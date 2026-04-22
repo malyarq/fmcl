@@ -18,9 +18,12 @@ import { BrandMark } from './branding/BrandMark';
 import { queueInitialModpackView } from '../features/modpacks/hooks/useModpackNavigation';
 import {
   buildModpackRuntimeSummary,
-  getModpackRuntimeLoaderLabel,
 } from '../features/modpacks/hooks/useModpackRuntimeSummary';
 import { useModSupportedVersions } from '../features/launcher/hooks/useModSupportedVersions';
+import {
+  buildRuntimeDependencyState,
+  getRuntimeDependencyLoaderLabel,
+} from './sidebar/modpackRuntimeDependencies';
 
 interface Particle {
   id: string;
@@ -158,18 +161,21 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
   const runtimeSummary = buildModpackRuntimeSummary({
     config: modpackConfig,
     metadata,
-    fallback: {
-      minecraftVersion: launch.version,
-      modLoader: {
-        type: launch.loaderType,
-        version: modpackConfig?.runtime?.modLoader?.version,
-      },
-      useOptiFine: modpackConfig?.game?.useOptiFine,
-    },
     optiFineVersions: optiFineVersions.length > 0 ? optiFineVersions : undefined,
   });
-  const loaderLabel = getModpackRuntimeLoaderLabel(runtimeSummary, t);
-  const showMods = Boolean(runtimeSummary.modLoader);
+  const classicRuntime = buildRuntimeDependencyState({
+    minecraftVersion: launch.version,
+    modLoaderType: launch.loaderType,
+    modLoaderVersion:
+      modpackConfig?.runtime?.modLoader?.type === launch.loaderType
+        ? modpackConfig?.runtime?.modLoader?.version
+        : undefined,
+    useOptiFine: modpackConfig?.game?.useOptiFine,
+    isOptiFineSupported:
+      optiFineVersions.length > 0 ? optiFineVersions.includes(launch.version) : true,
+  });
+  const loaderLabel = getRuntimeDependencyLoaderLabel(classicRuntime, t);
+  const showMods = Boolean(classicRuntime.modLoader);
   const reducedMotion = disableAnimations || prefersReducedMotion;
   const launchStage = runtime.launchStage ?? (runtime.isLaunching ? 'launching' : 'idle');
   const launchStatusTitle = runtime.statusText || getLaunchStageTitle(launchStage, t);
@@ -194,7 +200,7 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
     currentModpack?.name ||
     modpackConfig?.name ||
     (t('ui_mode.simple') || 'Classic');
-  const heroSubtitle = `${runtimeSummary.minecraftVersion || launch.version} • ${loaderLabel}`;
+  const heroSubtitle = `${classicRuntime.minecraftVersion} • ${loaderLabel}`;
   const advancedSettingsTitle = translateWithFallback(t, 'dashboard.advanced_settings', 'Advanced settings');
   const advancedSettingsContent = (
     <GameTab
@@ -554,13 +560,13 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
       )}
 
       <section className="w-full max-w-2xl mb-6" aria-label={t('dashboard.info_panel') || 'Current settings'}>
-        <h2 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-secondary">
           {t('dashboard.current_settings') || 'Current settings'}
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <InfoCard
             label={t('modpacks.minecraft_version') || 'Minecraft version'}
-            value={runtimeSummary.minecraftVersion || launch.version}
+            value={classicRuntime.minecraftVersion}
           />
           <InfoCard
             label={t('general.modloader') || 'Modloader'}
@@ -606,16 +612,16 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
         storageKey="classic_content_expanded"
         className="w-full max-w-2xl mt-4"
       >
-        <ContentManagerSection
-          minecraftPath={effectivePath}
-          t={t}
-          showMods={showMods}
-          modpackId={modpackId}
-          defaultMCVersion={runtimeSummary.minecraftVersion || launch.version}
-          defaultLoader={runtimeSummary.modLoader?.type ?? 'vanilla'}
-          runtimeSummary={runtimeSummary}
-          onOpenGuidedContent={handleOpenGuidedContent}
-        />
+          <ContentManagerSection
+            minecraftPath={effectivePath}
+            t={t}
+            showMods={showMods}
+            modpackId={modpackId}
+            defaultMCVersion={classicRuntime.minecraftVersion}
+            defaultLoader={classicRuntime.modLoader?.type ?? 'vanilla'}
+            runtimeSummary={runtimeSummary}
+            onOpenGuidedContent={handleOpenGuidedContent}
+          />
       </CollapsibleSection>
 
       {/* Go to Modpacks */}

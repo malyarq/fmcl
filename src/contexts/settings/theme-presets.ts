@@ -1,18 +1,35 @@
-import type { CustomThemeConfig, Theme, ThemePresetId } from './types';
+import type { AccentColor, CustomThemeConfig, Theme, ThemePresetId } from './types';
 
 export interface ThemePreset {
     id: ThemePresetId;
     labelKey: string;
     fallbackLabel: string;
     defaultTheme: Theme;
+    accentDefaults: Record<Theme, AccentColor>;
     themes: Record<Theme, CustomThemeConfig>;
 }
 
-type ThemeTranslator = (key: string) => string;
+type ThemeTranslator = (key: string, params?: Record<string, string | number>) => string;
 
-function translateWithFallback(t: ThemeTranslator, key: string, fallback: string): string {
-    const translated = t(key);
-    return translated === key ? fallback : translated;
+function translateWithFallback(
+    t: ThemeTranslator,
+    key: string,
+    fallback: string,
+    params?: Record<string, string | number>,
+): string {
+    const translated = t(key, params);
+    if (translated !== key) {
+        return translated;
+    }
+
+    if (!params) {
+        return fallback;
+    }
+
+    return Object.entries(params).reduce(
+        (text, [paramKey, value]) => text.replace(new RegExp(`{{${paramKey}}}`, 'g'), String(value)),
+        fallback,
+    );
 }
 
 function createPresetColors(colors: NonNullable<CustomThemeConfig['colors']>): CustomThemeConfig {
@@ -63,6 +80,10 @@ export const THEME_PRESETS: ThemePreset[] = [
         labelKey: 'settings.theme_preset_default',
         fallbackLabel: 'Default',
         defaultTheme: 'dark',
+        accentDefaults: {
+            light: 'emerald',
+            dark: 'emerald',
+        },
         themes: {
             light: createPresetColors({
                 background: '#f4f4f5',
@@ -87,6 +108,10 @@ export const THEME_PRESETS: ThemePreset[] = [
         labelKey: 'settings.theme_preset_midnight',
         fallbackLabel: 'Midnight',
         defaultTheme: 'dark',
+        accentDefaults: {
+            light: 'blue',
+            dark: 'purple',
+        },
         themes: {
             light: createPresetConfig({
                 colors: {
@@ -129,6 +154,10 @@ export const THEME_PRESETS: ThemePreset[] = [
         labelKey: 'settings.theme_preset_forest',
         fallbackLabel: 'Forest',
         defaultTheme: 'dark',
+        accentDefaults: {
+            light: 'emerald',
+            dark: 'emerald',
+        },
         themes: {
             light: createPresetConfig({
                 colors: {
@@ -171,6 +200,10 @@ export const THEME_PRESETS: ThemePreset[] = [
         labelKey: 'settings.theme_preset_light_plus',
         fallbackLabel: 'Light+',
         defaultTheme: 'light',
+        accentDefaults: {
+            light: 'orange',
+            dark: 'blue',
+        },
         themes: {
             light: createPresetConfig({
                 colors: {
@@ -213,6 +246,10 @@ export const THEME_PRESETS: ThemePreset[] = [
         labelKey: 'settings.theme_preset_navy',
         fallbackLabel: 'Navy',
         defaultTheme: 'dark',
+        accentDefaults: {
+            light: 'blue',
+            dark: 'purple',
+        },
         themes: {
             light: createPresetConfig({
                 colors: {
@@ -285,13 +322,17 @@ export function getThemePresetSummary(
         return undefined;
     }
 
-    const modeLabel = translateWithFallback(
+    const modeLabel = getThemeModeLabel(t, theme);
+
+    return `${presetLabel} · ${modeLabel}`;
+}
+
+export function getThemeModeLabel(t: ThemeTranslator, theme: Theme) {
+    return translateWithFallback(
         t,
         theme === 'light' ? 'settings.theme_light' : 'settings.theme_dark',
         theme === 'light' ? 'Light' : 'Dark',
     );
-
-    return `${presetLabel} · ${modeLabel}`;
 }
 
 export function getThemePresetConfig(
@@ -299,6 +340,13 @@ export function getThemePresetConfig(
     theme: Theme,
 ) {
     return getThemePreset(presetId)?.themes[theme];
+}
+
+export function getThemePresetAccent(
+    presetId: ThemePresetId | string | null | undefined,
+    theme: Theme,
+) {
+    return getThemePreset(presetId)?.accentDefaults[theme];
 }
 
 export function inferThemePresetId(

@@ -1,11 +1,10 @@
 import React from 'react';
 import { cn } from '../../../utils/cn';
 import { LazyImage } from '../../ui/LazyImage';
-import type { ModpackConfig } from '../../../contexts/ModpackContext';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import {
-  buildModpackRuntimeSummary,
   getModpackRuntimeLoaderLabel,
+  type ModpackRuntimeSummary,
 } from '../../../features/modpacks/hooks/useModpackRuntimeSummary';
 
 export type ModpackDetailsTab = 'info' | 'mods' | 'resourcepacks' | 'shaders' | 'worlds' | 'screenshots' | 'settings';
@@ -13,7 +12,7 @@ export type ModpackDetailsTab = 'info' | 'mods' | 'resourcepacks' | 'shaders' | 
 export interface ModpackDetailsHeaderProps {
   modpackName: string;
   metadata: ModpackMetadata | null;
-  effectiveConfig: ModpackConfig | null;
+  runtimeSummary: Pick<ModpackRuntimeSummary, 'minecraftVersion' | 'modLoader'>;
   activeTab: ModpackDetailsTab;
   onTabChange: (tab: ModpackDetailsTab) => void;
   t: (key: string) => string;
@@ -41,17 +40,13 @@ const DETAIL_TABS: ReadonlyArray<{
 export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
   modpackName,
   metadata,
-  effectiveConfig,
+  runtimeSummary,
   activeTab,
   onTabChange,
   t,
   getAccentStyles,
   getAccentHex,
 }) => {
-  const runtimeSummary = buildModpackRuntimeSummary({
-    config: effectiveConfig,
-    metadata,
-  });
   const effectiveLoader = runtimeSummary.modLoader;
   const loaderLabel = getModpackRuntimeLoaderLabel(runtimeSummary, t);
   const metadataEntries = [
@@ -144,18 +139,17 @@ export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
   };
 
   return (
-    <div className="min-w-0 space-y-3">
-      <div className="flex flex-col gap-4 md:flex-row md:items-start">
+    <div className="min-w-0 space-y-2.5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
         <LazyImage
           src={metadata?.iconUrl}
           alt={modpackName}
-          fallbackKind={!metadata?.source || metadata.source === 'local' ? 'app-icon' : 'content-artwork'}
-          className="h-14 w-14 self-start rounded-2xl border border-border/70 object-cover sm:h-16 sm:w-16"
+          fallbackKind="content-artwork"
+          className="h-14 w-14 shrink-0 self-start rounded-2xl border border-border/70 object-cover sm:h-16 sm:w-16"
         />
-        <div className="min-w-0 flex-1 space-y-3">
-          <div className="space-y-1.5">
-            <div className="kicker-label">{t('modpacks.details_title') || 'Modpack details'}</div>
-            <h3 className="text-xl font-bold leading-tight text-foreground sm:text-2xl">{modpackName}</h3>
+        <div className="min-w-0 flex-1 space-y-2.5">
+          <div className="space-y-1">
+            <h2 className="text-xl font-bold leading-tight text-foreground sm:text-2xl">{modpackName}</h2>
           </div>
           {metadataEntries.length > 0 && (
             <div className="flex flex-wrap gap-1.5" data-testid="modpack-details-metadata">
@@ -171,7 +165,7 @@ export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
       </div>
 
       <div
-        className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4"
+        className="flex flex-wrap gap-2"
         role="tablist"
         aria-label={t('modpacks.details_title') || 'Modpack details'}
         aria-orientation="horizontal"
@@ -194,7 +188,7 @@ export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
               tabIndex={isActive ? 0 : -1}
               data-state={isActive ? 'active' : 'inactive'}
               className={cn(
-                'w-full rounded-xl border px-3 py-2.5 text-left text-sm font-medium leading-5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                'min-w-[8.75rem] flex-1 rounded-xl border px-3 py-2 text-left text-sm font-medium leading-5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:flex-none',
                 isActive
                   ? cn(
                       'text-foreground shadow-sm',

@@ -102,6 +102,8 @@ describe('StatisticsTab', () => {
 
     expect((await screen.findAllByText('stats.description')).length).toBeGreaterThan(0);
     await screen.findByRole('heading', { name: 'stats.popular_modpacks' });
+    const summaryShell = screen.getByRole('button', { name: 'stats.export' }).closest('.settings-section-shell, .surface-muted');
+    expect(summaryShell?.contains(screen.getByText('stats.total_play_time'))).toBe(true);
     expect((await screen.findAllByText('Alpha Pack')).length).toBeGreaterThan(0);
     await screen.findByRole('heading', { name: 'stats.usage_trend' });
     expect(screen.getByRole('list', { name: 'stats.popular_modpacks' })).toBeTruthy();

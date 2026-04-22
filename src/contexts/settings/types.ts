@@ -69,6 +69,7 @@ export type AccentStyleResult = { className?: string; style?: React.CSSPropertie
 
 export type AppearanceSettingsState = {
   accentColor: AccentColor;
+  accentColorSource?: 'preset' | 'user';
   customTheme: CustomThemeConfig;
   theme: Theme;
   themePresetId: ThemePresetId | null;

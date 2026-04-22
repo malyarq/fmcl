@@ -9,6 +9,7 @@ export interface ModpackCatalogControlItem {
 }
 
 interface ModpackCatalogControlsProps {
+  header?: React.ReactNode;
   searchLabel: string;
   searchControl: React.ReactNode;
   controls: ModpackCatalogControlItem[];
@@ -18,11 +19,13 @@ interface ModpackCatalogControlsProps {
   status?: React.ReactNode;
   footer?: React.ReactNode;
   rootTestId?: string;
+  headerTestId?: string;
   controlsTestId?: string;
   className?: string;
 }
 
 export const ModpackCatalogControls: React.FC<ModpackCatalogControlsProps> = ({
+  header,
   searchLabel,
   searchControl,
   controls,
@@ -32,17 +35,20 @@ export const ModpackCatalogControls: React.FC<ModpackCatalogControlsProps> = ({
   status,
   footer,
   rootTestId,
+  headerTestId,
   controlsTestId,
   className,
 }) => {
   return (
     <div
-      className={cn('surface-muted mb-4 space-y-3 p-4', className)}
+      className={cn('surface-muted mb-4 space-y-2.5 p-4', className)}
       role="search"
       aria-label={searchLabel}
       data-testid={rootTestId}
       data-catalog-controls="shared"
     >
+      {header && <div data-testid={headerTestId}>{header}</div>}
+
       <div
         className="flex flex-col gap-3 lg:flex-row lg:items-end"
         data-testid={controlsTestId}

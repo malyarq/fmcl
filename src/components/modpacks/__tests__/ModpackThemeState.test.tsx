@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ComponentProps } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
@@ -172,7 +172,7 @@ describe('Modpack route theme state', () => {
     refreshMock.mockResolvedValue(undefined);
   });
 
-  it('applies shared active-state tokens to browser favorites and history toggles', async () => {
+  it('applies shared active-state tokens to browser favorites', async () => {
     renderBrowser();
 
     const favoriteButton = await screen.findByRole('button', { name: 'Add to favorites: Alpha Pack' });
@@ -183,15 +183,6 @@ describe('Modpack route theme state', () => {
     expect(activeFavoriteButton.className).toContain('state-soft-bg-token');
     expect(activeFavoriteButton.className).toContain('state-soft-border-token');
     expect(activeFavoriteButton.querySelector('svg')?.getAttribute('class')).toContain('state-title-token');
-
-    const historyButton = screen.getByRole('button', { name: 'History' });
-    fireEvent.click(historyButton);
-
-    await waitFor(() => {
-      expect(historyButton.getAttribute('data-state')).toBe('active');
-    });
-    expect(historyButton.className).toContain('state-soft-bg-token');
-    expect(historyButton.className).toContain('state-soft-border-token');
   });
 
   it('marks the selected installed modpack with the shared active surface contract', async () => {

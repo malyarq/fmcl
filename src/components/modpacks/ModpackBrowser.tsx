@@ -13,7 +13,7 @@ import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import { dialogIPC } from '../../services/ipc/dialogIPC';
 import { MINECRAFT_VERSIONS } from '../../utils/minecraftVersionsList';
 import { DEFAULT_MODPACK_BROWSER_STATE, normalizeModpackBrowserState, type ModpackBrowserState } from '../../features/modpacks/hooks/useModpackNavigation';
-import { ArrowLeft, History, Import, Star } from 'lucide-react';
+import { ArrowLeft, FolderOpen, History, Import, Star } from 'lucide-react';
 import { DegradedStateView } from '../layout/DegradedStateView';
 import { toDisplayErrorMessage } from '../../utils/displayError';
 import { ModpackCatalogControls } from './ModpackCatalogControls';
@@ -322,61 +322,10 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
   const hasActiveFilters =
     hasSearchFilters
     || sortBy !== DEFAULT_MODPACK_BROWSER_STATE.sortBy;
-  const showingStart = totalResults > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0;
-  const showingEnd = totalResults > 0 ? showingStart + paginatedResults.length - 1 : 0;
-  const formattedShowingStart = formatNumber(showingStart);
-  const formattedShowingEnd = formatNumber(showingEnd);
   const formattedTotalResults = formatNumber(totalResults);
   const formattedCurrentPage = formatNumber(currentPage);
   const formattedTotalPages = formatNumber(Math.max(totalPages, 1));
   const recentHistory = useMemo(() => history.slice(0, 3), [history]);
-  const remoteCatalogStatus = useMemo(() => {
-    if (searchError) {
-      return [t('degraded.error_label')];
-    }
-
-    const items = [
-      totalResults > 0
-        ? translateWithFallback(
-            t,
-            'modpacks.results_summary',
-            `Showing ${formattedShowingStart}-${formattedShowingEnd} of ${formattedTotalResults}`,
-            { start: formattedShowingStart, end: formattedShowingEnd, total: formattedTotalResults },
-          )
-        : translateWithFallback(t, 'modpacks.results_summary_empty', 'No results yet'),
-    ];
-
-    if (totalPages > 1) {
-      items.push(
-        translateWithFallback(
-          t,
-          'modpacks.results_page_summary',
-          `Page ${formattedCurrentPage} of ${formattedTotalPages}`,
-          { current: formattedCurrentPage, total: formattedTotalPages },
-        ),
-      );
-    }
-
-    if (recentHistory.length > 0) {
-      items.push(
-        `${translateWithFallback(t, 'modpacks.recently_viewed', 'Recently viewed')}: ${formatNumber(recentHistory.length)}`,
-      );
-    }
-
-    return items;
-  }, [
-    formattedCurrentPage,
-    formattedShowingEnd,
-    formattedShowingStart,
-    formattedTotalPages,
-    formattedTotalResults,
-    formatNumber,
-    recentHistory.length,
-    searchError,
-    t,
-    totalPages,
-    totalResults,
-  ]);
   const browserErrorTitle = t('error.inline_fallback');
   const browserErrorDescription = searchError
     ? (() => {
@@ -439,9 +388,6 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
 
   const renderModpackCard = useCallback((modpack: ModpackSearchResultItem) => {
     const isFavorited = isFavorite(modpack);
-    const providerLabel = modpack.platform === 'curseforge'
-      ? translateWithFallback(t, 'modpacks.platform_curseforge', 'CurseForge')
-      : translateWithFallback(t, 'modpacks.platform_modrinth', 'Modrinth');
     const minecraftVersion = resolveResultMinecraftVersion(modpack, filterMCVersion);
     const updatedLabel = formatDateLabel(modpack.dateModified ?? modpack.dateCreated, formatDate);
     const favoritesActionLabel = isFavorited
@@ -458,7 +404,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
         onClick={() => {
           void handleModpackClick(modpack);
         }}
-        className="surface-card relative flex min-h-[17rem] cursor-pointer flex-col p-4 transition-colors hover:border-border-active hover:bg-card focus-within:ring-2 focus-within:ring-[rgb(var(--accent-main))] focus-within:ring-offset-2 focus-within:ring-offset-background"
+        className="surface-card relative flex min-h-[16rem] cursor-pointer flex-col p-4 transition-colors hover:border-border-active hover:bg-card focus-within:ring-2 focus-within:ring-[rgb(var(--accent-main))] focus-within:ring-offset-2 focus-within:ring-offset-background"
       >
         <div
           role="button"
@@ -516,26 +462,16 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
               className="h-16 w-16 rounded-2xl border border-border/70 object-cover"
             />
             <div className="min-w-0 flex-1">
-              <div className="mb-2 flex flex-wrap items-center gap-2 pr-8">
-                <span className={cn(
-                  'rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.12em]',
-                  modpack.platform === 'curseforge'
-                    ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
-                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                )}>
-                  {providerLabel}
-                </span>
-              </div>
-              <h4 className="truncate font-semibold text-foreground">
+              <h4 className="truncate pr-8 font-semibold text-foreground">
                 {modpack.title}
               </h4>
             </div>
           </div>
 
           {(minecraftVersion || updatedLabel) && (
-            <div className="grid gap-2 text-xs text-secondary sm:grid-cols-2">
+            <div className="flex flex-wrap gap-x-6 gap-y-3 text-xs text-secondary">
               {minecraftVersion && (
-                <div className="rounded-2xl border border-border/70 bg-background/72 px-3 py-2">
+                <div className="min-w-[8rem]">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                     {translateWithFallback(t, 'modpacks.minecraft_version', 'Minecraft Version')}
                   </div>
@@ -545,7 +481,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
                 </div>
               )}
               {updatedLabel && (
-                <div className="rounded-2xl border border-border/70 bg-background/72 px-3 py-2">
+                <div className="min-w-[8rem]">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                     {translateWithFallback(t, 'modpacks.updated', 'Updated')}
                   </div>
@@ -561,6 +497,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
             <Button
               variant="primary"
               size="sm"
+              geometry="catalog-primary"
               onClick={() => {
                 void handleModpackClick(modpack);
               }}
@@ -568,6 +505,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
               style={getAccentStyles('bg').style}
               aria-label={`${translateWithFallback(t, 'modpacks.open_details', 'Open details')}: ${modpack.title}`}
             >
+              <FolderOpen className="h-4 w-4" />
               {translateWithFallback(t, 'modpacks.open_details', 'Open details')}
             </Button>
           </div>
@@ -579,100 +517,68 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Header with back button, title, platform tabs, import */}
-      <div className="border-b border-border/70 bg-card/78 px-6 py-4 backdrop-blur-md">
-        <div className="flex min-w-0 flex-wrap items-center gap-4">
+      <div className="border-b border-border/70 bg-card/78 px-6 py-3 backdrop-blur-md">
         <Button
           variant="secondary"
           size="sm"
           onClick={onBack}
-          className="flex items-center gap-2 shrink-0"
+          className="inline-flex items-center gap-2"
         >
           <ArrowLeft className="h-4 w-4" />
           {t('general.back') || 'Назад'}
         </Button>
-        <div className="min-w-0 flex-1">
-          <div className="kicker-label">{t('modpacks.browser')}</div>
-          <h2 className="text-xl font-bold text-foreground shrink-0">
-            {t('modpacks.browser')}
-          </h2>
-          <p className="mt-1 text-sm text-secondary">
-            {translateWithFallback(
-              t,
-              'modpacks.browser_desc',
-              'Browse remote packs, reopen recent installs, or import an archive directly.'
-            )}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center justify-end gap-3">
-          <div className="min-w-0 rounded-2xl border border-border/70 bg-background/72 px-4 py-3 text-right">
-            <div className="flex flex-wrap items-center justify-end gap-2">
-              <span
-                className={cn(
-                  'rounded-full px-3 py-1 text-xs font-semibold text-white',
-                  getAccentStyles('bg').className
-                )}
-                style={getAccentStyles('bg').style}
-              >
-                {translateWithFallback(t, 'modpacks.platform_modrinth', 'Modrinth')}
-              </span>
-              <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
-                {translateWithFallback(t, 'modpacks.provider_curseforge_unavailable', 'CurseForge browse unavailable')}
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-secondary">
-              {translateWithFallback(
-                t,
-                'modpacks.provider_curseforge_hint',
-                'CurseForge installs can still enter through imported archives or shared codes.'
-              )}
-            </p>
-          </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleImport}
-            className="shrink-0 ml-2"
-          >
-            <Import className="h-4 w-4" />
-            {t('modpacks.import') || 'Импорт'}
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => setShowHistory(!showHistory)}
-            aria-pressed={showHistory}
-            data-state={showHistory ? 'active' : 'inactive'}
-            className={cn(
-              'shrink-0 ml-2',
-              showHistory
-                ? cn(
-                  'border-border bg-card/90 text-foreground',
-                  getAccentStyles('soft-bg').className,
-                  getAccentStyles('soft-border').className,
-                  getAccentStyles('title').className,
-                )
-                : undefined
-            )}
-            style={showHistory ? {
-              ...getAccentStyles('soft-bg').style,
-              ...getAccentStyles('soft-border').style,
-              ...getAccentStyles('title').style,
-            } : undefined}
-            title={t('modpacks.history_tooltip') || 'История просмотров'}
-          >
-            <History className="h-4 w-4" />
-            {t('modpacks.history') || 'История'}
-          </Button>
-        </div>
-      </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 min-h-0 custom-scrollbar">
         {!showHistory && (
           <ModpackCatalogControls
             rootTestId="remote-modpack-filters"
+            headerTestId="remote-modpack-catalog-header"
             controlsTestId="remote-modpack-filter-controls"
+            header={(
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <h2 className="text-base font-semibold text-foreground">
+                    {t('modpacks.browser')}
+                  </h2>
+                  <span
+                    className={cn(
+                      'rounded-full px-3 py-1 text-xs font-semibold text-white',
+                      getAccentStyles('bg').className,
+                    )}
+                    style={getAccentStyles('bg').style}
+                  >
+                    {translateWithFallback(t, 'modpacks.platform_modrinth', 'Modrinth')}
+                  </span>
+                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-300">
+                    {translateWithFallback(t, 'modpacks.provider_curseforge_unavailable', 'CurseForge browse unavailable')}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2" data-testid="remote-modpack-primary-actions">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    geometry="catalog-primary"
+                    onClick={handleImport}
+                    className="min-h-10 flex-1 justify-center gap-2 px-4 sm:flex-none"
+                  >
+                    <Import className="h-4 w-4 shrink-0" />
+                    {t('modpacks.import') || 'Импорт'}
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    geometry="catalog-primary"
+                    onClick={() => setShowHistory(true)}
+                    className="min-h-10 flex-1 justify-center gap-2 px-4 sm:flex-none"
+                    title={t('modpacks.history_tooltip') || 'История просмотров'}
+                  >
+                    <History className="h-4 w-4 shrink-0" />
+                    {t('modpacks.history') || 'История'}
+                  </Button>
+                </div>
+              </div>
+            )}
             searchLabel={t('modpacks.search') || 'Search modpacks'}
             searchControl={(
               <Input
@@ -767,9 +673,6 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
             activeFilterTokens={activeFilterTokens}
             onReset={hasActiveFilters ? handleResetFilters : undefined}
             resetLabel={translateWithFallback(t, 'modpacks.clear_filters', 'Clear filters')}
-            status={remoteCatalogStatus.map((item) => (
-              <span key={item}>{item}</span>
-            ))}
             footer={recentHistory.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {recentHistory.map((modpack) => (
@@ -808,19 +711,28 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
         {/* History View */}
         {showHistory && (
           <div className="space-y-4">
-            <div className="flex justify-between items-center mb-4">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
               <h3 className="text-lg font-medium text-foreground">
                 {t('modpacks.history') || 'История'} ({formatNumber(history.length)})
               </h3>
-              {history.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
                 <Button
-                  variant="danger"
+                  variant="secondary"
                   size="sm"
-                  onClick={clearHistory}
+                  onClick={() => setShowHistory(false)}
                 >
-                  {t('modpacks.clear_history') || 'Очистить историю'}
+                  {t('modpacks.browser') || 'Браузер модпаков'}
                 </Button>
-              )}
+                {history.length > 0 && (
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={clearHistory}
+                  >
+                    {t('modpacks.clear_history') || 'Очистить историю'}
+                  </Button>
+                )}
+              </div>
             </div>
 
             {history.length === 0 ? (

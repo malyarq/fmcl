@@ -16,7 +16,7 @@ import { ModloaderSection } from '../sidebar/ModloaderSection';
 import { ModpackDependencySummary } from '../sidebar/ModpackDependencySummary';
 import {
   buildRuntimeDependencyState,
-  shouldKeepOptiFineEnabled,
+  getCreateRuntimeDependencyErrorMessage,
 } from '../sidebar/modpackRuntimeDependencies';
 import { OptifineToggle } from '../sidebar/OptifineToggle';
 import { AddModModal } from './AddModModal';
@@ -146,12 +146,13 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
   });
 
   const setLoader = (loader: 'vanilla' | 'forge' | 'fabric' | 'neoforge') => {
+    setError(null);
     setDraft((prev) => ({
       ...prev,
       useForge: loader === 'forge',
       useFabric: loader === 'fabric',
       useNeoForge: loader === 'neoforge',
-      useOptiFine: loader === 'forge' ? prev.useOptiFine : false,
+      useOptiFine: prev.useOptiFine,
     }));
   };
 
@@ -280,7 +281,9 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
         }
       } catch (err) {
         console.error('Error creating modpack:', err);
-        const errorMessage = t('modpacks.create_error') || 'Ошибка при создании модпака';
+        const errorMessage =
+          getCreateRuntimeDependencyErrorMessage(runtimeDependencies, t) ??
+          (t('modpacks.create_error') || 'Ошибка при создании модпака');
         setError(errorMessage);
         toast.error(errorMessage);
       } finally {
@@ -358,7 +361,9 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
         );
         return;
       }
-      const errorMessage = t('modpacks.create_error') || 'Ошибка при создании модпака';
+      const errorMessage =
+        getCreateRuntimeDependencyErrorMessage(runtimeDependencies, t) ??
+        (t('modpacks.create_error') || 'Ошибка при создании модпака');
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -426,7 +431,10 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
       <Textarea
         label={t('modpacks.description') || 'Описание'}
         value={draft.description}
-        onChange={(e) => setDraft((prev) => ({ ...prev, description: e.target.value }))}
+        onChange={(e) => {
+          setError(null);
+          setDraft((prev) => ({ ...prev, description: e.target.value }));
+        }}
         placeholder={t('modpacks.description_placeholder')}
         rows={3}
       />
@@ -442,7 +450,10 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
         <Input
           label={t('modpacks.version')}
           value={draft.version}
-          onChange={(e) => setDraft((prev) => ({ ...prev, version: e.target.value }))}
+          onChange={(e) => {
+            setError(null);
+            setDraft((prev) => ({ ...prev, version: e.target.value }));
+          }}
           placeholder="1.0.0"
         />
 
@@ -450,16 +461,10 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
             label={t('modpacks.minecraft_version')}
             value={draft.minecraftVersion}
             onChange={(e) => {
-              const nextMinecraftVersion = e.target.value;
+              setError(null);
               setDraft((prev) => ({
                 ...prev,
-                minecraftVersion: nextMinecraftVersion,
-                useOptiFine: shouldKeepOptiFineEnabled({
-                  useOptiFine: prev.useOptiFine,
-                  modLoaderType:
-                    prev.useNeoForge ? 'neoforge' : prev.useForge ? 'forge' : prev.useFabric ? 'fabric' : 'vanilla',
-                  isOptiFineSupported: optiFineVersions.includes(nextMinecraftVersion),
-                }),
+                minecraftVersion: e.target.value,
               }));
             }}
           >
@@ -491,7 +496,10 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
         isOptiFineSupported={isOptiFineSupported}
         useForge={draft.useForge}
         useOptiFine={draft.useOptiFine}
-        setUseOptiFine={(val) => setDraft((prev) => ({ ...prev, useOptiFine: val }))}
+        setUseOptiFine={(val) => {
+          setError(null);
+          setDraft((prev) => ({ ...prev, useOptiFine: val }));
+        }}
         t={t}
         getAccentStyles={getAccentStyles}
       />
@@ -575,119 +583,130 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 min-h-0">
-        <div
-          className="mx-auto flex min-h-full max-w-2xl flex-col gap-6"
-          data-testid="modpack-creation-flow"
-        >
-          {/* Progress indicator */}
-          <div className="flex items-center justify-between">
-            {[1, 2, 3].map((step) => (
-              <React.Fragment key={step}>
-                <div className="flex flex-col items-center flex-1">
-                  <div
-                    className={cn(
-                      'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm transition-all',
-                      currentStep === step
-                        ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900'
-                        : currentStep > step
-                          ? 'bg-emerald-500 text-white'
-                          : 'bg-zinc-200 dark:bg-zinc-700 text-zinc-500 dark:text-zinc-400'
+      <div
+        className="flex-1 min-h-0"
+        data-testid="modpack-creation-flow"
+      >
+        <div className="mx-auto flex h-full max-w-2xl min-h-0 flex-col">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 py-6" data-testid="modpack-creation-scroll-region">
+            <div className="flex min-h-full flex-col gap-6 pb-2">
+              {/* Progress indicator */}
+              <div className="flex items-center justify-between">
+                {[1, 2, 3].map((step) => (
+                  <React.Fragment key={step}>
+                    <div className="flex flex-1 flex-col items-center">
+                      <div
+                        className={cn(
+                          'flex h-10 w-10 items-center justify-center rounded-full font-bold text-sm transition-all',
+                          currentStep === step
+                            ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                            : currentStep > step
+                              ? 'bg-emerald-500 text-white'
+                              : 'bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400'
+                        )}
+                        style={
+                          currentStep === step
+                            ? getAccentStyles('bg').style
+                            : undefined
+                        }
+                      >
+                        {currentStep > step ? '✓' : step}
+                      </div>
+                      <div className="mx-auto mt-2 max-w-[4.5rem] text-center text-xs leading-tight text-zinc-500 dark:text-zinc-400">
+                        {step === 1
+                          ? t('wizard.step1_title') || 'Basic Info'
+                          : step === 2
+                            ? t('wizard.step2_title') || 'Version & Loader'
+                            : t('wizard.step3_title') || 'Add mods to the pack'}
+                      </div>
+                    </div>
+                    {step < 3 && (
+                      <div
+                        className={cn(
+                          'mx-2 h-0.5 flex-1 transition-all',
+                          currentStep > step
+                            ? 'bg-emerald-500'
+                            : 'bg-zinc-200 dark:bg-zinc-700'
+                        )}
+                      />
                     )}
-                    style={
-                      currentStep === step
-                        ? getAccentStyles('bg').style
-                        : undefined
-                    }
-                  >
-                    {currentStep > step ? '✓' : step}
-                  </div>
-                  <div className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 text-center leading-tight max-w-[4.5rem] mx-auto">
-                    {step === 1
-                      ? t('wizard.step1_title') || 'Basic Info'
-                      : step === 2
-                        ? t('wizard.step2_title') || 'Version & Loader'
-                        : t('wizard.step3_title') || 'Add mods to the pack'}
-                  </div>
-                </div>
-                {step < 3 && (
-                  <div
-                    className={cn(
-                      'h-0.5 flex-1 mx-2 transition-all',
-                      currentStep > step
-                        ? 'bg-emerald-500'
-                        : 'bg-zinc-200 dark:bg-zinc-700'
-                    )}
-                  />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
+                  </React.Fragment>
+                ))}
+              </div>
 
-          {/* Step content */}
-          <div className="min-h-[300px]">
-            {currentStep === 1 && renderStep1()}
-            {currentStep === 2 && renderStep2()}
-            {currentStep === 3 && renderStep3()}
-          </div>
-
-          {error && !nameError && (
-            <ErrorMessage message={error} />
-          )}
-          {postCommitNotice && (
-            <div
-              className="rounded-2xl border border-amber-500/35 bg-amber-500/12 px-4 py-3 text-sm text-foreground"
-              data-testid="modpack-creation-recovery"
-            >
-              {postCommitNotice}
+              {/* Step content */}
+              <div className="min-h-[300px]">
+                {currentStep === 1 && renderStep1()}
+                {currentStep === 2 && renderStep2()}
+                {currentStep === 3 && renderStep3()}
+              </div>
             </div>
-          )}
+          </div>
 
           <div
-            className="surface-card mt-auto flex flex-col gap-2 p-4 sm:flex-row sm:flex-wrap sm:items-center"
-            data-testid="modpack-creation-actions"
+            className="border-t border-zinc-200/80 bg-background/95 px-6 py-4 backdrop-blur dark:border-zinc-700/80"
+            data-testid="modpack-creation-action-rail"
           >
-            {currentStep > 1 && (
-              <Button variant="secondary" onClick={handleBack} className="w-full sm:w-auto" disabled={creating}>
-                {t('wizard.back') || 'Back'}
-              </Button>
-            )}
-            <div className="hidden sm:block sm:flex-1" />
-            {currentStep < 3 ? (
-              <Button
-                variant="primary"
-                onClick={() => void handleNext()}
-                className="w-full sm:w-auto"
-                disabled={
-                  creating ||
-                  (currentStep === 1 && !canProceedFromStep1) ||
-                  (currentStep === 2 && !canProceedFromStep2) ||
-                  (currentStep === 3 && !canProceedFromStep3)
-                }
-                style={getAccentStyles('bg').style}
-                isLoading={creating && currentStep === 2}
+            <div className="flex flex-col gap-3">
+              {error && !nameError && (
+                <ErrorMessage message={error} />
+              )}
+              {postCommitNotice && (
+                <div
+                  className="rounded-2xl border border-amber-500/35 bg-amber-500/12 px-4 py-3 text-sm text-foreground"
+                  data-testid="modpack-creation-recovery"
+                >
+                  {postCommitNotice}
+                </div>
+              )}
+
+              <div
+                className="surface-card flex flex-col gap-2 p-4 sm:flex-row sm:flex-wrap sm:items-center"
+                data-testid="modpack-creation-actions"
               >
-                {t('wizard.next') || 'Next'}
-              </Button>
-            ) : (
-              <Button
-                variant="primary"
-                onClick={handleCreate}
-                className="w-full sm:w-auto"
-                disabled={creating || !draft.name.trim() || !!nameError}
-                style={getAccentStyles('bg').style}
-                isLoading={creating}
-              >
-                {creating
-                  ? t('modpacks.creating') || 'Создание...'
-                  : step3ModpackId
-                    ? t('wizard.finish') || 'Finish'
-                    : t('modpacks.create')}
-              </Button>
-            )}
-            <Button variant="secondary" onClick={handleClose} className="w-full sm:w-auto" disabled={creating}>
-              {t('general.cancel')}
-            </Button>
+                {currentStep > 1 && (
+                  <Button variant="secondary" onClick={handleBack} className="w-full sm:w-auto" disabled={creating}>
+                    {t('wizard.back') || 'Back'}
+                  </Button>
+                )}
+                <div className="hidden sm:block sm:flex-1" />
+                {currentStep < 3 ? (
+                  <Button
+                    variant="primary"
+                    onClick={() => void handleNext()}
+                    className="w-full sm:w-auto"
+                    disabled={
+                      creating ||
+                      (currentStep === 1 && !canProceedFromStep1) ||
+                      (currentStep === 2 && !canProceedFromStep2) ||
+                      (currentStep === 3 && !canProceedFromStep3)
+                    }
+                    style={getAccentStyles('bg').style}
+                    isLoading={creating && currentStep === 2}
+                  >
+                    {t('wizard.next') || 'Next'}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="primary"
+                    onClick={handleCreate}
+                    className="w-full sm:w-auto"
+                    disabled={creating || !draft.name.trim() || !!nameError}
+                    style={getAccentStyles('bg').style}
+                    isLoading={creating}
+                  >
+                    {creating
+                      ? t('modpacks.creating') || 'Создание...'
+                      : step3ModpackId
+                        ? t('wizard.finish') || 'Finish'
+                        : t('modpacks.create')}
+                  </Button>
+                )}
+                <Button variant="secondary" onClick={handleClose} className="w-full sm:w-auto" disabled={creating}>
+                  {t('general.cancel')}
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

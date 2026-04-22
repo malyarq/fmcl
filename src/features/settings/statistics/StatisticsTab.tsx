@@ -9,6 +9,7 @@ import { dialogIPC } from '../../../services/ipc/dialogIPC';
 import { statisticsIPC } from '../../../services/ipc/statisticsIPC';
 import { DegradedStateView } from '../../../components/layout/DegradedStateView';
 import { toDisplayErrorMessage } from '../../../utils/displayError';
+import { cn } from '../../../utils/cn';
 
 interface StatisticsTabProps {
     embedded?: boolean;
@@ -141,58 +142,62 @@ export const StatisticsTab: React.FC<StatisticsTabProps> = ({ embedded = false }
     const trendPoints = stats.usageTrend.slice(-7);
     const maxTrendLaunches = Math.max(1, ...trendPoints.map((point) => point.launches));
     const maxTrendPlayTime = Math.max(1, ...trendPoints.map((point) => point.playTime));
+    const sectionFrameClassName = embedded
+        ? 'surface-muted settings-section-stack min-w-0 p-5'
+        : 'settings-section-shell settings-section-stack min-w-0 p-5';
 
     return (
         <div className="space-y-4">
-            <div className="settings-section-shell flex flex-col gap-4 p-4 md:flex-row md:items-start md:justify-between">
-                <div className="space-y-1">
-                    {!embedded && (
-                        <div className="kicker-label">{t('settings.tab_statistics')}</div>
-                    )}
-                    <h3 className={embedded ? 'settings-embedded-title' : 'text-lg font-bold text-foreground'}>
-                        {t('stats.global_stats')}
-                    </h3>
-                    <p className="settings-embedded-copy">{t('stats.description')}</p>
-                </div>
-                <Button
-                    onClick={() => void handleExport()}
-                    isLoading={isExporting}
-                    disabled={isExporting}
-                    className="gap-2 md:self-start"
-                >
-                    <Download size={16} />
-                    {isExporting ? t('stats.exporting') : t('stats.export')}
-                </Button>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="settings-stat-card">
-                    <div className="text-sm text-secondary">{t('stats.total_play_time')}</div>
-                    <div className="text-2xl font-bold text-foreground">{formatTime(stats.global.totalPlayTime, formatNumber, durationLabels)}</div>
-                </div>
-                <div className="settings-stat-card">
-                    <div className="text-sm text-secondary">{t('stats.total_launches')}</div>
-                    <div className="text-2xl font-bold text-foreground">{formatNumber(stats.global.totalLaunches)}</div>
-                </div>
-                <div className="settings-stat-card">
-                    <div className="text-sm text-secondary">{t('stats.average_session')}</div>
-                    <div className="text-2xl font-bold text-foreground">{formatTime(averageSessionTime, formatNumber, durationLabels)}</div>
-                </div>
-            </div>
-
-            <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
-                <div className="surface-card space-y-3 p-4">
-                    <div className="space-y-1">
-                        <h4 className="text-sm font-semibold text-foreground">{t('stats.popular_modpacks')}</h4>
-                        <p className="text-sm text-secondary">{t('stats.description')}</p>
+            <div className={sectionFrameClassName}>
+                <div className="settings-section-header">
+                    <div className="settings-section-copy">
+                        {!embedded && (
+                            <div className="kicker-label">{t('settings.tab_statistics')}</div>
+                        )}
+                        <h3 className={embedded ? 'settings-embedded-title' : 'text-lg font-bold text-foreground'}>
+                            {t('stats.global_stats')}
+                        </h3>
+                        {!embedded && (
+                            <p className="settings-embedded-copy">{t('stats.description')}</p>
+                        )}
                     </div>
+                    <Button
+                        onClick={() => void handleExport()}
+                        isLoading={isExporting}
+                        disabled={isExporting}
+                        className="gap-2 sm:w-fit"
+                    >
+                        <Download size={16} />
+                        {isExporting ? t('stats.exporting') : t('stats.export')}
+                    </Button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    <div className="settings-stat-card">
+                        <div className="text-sm text-secondary">{t('stats.total_play_time')}</div>
+                        <div className="text-2xl font-bold text-foreground">{formatTime(stats.global.totalPlayTime, formatNumber, durationLabels)}</div>
+                    </div>
+                    <div className="settings-stat-card">
+                        <div className="text-sm text-secondary">{t('stats.total_launches')}</div>
+                        <div className="text-2xl font-bold text-foreground">{formatNumber(stats.global.totalLaunches)}</div>
+                    </div>
+                    <div className="settings-stat-card">
+                        <div className="text-sm text-secondary">{t('stats.average_session')}</div>
+                        <div className="text-2xl font-bold text-foreground">{formatTime(averageSessionTime, formatNumber, durationLabels)}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
+                <div className="surface-muted settings-section-stack min-w-0 p-5">
+                    <h4 className="text-sm font-semibold text-foreground">{t('stats.popular_modpacks')}</h4>
 
                     <div className="space-y-2" role="list" aria-label={t('stats.popular_modpacks')}>
                         {stats.popularModpacks.slice(0, 5).map((modpack, index) => (
                             <div
                                 key={modpack.instanceId}
                                 role="listitem"
-                                className="surface-muted flex items-center justify-between gap-4 p-3"
+                                className="surface-inline flex items-center justify-between gap-4 p-3"
                             >
                                 <div>
                                     <div className="font-medium text-foreground">
@@ -216,15 +221,12 @@ export const StatisticsTab: React.FC<StatisticsTabProps> = ({ embedded = false }
                     </div>
                 </div>
 
-                <div className="surface-card space-y-3 p-4">
-                    <div className="space-y-1">
-                        <h4 className="text-sm font-semibold text-foreground">{t('stats.usage_trend')}</h4>
-                        <p className="text-sm text-secondary">{t('stats.description')}</p>
-                    </div>
+                <div className="surface-muted settings-section-stack min-w-0 p-5">
+                    <h4 className="text-sm font-semibold text-foreground">{t('stats.usage_trend')}</h4>
 
                     <div className="space-y-3" role="list" aria-label={t('stats.usage_trend')}>
                         {trendPoints.map((point) => (
-                            <div key={point.date} role="listitem" className="surface-muted space-y-2 p-3">
+                            <div key={point.date} role="listitem" className="surface-inline space-y-2 p-3">
                                 <div className="flex items-center justify-between text-sm text-foreground">
                                     <span>{formatTrendDate(point.date, formatDate)}</span>
                                     <span>
@@ -272,22 +274,19 @@ export const StatisticsTab: React.FC<StatisticsTabProps> = ({ embedded = false }
                 </div>
             </div>
 
-            <div className="surface-card space-y-3 p-4">
-                <div className="space-y-1">
-                    <h4 className="text-sm font-semibold text-foreground">{t('stats.instance_stats')}</h4>
-                    <p className="text-sm text-secondary">{t('stats.description')}</p>
-                </div>
+            <div className="surface-muted settings-section-stack min-w-0 p-5">
+                <h4 className="text-sm font-semibold text-foreground">{t('stats.instance_stats')}</h4>
 
                 <div className="space-y-2" role="list" aria-label={t('stats.instance_stats')}>
                     {Object.entries(stats.instances).map(([id, instance]) => (
-                        <div key={id} role="listitem" className="surface-muted flex items-center justify-between gap-4 p-3">
+                        <div key={id} role="listitem" className="surface-inline flex items-center justify-between gap-4 p-3">
                             <div>
                                 <div className="font-medium text-foreground">{instance.name || id}</div>
                                 <div className="text-xs text-secondary">
                                     {t('stats.launches')}: {formatNumber(instance.launches)}
                                 </div>
                             </div>
-                            <div className="font-mono text-foreground">
+                            <div className={cn('font-mono text-foreground', embedded && 'text-right')}>
                                 {formatTime(instance.playTime, formatNumber, durationLabels)}
                             </div>
                         </div>

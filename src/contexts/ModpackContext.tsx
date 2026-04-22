@@ -131,7 +131,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Load classic config when in Classic mode (hidden default instance).
   useEffect(() => {
-    if (!isClassicMode || !rootPath) return;
+    if (!isClassicMode) return;
 
     let cancelled = false;
     fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {

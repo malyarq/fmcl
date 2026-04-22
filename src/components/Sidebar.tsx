@@ -6,7 +6,7 @@ import { useModpack } from '../contexts/ModpackContext';
 import { loadLastGame, formatLastLaunch } from '../features/launch/services/lastGame';
 import type { MCVersion } from '../services/versions/types';
 import type { VersionHint } from '../utils/minecraftVersions';
-import { SidebarHeader } from './sidebar/SidebarHeader';
+import { SIDEBAR_COMPACT_CONTROL_CLASSNAME, SidebarHeader } from './sidebar/SidebarHeader';
 import { NicknameSection } from './sidebar/NicknameSection';
 import { LaunchControls } from './sidebar/LaunchControls';
 import { ModloaderSection } from './sidebar/ModloaderSection';
@@ -16,6 +16,10 @@ import { Select } from './ui/Select';
 import { Tooltip } from './ui/Tooltip';
 import type { LaunchStage } from '../features/launcher/services/launcherService';
 import { useModpackPrimaryActionOwnership } from './modpacks/primaryActionOwnership';
+import {
+    buildRuntimeDependencyState,
+    getRuntimeDependencyLoaderLabel,
+} from './sidebar/modpackRuntimeDependencies';
 
 import { cn } from '../utils/cn';
 
@@ -64,6 +68,20 @@ interface SidebarProps {
     };
 }
 
+function getClassicLoaderType(launch: Pick<SidebarLaunchModel, 'useForge' | 'useFabric' | 'useNeoForge'>) {
+    if (launch.useNeoForge) {
+        return 'neoforge' as const;
+    }
+    if (launch.useForge) {
+        return 'forge' as const;
+    }
+    if (launch.useFabric) {
+        return 'fabric' as const;
+    }
+
+    return 'vanilla' as const;
+}
+
 // Left panel with launch controls and quick settings access.
 const Sidebar = ({
     launch,
@@ -94,6 +112,13 @@ const Sidebar = ({
     const expandedWidthClass = compactMode
         ? 'w-[clamp(15rem,24vw,18rem)] p-3 sm:p-4'
         : 'w-[clamp(16.5rem,28vw,21rem)] p-3.5 sm:p-5';
+    const classicRuntime = buildRuntimeDependencyState({
+        minecraftVersion: launch.version,
+        modLoaderType: getClassicLoaderType(launch),
+        useOptiFine: launch.useOptiFine,
+        isOptiFineSupported: launch.supportedVersions.optiFine.includes(launch.version),
+    });
+    const classicRuntimeLabel = `${classicRuntime.minecraftVersion} • ${getRuntimeDependencyLoaderLabel(classicRuntime, t)}`;
 
     // Memoize OptiFine support check
     // Sidebar now only manages nickname; version and modloader settings are configured per-modpack.
@@ -135,6 +160,19 @@ const Sidebar = ({
                         <h2 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                             {t('sidebar.game_settings') || 'Игровые настройки'}
                         </h2>
+                        {uiMode === 'simple' && (
+                            <div
+                                data-testid="sidebar-classic-runtime-summary"
+                                className="rounded-2xl border border-border/70 bg-card/78 px-3 py-2 shadow-[0_10px_24px_rgba(0,0,0,0.08)]"
+                            >
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-secondary">
+                                    {t('sidebar.current_runtime') || 'Current runtime'}
+                                </p>
+                                <p className="mt-1 text-sm font-semibold text-foreground">
+                                    {classicRuntimeLabel}
+                                </p>
+                            </div>
+                        )}
                         <NicknameSection
                             nickname={launch.nickname}
                             setNickname={launch.setNickname}
@@ -206,10 +244,11 @@ const Sidebar = ({
                     <Button
                         variant="ghost"
                         size="sm"
+                        geometry="compact-control"
                         onClick={actions.onShowMultiplayer}
                         disabled={runtime.isLaunching}
                         aria-label={t('multiplayer.title') || 'Multiplayer'}
-                        className="w-12 h-12 p-0 transition-all duration-500 ease-out scale-100 translate-y-0 opacity-100"
+                        className={SIDEBAR_COMPACT_CONTROL_CLASSNAME}
                         style={{
                             transitionDelay: '100ms',
                         }}
@@ -221,10 +260,11 @@ const Sidebar = ({
                         <Button
                             variant="ghost"
                             size="sm"
+                            geometry="compact-control"
                             onClick={actions.onShowSettings}
                             disabled={runtime.isLaunching}
                             aria-label={t('general.settings') || 'Settings'}
-                            className="w-12 h-12 p-0 transition-all duration-500 ease-out scale-100 translate-y-0 opacity-100"
+                            className={SIDEBAR_COMPACT_CONTROL_CLASSNAME}
                             style={{
                                 transitionDelay: '200ms',
                             }}

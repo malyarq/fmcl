@@ -232,6 +232,9 @@ describe('Add-mod async recovery', () => {
       expect(screen.getByTestId('add-mod-page-notice')).toBeTruthy();
     });
 
+    const notice = screen.getByTestId('add-mod-page-notice');
+    const actionRail = screen.getByTestId('add-mod-page-actions');
+
     expect(addModMock).toHaveBeenCalledTimes(2);
     expect(addModMock).toHaveBeenNthCalledWith(1, 'alpha', {
       platform: 'modrinth',
@@ -243,8 +246,11 @@ describe('Add-mod async recovery', () => {
       projectId: 'iris',
       versionId: 'iris-1.0.0',
     }, '/minecraft');
-    expect(screen.getByTestId('add-mod-page-notice').getAttribute('data-tone')).toBe('warning');
-    expect(screen.getByRole('button', { name: 'Add' })).toHaveProperty('disabled', true);
+    expect(actionRail.contains(notice)).toBe(true);
+    expect(notice.getAttribute('data-tone')).toBe('warning');
+    expect(notice.textContent).toContain('Iris');
+    expect(notice.textContent).toContain('write them into this modpack manifest');
+    expect(screen.getByRole('button', { name: 'Add selected (1)' })).toHaveProperty('disabled', false);
     expect(onBack).not.toHaveBeenCalled();
   });
 });

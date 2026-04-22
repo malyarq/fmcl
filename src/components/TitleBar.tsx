@@ -8,7 +8,6 @@ import { BrandWordmark } from './branding/BrandWordmark';
 export const TITLE_BAR_TEST_ID = 'app-title-bar';
 
 const APP_ICON_PATH = getBrandAssetPath('app-icon');
-const PRODUCT_MARK_PATH = getBrandAssetPath('product-mark');
 
 // Custom draggable title bar with window controls.
 const TitleBar = () => {
@@ -20,7 +19,7 @@ const TitleBar = () => {
             <div
                 data-testid={TITLE_BAR_TEST_ID}
                 data-platform="macos"
-                className="app-drag-region relative z-[100] h-8 shrink-0 select-none border-b border-border/50 bg-background/78 backdrop-blur-lg"
+                className="app-drag-region relative z-[100] h-7 shrink-0 select-none border-b border-border/30 bg-background/52 backdrop-blur-md"
             />
         );
     }
@@ -41,10 +40,8 @@ const TitleBar = () => {
                     className="opacity-80"
                     onError={(e) => {
                         const currentSrc = e.currentTarget.currentSrc || e.currentTarget.src;
-                        if (!isBrandAssetSource(currentSrc, 'product-mark')) {
-                            e.currentTarget.src = isBrandAssetSource(currentSrc, 'app-icon')
-                              ? PRODUCT_MARK_PATH
-                              : APP_ICON_PATH;
+                        if (!isBrandAssetSource(currentSrc, 'app-icon')) {
+                            e.currentTarget.src = APP_ICON_PATH;
                         }
                     }}
                 />

@@ -3,7 +3,6 @@ import { cn } from '../../utils/cn';
 import type { AccentStyleType } from '../../contexts/settings/types';
 import {
   getSettingsPanelId,
-  getSettingsTabDescriptionId,
   getSettingsTabId,
   getSettingsTabLabelId,
   getTranslatedSettingsTabs,
@@ -77,7 +76,7 @@ export function SettingsTabsHeader(props: {
 
   return (
     <div
-      className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3"
+      className="settings-segmented-row settings-tab-row grid-cols-2 md:grid-cols-3 xl:grid-cols-6"
       role="tablist"
       aria-label={t('settings.title')}
       aria-orientation="horizontal"
@@ -88,7 +87,6 @@ export function SettingsTabsHeader(props: {
         const activeBorder = isActive ? getAccentStyles('soft-border') : undefined;
         const activeLabel = isActive ? getAccentStyles('title') : undefined;
         const tabLabelId = getSettingsTabLabelId(tab.id);
-        const tabDescriptionId = getSettingsTabDescriptionId(tab.id);
 
         return (
           <button
@@ -103,14 +101,11 @@ export function SettingsTabsHeader(props: {
             aria-selected={isActive}
             aria-controls={getSettingsPanelId(tab.id)}
             aria-labelledby={tabLabelId}
-            aria-describedby={tabDescriptionId}
             tabIndex={isActive ? 0 : -1}
             data-state={isActive ? 'active' : 'inactive'}
             className={cn(
-              'flex min-h-[4.5rem] flex-col items-start rounded-xl border px-3.5 py-3 text-left transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-              isActive
-                ? 'border-border bg-card/92 text-foreground shadow-[0_10px_24px_rgba(0,0,0,0.12)]'
-                : 'border-border/60 bg-background/72 text-secondary hover:border-[rgb(var(--accent-main)/0.18)] hover:bg-card/82 hover:text-foreground'
+              'settings-segmented-option settings-tab-option w-full text-center',
+              isActive ? 'bg-card/92' : 'bg-transparent'
             )}
             style={
               isActive
@@ -124,21 +119,12 @@ export function SettingsTabsHeader(props: {
             <span
               id={tabLabelId}
               className={cn(
-                'text-sm font-semibold leading-5',
+                'text-sm font-semibold leading-5 normal-case tracking-normal',
                 isActive ? activeLabel?.className ?? 'text-foreground' : 'text-foreground'
               )}
               style={isActive ? activeLabel?.style : undefined}
             >
               {tab.label}
-            </span>
-            <span
-              id={tabDescriptionId}
-              className={cn(
-                'mt-1 text-[11px] leading-4.5',
-                isActive ? 'text-foreground/78' : 'text-secondary'
-              )}
-            >
-              {tab.description}
             </span>
           </button>
         );

@@ -63,15 +63,15 @@ export function ModloaderSection(props: {
 
   return (
     <div className={cn("space-y-2", disabled && "opacity-60 pointer-events-none")} data-tour="modloaders">
-      <label className="text-xs font-medium text-zinc-600 dark:text-zinc-400 uppercase tracking-wider">
+      <label className="text-xs font-medium uppercase tracking-wider text-secondary">
         {t('general.modloader') || 'Modloader'}
       </label>
       {showAllThree && (
-        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+        <p className="text-[11px] text-muted">
           {t('modloaders.loading_hint') || 'Checking available versions in the background. Compatible modloaders will appear within a minute.'}
         </p>
       )}
-      <div className="flex bg-zinc-100/80 dark:bg-zinc-900/50 backdrop-blur-sm p-1 rounded-xl border border-zinc-200/50 dark:border-zinc-700/50 shadow-inner">
+      <div className="flex rounded-xl border border-border/60 bg-background/72 p-1">
         {availableModloaders.map((loader) => {
           const isActive = loader.isActive;
           return (
@@ -89,8 +89,8 @@ export function ModloaderSection(props: {
               className={cn(
                 'flex-1 py-2 text-xs font-bold uppercase rounded-lg transition-all',
                 isActive
-                  ? cn('bg-white/90 dark:bg-zinc-700/90 backdrop-blur-sm shadow-md text-zinc-900 dark:text-white', getAccentStyles('bg').className)
-                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                  ? cn('shadow-md text-foreground', getAccentStyles('bg').className)
+                  : 'text-secondary hover:text-foreground'
               )}
               style={isActive ? getAccentStyles('bg').style : undefined}
             >

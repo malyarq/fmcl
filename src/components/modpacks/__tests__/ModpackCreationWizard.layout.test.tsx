@@ -98,17 +98,23 @@ describe('ModpackCreationWizard flow layout', () => {
     render(<ModpackCreationWizard onBack={vi.fn()} />);
 
     const flow = screen.getByTestId('modpack-creation-flow');
+    const scrollRegion = screen.getByTestId('modpack-creation-scroll-region');
+    const actionRail = screen.getByTestId('modpack-creation-action-rail');
     const actions = screen.getByTestId('modpack-creation-actions');
 
     expect(flow.contains(actions)).toBe(true);
+    expect(scrollRegion.contains(actions)).toBe(false);
+    expect(actionRail.contains(actions)).toBe(true);
+    expect(flow.className).toContain('min-h-0');
+    expect(scrollRegion.className).toContain('overflow-y-auto');
     expect(actions.className).toContain('surface-card');
-    expect(actions.className).not.toContain('sticky');
+    expect(actionRail.className).toContain('border-t');
     expect(screen.getByRole('button', { name: 'Next' }).className).toContain('w-full');
 
     fireEvent.change(screen.getByLabelText('Modpack name'), { target: { value: 'Layout Pack' } });
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
-    expect(flow.contains(screen.getByTestId('modpack-dependency-summary'))).toBe(true);
+    expect(scrollRegion.contains(screen.getByTestId('modpack-dependency-summary'))).toBe(true);
     expect(screen.getByTestId('modpack-dependency-count').textContent).toBe('1');
   });
 });

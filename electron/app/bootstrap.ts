@@ -6,7 +6,7 @@ import { AuthServer } from '../auth/server';
 import { LauncherManager } from '../services/launcher/orchestrator';
 import { SelfUpdater } from '../services/updater/appUpdater';
 import { IPCManager } from '../ipc/ipcManager';
-import { createMainWindow, createConsoleWindow } from '../window/windowManager';
+import { createMainWindow, createConsoleWindow, getNativeWindowIconCandidates } from '../window/windowManager';
 import { createTray } from '../tray/trayManager';
 import { registerLifecycleHandlers } from './lifecycle';
 import { ModPlatformService } from '../services/mods/platform/modPlatformService';
@@ -127,19 +127,8 @@ function createServices(deps: { authServerUrl: string; accountService: AccountSe
   };
 }
 
-function getPlatformIconCandidates(platform: NodeJS.Platform): string[] {
-  switch (platform) {
-    case 'darwin':
-      return ['icon-macos.png', 'icon.png', 'icon.ico'];
-    case 'win32':
-      return ['icon.ico', 'icon-macos.png', 'icon.png'];
-    default:
-      return ['icon.png', 'icon.ico', 'icon-macos.png'];
-  }
-}
-
 function resolveNativeIconPath(vitePublicPath: string): string {
-  for (const iconFileName of getPlatformIconCandidates(process.platform)) {
+  for (const iconFileName of getNativeWindowIconCandidates(process.platform)) {
     const iconPath = path.join(vitePublicPath, iconFileName);
     if (fs.existsSync(iconPath)) {
       return iconPath;

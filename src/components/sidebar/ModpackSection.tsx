@@ -38,8 +38,8 @@ export function ModpackSection() {
   if (!selectedModpack) {
     return (
       <>
-        <div className="p-4 rounded-lg bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-3">
+        <div className="surface-soft rounded-[20px] p-4">
+          <p className="mb-3 text-sm text-secondary">
             {t('modpacks.no_modpack_selected')}
           </p>
           <Button
@@ -65,8 +65,8 @@ export function ModpackSection() {
   }
 
   return (
-    <>
-      <div className="p-4 rounded-lg bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700" data-tour="modpacks">
+      <>
+      <div className="surface-soft rounded-[20px] p-4" data-tour="modpacks">
         <div className="flex items-center gap-3 mb-3">
           <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-xl border border-border/70 bg-background/70">
             <LazyImage
@@ -76,7 +76,7 @@ export function ModpackSection() {
             />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-0.5">
+            <p className="mb-0.5 text-xs text-secondary">
               {t('modpacks.selected')}
             </p>
             <p
@@ -86,7 +86,7 @@ export function ModpackSection() {
               {selectedModpack.name}
             </p>
             {metadata?.version && (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              <p className="text-xs text-secondary">
                 {t('modpacks.version')}: {metadata.version}
               </p>
             )}

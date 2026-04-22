@@ -9,14 +9,11 @@ function createSvgDataUri(svg: string) {
 const MEDIA_FALLBACK_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" fill="none">
   <rect width="160" height="160" rx="32" fill="#151a17"/>
-  <rect x="10" y="10" width="140" height="140" rx="26" fill="#1b231d" stroke="#2e3a31" stroke-width="4"/>
-  <path d="M80 30 116 50 80 69 44 50 80 30Z" fill="#c4d0c2"/>
-  <path d="M44 50 80 69v43L44 93V50Z" fill="#7f9383"/>
-  <path d="M116 50 80 69v43l36-19V50Z" fill="#9aab98"/>
-  <rect x="54" y="93" width="14" height="14" rx="2" fill="#516655"/>
-  <rect x="72" y="85" width="16" height="16" rx="2" fill="#d7e2d4"/>
-  <rect x="91" y="93" width="14" height="14" rx="2" fill="#516655"/>
-  <rect x="36" y="118" width="88" height="8" rx="4" fill="#2c3a30"/>
+  <rect x="12" y="12" width="136" height="136" rx="24" fill="#1a211d" stroke="#2c3630" stroke-width="4"/>
+  <circle cx="55" cy="54" r="10" fill="#708272"/>
+  <path d="M40 109 64 84l19 18 19-29 22 36H40Z" fill="#536555"/>
+  <path d="M45 114h70" stroke="#2f3932" stroke-width="8" stroke-linecap="round"/>
+  <path d="M52 48h56" stroke="#415046" stroke-width="4" stroke-linecap="round" opacity=".65"/>
 </svg>
 `.trim()
 

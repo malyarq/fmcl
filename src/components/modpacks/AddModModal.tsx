@@ -48,12 +48,22 @@ interface ModVersion {
 
 type CheckedEntry = { mod: ModSearchResult; version: ModVersion } | 'loading';
 type FlowNoticeTone = 'warning' | 'error';
+type ModRecoveryStatus = 'install-failure' | 'manifest-failure';
+
+interface ModRecoveryIssue {
+  label: string;
+  status: ModRecoveryStatus;
+}
 
 function getSafeModVersionLabel(version: ModVersion, fallback: string) {
   return sanitizeUiText(
     version.name,
     sanitizeUiText(version.versionNumber, sanitizeUiText(version.versionId, fallback)),
   );
+}
+
+function formatRecoveryItems(labels: string[]): string {
+  return labels.join(', ');
 }
 
 export const AddModModal: React.FC<AddModModalProps> = ({
@@ -80,7 +90,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   const [total, setTotal] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [flowNotice, setFlowNotice] = useState<{ tone: FlowNoticeTone; message: string } | null>(null);
-  const modalBodyRef = useRef<HTMLDivElement>(null);
+  const resultsScrollRef = useRef<HTMLDivElement>(null);
   const searchRequestIdRef = useRef(0);
   const PAGE_SIZE = 20;
 
@@ -129,6 +139,60 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   const debouncedQuery = useDebounce(query, 500);
   const searchErrorDescription =
     t('modpacks.add_mod_search_error_desc') || 'We could not load catalog results right now.';
+
+  const buildModRecoveryNotice = useCallback((params: {
+    issues: ModRecoveryIssue[];
+    addedCount?: number;
+  }): { tone: FlowNoticeTone; message: string } | null => {
+    const { issues, addedCount = 0 } = params;
+
+    if (issues.length === 0) {
+      return null;
+    }
+
+    const grouped = issues.reduce<Record<ModRecoveryStatus, string[]>>((acc, issue) => {
+      acc[issue.status].push(issue.label);
+      return acc;
+    }, {
+      'install-failure': [],
+      'manifest-failure': [],
+    });
+
+    const messageParts: string[] = [];
+
+    if (addedCount > 0) {
+      messageParts.push(
+        (t('modpacks.add_mod_recovery_partial_intro')
+          || 'Added {{added}} mods. The remaining picks stayed selected here so you can retry only the blocked ones.')
+          .replace('{{added}}', String(addedCount)),
+      );
+    }
+
+    if (grouped['install-failure'].length > 0) {
+      messageParts.push(
+        (t('modpacks.add_mod_recovery_install_failure')
+          || 'FMCL could not download or place these mods right now: {{items}}. Retry from this screen or keep browsing.')
+          .replace('{{items}}', formatRecoveryItems(grouped['install-failure'])),
+      );
+    }
+
+    if (grouped['manifest-failure'].length > 0) {
+      messageParts.push(
+        (t('modpacks.add_mod_recovery_manifest_failure')
+          || 'FMCL downloaded these mods but could not write them into this modpack manifest: {{items}}. Retry from this screen before leaving or inspect the manifest if it keeps failing.')
+          .replace('{{items}}', formatRecoveryItems(grouped['manifest-failure'])),
+      );
+    }
+
+    if (messageParts.length === 0) {
+      return null;
+    }
+
+    return {
+      tone: addedCount > 0 ? 'warning' : 'error',
+      message: messageParts.join(' '),
+    };
+  }, [t]);
 
   const searchMods = useCallback(async (offset: number, append: boolean) => {
     const requestId = searchRequestIdRef.current + 1;
@@ -201,7 +265,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   );
 
   const handleScroll = useCallback(() => {
-    const el = modalBodyRef.current;
+    const el = resultsScrollRef.current;
     if (!el || loading || loadingMore) return;
     const { scrollTop, scrollHeight, clientHeight } = el;
     if (scrollTop + clientHeight >= scrollHeight - 100) {
@@ -211,7 +275,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   }, [loading, loadingMore, searchResults.length, total, searchMods]);
 
   useEffect(() => {
-    const el = modalBodyRef.current;
+    const el = resultsScrollRef.current;
     if (!el || loading || loadingMore) return;
     if (searchResults.length === 0 || searchResults.length >= total) return;
 
@@ -295,7 +359,11 @@ export const AddModModal: React.FC<AddModModalProps> = ({
     let added = 0;
     let failed = 0;
     try {
+      const retainedSelections = new Map<string, CheckedEntry>();
+      const recoveryIssues: ModRecoveryIssue[] = [];
+
       for (const { mod, version } of readyToAdd) {
+        let installedToInstance = false;
         try {
           await modsIPC.installModFile({
             platform: mod.platform,
@@ -304,6 +372,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
             instanceId: modpackId,
             rootPath: minecraftPath,
           });
+          installedToInstance = true;
           await modpacksIPC.addMod(modpackId, {
             platform: mod.platform,
             projectId: mod.platform === 'curseforge' ? Number(mod.projectId) : mod.projectId,
@@ -312,10 +381,17 @@ export const AddModModal: React.FC<AddModModalProps> = ({
           added++;
         } catch {
           failed++;
+          const key = `${mod.platform}:${mod.projectId}`;
+          retainedSelections.set(key, { mod, version });
+          recoveryIssues.push({
+            label: mod.title,
+            status: installedToInstance ? 'manifest-failure' : 'install-failure',
+          });
         }
       }
-      setCheckedMods(new Map());
+      setCheckedMods(retainedSelections);
       if (added > 0 && failed === 0) {
+        setCheckedMods(new Map());
         onAdded?.();
         resetTransientState();
         onClose();
@@ -323,23 +399,18 @@ export const AddModModal: React.FC<AddModModalProps> = ({
       }
 
       if (added > 0 && failed > 0) {
-        setFlowNotice({
-          tone: 'warning',
-          message:
-            (t('modpacks.add_mod_partial_recovery') || 'Added {{added}} items, but {{failed}} failed. Review the current results and retry only what you still need.')
-              .replace('{{added}}', String(added))
-              .replace('{{failed}}', String(failed)),
-        });
+        const notice = buildModRecoveryNotice({ issues: recoveryIssues, addedCount: added });
+        if (notice) {
+          setFlowNotice(notice);
+        }
         return;
       }
 
       if (failed > 0) {
-        setFlowNotice({
-          tone: 'error',
-          message:
-            (t('modpacks.add_mod_failed_recovery') || 'Nothing was added. {{failed}} items failed. Review the current results and try again.')
-              .replace('{{failed}}', String(failed)),
-        });
+        const notice = buildModRecoveryNotice({ issues: recoveryIssues });
+        if (notice) {
+          setFlowNotice(notice);
+        }
         toast.error(t('modpacks.add_mod_error') || 'Ошибка при добавлении');
       }
     } finally {
@@ -404,25 +475,10 @@ export const AddModModal: React.FC<AddModModalProps> = ({
         </div>
       }
       className="max-w-3xl"
-      bodyRef={modalBodyRef}
-      bodyProps={{ onScroll: handleScroll }}
+      bodyClassName="flex min-h-0 flex-1 flex-col"
+      bodyProps={{ style: { overflow: 'hidden' } }}
     >
-      <div className="space-y-4">
-        {flowNotice && (
-          <div
-            className={cn(
-              'rounded-2xl border px-4 py-3 text-sm',
-              flowNotice.tone === 'warning'
-                ? 'border-amber-500/35 bg-amber-500/12 text-foreground'
-                : 'border-red-500/35 bg-red-500/12 text-foreground',
-            )}
-            data-testid="add-mod-modal-notice"
-            data-tone={flowNotice.tone}
-          >
-            {flowNotice.message}
-          </div>
-        )}
-
+      <div className="flex h-full min-h-0 flex-col gap-4">
         <div className="surface-muted flex flex-wrap items-center gap-4 p-4 text-sm text-secondary">
           <div className="min-w-0 flex-1">
             <p className="text-xs uppercase tracking-[0.18em] text-muted">
@@ -483,158 +539,180 @@ export const AddModModal: React.FC<AddModModalProps> = ({
           className="w-full"
         />
 
-        {/* Search Results */}
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
-            <LoadingSpinner size="lg" />
-            <p className="text-sm text-secondary">
-              {t('modpacks.loading')}
-            </p>
-          </div>
-        )}
-
-        {!loading && !searchError && searchResults.length > 0 && (
-          <div
-            className="space-y-2"
-            data-testid="add-mod-modal-results"
-          >
-            {searchResults.map((mod) => {
-              const key = `${mod.platform}:${mod.projectId}`;
-              const entry = checkedMods.get(key);
-              const isChecked = entry !== undefined;
-              const isLoading = entry === 'loading';
-              const version = entry !== 'loading' && entry ? entry.version : null;
-              return (
-                <div
-                  key={key}
-                  data-state={isChecked ? 'active' : 'inactive'}
-                  className={cn(
-                    'surface-card flex items-start gap-3 p-3 transition-colors',
-                    isChecked
-                      ? cn(
-                        'border-border bg-card/90',
-                        activeStateBackground.className,
-                        activeStateBorder.className,
-                      )
-                      : 'hover:border-border-active hover:bg-card'
-                  )}
-                  style={isChecked ? {
-                    ...activeStateBackground.style,
-                    ...activeStateBorder.style,
-                  } : undefined}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isChecked}
-                    disabled={isLoading || installing}
-                    onChange={(e) => handleCheckChange(mod, e.target.checked)}
-                    onClick={(e) => e.stopPropagation()}
-                    className={cn(
-                      'mt-1 h-4 w-4 rounded border-border/70 bg-background/84',
-                      getAccentStyles('accent').className,
-                    )}
-                    style={getAccentStyles('accent').style}
-                  />
-                  <LazyImage
-                    src={mod.iconUrl}
-                    alt={mod.title}
-                    className="h-12 w-12 shrink-0 rounded-xl border border-border/70 object-cover"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <h4 className="truncate font-medium text-foreground">
-                      {mod.title}
-                    </h4>
-                    {version && (
-                      <p className="mt-0.5 text-xs text-secondary">
-                        {getSafeModVersionLabel(version, unavailableVersionLabel)} {version.mcVersions[0] && `(${version.mcVersions[0]})`}
-                      </p>
-                    )}
-                    {mod.description && !version && (
-                      <p className="mt-1 line-clamp-2 text-xs text-secondary">
-                        {mod.description}
-                      </p>
-                    )}
-                    {mod.downloads !== undefined && (
-                      <p className="mt-1 text-xs text-secondary">
-                        {t('modpacks.downloads')}: {formatNumber(mod.downloads)}
-                      </p>
-                    )}
-                  </div>
-                  {isLoading && <LoadingSpinner size="sm" className="shrink-0" />}
-                </div>
-              );
-            })}
-            {loadingMore && (
-              <div className="flex justify-center py-4">
-                <LoadingSpinner size="md" />
-              </div>
-            )}
-            {!loadingMore && searchResults.length > 0 && searchResults.length < total && (
-              <p className="py-2 text-center text-xs text-secondary">
-                {t('modpacks.scroll_for_more') || 'Прокрутите вниз для загрузки'}
+        <div
+          ref={resultsScrollRef}
+          className="min-h-[14rem] flex-1 overflow-y-auto pr-1"
+          onScroll={handleScroll}
+          data-testid="add-mod-modal-results-scroll"
+        >
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <LoadingSpinner size="lg" />
+              <p className="text-sm text-secondary">
+                {t('modpacks.loading')}
               </p>
-            )}
-          </div>
-        )}
+            </div>
+          )}
 
-        {!loading && searchError ? (
-          <DegradedStateView
-            variant="error"
-            layout="inline"
-            label={t('degraded.error_label')}
-            title={t('modpacks.add_mod_search_error_title') || 'Unable to search right now'}
-            description={searchError}
-            footer={(
-              <Button variant="secondary" size="sm" onClick={() => void searchMods(0, false)}>
-                {t('modpacks.search_btn')}
-              </Button>
-            )}
-          />
-        ) : null}
+          {!loading && !searchError && searchResults.length > 0 && (
+            <div
+              className="space-y-2"
+              data-testid="add-mod-modal-results"
+            >
+              {searchResults.map((mod) => {
+                const key = `${mod.platform}:${mod.projectId}`;
+                const entry = checkedMods.get(key);
+                const isChecked = entry !== undefined;
+                const isLoading = entry === 'loading';
+                const version = entry !== 'loading' && entry ? entry.version : null;
+                return (
+                  <div
+                    key={key}
+                    data-state={isChecked ? 'active' : 'inactive'}
+                    className={cn(
+                      'surface-card flex items-start gap-3 p-3 transition-colors',
+                      isChecked
+                        ? cn(
+                          'border-border bg-card/90',
+                          activeStateBackground.className,
+                          activeStateBorder.className,
+                        )
+                        : 'hover:border-border-active hover:bg-card'
+                    )}
+                    style={isChecked ? {
+                      ...activeStateBackground.style,
+                      ...activeStateBorder.style,
+                    } : undefined}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      disabled={isLoading || installing}
+                      onChange={(e) => handleCheckChange(mod, e.target.checked)}
+                      onClick={(e) => e.stopPropagation()}
+                      className={cn(
+                        'mt-1 h-4 w-4 rounded border-border/70 bg-background/84',
+                        getAccentStyles('accent').className,
+                      )}
+                      style={getAccentStyles('accent').style}
+                    />
+                    <LazyImage
+                      src={mod.iconUrl}
+                      alt={mod.title}
+                      className="h-12 w-12 shrink-0 rounded-xl border border-border/70 object-cover"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <h4 className="truncate font-medium text-foreground">
+                        {mod.title}
+                      </h4>
+                      {version && (
+                        <p className="mt-0.5 text-xs text-secondary">
+                          {getSafeModVersionLabel(version, unavailableVersionLabel)} {version.mcVersions[0] && `(${version.mcVersions[0]})`}
+                        </p>
+                      )}
+                      {mod.description && !version && (
+                        <p className="mt-1 line-clamp-2 text-xs text-secondary">
+                          {mod.description}
+                        </p>
+                      )}
+                      {mod.downloads !== undefined && (
+                        <p className="mt-1 text-xs text-secondary">
+                          {t('modpacks.downloads')}: {formatNumber(mod.downloads)}
+                        </p>
+                      )}
+                    </div>
+                    {isLoading && <LoadingSpinner size="sm" className="shrink-0" />}
+                  </div>
+                );
+              })}
+              {loadingMore && (
+                <div className="flex justify-center py-4">
+                  <LoadingSpinner size="md" />
+                </div>
+              )}
+              {!loadingMore && searchResults.length > 0 && searchResults.length < total && (
+                <p className="py-2 text-center text-xs text-secondary">
+                  {t('modpacks.scroll_for_more') || 'Прокрутите вниз для загрузки'}
+                </p>
+              )}
+            </div>
+          )}
 
-        {!loading && !searchError && searchResults.length === 0 && (
-          <DegradedStateView
-            variant={query.trim() ? 'zero-results' : 'empty'}
-            layout="inline"
-            label={t(query.trim() ? 'degraded.zero_results_label' : 'degraded.empty_label')}
-            title={
-              query.trim()
-                ? t('modpacks.no_mod_results') || 'No mods found for the current filters'
-                : t('modpacks.add_mod_empty_title') || 'Search the catalog'
-            }
-            description={
-              query.trim()
-                ? t('modpacks.mods_filter_hint') || 'Try a broader query or adjust the current filters.'
-                : t('modpacks.add_mod_empty_desc') || 'Use search and filters to find loader-compatible files for this modpack.'
-            }
-          />
-        )}
+          {!loading && searchError ? (
+            <DegradedStateView
+              variant="error"
+              layout="inline"
+              label={t('degraded.error_label')}
+              title={t('modpacks.add_mod_search_error_title') || 'Unable to search right now'}
+              description={searchError}
+              footer={(
+                <Button variant="secondary" size="sm" onClick={() => void searchMods(0, false)}>
+                  {t('modpacks.search_btn')}
+                </Button>
+              )}
+            />
+          ) : null}
+
+          {!loading && !searchError && searchResults.length === 0 && (
+            <DegradedStateView
+              variant={query.trim() ? 'zero-results' : 'empty'}
+              layout="inline"
+              label={t(query.trim() ? 'degraded.zero_results_label' : 'degraded.empty_label')}
+              title={
+                query.trim()
+                  ? t('modpacks.no_mod_results') || 'No mods found for the current filters'
+                  : t('modpacks.add_mod_empty_title') || 'Search the catalog'
+              }
+              description={
+                query.trim()
+                  ? t('modpacks.mods_filter_hint') || 'Try a broader query or adjust the current filters.'
+                  : t('modpacks.add_mod_empty_desc') || 'Use search and filters to find loader-compatible files for this modpack.'
+              }
+            />
+          )}
+        </div>
 
         <div
-          className="surface-inline flex flex-col gap-2 p-4 sm:flex-row"
+          className="surface-inline shrink-0 space-y-3 p-4"
           data-testid="add-mod-modal-actions"
         >
-          <Button
-            onClick={onClose}
-            variant="secondary"
-            disabled={installing}
-            className="w-full sm:flex-1"
-          >
-            {t('general.cancel')}
-          </Button>
-          <Button
-            onClick={handleAddBulk}
-            disabled={readyToAdd.length === 0 || installing || hasLoading}
-            className={cn("w-full text-white sm:flex-1", getAccentStyles('bg').className)}
-            style={getAccentStyles('bg').style}
-            isLoading={installing}
-          >
-            {installing
-              ? t('modpacks.installing')
-              : readyToAdd.length > 0
-                ? (t('modpacks.add_selected') || 'Добавить выбранные') + ` (${readyToAdd.length})`
-                : t('modpacks.add') || 'Добавить'}
-          </Button>
+          {flowNotice && (
+            <div
+              className={cn(
+                'rounded-2xl border px-4 py-3 text-sm',
+                flowNotice.tone === 'warning'
+                  ? 'border-amber-500/35 bg-amber-500/12 text-foreground'
+                  : 'border-red-500/35 bg-red-500/12 text-foreground',
+              )}
+              data-testid="add-mod-modal-notice"
+              data-tone={flowNotice.tone}
+            >
+              {flowNotice.message}
+            </div>
+          )}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Button
+              onClick={onClose}
+              variant="secondary"
+              disabled={installing}
+              className="w-full sm:flex-1"
+            >
+              {t('general.cancel')}
+            </Button>
+            <Button
+              onClick={handleAddBulk}
+              disabled={readyToAdd.length === 0 || installing || hasLoading}
+              className={cn("w-full text-white sm:flex-1", getAccentStyles('bg').className)}
+              style={getAccentStyles('bg').style}
+              isLoading={installing}
+            >
+              {installing
+                ? t('modpacks.installing')
+                : readyToAdd.length > 0
+                  ? (t('modpacks.add_selected') || 'Добавить выбранные') + ` (${readyToAdd.length})`
+                  : t('modpacks.add') || 'Добавить'}
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>

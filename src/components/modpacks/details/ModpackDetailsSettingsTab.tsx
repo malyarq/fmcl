@@ -7,7 +7,7 @@ import { ModpackDependencySummary } from '../../sidebar/ModpackDependencySummary
 import { OptifineToggle } from '../../sidebar/OptifineToggle';
 import type { ModpackConfig } from '../../../contexts/ModpackContext';
 import type { ModpackDetailsConfigSetters } from '../../../features/modpacks/hooks/useModpackDetailsConfig';
-import { buildModpackRuntimeSummary } from '../../../features/modpacks/hooks/useModpackRuntimeSummary';
+import type { ModpackRuntimeSummary } from '../../../features/modpacks/hooks/useModpackRuntimeSummary';
 
 export interface VersionOption {
   id: string;
@@ -16,6 +16,7 @@ export interface VersionOption {
 
 export interface ModpackDetailsSettingsTabProps {
   effectiveConfig: ModpackConfig | null;
+  runtimeSummary: ModpackRuntimeSummary;
   setters: ModpackDetailsConfigSetters;
   versions: VersionOption[];
   forgeVersions: string[];
@@ -33,6 +34,7 @@ export interface ModpackDetailsSettingsTabProps {
 
 export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps> = ({
   effectiveConfig,
+  runtimeSummary,
   setters,
   versions,
   forgeVersions,
@@ -53,10 +55,6 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
     );
   }
 
-  const runtimeSummary = buildModpackRuntimeSummary({
-    config: effectiveConfig,
-    optiFineVersions,
-  });
   const isOptiFineSupported = optiFineVersions.includes(effectiveConfig.runtime.minecraft);
 
   const handleMinecraftVersionChange = async (minecraftVersion: string) => {

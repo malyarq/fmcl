@@ -93,6 +93,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
     activeTab === 'resourcepacks' ||
     activeTab === 'shaders' ||
     activeTab === 'worlds' ||
+    activeTab === 'screenshots' ||
     activeTab === 'settings';
 
   useEffect(() => {
@@ -311,24 +312,21 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex flex-col border-b border-border/70 bg-card/78 px-6 py-4 gap-4 backdrop-blur-md flex-shrink-0">
-        <Breadcrumbs
-          items={[
-            { label: t('modpacks.title') || 'Modpacks', onClick: onBack },
-            { label: modpack.name, active: true }
-          ]}
-        />
-        <div className="flex items-center gap-4">
+      <div
+        className="border-b border-border/70 bg-card/78 px-6 py-3 backdrop-blur-md"
+        data-testid="modpack-details-route-top"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Breadcrumbs
+            items={[
+              { label: t('modpacks.title') || 'Modpacks', onClick: onBack },
+              { label: modpack.name, active: true },
+            ]}
+          />
           <Button variant="secondary" size="sm" onClick={onBack} className="flex items-center gap-2">
             <ArrowLeft className="h-4 w-4" />
             {t('general.back') || 'Назад'}
           </Button>
-          <div className="min-w-0">
-            <div className="kicker-label">{t('modpacks.details_title') || 'Modpack details'}</div>
-            <h2 className="text-xl font-bold text-foreground">
-              {t('modpacks.details_title') || 'Modpack details'}
-            </h2>
-          </div>
         </div>
       </div>
 
@@ -343,13 +341,13 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
             <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
               <div className="flex min-h-full flex-col gap-6 p-6 pb-8">
                 <section
-                  className="surface-card grid gap-4 overflow-hidden p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-start"
+                  className="surface-card grid gap-3 overflow-hidden p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-start"
                   data-testid="modpack-details-hero"
                 >
                   <ModpackDetailsHeader
                     modpackName={modpack.name}
                     metadata={metadata}
-                    effectiveConfig={effectiveConfig}
+                    runtimeSummary={runtimeSummary}
                     activeTab={activeTab}
                     onTabChange={setActiveTab}
                     t={t}
@@ -377,13 +375,18 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
                   />
                 </section>
 
-                <div className={cn('min-w-0', secondarySurfaceTab ? 'space-y-4' : 'surface-panel p-4 sm:p-5')}>
+                <div
+                  className={cn('min-w-0', secondarySurfaceTab ? 'space-y-4' : 'surface-panel p-4 sm:p-5')}
+                  data-testid="modpack-details-content-host"
+                  data-content-surface={secondarySurfaceTab ? 'secondary' : 'primary'}
+                >
                   {activeTab === 'info' && (
                     <ModpackDetailsInfoTab
                       descriptionDraft={descriptionDraft}
                       onDescriptionChange={setDescriptionDraft}
                       onSaveDescription={handleSaveDescription}
                       metadata={metadata}
+                      runtimeSummary={runtimeSummary}
                       t={t}
                     />
                   )}
@@ -444,6 +447,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
                   {activeTab === 'settings' && (
                     <ModpackDetailsSettingsTab
                       effectiveConfig={effectiveConfig}
+                      runtimeSummary={runtimeSummary}
                       setters={setters}
                       versions={versions}
                       forgeVersions={forgeVersions}

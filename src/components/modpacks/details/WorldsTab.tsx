@@ -128,11 +128,11 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
                     </div>
                     <Button onClick={() => void loadWorlds()} variant="secondary" size="sm">
                         <RefreshCw className="h-4 w-4" />
-                        {t('modpacks.world_refresh')}
+                        {t('modpacks.update')}
                     </Button>
                 </div>
 
-                <div className="surface-inline flex flex-wrap items-center gap-3 p-3 text-sm text-secondary">
+                <div className="surface-inline flex flex-wrap items-center gap-3 p-3 text-sm text-secondary" data-testid="worlds-summary">
                     <span>{t('modpacks.worlds_manage_hint')}</span>
                     <span className="text-foreground">{loadError ? t('degraded.unavailable_label') : formatNumber(worlds.length)}</span>
                 </div>
@@ -152,7 +152,7 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
                     footer={(
                         <Button variant="secondary" size="sm" onClick={() => void loadWorlds()}>
                             <RefreshCw className="h-4 w-4" />
-                            {t('modpacks.world_refresh')}
+                            {t('modpacks.update')}
                         </Button>
                     )}
                 />

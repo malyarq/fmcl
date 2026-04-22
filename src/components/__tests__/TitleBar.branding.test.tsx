@@ -3,12 +3,14 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TitleBar from '../TitleBar'
-import { APP_ICON_PATH, LAUNCHER_MARK_PATH } from '../../app/assets/branding'
+import { APP_ICON_PATH } from '../../app/assets/branding'
 import { applyThemeToDocument } from '../../contexts/settings/theme'
+
+const iconPathState = { value: APP_ICON_PATH }
 
 vi.mock('../../app/hooks/useAppIcon', () => ({
   useAppIcon: () => ({
-    iconPath: APP_ICON_PATH,
+    iconPath: iconPathState.value,
   }),
 }))
 
@@ -26,6 +28,7 @@ describe('TitleBar brand contract', () => {
       configurable: true,
       value: 'Win32',
     })
+    iconPathState.value = APP_ICON_PATH
   })
 
   it('renders the shared app-icon and shell wordmark primitives', () => {
@@ -38,13 +41,15 @@ describe('TitleBar brand contract', () => {
     expect(screen.getAllByText('FriendLauncher')).toHaveLength(1)
   })
 
-  it('falls back from the bundled app icon to the product mark', () => {
+  it('falls back from a broken title-bar icon source to the canonical app icon instead of the product mark', () => {
+    iconPathState.value = '/broken-titlebar-icon.png'
+
     render(<TitleBar />)
 
     const icon = screen.getByTestId('title-bar-brand-icon') as HTMLImageElement
     fireEvent.error(icon)
 
-    expect(icon.src.endsWith(LAUNCHER_MARK_PATH)).toBe(true)
+    expect(icon.src.endsWith(APP_ICON_PATH)).toBe(true)
   })
 
   it('renders a minimal native-friendly drag strip on macOS', () => {
@@ -57,8 +62,8 @@ describe('TitleBar brand contract', () => {
 
     const titleBar = screen.getByTestId('app-title-bar')
     expect(titleBar.getAttribute('data-platform')).toBe('macos')
-    expect(titleBar.className).toContain('h-8')
-    expect(titleBar.className).toContain('bg-background/78')
+    expect(titleBar.className).toContain('h-7')
+    expect(titleBar.className).toContain('bg-background/52')
     expect(screen.queryByTestId('title-bar-window-controls')).toBeNull()
     expect(screen.queryByTestId('title-bar-brand-icon')).toBeNull()
     expect(screen.queryByText('FriendLauncher')).toBeNull()

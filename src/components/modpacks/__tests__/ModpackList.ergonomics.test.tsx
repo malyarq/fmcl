@@ -4,7 +4,7 @@ import { cleanup, render, screen, waitFor, within } from '@testing-library/react
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModpackList } from '../ModpackList';
 import { createTranslator } from '../../../contexts/settings/i18n';
-import { APP_ICON_PATH } from '../../../app/assets/branding';
+import { MEDIA_FALLBACK_PATH } from '../../../app/assets/branding';
 
 const listWithMetadataMock = vi.fn();
 const getModrinthVersionsMock = vi.fn();
@@ -104,27 +104,34 @@ describe('ModpackList ergonomics', () => {
     await screen.findByText('Alpha Pack');
 
     const searchRegion = screen.getByRole('search', { name: 'Search modpacks' });
+    const searchHeader = within(searchRegion).getByTestId('installed-modpack-catalog-header');
     const controlsGrid = within(searchRegion).getByTestId('installed-modpack-filter-controls');
     const card = screen.getByRole('button', { name: 'Open details: Alpha Pack' }).closest('[role="listitem"]');
 
     expect(card).not.toBeNull();
     expect(searchRegion.getAttribute('data-catalog-controls')).toBe('shared');
+    expect(searchHeader).toBeTruthy();
+    expect(within(searchRegion).getByTestId('installed-modpack-primary-actions').className).toContain('flex-wrap');
     expect(controlsGrid.getAttribute('data-catalog-controls-layout')).toBe('compact-shared');
     expect(controlsGrid.className).toContain('lg:flex-row');
     expect(within(searchRegion).getByText('Search modpacks')).toBeTruthy();
     expect(within(searchRegion).getByText('Minecraft Version')).toBeTruthy();
     expect(within(searchRegion).getByText('Modloader')).toBeTruthy();
+    expect(screen.queryByText(/Showing\s+\d/i)).toBeNull();
+    expect(screen.queryByText(/^Active:/i)).toBeNull();
     expect(screen.getByTestId('installed-modpack-actions-alpha').className).toContain('grid');
     expect(screen.getByRole('button', { name: 'Make active: Alpha Pack' })).toBeTruthy();
 
     const cardScope = within(card as HTMLElement);
     expect(cardScope.getByText('Minecraft Version')).toBeTruthy();
     expect(cardScope.getByText('Updated')).toBeTruthy();
+    expect(cardScope.queryByText('CurseForge')).toBeNull();
+    expect(cardScope.queryByText('Modrinth')).toBeNull();
     expect(cardScope.queryByText('Version')).toBeNull();
     expect(cardScope.queryByText('Modloader')).toBeNull();
 
     await waitFor(() => {
-      expect(screen.getByRole('img', { name: 'Alpha Pack' }).getAttribute('src')).toBe(APP_ICON_PATH);
+      expect(screen.getByRole('img', { name: 'Alpha Pack' }).getAttribute('src')).toBe(MEDIA_FALLBACK_PATH);
     });
   });
 
@@ -168,7 +175,7 @@ describe('ModpackList ergonomics', () => {
 
     const updateIndicator = screen.getByTestId('installed-modpack-update-indicator-alpha');
     expect(updateIndicator.getAttribute('data-update-scope')).toBe('modpack-local');
-    expect(updateIndicator.className).not.toContain('uppercase');
+    expect(updateIndicator.className).not.toContain('rounded-full');
     expect(updateIndicator.textContent).toContain('Update available');
     expect(screen.queryByTestId('app-update-notification')).toBeNull();
   });

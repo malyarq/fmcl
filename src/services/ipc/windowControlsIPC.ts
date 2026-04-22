@@ -41,6 +41,10 @@ export const windowControlsIPC = {
     return usesNativeMacWindowControls();
   },
 
+  shellContract(): 'native-macos' | 'renderer-controls' {
+    return usesNativeMacWindowControls() ? 'native-macos' : 'renderer-controls';
+  },
+
   has<K extends keyof WindowControlsApi>(key: K): boolean {
     return hasMethod(key);
   },

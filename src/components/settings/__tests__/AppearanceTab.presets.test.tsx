@@ -48,24 +48,83 @@ describe('AppearanceTab preset contract', () => {
     expect(getRootVar('--bg-card')).toBe('6 78 59');
     expect(getRootVar('--text-main')).toBe('236 253 245');
     expect(screen.getAllByText('Forest · Dark').length).toBeGreaterThan(0);
+    expect(screen.getByText('Preset default')).toBeTruthy();
+    expect(screen.getByText('Untouched preset')).toBeTruthy();
   });
 
   it('keeps the preset identity when switching theme mode and repaints to that preset variant', async () => {
     renderAppearanceTab();
 
-    fireEvent.change(getPresetSelect(), { target: { value: 'forest' } });
+    fireEvent.change(getPresetSelect(), { target: { value: 'midnight' } });
+
+    await waitFor(() => {
+      expect(localStorage.getItem('settings_themePresetId')).toBe('midnight');
+    });
+
+    expect(getRootVar('--accent-main')).toBe('168 85 247');
     fireEvent.click(screen.getByRole('button', { name: 'Light' }));
 
     await waitFor(() => {
       expect(localStorage.getItem('settings_theme')).toBe('light');
     });
 
-    expect(localStorage.getItem('settings_themePresetId')).toBe('forest');
+    expect(localStorage.getItem('settings_themePresetId')).toBe('midnight');
+    expect(getPresetSelect().value).toBe('midnight');
+    expect(getRootVar('--bg-app')).toBe('238 242 255');
+    expect(getRootVar('--bg-card')).toBe('224 231 255');
+    expect(getRootVar('--text-main')).toBe('17 24 39');
+    expect(getRootVar('--accent-main')).toBe('59 130 246');
+    expect(screen.getAllByText('Midnight · Light').length).toBeGreaterThan(0);
+    expect(screen.getByText('Preset variant')).toBeTruthy();
+  });
+
+  it('keeps an explicit accent override when switching preset families', async () => {
+    renderAppearanceTab();
+
+    fireEvent.change(getPresetSelect(), { target: { value: 'midnight' } });
+
+    await waitFor(() => {
+      expect(localStorage.getItem('settings_themePresetId')).toBe('midnight');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Accent Color: rose/i }));
+
+    await waitFor(() => {
+      expect(localStorage.getItem('settings_accentColor')).toBe('rose');
+    });
+
+    fireEvent.change(getPresetSelect(), { target: { value: 'navy' } });
+
+    await waitFor(() => {
+      expect(localStorage.getItem('settings_themePresetId')).toBe('navy');
+    });
+
+    expect(localStorage.getItem('settings_accentColor')).toBe('rose');
+    expect(getRootVar('--accent-main')).toBe('244 63 94');
+    expect(screen.getByText('Customized preset')).toBeTruthy();
+  });
+
+  it('keeps an explicitly chosen mode when switching between preset families', async () => {
+    renderAppearanceTab();
+
+    fireEvent.change(getPresetSelect(), { target: { value: 'navy' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Light' }));
+
+    await waitFor(() => {
+      expect(localStorage.getItem('settings_theme')).toBe('light');
+    });
+
+    fireEvent.change(getPresetSelect(), { target: { value: 'forest' } });
+
+    await waitFor(() => {
+      expect(localStorage.getItem('settings_themePresetId')).toBe('forest');
+    });
+
+    expect(localStorage.getItem('settings_theme')).toBe('light');
     expect(getPresetSelect().value).toBe('forest');
     expect(getRootVar('--bg-app')).toBe('236 253 245');
-    expect(getRootVar('--bg-card')).toBe('209 250 229');
-    expect(getRootVar('--text-main')).toBe('6 78 59');
     expect(screen.getAllByText('Forest · Light').length).toBeGreaterThan(0);
+    expect(screen.getByText('Preset variant')).toBeTruthy();
   });
 
   it('exports the localized preset summary while keeping the stable preset identity', async () => {
@@ -201,5 +260,7 @@ describe('AppearanceTab preset contract', () => {
       },
     });
     expect(container.textContent).toContain('Forest · Dark');
+    expect(screen.getByText('Customized preset')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Return to Forest · Dark' })).toBeTruthy();
   });
 });

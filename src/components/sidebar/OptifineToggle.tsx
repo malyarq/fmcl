@@ -13,8 +13,7 @@ export function OptifineToggle(props: {
 }) {
   const { isOptiFineSupported, useForge, useOptiFine, setUseOptiFine, disabled, t, getAccentStyles } = props;
 
-  // OptiFine requires Forge to be enabled
-  if (!isOptiFineSupported || !useForge) return null;
+  if (!useOptiFine && (!isOptiFineSupported || !useForge)) return null;
 
   return (
     <Button
@@ -28,4 +27,3 @@ export function OptifineToggle(props: {
     </Button>
   );
 }
-

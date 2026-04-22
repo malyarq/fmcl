@@ -182,9 +182,13 @@
     @apply space-y-4;
   }
 
+  .settings-route-panel {
+    @apply rounded-[26px] border border-border/65 bg-card/68 text-foreground;
+    box-shadow: var(--surface-shadow-soft);
+  }
+
   .settings-section-shell {
-    @apply rounded-2xl border border-border/75 bg-card/86 text-foreground backdrop-blur-lg;
-    box-shadow: var(--surface-shadow-card);
+    @apply rounded-[20px] border border-border/60 bg-background/58 text-foreground;
   }
 
   .settings-section-header {
@@ -204,32 +208,92 @@
   }
 
   .settings-control-card {
-    @apply rounded-2xl border border-border/70 bg-background/82 p-4 text-foreground backdrop-blur-md;
+    @apply rounded-[18px] border border-border/55 bg-card/52 p-4 text-foreground;
   }
 
   .settings-segmented-row {
-    @apply grid grid-cols-2 gap-1 rounded-[20px] border border-border/60 bg-background/84 p-1 shadow-inner;
+    @apply grid grid-cols-2 gap-1 rounded-[18px] border border-border/60 bg-background/62 p-1;
   }
 
   .settings-segmented-option {
-    @apply flex min-w-0 items-center justify-center rounded-2xl border px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply flex min-w-0 items-center justify-center rounded-2xl border border-transparent px-3 py-2.5 text-[0.76rem] font-semibold uppercase tracking-[0.12em] transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .settings-segmented-option[data-state='active'] {
-    @apply border-[rgb(var(--accent-main)/0.22)] bg-[rgb(var(--accent-main)/0.14)] text-foreground;
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.16);
+    @apply border-[rgb(var(--accent-main)/0.24)] bg-[rgb(var(--accent-main)/0.14)] text-foreground;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
   }
 
   .settings-segmented-option[data-state='inactive'] {
-    @apply border-transparent text-secondary hover:border-[rgb(var(--accent-main)/0.16)] hover:bg-card/92 hover:text-foreground;
+    @apply text-secondary hover:border-[rgb(var(--accent-main)/0.14)] hover:bg-card/90 hover:text-foreground;
+  }
+
+  .settings-tab-row {
+    @apply gap-1 rounded-[20px] border-border/65 bg-background/56 p-1;
+  }
+
+  .settings-tab-option {
+    @apply min-h-10 rounded-[16px] px-3 py-2 text-[13px] font-semibold normal-case tracking-normal;
   }
 
   .settings-slider {
-    @apply h-2 flex-1 cursor-pointer appearance-none rounded-full border border-border/60 bg-card/80 accent-[rgb(var(--accent-main))] transition-all hover:border-[rgb(var(--accent-main)/0.16)] hover:bg-card/92 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-border/50 disabled:bg-background/72;
+    @apply h-6 w-full cursor-pointer appearance-none bg-transparent transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-70;
+  }
+
+  .settings-slider::-webkit-slider-runnable-track {
+    height: 0.7rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background:
+      linear-gradient(90deg, rgb(var(--accent-main) / 0.22), rgb(var(--accent-main) / 0.08)),
+      rgb(var(--surface-overlay) / 0.82);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+  }
+
+  .settings-slider::-moz-range-track {
+    height: 0.7rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    background:
+      linear-gradient(90deg, rgb(var(--accent-main) / 0.22), rgb(var(--accent-main) / 0.08)),
+      rgb(var(--surface-overlay) / 0.82);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+  }
+
+  .settings-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    margin-top: -0.3rem;
+    height: 1.3rem;
+    width: 1.3rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(var(--accent-main) / 0.3);
+    background: radial-gradient(circle at 30% 30%, rgb(255 255 255 / 0.96), rgb(255 255 255 / 0.82));
+    box-shadow:
+      0 10px 20px rgb(0 0 0 / 0.22),
+      0 0 0 0.28rem rgb(var(--accent-main) / 0.16);
+  }
+
+  .settings-slider::-moz-range-thumb {
+    height: 1.3rem;
+    width: 1.3rem;
+    border-radius: 9999px;
+    border: 1px solid rgb(var(--accent-main) / 0.3);
+    background: radial-gradient(circle at 30% 30%, rgb(255 255 255 / 0.96), rgb(255 255 255 / 0.82));
+    box-shadow:
+      0 10px 20px rgb(0 0 0 / 0.22),
+      0 0 0 0.28rem rgb(var(--accent-main) / 0.16);
+  }
+
+  .settings-slider:disabled::-webkit-slider-thumb,
+  .settings-slider:disabled::-moz-range-thumb {
+    border-color: rgb(255 255 255 / 0.14);
+    box-shadow:
+      0 8px 16px rgb(0 0 0 / 0.14),
+      0 0 0 0.24rem rgb(255 255 255 / 0.06);
   }
 
   .settings-toggle-row {
-    @apply flex items-start justify-between gap-4 rounded-2xl border border-border/70 bg-background/82 p-4 text-foreground backdrop-blur-md;
+    @apply grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 rounded-[18px] border border-border/60 bg-card/52 p-4 text-foreground;
   }
 
   .settings-toggle-copy {
@@ -245,28 +309,62 @@
   }
 
   .settings-toggle-switch {
-    @apply relative mt-0.5 h-6 w-11 shrink-0 rounded-full border transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+    @apply relative h-7 w-12 shrink-0 overflow-hidden rounded-full border p-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
   .settings-toggle-switch[data-state='checked'] {
-    @apply border-[rgb(var(--accent-main)/0.36)] bg-[rgb(var(--accent-main))];
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    @apply border-[rgb(var(--accent-main)/0.36)] bg-[rgb(var(--accent-main)/0.92)];
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.2);
   }
 
   .settings-toggle-switch[data-state='unchecked'] {
-    @apply border-border/70 bg-background/90 hover:border-[rgb(var(--accent-main)/0.16)] hover:bg-card/96;
+    @apply border-border/70 bg-background/88 hover:border-[rgb(var(--accent-main)/0.16)] hover:bg-card/94;
   }
 
   .settings-toggle-thumb {
-    @apply absolute top-0.5 h-[18px] w-[18px] rounded-full bg-white shadow-sm ring-1 ring-black/5 transition-transform dark:bg-zinc-950;
+    @apply absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm ring-1 ring-black/5 transition-transform dark:bg-zinc-950;
   }
 
   .settings-toggle-thumb[data-state='checked'] {
-    @apply translate-x-5;
+    @apply translate-x-6;
   }
 
   .settings-toggle-thumb[data-state='unchecked'] {
-    @apply translate-x-0.5;
+    @apply translate-x-0;
+  }
+
+  .settings-accent-grid {
+    @apply flex flex-wrap items-center gap-3;
+  }
+
+  .settings-status-chip {
+    @apply inline-flex items-center justify-center rounded-full border border-border/60 bg-card/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-secondary;
+  }
+
+  .settings-accent-chip {
+    @apply flex h-10 w-10 items-center justify-center rounded-full border border-white/18 bg-card/88 text-foreground shadow-[0_10px_22px_rgba(0,0,0,0.18)] transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-main))] focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .settings-accent-chip[data-state='active'] {
+    @apply border-[rgb(var(--accent-main)/0.32)] ring-2 ring-[rgb(var(--accent-main))];
+    transform: scale(1.06);
+  }
+
+  .settings-accent-chip[data-state='inactive'] {
+    @apply opacity-85 hover:border-[rgb(var(--accent-main)/0.14)] hover:opacity-100;
+  }
+
+  .settings-accent-swatch {
+    @apply h-8 w-8 rounded-full border border-white/20 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)];
+  }
+
+  .settings-accent-chip-symbol {
+    @apply text-base font-semibold text-secondary transition-colors;
+  }
+
+  .settings-accent-chip:hover .settings-accent-chip-symbol,
+  .settings-accent-chip:focus-visible .settings-accent-chip-symbol {
+    @apply text-foreground;
   }
 
   .settings-stat-grid {

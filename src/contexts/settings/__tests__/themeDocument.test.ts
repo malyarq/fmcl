@@ -106,4 +106,19 @@ describe('applyThemeToDocument', () => {
     expect(getRootVar('--text-main')).toBe('236 253 245');
     expect(getRootVar('--border-default')).toBe('6 95 70');
   });
+
+  it('keeps preset ancestry readable when bounded overrides are layered on top of the active variant', () => {
+    const runtimeConfig = resolveThemeConfig('light', 'forest', {
+      colors: {
+        background: '#112233',
+      },
+    });
+
+    applyThemeToDocument('light', 'emerald', runtimeConfig);
+
+    expect(getRootVar('--bg-app')).toBe('17 34 51');
+    expect(getRootVar('--bg-card')).toBe('209 250 229');
+    expect(getRootVar('--text-main')).toBe('6 78 59');
+    expect(getRootVar('--border-default')).toBe('110 231 183');
+  });
 });

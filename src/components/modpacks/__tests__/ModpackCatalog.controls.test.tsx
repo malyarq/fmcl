@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ComponentProps } from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModpackBrowser } from '../ModpackBrowser';
 import { ModpackList } from '../ModpackList';
@@ -145,11 +145,16 @@ describe('ModpackCatalogControls shared contract', () => {
 
     await screen.findByText('Alpha Pack');
 
+    const searchRegion = screen.getByRole('search', { name: 'Search modpacks' });
     const controls = screen.getByTestId('installed-modpack-filter-controls');
     expect(screen.getByTestId('installed-modpack-filters').getAttribute('data-catalog-controls')).toBe('shared');
+    expect(within(searchRegion).getByTestId('installed-modpack-catalog-header')).toBeTruthy();
+    expect(within(searchRegion).getByTestId('installed-modpack-primary-actions')).toBeTruthy();
     expect(controls.getAttribute('data-catalog-controls-layout')).toBe('compact-shared');
     expect(controls.className).toContain('lg:flex-row');
     expect(screen.queryByTestId('installed-modpack-summary')).toBeNull();
+    expect(screen.queryByText(/Showing\s+\d/i)).toBeNull();
+    expect(screen.queryByText(/^Active:/i)).toBeNull();
   });
 
   it('marks the remote catalog as using the shared compact controls shell', async () => {
@@ -164,11 +169,16 @@ describe('ModpackCatalogControls shared contract', () => {
 
     await screen.findByText('Alpha Pack');
 
+    const searchRegion = screen.getByRole('search', { name: 'Search modpacks' });
     const controls = screen.getByTestId('remote-modpack-filter-controls');
     expect(screen.getByTestId('remote-modpack-filters').getAttribute('data-catalog-controls')).toBe('shared');
+    expect(within(searchRegion).getByTestId('remote-modpack-catalog-header')).toBeTruthy();
+    expect(within(searchRegion).getByTestId('remote-modpack-primary-actions')).toBeTruthy();
+    expect(within(searchRegion).getByText('CurseForge browse unavailable')).toBeTruthy();
     expect(controls.getAttribute('data-catalog-controls-layout')).toBe('compact-shared');
     expect(controls.className).toContain('lg:flex-row');
     expect(screen.queryByTestId('remote-modpack-summary')).toBeNull();
+    expect(screen.queryByText(/Showing\s+\d/i)).toBeNull();
     expect(screen.getByRole('button', { name: 'Clear filters' })).toBeTruthy();
   });
 });

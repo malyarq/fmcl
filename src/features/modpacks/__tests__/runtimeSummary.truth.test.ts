@@ -78,7 +78,7 @@ describe('buildModpackRuntimeSummary', () => {
     const summary = buildModpackRuntimeSummary({ metadata });
 
     expect(summary.source).toBe('metadata');
-    expect(summary.status).toBe('healthy');
+    expect(summary.status).toBe('unverified');
     expect(summary.minecraftVersion).toBe('1.19.4');
     expect(summary.modLoader).toEqual({ type: 'fabric', version: undefined });
     expect(summary.shaderCapability).toEqual({

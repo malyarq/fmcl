@@ -73,7 +73,7 @@ vi.mock('../../security/externalUrls', () => ({
   openExternalUrl: vi.fn(),
 }));
 
-import { createMainWindow } from '../windowManager';
+import { createMainWindow, getNativeWindowIconCandidates } from '../windowManager';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-window-manager-macos-'));
@@ -158,5 +158,22 @@ describe('createMainWindow macOS chrome contract', () => {
     expect(mocked.loadURL).toHaveBeenCalledWith('http://127.0.0.1:5173');
     expect(mocked.loadFile).not.toHaveBeenCalled();
     expect(mocked.setIcon).not.toHaveBeenCalled();
+  });
+
+  it('keeps macOS native icon resolution PNG-first and only falls back to ico last', () => {
+    const vitePublicPath = createTempDir();
+    tempDirs.push(vitePublicPath);
+    fs.writeFileSync(path.join(vitePublicPath, 'icon.png'), 'png');
+    fs.writeFileSync(path.join(vitePublicPath, 'icon.ico'), 'ico');
+
+    createMainWindow({
+      preloadPath: '/preload.js',
+      rendererDevUrl: 'http://127.0.0.1:5173',
+      rendererDist: '/renderer-dist',
+      vitePublicPath,
+    });
+
+    expect(getNativeWindowIconCandidates('darwin')).toEqual(['icon-macos.png', 'icon.png', 'icon.ico']);
+    expect(mocked.createFromPath).toHaveBeenCalledWith(path.join(vitePublicPath, 'icon.png'));
   });
 });

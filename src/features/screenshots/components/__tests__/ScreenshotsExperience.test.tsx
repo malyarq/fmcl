@@ -139,9 +139,10 @@ describe('screenshots experience', () => {
 
     render(<ScreenshotsTab instancePath="/instance" />);
 
+    expect(screen.getByTestId('screenshots-workspace-shell')).toBeTruthy();
     expect(await screen.findByRole('heading', { name: 'No screenshots yet' })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open Folder' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open Folder' })[0]);
 
     await waitFor(() => {
       expect(openFolderMock).toHaveBeenCalledWith('/instance');
@@ -153,11 +154,11 @@ describe('screenshots experience', () => {
 
     render(<ScreenshotsTab instancePath="/instance" />);
 
-    const errorState = await screen.findByRole('alert');
+    const errorState = await screen.findByRole('status');
     expect(screen.getByRole('heading', { name: t('screenshots.loadError') })).toBeTruthy();
-    expect(errorState.textContent).toContain(t('degraded.error_label'));
+    expect(errorState.textContent).toContain(t('degraded.unavailable_label'));
     expect(errorState.textContent).not.toContain(t('screenshots.emptyTitle'));
-    expect(within(errorState).getByRole('button', { name: t('modpacks.world_refresh') })).toBeTruthy();
+    expect(within(errorState).getByRole('button', { name: t('modpacks.update') })).toBeTruthy();
     expect(within(errorState).getByRole('button', { name: t('screenshots.openFolder') })).toBeTruthy();
   });
 

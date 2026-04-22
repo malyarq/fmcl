@@ -29,20 +29,27 @@ describe('SettingsTabsHeader state fidelity', () => {
       />,
     );
 
+    const tabList = screen.getByRole('tablist', { name: 'settings.title' });
     const downloadsTab = screen.getByRole('tab', { name: 'Downloads' });
     const appearanceTab = screen.getByRole('tab', { name: 'Appearance' });
     const downloadsLabel = within(downloadsTab).getByText('Downloads');
 
+    expect(tabList.className).toContain('settings-tab-row');
     expect(downloadsTab.getAttribute('data-state')).toBe('active');
     expect(downloadsTab.getAttribute('aria-selected')).toBe('true');
+    expect(downloadsTab.className).toContain('settings-segmented-option');
+    expect(downloadsTab.className).toContain('settings-tab-option');
     expect(downloadsTab.className).toContain('bg-card/92');
     expect(downloadsTab.style.backgroundColor).toContain('18, 52, 86');
     expect(downloadsTab.style.borderColor).toContain('18, 52, 86');
     expect(downloadsLabel.style.color).toBe('rgb(18, 52, 86)');
+    expect(downloadsTab.textContent).toBe('Downloads');
 
     expect(appearanceTab.getAttribute('data-state')).toBe('inactive');
     expect(appearanceTab.getAttribute('aria-selected')).toBe('false');
-    expect(appearanceTab.className).toContain('hover:border-[rgb(var(--accent-main)/0.18)]');
-    expect(appearanceTab.className).toContain('focus-visible:ring-2');
+    expect(appearanceTab.className).toContain('settings-segmented-option');
+    expect(appearanceTab.className).toContain('settings-tab-option');
+    expect(appearanceTab.className).toContain('bg-transparent');
+    expect(appearanceTab.textContent).toBe('Appearance');
   });
 });

@@ -15,6 +15,7 @@ const t = createTranslator('en');
 const uiModeState = { value: 'simple' as 'simple' | 'modpacks' };
 const settingsState = { sidebarPosition: 'left' as 'left' | 'right' };
 const titleBarState = { platform: 'default' as 'default' | 'macos' };
+const shellContractState = { value: 'renderer-controls' as 'renderer-controls' | 'native-macos' };
 
 vi.mock('../../contexts/SettingsContext', () => ({
   useUIMode: () => ({
@@ -24,6 +25,12 @@ vi.mock('../../contexts/SettingsContext', () => ({
     sidebarPosition: settingsState.sidebarPosition,
     t,
   }),
+}));
+
+vi.mock('../../services/ipc/windowControlsIPC', () => ({
+  windowControlsIPC: {
+    shellContract: () => shellContractState.value,
+  },
 }));
 
 vi.mock('../layout/BackgroundLayer', () => ({
@@ -126,6 +133,7 @@ describe('UpdateNotification shell layout', () => {
     uiModeState.value = 'simple';
     settingsState.sidebarPosition = 'left';
     titleBarState.platform = 'default';
+    shellContractState.value = 'renderer-controls';
   });
 
   it('renders the app update banner directly below the shared title-bar seam', () => {
@@ -139,6 +147,9 @@ describe('UpdateNotification shell layout', () => {
     expect(titleBar.nextElementSibling).toBe(notifications);
     expect(notifications.nextElementSibling).toBe(safeArea);
     expect(safeArea.getAttribute('data-shell-safe-area')).toBe('shell-chrome');
+    expect(notifications.getAttribute('data-shell-platform')).toBe('renderer-controls');
+    expect(safeArea.getAttribute('data-shell-platform')).toBe('renderer-controls');
+    expect(safeArea.className).toContain('pt-2');
     expect(banner.getAttribute('data-update-scope')).toBe('app-shell');
     expect(banner.className).toContain('relative');
     expect(banner.className).not.toContain('fixed');
@@ -148,15 +159,20 @@ describe('UpdateNotification shell layout', () => {
 
   it('keeps the macOS update banner inline under the native-first shell seam', () => {
     titleBarState.platform = 'macos';
+    shellContractState.value = 'native-macos';
 
     render(<AppLayout {...createProps()} />);
 
     const titleBar = screen.getByTestId('app-title-bar');
     const notifications = screen.getByTestId(APP_LAYOUT_NOTIFICATIONS_TEST_ID);
+    const safeArea = screen.getByTestId(APP_LAYOUT_SAFE_AREA_TEST_ID);
     const banner = screen.getByTestId('app-update-notification');
 
     expect(titleBar.getAttribute('data-platform')).toBe('macos');
     expect(titleBar.nextElementSibling).toBe(notifications);
+    expect(notifications.getAttribute('data-shell-platform')).toBe('native-macos');
+    expect(safeArea.getAttribute('data-shell-platform')).toBe('native-macos');
+    expect(safeArea.className).toContain('pt-1');
     expect(banner.getAttribute('data-update-scope')).toBe('app-shell');
     expect(banner.className).toContain('relative');
     expect(banner.className).not.toContain('fixed');

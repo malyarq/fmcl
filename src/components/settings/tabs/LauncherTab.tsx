@@ -159,8 +159,8 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
   const accentRangeStyles = useMemo(() => ({ accentColor: 'rgb(var(--accent-main))' }), []);
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-      <div className="space-y-4">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)]">
+      <div className="min-w-0 space-y-4">
         {!embedded && (
           <div className="settings-section-shell settings-section-copy p-5">
             <div className="kicker-label">{t('settings.tab_launcher')}</div>
@@ -169,7 +169,7 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
           </div>
         )}
 
-        <div className="settings-section-shell settings-section-stack p-5">
+        <div className="settings-section-shell settings-section-stack min-w-0 p-5">
           <div className="settings-section-copy">
             <h4 className="settings-embedded-title">
               {translateWithFallback(t, 'settings.launcher_runtime_title', 'Launcher Runtime')}
@@ -183,7 +183,7 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          <div data-testid="launcher-runtime-grid" className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             <ToggleRow
               label={t('settings.performance')}
               description={t('settings.performance_desc')}
@@ -216,9 +216,6 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
               checked={compactMode}
               onToggle={() => setCompactMode(!compactMode)}
             />
-          </div>
-
-          <div className="grid gap-4 lg:grid-cols-[1.05fr_0.95fr]">
             <div className="settings-control-card space-y-3">
               <label className="flex justify-between text-sm font-medium text-foreground">
                 <span>{translateWithFallback(t, 'settings.ui_zoom', 'Interface Zoom')}</span>
@@ -270,11 +267,11 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
           </div>
         </div>
 
-        <div className="settings-section-shell p-4">
+        <div className="settings-section-shell min-w-0 p-4">
           <MinecraftPathSection minecraftPath={minecraftPath} setMinecraftPath={setMinecraftPath} t={t} />
         </div>
 
-        <div className="settings-section-shell flex flex-col gap-4 p-5">
+        <div className="settings-section-shell min-w-0 flex flex-col gap-4 p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
               <p className="settings-embedded-title">{t('settings.updatesTitle')}</p>
@@ -301,14 +298,15 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
             }}
             disabled={status === 'checking' || status === 'downloading'}
             variant="secondary"
-            className="sm:w-fit"
+            geometry="utility"
+            className="w-full"
           >
             {status === 'checking' ? t('updater.checking') : t('updater.check')}
           </Button>
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="min-w-0 space-y-4">
         {imageCacheState && (
           <div className="surface-card space-y-4 p-5">
             <div className="flex items-start justify-between gap-4">
@@ -352,16 +350,20 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
                 <Button
                   type="button"
                   variant="secondary"
+                  geometry="utility"
                   onClick={handleSaveImageCacheLimit}
                   isLoading={isImageCacheBusy}
+                  className="w-full sm:flex-1"
                 >
                   {t('settings.image_cache_save')}
                 </Button>
                 <Button
                   type="button"
                   variant="secondary"
+                  geometry="utility"
                   onClick={handleCleanupImageCache}
                   isLoading={isImageCacheBusy}
+                  className="w-full sm:flex-1"
                 >
                   {t('settings.image_cache_cleanup')}
                 </Button>
@@ -399,7 +401,8 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
               }
             }}
             variant="secondary"
-            className="sm:w-fit"
+            geometry="utility"
+            className="w-full"
           >
             {t('settings.clear_cache')}
           </Button>

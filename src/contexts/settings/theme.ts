@@ -1,5 +1,5 @@
-import { getAccentHexForColor, getAccentHoverHexForColor } from './accent';
-import { getThemePresetConfig } from './theme-presets';
+import { DEFAULT_ACCENT_COLOR, getAccentHexForColor, getAccentHoverHexForColor } from './accent';
+import { getThemePreset, getThemePresetAccent, getThemePresetConfig } from './theme-presets';
 import type { AccentColor, BrandThemeConfig, CustomThemeConfig, Theme, ThemePresetId } from './types';
 
 type ThemeDocumentColors = {
@@ -16,6 +16,15 @@ type ThemeDocumentColors = {
 };
 
 type BrandDocumentTokens = Required<BrandThemeConfig>;
+
+export type ThemeCustomizationScope = 'accent' | 'colors' | 'background' | 'brand';
+
+export interface ThemeRuntimeState {
+  activePresetId: ThemePresetId | null;
+  customizationScopes: ThemeCustomizationScope[];
+  hasCustomizations: boolean;
+  matchesPresetDefaultMode: boolean;
+}
 
 const DEFAULT_THEME_DOCUMENT_COLORS: Record<Theme, ThemeDocumentColors> = {
   light: {
@@ -213,6 +222,54 @@ export function extractThemeOverrides(
 
   const diff = diffThemeValue(pruneThemeConfig(presetConfig), prunedConfig) as CustomThemeConfig | undefined;
   return diff ?? {};
+}
+
+export function getThemeCustomizationScopes(
+  config: CustomThemeConfig | null | undefined,
+): ThemeCustomizationScope[] {
+  const prunedConfig = pruneThemeConfig(config);
+
+  return (['colors', 'background', 'brand'] as const).filter((scope) => {
+    const entry = prunedConfig[scope];
+    return isRecord(entry) && Object.keys(entry).length > 0;
+  });
+}
+
+export function resolveAccentColor(
+  theme: Theme,
+  themePresetId: ThemePresetId | null | undefined,
+  accentColor: AccentColor,
+  accentColorSource: 'preset' | 'user' = 'preset',
+) {
+  if (accentColorSource === 'user') {
+    return accentColor || DEFAULT_ACCENT_COLOR;
+  }
+
+  return getThemePresetAccent(themePresetId, theme) ?? DEFAULT_ACCENT_COLOR;
+}
+
+export function resolveThemeRuntimeState(
+  theme: Theme,
+  themePresetId: ThemePresetId | null | undefined,
+  customTheme: CustomThemeConfig | null | undefined,
+  accentColor: AccentColor,
+  accentColorSource: 'preset' | 'user' = 'preset',
+): ThemeRuntimeState {
+  const preset = getThemePreset(themePresetId);
+  const customizationScopes = getThemeCustomizationScopes(customTheme);
+  const accentDefault = preset ? getThemePresetAccent(preset.id, theme) : DEFAULT_ACCENT_COLOR;
+  const hasAccentCustomization = accentColorSource === 'user'
+    && accentColor !== accentDefault;
+  const scopes: ThemeCustomizationScope[] = hasAccentCustomization
+    ? ['accent', ...customizationScopes]
+    : customizationScopes;
+
+  return {
+    activePresetId: preset?.id ?? null,
+    customizationScopes: scopes,
+    hasCustomizations: scopes.length > 0,
+    matchesPresetDefaultMode: preset ? preset.defaultTheme === theme : false,
+  };
 }
 
 export function applyThemeToDocument(theme: Theme, accentColor: AccentColor, customTheme?: CustomThemeConfig) {

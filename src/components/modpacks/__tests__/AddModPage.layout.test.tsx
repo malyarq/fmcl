@@ -92,7 +92,7 @@ describe('AddModPage flow layout', () => {
     vi.useRealTimers();
   });
 
-  it('uses the route scroll container instead of a fixed-height results scroller', async () => {
+  it('keeps the action rail outside the results viewport so streaming results cannot bury it', async () => {
     render(<AddModPage modpackId="alpha" onBack={vi.fn()} />);
 
     await act(async () => {
@@ -104,14 +104,15 @@ describe('AddModPage flow layout', () => {
 
     expect(screen.getByText('Sodium')).toBeTruthy();
 
-    const scrollContainer = screen.getByTestId('add-mod-page-scroll');
+    const pageBody = screen.getByTestId('add-mod-page-body');
+    const resultsScroll = screen.getByTestId('add-mod-results-scroll');
     const results = screen.getByTestId('add-mod-results');
     const actions = screen.getByTestId('add-mod-page-actions');
 
-    expect(scrollContainer.className).toContain('overflow-y-auto');
-    expect(results.className).not.toContain('max-h-96');
-    expect(results.className).not.toContain('overflow-y-auto');
-    expect(scrollContainer.contains(actions)).toBe(true);
+    expect(resultsScroll.className).toContain('overflow-y-auto');
+    expect(resultsScroll.contains(results)).toBe(true);
+    expect(resultsScroll.contains(actions)).toBe(false);
+    expect(pageBody.contains(actions)).toBe(true);
   });
 
   it('keeps guided resource-pack browsing instance-scoped without modloader filters', async () => {

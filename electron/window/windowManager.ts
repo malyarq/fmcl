@@ -15,6 +15,19 @@ type MainWindowChromeOptions = {
   titleBarStyle: 'hidden' | 'hiddenInset';
 };
 
+export function getNativeWindowIconCandidates(platform: NodeJS.Platform): readonly string[] {
+  switch (platform) {
+    case 'darwin':
+      // Native macOS shell surfaces expect raster app artwork; `.ico` only remains
+      // as a final fallback so dev or packaged builds never lose their icon outright.
+      return ['icon-macos.png', 'icon.png', 'icon.ico'];
+    case 'win32':
+      return ['icon.ico', 'icon.png', 'icon-macos.png'];
+    default:
+      return ['icon.png', 'icon.ico', 'icon-macos.png'];
+  }
+}
+
 function buildAllowedOrigins(rendererDevUrl?: string): Set<string> {
   const allowedOrigins = new Set<string>();
   if (!rendererDevUrl) {
@@ -43,14 +56,7 @@ function allowInternalWindowUrl(url: string, allowedOrigins: ReadonlySet<string>
 }
 
 function resolveWindowIconPath(vitePublicPath: string): string {
-  const candidates =
-    process.platform === 'darwin'
-      ? ['icon-macos.png', 'icon.png', 'icon.ico']
-      : process.platform === 'win32'
-        ? ['icon.ico', 'icon.png', 'icon-macos.png']
-        : ['icon.png', 'icon.ico', 'icon-macos.png'];
-
-  for (const iconFileName of candidates) {
+  for (const iconFileName of getNativeWindowIconCandidates(process.platform)) {
     const candidatePath = path.join(vitePublicPath, iconFileName);
     if (fs.existsSync(candidatePath)) {
       return candidatePath;

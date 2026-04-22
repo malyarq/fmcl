@@ -336,6 +336,23 @@ const ModItem = React.memo<{
   resolveDependency: (id: string, range?: string | string[]) => DependencyResolution;
   t: TranslateFn;
 }>(({ mod, isExpanded, toggleExpand, onModToggle, onRemoveMod, onOpenExternalLink, resolveDependency, t }) => {
+  const dependencyTone = mod.deps.reduce<'neutral' | 'warning' | 'error'>((tone, dep) => {
+    const resolution = resolveDependency(dep.id, dep.versionRange);
+    if (dep.kind !== 'depends') {
+      return tone;
+    }
+
+    if (resolution.status === 'missing' || resolution.status === 'incompatible') {
+      return 'error';
+    }
+
+    if (resolution.status === 'unverified' && tone !== 'error') {
+      return 'warning';
+    }
+
+    return tone;
+  }, 'neutral');
+
   return (
     <div
       className={cn(
@@ -360,17 +377,13 @@ const ModItem = React.memo<{
             </span>
             {mod.deps.length > 0 && (
               <span
+                data-tone={dependencyTone}
                 className={cn(
                   'rounded-full border px-2 py-0.5 text-xs font-medium',
-                  mod.deps.some((dep) => {
-                    const resolution = resolveDependency(dep.id, dep.versionRange);
-                    return dep.kind === 'depends' && (
-                      resolution.status === 'missing' ||
-                      resolution.status === 'incompatible' ||
-                      resolution.status === 'unverified'
-                    );
-                  })
+                  dependencyTone === 'error'
                     ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                    : dependencyTone === 'warning'
+                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-300'
                     : 'border-border/70 bg-background/70 text-secondary',
                 )}
               >

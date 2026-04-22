@@ -130,10 +130,16 @@ export const MirrorsSettings: React.FC<MirrorsSettingsProps> = ({ embedded = fal
     };
 
     const activeMirror = mirrors.find((mirror) => mirror.isActive) ?? null;
+    const sectionFrameClassName = embedded
+        ? 'surface-muted space-y-4 p-5'
+        : 'settings-section-shell space-y-4 p-5';
+    const listFrameClassName = embedded
+        ? 'overflow-hidden rounded-[20px] border border-border/60 bg-background/42'
+        : 'overflow-hidden rounded-[20px] border border-border/65 bg-card/60';
 
     return (
         <div className={embedded ? 'space-y-4' : 'space-y-6'}>
-            <div className="settings-section-shell space-y-4 p-5">
+            <div className={sectionFrameClassName}>
                 {!embedded && (
                     <div className="settings-section-copy">
                         <div className="kicker-label">{t('mirrors.sectionTitle')}</div>
@@ -192,8 +198,8 @@ export const MirrorsSettings: React.FC<MirrorsSettingsProps> = ({ embedded = fal
                 </div>
             </div>
 
-            <div className="surface-card overflow-hidden" role="list" aria-label={t('mirrors.description')}>
-                <div className="border-b border-border/60 px-4 py-3 text-sm text-secondary">
+            <div className={listFrameClassName} role="list" aria-label={t('mirrors.description')}>
+                <div className="border-b border-border/60 bg-background/28 px-4 py-3 text-sm text-secondary">
                     {autoSelect ? t('mirrors.priorityHint') : t('mirrors.priorityPrimary')}
                 </div>
                 <div className="divide-y divide-border/60">
@@ -207,7 +213,7 @@ export const MirrorsSettings: React.FC<MirrorsSettingsProps> = ({ embedded = fal
                                     ? "bg-amber-500/10"
                                     : mirror.isActive
                                         ? "bg-emerald-500/10"
-                                        : "hover:bg-card/72"
+                                        : "hover:bg-card/56"
                             )}
                         >
                             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -218,7 +224,7 @@ export const MirrorsSettings: React.FC<MirrorsSettingsProps> = ({ embedded = fal
                                             ? "bg-amber-500/20 text-amber-300"
                                             : mirror.isActive
                                                 ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
-                                                : "bg-background/80 text-secondary"
+                                                : "bg-card/68 text-secondary"
                                     )}>
                                         <Globe size={18} />
                                     </div>

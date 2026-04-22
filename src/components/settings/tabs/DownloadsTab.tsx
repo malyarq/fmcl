@@ -23,9 +23,13 @@ export const DownloadsTab: React.FC<DownloadsTabProps> = ({
   t,
   embedded = false,
 }) => {
+  const tuningSectionClassName = embedded
+    ? 'surface-muted settings-section-stack min-w-0 p-5'
+    : 'settings-section-shell settings-section-stack min-w-0 p-5';
+
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-      <div className="space-y-4">
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(19rem,0.85fr)]">
+      <div className="min-w-0 space-y-4">
         {!embedded && (
           <div className="settings-section-shell settings-section-copy p-5">
             <div className="kicker-label">{t('settings.downloads')}</div>
@@ -37,7 +41,7 @@ export const DownloadsTab: React.FC<DownloadsTabProps> = ({
         <MirrorsSettings embedded={embedded} />
       </div>
 
-      <div className="settings-section-shell settings-section-stack p-5">
+      <div className={tuningSectionClassName}>
         <div className="settings-section-copy">
           <h4 className="settings-embedded-title">{t('settings.downloadsTuningTitle')}</h4>
           <p className="settings-embedded-copy">{t('settings.downloadsTuningHint')}</p>
@@ -67,7 +71,7 @@ export const DownloadsTab: React.FC<DownloadsTabProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4">
+        <div className="settings-control-card grid grid-cols-1 gap-4">
           <Input
             label={t('settings.download_threads')}
             type="number"

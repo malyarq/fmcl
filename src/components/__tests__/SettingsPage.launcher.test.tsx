@@ -147,6 +147,7 @@ describe('SettingsPage launcher route', () => {
     expect(screen.getByRole('switch', { name: 'Enable Animations' })).toBeTruthy();
     expect(screen.getByRole('switch', { name: 'Compact Mode' })).toBeTruthy();
     expect(screen.getByText('Sidebar Position')).toBeTruthy();
+    expect(screen.getByTestId('launcher-runtime-grid')).toBeTruthy();
     expect(screen.getByDisplayValue('110')).toBeTruthy();
     expect(screen.getByText('Minecraft path surface')).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Launcher' })).toBeNull();

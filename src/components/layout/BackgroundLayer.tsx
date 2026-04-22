@@ -161,6 +161,7 @@ export const BackgroundLayer = () => {
             className="fixed inset-0 -z-10 overflow-hidden bg-background pointer-events-none"
             aria-hidden="true"
             data-testid="background-static-fallback"
+            data-background-type={config.type ?? 'image'}
         >
             {imageLayerStyle && (
                 <div
@@ -169,7 +170,7 @@ export const BackgroundLayer = () => {
                 />
             )}
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(var(--accent-main),0.18),transparent_42%),radial-gradient(circle_at_bottom_left,rgba(var(--accent-main),0.08),transparent_36%)]" />
-            <div className="absolute inset-0 bg-background/40" />
+            <div className="absolute inset-0 bg-background/18" />
         </div>
     );
 
@@ -179,7 +180,7 @@ export const BackgroundLayer = () => {
         }
 
         return (
-            <div className="fixed inset-0 -z-10 overflow-hidden bg-background" aria-hidden="true">
+            <div className="fixed inset-0 -z-10 overflow-hidden bg-background" aria-hidden="true" data-background-type="video">
                 <video
                     ref={videoRef}
                     src={config.video.url}
@@ -190,7 +191,7 @@ export const BackgroundLayer = () => {
                     style={{ opacity: config.opacity ?? 1, filter: `blur(${config.blur || 0}px)` }}
                 />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(var(--accent-main),0.16),transparent_42%),radial-gradient(circle_at_bottom_left,rgba(var(--accent-main),0.08),transparent_36%)]" />
-                <div className="absolute inset-0 bg-background/56" />
+                <div className="absolute inset-0 bg-background/28" />
             </div>
         );
     }
@@ -201,14 +202,14 @@ export const BackgroundLayer = () => {
         }
 
         return (
-            <div className="fixed inset-0 -z-10 bg-background" aria-hidden="true">
+            <div className="fixed inset-0 -z-10 bg-background" aria-hidden="true" data-background-type="particles">
                 <Particles
                     id="tsparticles"
                     options={particleOptions}
                     className="absolute inset-0"
                 />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(var(--accent-main),0.14),transparent_44%),radial-gradient(circle_at_bottom_left,rgba(var(--accent-main),0.08),transparent_38%)]" />
-                <div className="absolute inset-0 bg-background/30" />
+                <div className="absolute inset-0 bg-background/14" />
             </div>
         );
     }

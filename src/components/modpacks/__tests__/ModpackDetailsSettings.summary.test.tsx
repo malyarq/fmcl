@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import type { ModpackConfig } from '../../../contexts/ModpackContext';
 import type { ModpackMetadata } from '@shared/types/modpack';
+import { buildModpackRuntimeSummary } from '../../../features/modpacks/hooks/useModpackRuntimeSummary';
 import { ModpackDetailsHeader } from '../details/ModpackDetailsHeader';
 import { ModpackDetailsSettingsTab } from '../details/ModpackDetailsSettingsTab';
 
@@ -79,13 +80,18 @@ function buildUpdatedRuntimeConfig(currentConfig: ModpackConfig, loader: 'vanill
 
 function SettingsHarness() {
   const [config, setConfig] = useState<ModpackConfig>(baseConfig);
+  const runtimeSummary = buildModpackRuntimeSummary({
+    config,
+    metadata,
+    optiFineVersions: ['1.20.1'],
+  });
 
   return (
     <div>
       <ModpackDetailsHeader
         modpackName="Dense Pack"
         metadata={metadata}
-        effectiveConfig={config}
+        runtimeSummary={runtimeSummary}
         activeTab="settings"
         onTabChange={vi.fn()}
         t={t}
@@ -94,6 +100,7 @@ function SettingsHarness() {
       />
       <ModpackDetailsSettingsTab
         effectiveConfig={config}
+        runtimeSummary={runtimeSummary}
         setters={{
           setMemoryGb: vi.fn(async () => undefined),
           setMinMemoryGb: vi.fn(async () => undefined),

@@ -34,6 +34,8 @@ describe('AppearanceTab state fidelity', () => {
     const englishButton = screen.getByRole('button', { name: 'English' });
     const russianButton = screen.getByRole('button', { name: 'Русский' });
     const roseAccentChip = screen.getByRole('button', { name: /rose/i });
+    const customAccentChip = screen.getByRole('button', { name: /custom color/i });
+    const customAccentInput = screen.getByLabelText('Custom Color');
     const advancedAppearanceToggle = screen.getByRole('button', { name: 'Advanced Appearance' });
 
     expect(darkThemeButton.getAttribute('aria-pressed')).toBe('true');
@@ -52,8 +54,11 @@ describe('AppearanceTab state fidelity', () => {
 
     expect(roseAccentChip.getAttribute('aria-pressed')).toBe('true');
     expect(roseAccentChip.getAttribute('data-state')).toBe('active');
+    expect(roseAccentChip.className).toContain('settings-accent-chip');
     expect(roseAccentChip.className).toContain('ring-2');
     expect(roseAccentChip.className).toContain('scale-110');
+    expect(customAccentChip.className).toContain('settings-accent-chip');
+    expect(customAccentInput.className).toContain('sr-only');
 
     expect(advancedAppearanceToggle.getAttribute('aria-expanded')).toBe('false');
     expect(advancedAppearanceToggle.className).toContain('focus-visible:ring-2');
@@ -73,6 +78,6 @@ describe('AppearanceTab state fidelity', () => {
 
     expect(screen.getAllByText('Forest · Dark').length).toBeGreaterThan(0);
     expect(screen.getByText('Customized')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Reset to Preset' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Return to Forest · Dark' })).toBeTruthy();
   });
 });

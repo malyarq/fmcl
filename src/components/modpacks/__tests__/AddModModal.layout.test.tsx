@@ -98,7 +98,7 @@ describe('AddModModal flow layout', () => {
     });
   });
 
-  it('keeps the modal body as the only scroll region and leaves results in normal flow', async () => {
+  it('moves modal result streaming into its own viewport so the action rail stays reachable', async () => {
     render(
       <AddModModal
         modpackId="alpha"
@@ -116,14 +116,16 @@ describe('AddModModal flow layout', () => {
     expect(await screen.findByText('Iris')).toBeTruthy();
 
     const modalBody = dialog.querySelector<HTMLElement>('[data-modal-body="true"]');
+    const resultsScroll = screen.getByTestId('add-mod-modal-results-scroll');
     const results = screen.getByTestId('add-mod-modal-results');
     const actions = screen.getByTestId('add-mod-modal-actions');
 
     expect(modalBody).toBeTruthy();
     expect(modalBody?.className).toContain('flex-1');
-    expect(modalBody?.className).toContain('overflow-y-auto');
-    expect(results.className).not.toContain('max-h-64');
-    expect(results.className).not.toContain('overflow-y-auto');
+    expect(modalBody?.style.overflow).toBe('hidden');
+    expect(resultsScroll.className).toContain('overflow-y-auto');
+    expect(resultsScroll.contains(results)).toBe(true);
+    expect(resultsScroll.contains(actions)).toBe(false);
     expect(modalBody?.contains(actions)).toBe(true);
   });
 });

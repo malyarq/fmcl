@@ -8,6 +8,7 @@ import { ModpackDetailsModsTab } from '../ModpackDetailsModsTab';
 import { ResourcePacksTab } from '../ResourcePacksTab';
 import { ShadersTab } from '../ShadersTab';
 import { WorldDatapacksModal } from '../WorldDatapacksModal';
+import { WorldsTab } from '../WorldsTab';
 
 const t = createTranslator('en');
 const confirmMock = vi.fn();
@@ -26,6 +27,8 @@ const resourcePackDisableMock = vi.fn();
 const resourcePackDeleteMock = vi.fn();
 const resourcePackReorderMock = vi.fn();
 const shaderListMock = vi.fn();
+const worldsListMock = vi.fn();
+const openWorldFolderMock = vi.fn();
 
 vi.mock('react-virtuoso', () => ({
   Virtuoso: ({
@@ -41,6 +44,8 @@ vi.mock('../../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
     t,
     getAccentStyles: () => ({ className: '', style: undefined }),
+    formatDate: (timestamp: number | undefined, unknownText = 'Unknown', options?: Intl.DateTimeFormatOptions) =>
+      timestamp ? new Date(timestamp).toLocaleDateString('en-US', options) : unknownText,
     formatNumber: (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-US', options).format(value),
   }),
 }));
@@ -96,6 +101,16 @@ vi.mock('../../../../services/ipc/shadersIPC', () => ({
     disable: vi.fn(),
     delete: vi.fn(),
   },
+}));
+
+vi.mock('../../../../services/ipc/worldsIPC', () => ({
+  worldsIPC: {
+    list: (...args: unknown[]) => worldsListMock(...args),
+    backup: vi.fn(),
+    duplicate: vi.fn(),
+    delete: vi.fn(),
+  },
+  openWorldFolder: (...args: unknown[]) => openWorldFolderMock(...args),
 }));
 
 function mockMatchMedia(matches = false) {
@@ -265,6 +280,8 @@ describe('secondary content tabs', () => {
     resourcePackDeleteMock.mockReset();
     resourcePackReorderMock.mockReset();
     shaderListMock.mockReset();
+    worldsListMock.mockReset();
+    openWorldFolderMock.mockReset();
 
     confirmMock.mockResolvedValue(true);
     listMock.mockResolvedValue([
@@ -326,6 +343,15 @@ describe('secondary content tabs', () => {
         isActive: true,
       },
     ]);
+    worldsListMock.mockResolvedValue([
+      {
+        folderName: 'alpha-world',
+        name: 'Alpha World',
+        sizeBytes: 1024,
+        lastPlayed: 1_776_000_000_000,
+      },
+    ]);
+    openWorldFolderMock.mockResolvedValue(undefined);
   });
 
   it('keeps the details mods tab filterable without breaking the refreshed surface copy', async () => {
@@ -425,6 +451,17 @@ describe('secondary content tabs', () => {
     fireEvent.click(within(unavailableState).getByRole('button', { name: '+ Add Shader' }));
 
     expect(onAddShader).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps worlds on the same details workspace grammar as the other content tabs', async () => {
+    render(<WorldsTab instancePath="/instances/alpha" mcVersion="1.20.1" />);
+
+    expect(await screen.findByText('Alpha World')).toBeTruthy();
+    expect(screen.getByText('Saved Worlds')).toBeTruthy();
+    expect(screen.getByTestId('worlds-summary').textContent).toContain(
+      'World actions stay local to this instance, so you can safely manage saves before launching.',
+    );
+    expect(screen.getByRole('button', { name: 'Update' })).toBeTruthy();
   });
 
   it('keeps the datapacks modal on the shared modal scroll region with labeled installed counts', async () => {

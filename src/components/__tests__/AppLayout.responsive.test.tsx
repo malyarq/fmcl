@@ -12,6 +12,7 @@ import {
 
 const uiModeState = { value: 'simple' as 'simple' | 'modpacks' };
 const settingsState = { sidebarPosition: 'left' as 'left' | 'right' };
+const shellContractState = { value: 'renderer-controls' as 'renderer-controls' | 'native-macos' };
 
 vi.mock('../../contexts/SettingsContext', () => ({
   useUIMode: () => ({
@@ -20,6 +21,12 @@ vi.mock('../../contexts/SettingsContext', () => ({
   useSettings: () => ({
     sidebarPosition: settingsState.sidebarPosition,
   }),
+}));
+
+vi.mock('../../services/ipc/windowControlsIPC', () => ({
+  windowControlsIPC: {
+    shellContract: () => shellContractState.value,
+  },
 }));
 
 vi.mock('../layout/BackgroundLayer', () => ({
@@ -121,6 +128,7 @@ describe('AppLayout responsive shell', () => {
   beforeEach(() => {
     uiModeState.value = 'simple';
     settingsState.sidebarPosition = 'left';
+    shellContractState.value = 'renderer-controls';
   });
 
   it('renders a shell-owned safe-area seam directly below the title bar', () => {
@@ -139,6 +147,9 @@ describe('AppLayout responsive shell', () => {
     expect(notifications.nextElementSibling).toBe(safeArea);
     expect(notifications.textContent).toContain('Update notification');
     expect(safeArea.getAttribute('data-shell-safe-area')).toBe('shell-chrome');
+    expect(notifications.getAttribute('data-shell-platform')).toBe('renderer-controls');
+    expect(safeArea.getAttribute('data-shell-platform')).toBe('renderer-controls');
+    expect(safeArea.className).toContain('pt-2');
     expect(split.parentElement).toBe(safeArea);
     expect(main.className).toContain('min-w-0');
     expect(split.className).toContain('flex-row');
@@ -148,6 +159,7 @@ describe('AppLayout responsive shell', () => {
   it('keeps the same safe-area contract when the route and shell state change', () => {
     settingsState.sidebarPosition = 'right';
     uiModeState.value = 'modpacks';
+    shellContractState.value = 'native-macos';
     const props = createProps();
     props.overlays.showSettings = true;
     props.overlays.showMultiplayer = true;
@@ -158,6 +170,9 @@ describe('AppLayout responsive shell', () => {
     const notifications = screen.getByTestId(APP_LAYOUT_NOTIFICATIONS_TEST_ID);
 
     expect(safeArea.getAttribute('data-shell-safe-area')).toBe('shell-chrome');
+    expect(notifications.getAttribute('data-shell-platform')).toBe('native-macos');
+    expect(safeArea.getAttribute('data-shell-platform')).toBe('native-macos');
+    expect(safeArea.className).toContain('pt-1');
     expect(notifications.previousElementSibling).toBe(screen.getByTestId('app-title-bar'));
     expect(screen.getByTestId('app-layout-split').className).toContain('flex-row-reverse');
     expect(safeArea.contains(screen.getByText('Settings page'))).toBe(true);

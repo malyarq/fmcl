@@ -9,6 +9,7 @@ const t = createTranslator('en');
 const loadModpackConfigMock = vi.fn();
 const refreshMock = vi.fn();
 const selectMock = vi.fn();
+const screenshotsListMock = vi.fn();
 
 vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
@@ -16,6 +17,7 @@ vi.mock('../../../contexts/SettingsContext', () => ({
     getAccentStyles: () => ({ className: '', style: undefined }),
     getAccentHex: () => '#10b981',
     minecraftPath: '/minecraft',
+    formatNumber: (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat('en-US', options).format(value),
   }),
 }));
 
@@ -96,6 +98,15 @@ vi.mock('../../../services/ipc/modpacksIPC', () => ({
   },
 }));
 
+vi.mock('../../../services/ipc/screenshotsIPC', () => ({
+  screenshotsIPC: {
+    list: (...args: unknown[]) => screenshotsListMock(...args),
+    delete: vi.fn(),
+    rename: vi.fn(),
+    openFolder: vi.fn(),
+  },
+}));
+
 describe('Modpack details density', () => {
   beforeEach(() => {
     loadModpackConfigMock.mockReset();
@@ -104,6 +115,8 @@ describe('Modpack details density', () => {
     loadModpackConfigMock.mockResolvedValue(undefined);
     refreshMock.mockResolvedValue(undefined);
     selectMock.mockResolvedValue(undefined);
+    screenshotsListMock.mockReset();
+    screenshotsListMock.mockResolvedValue([]);
   });
 
   it('keeps metadata, tabs, and route actions as one labeled hierarchy under constrained width', () => {
@@ -135,8 +148,11 @@ describe('Modpack details density', () => {
     );
 
     const hero = screen.getByTestId('modpack-details-hero');
+    const routeTop = screen.getByTestId('modpack-details-route-top');
     expect(hero.className).toContain('surface-card');
-    expect(hero.className).toContain('lg:grid-cols-[minmax(0,1fr)_16rem]');
+    expect(hero.className).toContain('lg:grid-cols-[minmax(0,1fr)_15rem]');
+    expect(routeTop.className).not.toContain('flex-col');
+    expect(routeTop.textContent).not.toContain('Modpack details');
 
     const metadata = screen.getByTestId('modpack-details-metadata');
     expect(metadata.textContent).toContain('Version');
@@ -145,7 +161,9 @@ describe('Modpack details density', () => {
     expect(metadata.textContent).toContain('Author');
 
     const tablist = screen.getByTestId('modpack-details-tablist');
-    expect(tablist.className).toContain('grid');
+    expect(tablist.className).toContain('flex');
+    expect(tablist.className).toContain('flex-wrap');
+    expect(tablist.className).not.toContain('grid');
     expect(screen.queryByText('Manage mods, packs, shaders, and worlds from one consistent content workspace.')).toBeNull();
     expect(screen.getByRole('tab', { name: 'Resource packs' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Screenshots' })).toBeTruthy();
@@ -157,5 +175,32 @@ describe('Modpack details density', () => {
     expect(actions.textContent).toContain('Play');
     expect(screen.getByRole('button', { name: 'Play' }).closest('[data-testid="modpack-details-hero"]')).toBe(hero);
     expect(document.querySelectorAll('[data-primary-action="route"]')).toHaveLength(1);
+  });
+
+  it('keeps screenshots inside the shared secondary content host instead of a foreign route panel', async () => {
+    render(
+      <ModpackDetails
+        modpackId="dense-pack"
+        onBack={vi.fn()}
+        onNavigate={vi.fn()}
+        hydrateFromIpc={false}
+        initialTab="screenshots"
+        initialMetadata={{
+          id: 'dense-pack',
+          name: 'Dense Pack',
+          minecraftVersion: '1.20.1',
+          source: 'local',
+          createdAt: '2026-04-18T00:00:00.000Z',
+          updatedAt: '2026-04-18T00:00:00.000Z',
+        }}
+      />,
+    );
+
+    const contentHost = screen.getByTestId('modpack-details-content-host');
+    expect(contentHost.getAttribute('data-content-surface')).toBe('secondary');
+    expect(contentHost.className).toContain('space-y-4');
+    expect(contentHost.className).not.toContain('surface-panel');
+
+    expect(await screen.findByTestId('screenshots-workspace-shell')).toBeTruthy();
   });
 });

@@ -89,9 +89,7 @@ describe('ModpackBrowser accessibility', () => {
 
     const resultButton = await screen.findByRole('button', { name: 'Alpha Pack' });
     const favoriteButton = screen.getByRole('button', { name: 'Add to favorites: Alpha Pack' });
-    const historyButton = screen.getByRole('button', { name: 'History' });
-
-    expect(historyButton.getAttribute('aria-pressed')).toBe('false');
+    screen.getByRole('button', { name: 'History' });
     expect(favoriteButton.getAttribute('aria-pressed')).toBe('false');
 
     fireEvent.click(favoriteButton);

@@ -141,7 +141,10 @@ export const AnchoredOverlay: React.FC<AnchoredOverlayProps> = ({
             }
           : {
               ...style,
-              visibility: 'hidden',
+              top: '0px',
+              left: '0px',
+              opacity: 0,
+              pointerEvents: 'none',
             }
       }
       {...props}

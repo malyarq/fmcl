@@ -57,6 +57,6 @@ describe('WorldsTab degraded states', () => {
     expect(screen.getByRole('heading', { name: t('modpacks.world_load_error') })).toBeTruthy();
     expect(errorState.textContent).toContain(t('degraded.unavailable_label'));
     expect(errorState.textContent).not.toContain(t('modpacks.no_worlds_found'));
-    expect(within(errorState).getByRole('button', { name: t('modpacks.world_refresh') })).toBeTruthy();
+    expect(within(errorState).getByRole('button', { name: t('modpacks.update') })).toBeTruthy();
   });
 });

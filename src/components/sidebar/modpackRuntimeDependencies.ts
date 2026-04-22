@@ -15,6 +15,12 @@ export interface RuntimeDependencyState {
   warnings: RuntimeDependencyWarning[];
 }
 
+export interface RuntimeDependencyWarningGuidance {
+  warning: RuntimeDependencyWarning;
+  message: string;
+  nextStep: string;
+}
+
 export interface BuildRuntimeDependencyStateInput {
   minecraftVersion: string;
   modLoaderType: ModLoaderType;
@@ -101,7 +107,7 @@ export function getModloaderDisplayLabel(
   t: (key: string) => string,
 ): string {
   if (!modLoader) {
-    return translateWithFallback(t, 'modpacks.loader_vanilla', 'Vanilla (no modloader)');
+    return translateWithFallback(t, 'modpacks.loader_vanilla', 'Vanilla');
   }
 
   switch (modLoader.type) {
@@ -116,6 +122,18 @@ export function getModloaderDisplayLabel(
     default:
       return modLoader.type;
   }
+}
+
+export function getRuntimeDependencyLoaderLabel(
+  runtime: Pick<RuntimeDependencyState, 'modLoader'>,
+  t: (key: string) => string,
+): string {
+  const baseLabel = getModloaderDisplayLabel(runtime.modLoader, t);
+  if (!runtime.modLoader?.version) {
+    return baseLabel;
+  }
+
+  return `${baseLabel} ${runtime.modLoader.version}`;
 }
 
 export function getRuntimeDependencyWarningMessage(
@@ -138,4 +156,58 @@ export function getRuntimeDependencyWarningMessage(
     default:
       return warning;
   }
+}
+
+export function getRuntimeDependencyWarningNextStep(
+  warning: RuntimeDependencyWarning,
+  t: (key: string) => string,
+): string {
+  switch (warning) {
+    case 'optifine_requires_forge':
+      return translateWithFallback(
+        t,
+        'modpacks.runtime_warning_fix_optifine_requires_forge',
+        'Switch the modloader to Forge or turn off OptiFine in this draft.',
+      );
+    case 'optifine_requires_supported_version':
+      return translateWithFallback(
+        t,
+        'modpacks.runtime_warning_fix_optifine_requires_supported_version',
+        'Choose a Minecraft version with OptiFine support or turn off OptiFine in this draft.',
+      );
+    default:
+      return translateWithFallback(t, 'modpacks.create_error', 'Error creating modpack');
+  }
+}
+
+export function getRuntimeDependencyWarningGuidance(
+  warning: RuntimeDependencyWarning,
+  t: (key: string) => string,
+): RuntimeDependencyWarningGuidance {
+  return {
+    warning,
+    message: getRuntimeDependencyWarningMessage(warning, t),
+    nextStep: getRuntimeDependencyWarningNextStep(warning, t),
+  };
+}
+
+export function getCreateRuntimeDependencyErrorMessage(
+  runtime: Pick<RuntimeDependencyState, 'warnings'>,
+  t: (key: string) => string,
+): string | null {
+  const warning = runtime.warnings[0];
+  if (!warning) {
+    return null;
+  }
+
+  const guidance = getRuntimeDependencyWarningGuidance(warning, t);
+  const template = translateWithFallback(
+    t,
+    'modpacks.create_runtime_warning',
+    'FMCL still sees a runtime issue in this draft: {{warning}} {{nextStep}}',
+  );
+
+  return template
+    .replace('{{warning}}', guidance.message)
+    .replace('{{nextStep}}', guidance.nextStep);
 }

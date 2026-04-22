@@ -266,6 +266,40 @@ describe('ModpackContext startup truth', () => {
     expect(screen.queryByTestId(APP_STARTUP_PENDING_TEST_ID)).toBeNull();
   });
 
+  it('boots classic mode against the default root path when minecraftPath is unset', async () => {
+    minecraftPathState.value = '';
+
+    const selectedConfig = createConfig('default', 'Default', '1.12.2', 'vanilla');
+    const classicConfig = createConfig(CLASSIC_MODPACK_ID, 'Classic', '1.20.1', 'fabric');
+    const modpacks: ModpackListItem[] = [
+      { id: 'default', name: 'Default', path: '/minecraft/default', selected: true },
+    ];
+
+    bootstrapMock.mockResolvedValue(null);
+    listMock.mockResolvedValue(modpacks);
+    getSelectedMock.mockResolvedValue('default');
+    fetchConfigMock.mockImplementation((id: string, rootPath?: string) => {
+      expect(rootPath).toBeUndefined();
+
+      if (id === CLASSIC_MODPACK_ID) {
+        return Promise.resolve(classicConfig);
+      }
+
+      return Promise.resolve(selectedConfig);
+    });
+
+    render(React.createElement(AppProviders, null, React.createElement(App)));
+
+    expect(screen.getByTestId(APP_STARTUP_PENDING_TEST_ID)).toBeTruthy();
+
+    await waitFor(() => {
+      expect(fetchConfigMock).toHaveBeenCalledWith(CLASSIC_MODPACK_ID, undefined);
+      expect(screen.getByTestId('app-layout').textContent).toBe('1.20.1|fabric');
+    });
+
+    expect(screen.queryByTestId(APP_STARTUP_PENDING_TEST_ID)).toBeNull();
+  });
+
   it('clears stale selected runtime labels while persisted truth reloads for a new root path', async () => {
     uiModeState.value = 'modpacks';
 

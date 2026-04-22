@@ -216,7 +216,7 @@ export const Modal: React.FC<ModalProps> = ({
         <>
             <div
                 className={cn(
-                    'fixed inset-0 z-50 bg-background/70 backdrop-blur-sm pointer-events-auto',
+                    'fixed inset-0 z-50 bg-background/36 backdrop-blur-[2px] pointer-events-auto',
                     animationClasses.overlay
                 )}
                 onClick={requestClose}
@@ -233,7 +233,7 @@ export const Modal: React.FC<ModalProps> = ({
                 <div
                     ref={dialogRef}
                     className={cn(
-                        'surface-panel pointer-events-auto flex w-full max-w-lg flex-col overflow-hidden rounded-[28px]',
+                        'surface-panel pointer-events-auto flex w-full max-w-lg flex-col overflow-hidden rounded-[28px] border-border/70 bg-card/78 backdrop-blur-2xl',
                         'max-h-[95vh] sm:max-h-[90vh] md:max-h-[85vh]',
                         animationClasses.dialog,
                         className
@@ -246,7 +246,7 @@ export const Modal: React.FC<ModalProps> = ({
                     tabIndex={-1}
                     style={{ isolation: 'isolate' }}
                 >
-                    <div className="flex items-center justify-between border-b border-border/70 bg-card/88 px-4 py-3 sm:px-6 sm:py-4">
+                    <div className="flex items-center justify-between border-b border-border/70 bg-card/72 px-4 py-3 sm:px-6 sm:py-4">
                         <h3
                             id={titleId}
                             className="truncate pr-2 text-base font-bold text-foreground sm:text-lg"

@@ -76,7 +76,9 @@ describe('ScreenshotsTab locale formatting', () => {
   it('uses locale-aware helpers for screenshot count and created dates', async () => {
     render(<ScreenshotsTab instancePath="/instance" />);
 
-    expect(await screen.findByText('count:2 screenshots saved')).toBeTruthy();
+    const summary = await screen.findByTestId('screenshots-summary');
+    expect(summary.textContent).toContain('Saved');
+    expect(summary.textContent).toContain('count:2');
     expect(screen.getByText('date:1776000000000')).toBeTruthy();
     expect(screen.getByText('date:1776000100000')).toBeTruthy();
     expect(formatNumberMock).toHaveBeenCalledWith(2);

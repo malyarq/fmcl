@@ -60,10 +60,16 @@ type FlowNoticeTone = 'warning' | 'error';
 type LocalImportResult = ResourcePackAcquisitionResult | ShaderPackAcquisitionResult;
 type GuidedContentType = 'resourcepack' | 'shader';
 type NonModRecoveryStatus = GuidedContentInstallIssueStatus;
+type ModRecoveryStatus = 'install-failure' | 'manifest-failure';
 
 interface NonModRecoveryIssue {
   label: string;
   status: NonModRecoveryStatus;
+}
+
+interface ModRecoveryIssue {
+  label: string;
+  status: ModRecoveryStatus;
 }
 
 function getSafeModVersionLabel(version: ModVersion, fallback: string) {
@@ -100,7 +106,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
   const [loadingMore, setLoadingMore] = useState(false);
   const [flowNotice, setFlowNotice] = useState<{ tone: FlowNoticeTone; message: string } | null>(null);
   const [localImporting, setLocalImporting] = useState(false);
-  const pageScrollRef = useRef<HTMLDivElement>(null);
+  const resultsScrollRef = useRef<HTMLDivElement>(null);
   const searchRequestIdRef = useRef(0);
   const PAGE_SIZE = 20;
   const { optiFineVersions } = useModSupportedVersions();
@@ -313,6 +319,60 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
     });
   }, [buildNonModRecoveryNotice, contentType]);
 
+  const buildModRecoveryNotice = useCallback((params: {
+    issues: ModRecoveryIssue[];
+    addedCount?: number;
+  }): { tone: FlowNoticeTone; message: string } | null => {
+    const { issues, addedCount = 0 } = params;
+
+    if (issues.length === 0) {
+      return null;
+    }
+
+    const grouped = issues.reduce<Record<ModRecoveryStatus, string[]>>((acc, issue) => {
+      acc[issue.status].push(issue.label);
+      return acc;
+    }, {
+      'install-failure': [],
+      'manifest-failure': [],
+    });
+
+    const messageParts: string[] = [];
+
+    if (addedCount > 0) {
+      messageParts.push(
+        (t('modpacks.add_mod_recovery_partial_intro')
+          || 'Added {{added}} mods. The remaining picks stayed selected here so you can retry only the blocked ones.')
+          .replace('{{added}}', String(addedCount)),
+      );
+    }
+
+    if (grouped['install-failure'].length > 0) {
+      messageParts.push(
+        (t('modpacks.add_mod_recovery_install_failure')
+          || 'FMCL could not download or place these mods right now: {{items}}. Retry from this screen or keep browsing.')
+          .replace('{{items}}', formatRecoveryItems(grouped['install-failure'])),
+      );
+    }
+
+    if (grouped['manifest-failure'].length > 0) {
+      messageParts.push(
+        (t('modpacks.add_mod_recovery_manifest_failure')
+          || 'FMCL downloaded these mods but could not write them into this modpack manifest: {{items}}. Retry from this screen before leaving or inspect the manifest if it keeps failing.')
+          .replace('{{items}}', formatRecoveryItems(grouped['manifest-failure'])),
+      );
+    }
+
+    if (messageParts.length === 0) {
+      return null;
+    }
+
+    return {
+      tone: addedCount > 0 ? 'warning' : 'error',
+      message: messageParts.join(' '),
+    };
+  }, [t]);
+
   const searchMods = useCallback(async (offset: number, append: boolean) => {
     const requestId = searchRequestIdRef.current + 1;
     searchRequestIdRef.current = requestId;
@@ -387,7 +447,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
   );
 
   const handleScroll = useCallback(() => {
-    const el = pageScrollRef.current;
+    const el = resultsScrollRef.current;
     if (!el || loading || loadingMore) return;
     const { scrollTop, scrollHeight, clientHeight } = el;
     if (scrollTop + clientHeight >= scrollHeight - 100) {
@@ -397,7 +457,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
   }, [loading, loadingMore, searchResults.length, total, searchMods]);
 
   useEffect(() => {
-    const el = pageScrollRef.current;
+    const el = resultsScrollRef.current;
     if (!el || loading || loadingMore) return;
     if (searchResults.length === 0 || searchResults.length >= total) return;
 
@@ -565,8 +625,12 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
     }
 
     try {
+      const retainedSelections = new Map<string, CheckedEntry>();
+      const recoveryIssues: ModRecoveryIssue[] = [];
+
       for (const { entry } of readyToAdd) {
         const { mod, version } = entry;
+        let installedToInstance = false;
         try {
           await modsIPC.installModFile({
             platform: mod.platform,
@@ -576,6 +640,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
             rootPath: minecraftPath,
             contentType,
           });
+          installedToInstance = true;
 
           if (shouldPersistInstallToManifest) {
             await modpacksIPC.addMod(modpackId, {
@@ -588,32 +653,36 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
           added++;
         } catch {
           failed++;
+          const key = `${mod.platform}:${mod.projectId}`;
+          retainedSelections.set(key, entry);
+          recoveryIssues.push({
+            label: mod.title,
+            status: installedToInstance && shouldPersistInstallToManifest ? 'manifest-failure' : 'install-failure',
+          });
         }
       }
-      setCheckedMods(new Map());
+
+      setCheckedMods(retainedSelections);
+
       if (added > 0) {
         if (failed === 0) {
           toast.success(t('modpacks.add_mod') || 'Моды добавлены!');
+          setCheckedMods(new Map());
         } else {
-          setFlowNotice({
-            tone: 'warning',
-            message:
-              (t('modpacks.add_mod_partial_recovery') || 'Added {{added}} items, but {{failed}} failed. Review the current results and retry only what you still need.')
-                .replace('{{added}}', String(added))
-                .replace('{{failed}}', String(failed)),
-          });
+          const notice = buildModRecoveryNotice({ issues: recoveryIssues, addedCount: added });
+          if (notice) {
+            setFlowNotice(notice);
+          }
         }
       }
       if (added > 0 && failed === 0) {
         onBack();
       }
       if (failed > 0 && added === 0) {
-        setFlowNotice({
-          tone: 'error',
-          message:
-            (t('modpacks.add_mod_failed_recovery') || 'Nothing was added. {{failed}} items failed. Review the current results and try again.')
-              .replace('{{failed}}', String(failed)),
-        });
+        const notice = buildModRecoveryNotice({ issues: recoveryIssues });
+        if (notice) {
+          setFlowNotice(notice);
+        }
         toast.error(t('modpacks.add_mod_error') || 'Ошибка при добавлении');
       }
     } finally {
@@ -813,28 +882,8 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
         </div>
       </div>
 
-      <div
-        ref={pageScrollRef}
-        className="flex-1 overflow-y-auto p-6 min-h-0"
-        onScroll={handleScroll}
-        data-testid="add-mod-page-scroll"
-      >
-        <div className="space-y-4 max-w-4xl mx-auto">
-          {flowNotice && (
-            <div
-              className={cn(
-                'rounded-2xl border px-4 py-3 text-sm',
-                flowNotice.tone === 'warning'
-                  ? 'border-amber-500/35 bg-amber-500/12 text-foreground'
-                  : 'border-red-500/35 bg-red-500/12 text-foreground',
-              )}
-              data-testid="add-mod-page-notice"
-              data-tone={flowNotice.tone}
-            >
-              {flowNotice.message}
-            </div>
-          )}
-
+      <div className="flex-1 min-h-0 p-6" data-testid="add-mod-page-body">
+        <div className="mx-auto flex h-full max-w-4xl min-h-0 flex-col gap-4">
           {shaderGuidance && (
             <div
               className={cn(
@@ -953,141 +1002,163 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
             </div>
           )}
 
-          {/* Search Results */}
-          {loading && (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <LoadingSpinner size="lg" />
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                {t('modpacks.loading')}
-              </p>
-            </div>
-          )}
+          <div
+            ref={resultsScrollRef}
+            className="min-h-[18rem] flex-1 overflow-y-auto pr-1"
+            onScroll={handleScroll}
+            data-testid="add-mod-results-scroll"
+          >
+            {loading && (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <LoadingSpinner size="lg" />
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  {t('modpacks.loading')}
+                </p>
+              </div>
+            )}
 
-          {!loading && !searchError && searchResults.length > 0 && (
-            <div
-              className="space-y-2"
-              data-testid="add-mod-results"
-            >
-              {searchResults.map((mod) => {
-                const key = `${mod.platform}:${mod.projectId}`;
-                const entry = checkedMods.get(key);
-                const isChecked = entry !== undefined;
-                const isLoading = entry === 'loading';
-                const version = entry !== 'loading' && entry ? entry.version : null;
-                return (
-                  <div
-                    key={key}
-                    className={cn(
-                      'p-3 border rounded-lg transition-colors flex gap-3 items-start',
-                      isChecked
-                        ? 'border-zinc-400 dark:border-zinc-500 bg-zinc-50 dark:bg-zinc-900/60'
-                        : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/50'
-                    )}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      disabled={isLoading || isBusy}
-                      onChange={(e) => handleCheckChange(mod, e.target.checked)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="mt-1 w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 focus:ring-2 focus:ring-zinc-500"
-                    />
-                    <LazyImage
-                      src={mod.iconUrl}
-                      alt={mod.title}
-                      className="w-12 h-12 rounded object-cover shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-zinc-900 dark:text-white truncate">
-                        {mod.title}
-                      </h4>
-                      {version && (
-                        <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
-                          {getSafeModVersionLabel(version, unavailableVersionLabel)} {version.mcVersions[0] && `(${version.mcVersions[0]})`}
-                        </p>
+            {!loading && !searchError && searchResults.length > 0 && (
+              <div
+                className="space-y-2"
+                data-testid="add-mod-results"
+              >
+                {searchResults.map((mod) => {
+                  const key = `${mod.platform}:${mod.projectId}`;
+                  const entry = checkedMods.get(key);
+                  const isChecked = entry !== undefined;
+                  const isLoading = entry === 'loading';
+                  const version = entry !== 'loading' && entry ? entry.version : null;
+                  return (
+                    <div
+                      key={key}
+                      className={cn(
+                        'p-3 border rounded-lg transition-colors flex gap-3 items-start',
+                        isChecked
+                          ? 'border-zinc-400 dark:border-zinc-500 bg-zinc-50 dark:bg-zinc-900/60'
+                          : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/50'
                       )}
-                      {mod.description && !version && (
-                        <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1">
-                          {mod.description}
-                        </p>
-                      )}
-                      {mod.downloads !== undefined && (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
-                          {t('modpacks.downloads')}: {mod.downloads.toLocaleString()}
-                        </p>
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={isLoading || isBusy}
+                        onChange={(e) => handleCheckChange(mod, e.target.checked)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="mt-1 w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 focus:ring-2 focus:ring-zinc-500"
+                      />
+                      <LazyImage
+                        src={mod.iconUrl}
+                        alt={mod.title}
+                        className="w-12 h-12 rounded object-cover shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-zinc-900 dark:text-white truncate">
+                          {mod.title}
+                        </h4>
+                        {version && (
+                          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
+                            {getSafeModVersionLabel(version, unavailableVersionLabel)} {version.mcVersions[0] && `(${version.mcVersions[0]})`}
+                          </p>
+                        )}
+                        {mod.description && !version && (
+                          <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1">
+                            {mod.description}
+                          </p>
+                        )}
+                        {mod.downloads !== undefined && (
+                          <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
+                            {t('modpacks.downloads')}: {mod.downloads.toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                      {isLoading && (
+                        <LoadingSpinner size="sm" className="shrink-0" />
                       )}
                     </div>
-                    {isLoading && (
-                      <LoadingSpinner size="sm" className="shrink-0" />
-                    )}
+                  );
+                })}
+                {loadingMore && (
+                  <div className="flex justify-center py-4">
+                    <LoadingSpinner size="md" />
                   </div>
-                );
-              })}
-              {loadingMore && (
-                <div className="flex justify-center py-4">
-                  <LoadingSpinner size="md" />
-                </div>
-              )}
-              {!loadingMore && searchResults.length > 0 && searchResults.length < total && (
-                <p className="text-xs text-center text-zinc-500 dark:text-zinc-400 py-2">
-                  {t('modpacks.scroll_for_more') || 'Прокрутите вниз для загрузки'}
-                </p>
-              )}
-            </div>
-          )}
+                )}
+                {!loadingMore && searchResults.length > 0 && searchResults.length < total && (
+                  <p className="text-xs text-center text-zinc-500 dark:text-zinc-400 py-2">
+                    {t('modpacks.scroll_for_more') || 'Прокрутите вниз для загрузки'}
+                  </p>
+                )}
+              </div>
+            )}
 
-          {!loading && searchError ? (
-            <DegradedStateView
-              variant="error"
-              label={t('degraded.error_label')}
-              title={t('modpacks.add_mod_search_error_title') || 'Unable to search right now'}
-              description={searchError}
-              footer={(
-                <Button variant="secondary" size="sm" onClick={() => void searchMods(0, false)}>
-                  {t('modpacks.search_btn')}
-                </Button>
-              )}
-            />
-          ) : null}
+            {!loading && searchError ? (
+              <DegradedStateView
+                variant="error"
+                label={t('degraded.error_label')}
+                title={t('modpacks.add_mod_search_error_title') || 'Unable to search right now'}
+                description={searchError}
+                footer={(
+                  <Button variant="secondary" size="sm" onClick={() => void searchMods(0, false)}>
+                    {t('modpacks.search_btn')}
+                  </Button>
+                )}
+              />
+            ) : null}
 
-          {!loading && !searchError && searchResults.length === 0 ? (
-            <DegradedStateView
-              variant={query.trim() ? 'zero-results' : 'empty'}
-              label={t(query.trim() ? 'degraded.zero_results_label' : 'degraded.empty_label')}
-              title={
-                query.trim()
-                  ? getNoResultsTitle()
-                  : getEmptyStateTitle()
-              }
-              description={
-                query.trim()
-                  ? getNoResultsDescription()
-                  : getEmptyStateDescription()
-              }
-            />
-          ) : null}
+            {!loading && !searchError && searchResults.length === 0 ? (
+              <DegradedStateView
+                variant={query.trim() ? 'zero-results' : 'empty'}
+                label={t(query.trim() ? 'degraded.zero_results_label' : 'degraded.empty_label')}
+                title={
+                  query.trim()
+                    ? getNoResultsTitle()
+                    : getEmptyStateTitle()
+                }
+                description={
+                  query.trim()
+                    ? getNoResultsDescription()
+                    : getEmptyStateDescription()
+                }
+              />
+            ) : null}
+          </div>
 
           <div
-            className="surface-card flex flex-col gap-2 p-4 sm:flex-row"
+            className="surface-card shrink-0 space-y-3 p-4"
             data-testid="add-mod-page-actions"
           >
-            <Button
-              onClick={onBack}
-              variant="secondary"
-              disabled={isBusy}
-              className="w-full sm:flex-1"
-            >
-              {t('general.cancel')}
-            </Button>
-            <Button
-              onClick={handleAddBulk}
-              disabled={readyToAdd.length === 0 || isBusy || hasLoading}
-              className={cn("w-full text-white sm:flex-1", getAccentStyles('bg').className)}
-              style={getAccentStyles('bg').style}
-              isLoading={installing}
-            >
-              {installing ? t('modpacks.installing') : getPrimaryActionLabel()}
-            </Button>
+            {flowNotice && (
+              <div
+                className={cn(
+                  'rounded-2xl border px-4 py-3 text-sm',
+                  flowNotice.tone === 'warning'
+                    ? 'border-amber-500/35 bg-amber-500/12 text-foreground'
+                    : 'border-red-500/35 bg-red-500/12 text-foreground',
+                )}
+                data-testid="add-mod-page-notice"
+                data-tone={flowNotice.tone}
+              >
+                {flowNotice.message}
+              </div>
+            )}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                onClick={onBack}
+                variant="secondary"
+                disabled={isBusy}
+                className="w-full sm:flex-1"
+              >
+                {t('general.cancel')}
+              </Button>
+              <Button
+                onClick={handleAddBulk}
+                disabled={readyToAdd.length === 0 || isBusy || hasLoading}
+                className={cn("w-full text-white sm:flex-1", getAccentStyles('bg').className)}
+                style={getAccentStyles('bg').style}
+                isLoading={installing}
+              >
+                {installing ? t('modpacks.installing') : getPrimaryActionLabel()}
+              </Button>
+            </div>
           </div>
         </div>
       </div>

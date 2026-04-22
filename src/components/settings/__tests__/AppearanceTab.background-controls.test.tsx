@@ -20,6 +20,12 @@ type MockSettings = {
   getAccentStyles: (type: AccentStyleType) => { className?: string; style?: CSSProperties };
   customTheme: CustomThemeConfig;
   activeThemeConfig: CustomThemeConfig;
+  themeRuntimeState: {
+    activePresetId: string | null;
+    customizationScopes: string[];
+    hasCustomizations: boolean;
+    matchesPresetDefaultMode: boolean;
+  };
   clearThemePreset: ReturnType<typeof vi.fn>;
   setCustomTheme: ReturnType<typeof vi.fn>;
 };
@@ -47,6 +53,12 @@ function buildSettings(customTheme: CustomThemeConfig): MockSettings {
     getAccentStyles: () => ({ style: {} }),
     customTheme,
     activeThemeConfig: customTheme,
+    themeRuntimeState: {
+      activePresetId: 'forest',
+      customizationScopes: Object.keys(customTheme).filter((scope) => scope.length > 0),
+      hasCustomizations: Object.keys(customTheme).length > 0,
+      matchesPresetDefaultMode: true,
+    },
     clearThemePreset: vi.fn(),
     setCustomTheme: vi.fn(),
   };
@@ -72,6 +84,8 @@ describe('AppearanceTab background controls', () => {
     render(<AppearanceTab />);
     screen.getByRole('button', { name: 'Background Effects' }).click();
 
+    expect(screen.getByText('Visible Background Scope')).toBeTruthy();
+    expect(screen.getByText(/shell frame and backdrop around this modal/i)).toBeTruthy();
     expect(screen.getByText('Particle Type')).toBeTruthy();
     expect(screen.getByText('Intensity')).toBeTruthy();
     expect(screen.queryByText('Background Image URL')).toBeNull();
@@ -93,6 +107,7 @@ describe('AppearanceTab background controls', () => {
     render(<AppearanceTab />);
     screen.getByRole('button', { name: 'Background Effects' }).click();
 
+    expect(screen.getByText('Visible Background Scope')).toBeTruthy();
     expect(screen.getByText('Video URL (MP4/WebM)')).toBeTruthy();
     expect(screen.getByText('Auto-Pause (Inactive)')).toBeTruthy();
     expect(screen.queryByText('Particle Type')).toBeNull();

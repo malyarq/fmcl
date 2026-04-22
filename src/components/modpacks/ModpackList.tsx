@@ -41,6 +41,15 @@ function isActivationKey(key: string) {
   return key === 'Enter' || key === ' ';
 }
 
+function isContextMenuShortcut(event: React.KeyboardEvent<HTMLElement>) {
+  return (
+    event.key === 'ContextMenu'
+    || event.code === 'ContextMenu'
+    || event.key === 'F10'
+    || event.code === 'F10'
+  );
+}
+
 function translateWithFallback(
   t: (key: string, params?: Record<string, string | number>) => string,
   key: string,
@@ -118,7 +127,7 @@ const ModpackListComponentInternal: React.FC<{
   onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string } | { type: 'export'; modpackId: string }) => void;
   onCreateWizard?: () => void;
 }> = ({ contextModpacks: _contextModpacks, selectedId, select, remove, rename, duplicate, refresh, modpacksKey, onNavigate, onCreateWizard }) => {
-  const { t, getAccentStyles, formatNumber, minecraftPath } = useSettings();
+  const { t, getAccentStyles, minecraftPath } = useSettings();
   const toast = useToast();
   const confirm = useConfirm();
   const [modpacks, setModpacks] = useState<ModpackListItemWithMetadata[]>([]);
@@ -411,10 +420,6 @@ const ModpackListComponentInternal: React.FC<{
     searchQuery.trim().length > 0
     || filterMCVersion !== 'all'
     || filterLoader !== 'all';
-  const selectedModpack = useMemo(
-    () => modpacks.find((modpack) => modpack.id === selectedId) ?? null,
-    [modpacks, selectedId],
-  );
   const listErrorTitle = t('error.inline_fallback');
   const listErrorDescription = loadError
     ? (() => {
@@ -532,21 +537,6 @@ const ModpackListComponentInternal: React.FC<{
     return modpack.metadata?.iconUrl;
   }, []);
 
-  const getModpackSourceBadge = useCallback((source?: string) => {
-    if (!source || source === 'local') return null;
-    const badges = {
-      curseforge: { text: 'CF', color: 'bg-orange-500' },
-      modrinth: { text: 'MR', color: 'bg-green-500' },
-    };
-    const badge = badges[source as keyof typeof badges];
-    if (!badge) return null;
-    return (
-      <span className={cn('text-xs px-1.5 py-0.5 rounded text-white font-bold', badge.color)}>
-        {badge.text}
-      </span>
-    );
-  }, []);
-
   const openContextMenu = useCallback((
     modpackId: string,
     anchorRect: AnchoredRect,
@@ -620,7 +610,7 @@ const ModpackListComponentInternal: React.FC<{
     onContextMenu: (e: React.MouseEvent, id: string) => void;
   }
 
-  const ModpackCard = React.memo<ModpackCardProps>(({
+  const ModpackCard = useMemo(() => React.memo<ModpackCardProps>(({
     modpack,
     availableUpdate,
     index,
@@ -634,11 +624,7 @@ const ModpackListComponentInternal: React.FC<{
   }) => {
     const { t, getAccentStyles, formatDate } = useSettings();
     const iconSrc = useMemo(() => getModpackIcon(modpack), [modpack]);
-    const iconFallbackKind = useMemo(
-      () => (!modpack.metadata?.source || modpack.metadata.source === 'local' ? 'app-icon' : 'content-artwork'),
-      [modpack.metadata?.source],
-    );
-    const sourceBadge = useMemo(() => getModpackSourceBadge(modpack.metadata?.source), [modpack.metadata?.source]);
+    const iconFallbackKind = 'content-artwork';
     const runtimeSummary = useMemo(
       () => buildModpackRuntimeSummary({ metadata: modpack.metadata ?? null }),
       [modpack.metadata],
@@ -660,7 +646,7 @@ const ModpackListComponentInternal: React.FC<{
     return (
       <div
         className={cn(
-          'surface-card relative flex min-h-[19rem] cursor-pointer flex-col p-5 transition-all duration-300 ease-out',
+          'surface-card relative flex min-h-[17rem] cursor-pointer flex-col p-4 transition-all duration-300 ease-out',
           'transform hover:scale-[1.02] hover:shadow-lg',
           'hover:-translate-y-1',
           'animate-fade-in-up',
@@ -703,7 +689,7 @@ const ModpackListComponentInternal: React.FC<{
               return;
             }
 
-            if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+            if (isContextMenuShortcut(event)) {
               event.preventDefault();
               onOpenActionsFromKeyboard(event.currentTarget, modpack.id);
             }
@@ -725,44 +711,26 @@ const ModpackListComponentInternal: React.FC<{
               />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="mb-2 flex flex-wrap items-start gap-2">
-                {sourceBadge}
-                {availableUpdate && (
-                  <div
-                    data-testid={`installed-modpack-update-indicator-${modpack.id}`}
-                    data-update-scope="modpack-local"
-                    className="inline-flex items-center rounded-full border border-blue-200/70 bg-blue-100/70 px-2.5 py-1 text-[11px] font-medium text-blue-900 dark:border-blue-900/80 dark:bg-blue-950/40 dark:text-blue-100"
-                  >
-                    {updateBadgeText}
-                  </div>
-                )}
-                {isSelected && (
-                  <div
-                    className={cn(
-                      'rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em]',
-                      activeBackground.className,
-                      activeBorder.className,
-                      activeLabel.className,
-                    )}
-                    style={{
-                      ...activeBackground.style,
-                      ...activeBorder.style,
-                      ...activeLabel.style,
-                    }}
-                  >
-                    {t('modpacks.active')}
-                  </div>
-                )}
-              </div>
               <h3 className="truncate text-base font-semibold text-foreground">
                 {modpack.name}
               </h3>
+              {isSelected && (
+                <div
+                  className={cn(
+                    'mt-1 text-xs font-medium',
+                    activeLabel.className,
+                  )}
+                  style={activeLabel.style}
+                >
+                  {t('modpacks.active')}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="grid gap-2 text-xs text-secondary sm:grid-cols-2">
+          <div className="flex flex-wrap gap-x-6 gap-y-3 text-xs text-secondary">
             {runtimeSummary.minecraftVersion && (
-              <div className="rounded-2xl border border-border/70 bg-background/72 px-3 py-2">
+              <div className="min-w-[8rem]">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                   {translateWithFallback(t, 'modpacks.minecraft_version', 'Minecraft Version')}
                 </div>
@@ -772,7 +740,7 @@ const ModpackListComponentInternal: React.FC<{
               </div>
             )}
             {updatedLabel && (
-              <div className="rounded-2xl border border-border/70 bg-background/72 px-3 py-2">
+              <div className="min-w-[8rem]">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted">
                   {translateWithFallback(t, 'modpacks.updated', 'Updated')}
                 </div>
@@ -783,6 +751,16 @@ const ModpackListComponentInternal: React.FC<{
             )}
           </div>
 
+          {availableUpdate && (
+            <div
+              data-testid={`installed-modpack-update-indicator-${modpack.id}`}
+              data-update-scope="modpack-local"
+              className="text-xs font-medium text-secondary"
+            >
+              {updateBadgeText}
+            </div>
+          )}
+
           <div
             className="relative z-10 mt-auto grid grid-cols-[minmax(0,1fr)_auto] gap-2 pt-1"
             onClick={(e) => e.stopPropagation()}
@@ -790,7 +768,8 @@ const ModpackListComponentInternal: React.FC<{
           >
             <Button
               variant="primary"
-              size="md"
+              size="sm"
+              geometry="catalog-primary"
               onClick={() => onShowDetails(modpack.id)}
               className="col-span-2 min-w-0 justify-center transition-all duration-200"
               style={getAccentStyles('bg').style}
@@ -801,7 +780,8 @@ const ModpackListComponentInternal: React.FC<{
             </Button>
             <Button
               variant="secondary"
-              size="md"
+              size="sm"
+              geometry="catalog-primary"
               onClick={() => {
                 if (!isSelected) {
                   onSelect(modpack.id);
@@ -815,7 +795,8 @@ const ModpackListComponentInternal: React.FC<{
             </Button>
             <Button
               variant="secondary"
-              size="md"
+              size="sm"
+              geometry="catalog-primary"
               onClick={(event) => onOpenActions(event, modpack.id)}
               aria-haspopup="menu"
               aria-expanded={isMenuOpen}
@@ -847,38 +828,8 @@ const ModpackListComponentInternal: React.FC<{
       prevProps.modpack.metadata?.source === nextProps.modpack.metadata?.source &&
       prevProps.availableUpdate?.latestVersion.versionId === nextProps.availableUpdate?.latestVersion.versionId
     );
-  });
+  }), [getModpackIcon]);
   ModpackCard.displayName = 'ModpackCard';
-
-  const formattedTotalCount = formatNumber(modpacks.length);
-  const formattedResultsStart = formatNumber(sortedModpacks.length > 0 ? 1 : 0);
-  const formattedResultsEnd = formatNumber(sortedModpacks.length);
-  const installedCatalogStatus = useMemo(() => {
-    if (loadError) {
-      return [
-        t('degraded.error_label'),
-        `${translateWithFallback(t, 'modpacks.active', 'Active')}: ${t('degraded.unavailable_label')}`,
-      ];
-    }
-
-    return [
-      translateWithFallback(
-        t,
-        'modpacks.results_summary',
-        `Showing ${formattedResultsStart}-${formattedResultsEnd} of ${formattedTotalCount}`,
-        { start: formattedResultsStart, end: formattedResultsEnd, total: formattedTotalCount },
-      ),
-      `${translateWithFallback(t, 'modpacks.active', 'Active')}: ${selectedModpack?.name ?? '-'}`,
-    ];
-  }, [
-    formattedResultsEnd,
-    formattedResultsStart,
-    formattedTotalCount,
-    loadError,
-    selectedModpack?.name,
-    t,
-  ]);
-
 
   return (
     <>
@@ -891,53 +842,54 @@ const ModpackListComponentInternal: React.FC<{
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* Header */}
-        <div className="surface-card mb-6 flex flex-col gap-4 p-5 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <div className="kicker-label">{t('modpacks.title')}</div>
-            <h2 className="mb-1 text-xl font-bold text-foreground sm:text-2xl">
-              {t('modpacks.title')}
-            </h2>
-            <p className="text-sm text-secondary">
-              {t('modpacks.desc')}
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setImportShareModalOpen(true)}
-              className="w-full sm:w-auto"
-              title={t('share.import_title')}
-            >
-              <Download className="w-4 h-4" />
-              {t('modpacks.import_code_btn')}
-            </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => onCreateWizard?.()}
-              className="w-full sm:w-auto"
-            >
-              <PackagePlus className="w-4 h-4" />
-              {t('modpacks.create')}
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => onNavigate?.({ type: 'browser' })}
-              className={cn("w-full sm:w-auto", getAccentStyles('bg').className)}
-              style={getAccentStyles('bg').style}
-            >
-              <Compass className="w-4 h-4" />
-              {t('modpacks.browser')}
-            </Button>
-          </div>
-        </div>
-
         <ModpackCatalogControls
           rootTestId="installed-modpack-filters"
+          headerTestId="installed-modpack-catalog-header"
           controlsTestId="installed-modpack-filter-controls"
+          header={(
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+              <h2 className="text-base font-semibold text-foreground">
+                {t('modpacks.title')}
+              </h2>
+              <div className="flex flex-wrap items-center gap-2" data-testid="installed-modpack-primary-actions">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  geometry="catalog-primary"
+                  onClick={() => setImportShareModalOpen(true)}
+                  className="min-h-10 flex-1 justify-center gap-2 px-4 sm:flex-none"
+                  title={t('share.import_title')}
+                >
+                  <Download className="h-4 w-4 shrink-0" />
+                  {t('modpacks.import_code_btn')}
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  geometry="catalog-primary"
+                  onClick={() => onCreateWizard?.()}
+                  className="min-h-10 flex-1 justify-center gap-2 px-4 sm:flex-none"
+                >
+                  <PackagePlus className="h-4 w-4 shrink-0" />
+                  {t('modpacks.create')}
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  geometry="catalog-primary"
+                  onClick={() => onNavigate?.({ type: 'browser' })}
+                  className={cn(
+                    'min-h-10 flex-1 justify-center gap-2 px-4 sm:flex-none',
+                    getAccentStyles('bg').className,
+                  )}
+                  style={getAccentStyles('bg').style}
+                >
+                  <Compass className="h-4 w-4 shrink-0" />
+                  {t('modpacks.browser')}
+                </Button>
+              </div>
+            </div>
+          )}
           searchLabel={t('modpacks.search') || 'Search modpacks'}
           searchControl={(
             <Input
@@ -1017,9 +969,6 @@ const ModpackListComponentInternal: React.FC<{
           activeFilterTokens={activeFilterTokens}
           onReset={hasActiveFilters ? handleResetFilters : undefined}
           resetLabel={translateWithFallback(t, 'modpacks.clear_filters', 'Clear filters')}
-          status={installedCatalogStatus.map((item) => (
-            <span key={item}>{item}</span>
-          ))}
           className="mb-6"
         />
 

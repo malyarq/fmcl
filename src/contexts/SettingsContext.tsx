@@ -9,8 +9,9 @@ import {
         serializeString,
         useLocalStorageState,
 } from './settings/persistence';
-import { getThemePreset, inferThemePresetId } from './settings/theme-presets';
-import { applyThemeToDocument, extractThemeOverrides, pruneThemeConfig, resolveThemeConfig } from './settings/theme';
+import { getThemePreset, getThemePresetAccent, inferThemePresetId } from './settings/theme-presets';
+import type { ThemeRuntimeState } from './settings/theme';
+import { applyThemeToDocument, extractThemeOverrides, pruneThemeConfig, resolveAccentColor, resolveThemeConfig, resolveThemeRuntimeState } from './settings/theme';
 import { createTranslator, getLocaleForLanguage } from './settings/i18n';
 import { getAccentClassForColor, getAccentHexForColor, getAccentStylesForColor, getPresetAccentSafelistClassName } from './settings/accent';
 import { formatDateForLocale, formatNumberForLocale } from '../utils/format';
@@ -52,6 +53,7 @@ interface SettingsState {
     getAccentHex: () => string;
     customTheme: CustomThemeConfig;
     activeThemeConfig: CustomThemeConfig;
+    themeRuntimeState: ThemeRuntimeState;
     brandTheme: BrandThemeConfig;
     setCustomTheme: (val: CustomThemeConfig) => void;
     uiScale: number;
@@ -68,6 +70,7 @@ const SettingsContext = createContext<SettingsState | undefined>(undefined);
 
 const DEFAULT_APPEARANCE_STATE: AppearanceSettingsState = {
     accentColor: 'emerald',
+    accentColorSource: 'preset',
     customTheme: {},
     theme: 'dark',
     themePresetId: null,
@@ -104,12 +107,30 @@ function parseStoredCustomTheme(raw: string | null): CustomThemeConfig {
 function normalizeAppearanceState(state: AppearanceSettingsState): AppearanceSettingsState {
     const normalizedTheme = state.theme === 'light' ? 'light' : 'dark';
     const normalizedPresetId = state.themePresetId ? parseStoredThemePresetId(state.themePresetId) : null;
+    const normalizedAccentSource = state.accentColorSource === 'user'
+        ? 'user'
+        : state.accentColorSource === 'preset'
+            ? 'preset'
+            : normalizedPresetId
+                ? state.accentColor === (getThemePresetAccent(normalizedPresetId, normalizedTheme) ?? DEFAULT_APPEARANCE_STATE.accentColor)
+                    ? 'preset'
+                    : 'user'
+                : state.accentColor === DEFAULT_APPEARANCE_STATE.accentColor
+                    ? 'preset'
+                    : 'user';
+    const normalizedAccentColor = resolveAccentColor(
+        normalizedTheme,
+        normalizedPresetId,
+        parseStoredAccentColor(state.accentColor),
+        normalizedAccentSource,
+    );
     const sanitizedCustomTheme = normalizedPresetId
         ? extractThemeOverrides(normalizedTheme, normalizedPresetId, state.customTheme)
         : pruneThemeConfig(state.customTheme);
 
     return {
-        accentColor: parseStoredAccentColor(state.accentColor),
+        accentColor: normalizedAccentColor,
+        accentColorSource: normalizedAccentSource,
         customTheme: sanitizedCustomTheme,
         theme: normalizedTheme,
         themePresetId: normalizedPresetId,
@@ -122,6 +143,11 @@ function deserializeAppearanceState(raw: string | null): AppearanceSettingsState
             const parsed = JSON.parse(raw) as Partial<AppearanceSettingsState>;
             return normalizeAppearanceState({
                 accentColor: parseStoredAccentColor(typeof parsed.accentColor === 'string' ? parsed.accentColor : null),
+                accentColorSource: parsed.accentColorSource === 'user'
+                    ? 'user'
+                    : parsed.accentColorSource === 'preset'
+                        ? 'preset'
+                        : undefined,
                 customTheme: pruneThemeConfig(parsed.customTheme),
                 theme: parsed.theme === 'light' ? 'light' : 'dark',
                 themePresetId: typeof parsed.themePresetId === 'string' ? parsed.themePresetId : null,
@@ -169,7 +195,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [downloadThreads, setDownloadThreads] = useLocalStorageState('settings_downloadThreads', deserializeInt(8), serializeInt);
     const [maxSockets, setMaxSockets] = useLocalStorageState('settings_maxSockets', deserializeInt(64), serializeInt);
     const downloadProvider: DownloadProvider = 'auto';
-    const { accentColor, customTheme, theme, themePresetId } = appearanceState;
+    const { accentColor, accentColorSource, customTheme, theme, themePresetId } = appearanceState;
     const applyAppearanceState = useCallback((nextState: AppearanceSettingsState) => {
         setAppearanceStateRaw(normalizeAppearanceState(nextState));
     }, [setAppearanceStateRaw]);
@@ -177,6 +203,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         applyAppearanceState({
             ...appearanceState,
             accentColor: val,
+            accentColorSource: 'user',
         });
     }, [appearanceState, applyAppearanceState]);
     const setTheme = useCallback((val: Theme) => {
@@ -189,6 +216,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         applyAppearanceState({
             ...appearanceState,
             themePresetId: null,
+            accentColorSource: appearanceState.accentColorSource === 'preset' ? 'preset' : 'user',
         });
     }, [appearanceState, applyAppearanceState]);
     const setCustomTheme = useCallback((val: CustomThemeConfig) => {
@@ -203,16 +231,23 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             return;
         }
 
+        const nextTheme = appearanceState.themePresetId ? appearanceState.theme : preset.defaultTheme;
+
         applyAppearanceState({
             ...appearanceState,
             customTheme: {},
-            theme: preset.defaultTheme,
+            theme: nextTheme,
             themePresetId: preset.id,
+            accentColorSource: accentColorSource === 'user' ? 'user' : 'preset',
         });
-    }, [appearanceState, applyAppearanceState]);
+    }, [accentColorSource, appearanceState, applyAppearanceState]);
     const activeThemeConfig = useMemo(
         () => resolveThemeConfig(theme, themePresetId, customTheme),
         [customTheme, theme, themePresetId],
+    );
+    const themeRuntimeState = useMemo(
+        () => resolveThemeRuntimeState(theme, themePresetId, customTheme, accentColor, accentColorSource),
+        [accentColor, accentColorSource, customTheme, theme, themePresetId],
     );
     const brandTheme = activeThemeConfig.brand ?? {};
 
@@ -328,6 +363,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             getAccentHex,
             customTheme,
             activeThemeConfig,
+            themeRuntimeState,
             brandTheme,
             setCustomTheme,
             uiScale, setUiScale,

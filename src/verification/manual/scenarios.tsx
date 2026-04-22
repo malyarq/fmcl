@@ -211,6 +211,40 @@ function useReadyByText(onReady: (message: string) => void, needles: string[], m
   }, [message, needles, onReady, readyKey]);
 }
 
+function useReadyByChecks(
+  onReady: (message: string) => void,
+  checks: Array<{ id: string; when: () => boolean }>,
+  message: string,
+) {
+  const readyKey = checks.map((check) => check.id).join('|');
+
+  useEffect(() => {
+    let cancelled = false;
+    const deadline = Date.now() + 4_000;
+
+    const tick = () => {
+      if (cancelled) {
+        return;
+      }
+
+      if (checks.every((check) => check.when())) {
+        onReady(message);
+        return;
+      }
+
+      if (Date.now() < deadline) {
+        window.setTimeout(tick, 50);
+      }
+    };
+
+    tick();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checks, message, onReady, readyKey]);
+}
+
 function matchesAssetSource(source: string | null, expected: string) {
   return typeof source === 'string' && (source === expected || source.endsWith(expected));
 }
@@ -506,12 +540,58 @@ function Phase24ProofCallout(props: { title: string; detail: string }) {
   );
 }
 
-function Phase31ProofCallout(props: { title: string; detail: string }) {
+function Phase35ProofCallout(props: { title: string; detail: string }) {
   return (
     <div className="surface-inline rounded-3xl p-4 sm:p-5">
-      <div className="kicker-label mb-2">Phase 31 guided content proof</div>
+      <div className="kicker-label mb-2">Phase 35 async and guided trust proof</div>
       <h2 className="text-lg font-semibold text-foreground">{props.title}</h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary">{props.detail}</p>
+    </div>
+  );
+}
+
+function Phase33ProofCallout(props: { title: string; detail: string }) {
+  return (
+    <div className="surface-inline rounded-3xl p-4 sm:p-5">
+      <div className="kicker-label mb-2">Phase 33 proof contract</div>
+      <h2 className="text-lg font-semibold text-foreground">{props.title}</h2>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary">{props.detail}</p>
+    </div>
+  );
+}
+
+function Phase34ProofCallout(props: { title: string; detail: string }) {
+  return (
+    <div className="surface-inline rounded-3xl p-4 sm:p-5">
+      <div className="kicker-label mb-2">Phase 34 details cohesion proof</div>
+      <h2 className="text-lg font-semibold text-foreground">{props.title}</h2>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary">{props.detail}</p>
+    </div>
+  );
+}
+
+function Phase36ProofCallout(props: { title: string; detail: string }) {
+  return (
+    <div className="surface-inline rounded-3xl p-4 sm:p-5">
+      <div className="kicker-label mb-2">Phase 36 settings proof</div>
+      <h2 className="text-lg font-semibold text-foreground">{props.title}</h2>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary">{props.detail}</p>
+    </div>
+  );
+}
+
+function Phase36ProofChecklist(props: { items: string[] }) {
+  return (
+    <div className="surface-inline rounded-3xl p-4 sm:p-5" data-testid="phase36-proof-checklist">
+      <div className="kicker-label mb-2">Observable review items</div>
+      <ul className="space-y-2 text-sm leading-6 text-secondary">
+        {props.items.map((item) => (
+          <li key={item} className="flex items-start gap-2">
+            <span className="mt-1 h-2 w-2 rounded-full bg-[rgb(var(--accent-main))]" aria-hidden="true" />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -609,8 +689,13 @@ function OverviewScenario() {
 
       <section className="space-y-3">
         <div>
-          <div className="kicker-label mb-2">Shared manual routes</div>
-          <h2 className="text-xl font-semibold text-foreground">Reusable shell and feature routes kept for direct inspection</h2>
+          <div className="kicker-label mb-2">Phase 33 proof routes</div>
+          <h2 className="text-xl font-semibold text-foreground">Current milestone review now centers on classic truth and compact catalogs</h2>
+          <p className="max-w-3xl text-sm leading-6 text-secondary">
+            Start current signoff on Dashboard, Modpack List, and Modpack Browser. Those routes are the Phase 33 proof
+            surfaces for truthful classic runtime labels, compact catalog headers, minimal card metadata, and coherent
+            primary action geometry.
+          </p>
         </div>
         <ManualVerificationCardGrid views={GENERAL_VIEWS} kicker="Shared route" />
       </section>
@@ -694,16 +779,22 @@ function DashboardScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
     ['FriendLauncher', 'Vanilla', 'Play'],
-    'Phase 20 launcher-home proof rendered inside the real shell with one canonical mark, one shared wordmark, and one shell-owned primary Play action.',
+    'Phase 33 classic-truth proof rendered inside the real shell with short Vanilla wording and runtime labels that match the actual launch target.',
   );
 
   return (
     <Phase19ShellFrame mode="simple" ownership="shell">
-      <SimplePlayDashboard
-        launch={MANUAL_DASHBOARD_LAUNCH}
-        runtime={MANUAL_SHELL_RUNTIME}
-        actions={MANUAL_SHELL_ACTIONS}
-      />
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
+        <Phase33ProofCallout
+          title="Classic runtime labels must stay truthful after cold start"
+          detail="Use this route to verify the short Vanilla label and visible Minecraft version reflect the actual launch target instead of drifting back to stale fallback state."
+        />
+        <SimplePlayDashboard
+          launch={MANUAL_DASHBOARD_LAUNCH}
+          runtime={MANUAL_SHELL_RUNTIME}
+          actions={MANUAL_SHELL_ACTIONS}
+        />
+      </div>
     </Phase19ShellFrame>
   );
 }
@@ -733,15 +824,60 @@ function Phase24HomeCloseoutScenario({ onReady }: ManualVerificationScenarioProp
 }
 
 function SettingsAppearanceScenario({ onReady }: ManualVerificationScenarioProps) {
-  useReadyByText(
+  useReadyByChecks(
     onReady,
-    ['FriendLauncher', 'Launcher Settings', 'Theme Presets', 'Visible Background Scope'],
-    'Phase 30 appearance proof rendered above the real shell so reviewers can verify preset ancestry, bounded customization, and honest launcher-runtime control boundaries without leaving live composition.',
+    [
+      {
+        id: 'settings-shell-header',
+        when: () => Boolean(document.querySelector('[data-testid="settings-shell-header"] [role="tablist"]')),
+      },
+      {
+        id: 'appearance-panel',
+        when: () => Boolean(document.querySelector('#settings-panel-appearance[role="tabpanel"]')),
+      },
+      {
+        id: 'preset-select',
+        when: () => Boolean(document.querySelector('select[aria-label="Theme Presets"]')),
+      },
+      {
+        id: 'accent-chip',
+        when: () => Boolean(document.querySelector('.settings-accent-chip')),
+      },
+      {
+        id: 'background-scope',
+        when: () => Boolean(document.querySelector('[data-testid="appearance-background-scope"]')),
+      },
+      {
+        id: 'phase36-proof-checklist',
+        when: () => Boolean(document.querySelector('[data-testid="phase36-proof-checklist"]')),
+      },
+      {
+        id: 'duplicate-shell-copy-removed',
+        when: () => !(document.body.textContent ?? '').includes(
+          'Apply a ready-made shell and surface profile, or import/export your own configuration.',
+        ),
+      },
+    ],
+    'Phase 36 settings proof rendered above the real shell with observable checks for duplicate-copy removal, preset predictability, aligned control geometry, and visible-effect scope.',
   );
 
   return (
     <Phase19ShellFrame mode="simple" ownership="shell">
-      <SettingsPage onClose={() => undefined} initialTab="appearance" />
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
+        <Phase36ProofCallout
+          title="Settings closeout must prove observable behavior, not just reassuring copy"
+          detail="Use this route to review the live appearance surface and the concrete checks below. The route is only ready when the actual settings shell, preset controls, and visible-effect seams are mounted together."
+        />
+        <Phase36ProofChecklist
+          items={[
+            'No duplicated settings-shell intro copy sits above the active tab content.',
+            'Preset family, mode, accent, and reset behavior stay predictable on the live appearance surface.',
+            'Accent chips, segmented controls, and utility actions keep centered geometry and readable labels.',
+            'Background and advanced appearance controls visibly affect the shell frame or backdrop around the modal, or clearly state their limited scope.',
+          ]}
+        />
+        <SettingsPage onClose={() => undefined} initialTab="appearance" />
+      </div>
     </Phase19ShellFrame>
   );
 }
@@ -936,7 +1072,7 @@ function Phase17PolishScenario({ onReady }: ManualVerificationScenarioProps) {
         <section className="space-y-3">
           <div>
             <div className="kicker-label mb-2">Remote browser</div>
-            <h2 className="text-xl font-semibold text-foreground">Search controls wrap cleanly while no-art cards fall back to launcher branding</h2>
+            <h2 className="text-xl font-semibold text-foreground">Search controls wrap cleanly while no-art cards keep a calm shared placeholder</h2>
           </div>
           <SettingsProviders>
             <div className="surface-panel max-w-[30rem] rounded-3xl p-4">
@@ -982,12 +1118,16 @@ function ModpackListScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
     ['Modpacks', 'Alpha Pack', 'Modpack Browser'],
-    'Installed modpack list rendered with the refreshed card language.',
+    'Installed catalog proof rendered with a compact header, minimal card facts, and coherent primary actions.',
   );
 
   return (
     <ModpackProviders>
-      <div className="mx-auto max-w-6xl p-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-4 p-6">
+        <Phase33ProofCallout
+          title="Installed catalog should stay compact and factual"
+          detail="Review the installed header for compact controls, then confirm each card stays focused on Minecraft version and Updated context while the primary actions share one geometry."
+        />
         <ModpackList onNavigate={() => undefined} onCreateWizard={() => undefined} />
       </div>
     </ModpackProviders>
@@ -998,7 +1138,7 @@ function ModpackCreateScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
     ['FriendLauncher', 'Create New Modpack', 'Next'],
-    'Phase 19 create-wizard proof rendered inside the real shell with title-bar clearance and one route-owned primary step action.',
+    'Phase 35 create-wizard proof rendered inside the real shell with a fixed action rail, runtime-aware failure explanations, and explicit post-commit recovery.',
   );
 
   return (
@@ -1014,15 +1154,15 @@ function ModpackBrowserScenario({ onReady }: ManualVerificationScenarioProps) {
     ['Modpack Browser', 'History', 'Alpha Pack'],
     MEDIA_FALLBACK_PATH,
     1,
-    'Phase 20 browser proof rendered inside the real shell with route-owned browsing controls and neutral fallback art for missing remote covers.',
+    'Remote catalog proof rendered inside the real shell with compact controls, minimal card facts, coherent primary actions, and neutral fallback art.',
   );
 
   return (
     <Phase19ShellFrame mode="modpacks" ownership="route">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
-        <Phase20ProofCallout
-          title="Content-heavy route stays on-brand inside the shell"
-          detail="Use this route to verify that missing browser artwork falls back to the neutral media placeholder while the shell keeps one deliberate FMCL mark and wordmark system."
+        <Phase33ProofCallout
+          title="Remote catalog header and actions should read as one compact system"
+          detail="Use this route to verify compact browse controls, minimal card metadata, aligned primary button geometry, and neutral fallback art without falling back to the older dense catalog story."
         />
         <ModpackBrowser
           initialState={{ ...DEFAULT_MODPACK_BROWSER_STATE, platform: 'modrinth', query: 'alpha' }}
@@ -1041,7 +1181,7 @@ function Phase21BrowserDensityScenario({ onReady }: ManualVerificationScenarioPr
     ['Modpack Browser', 'Atlas Control Room Longform Runtime Review Pack', 'Signal Overwatch Operations Board'],
     MEDIA_FALLBACK_PATH,
     1,
-    'Phase 21 crowded browser proof rendered inside the real shell with dense cards, long labels, and visible fallback artwork.',
+    'Crowded browser proof rendered inside the real shell with dense cards, long labels, and visible neutral fallback artwork.',
   );
 
   return (
@@ -1095,23 +1235,28 @@ function ModpackDetailsScenario({ onReady }: ManualVerificationScenarioProps) {
 
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Gamma Runtime', 'Update Available'],
-    'Phase 19 modpack-details proof rendered inside the real shell with title-bar clearance, demoted shell launch, and one route-owned primary action.',
+    ['FriendLauncher', 'Runtime and dependency state', 'Update Available', 'Screenshots'],
+    'Phase 34 modpack-details proof rendered inside the real shell with tab reachability, first-read runtime authority, and one shared content workspace contract.',
   );
 
   return (
     <Phase19ShellFrame mode="modpacks" ownership="route">
-      <ModpackDetails
-        modpackId="alpha"
-        initialTab="mods"
-        initialExpandedModId="gamma"
-        initialMetadata={fixtureMetadata}
-        initialMods={fixtureMods}
-        hydrateFromIpc={false}
-        onBack={() => undefined}
-        onNavigate={() => undefined}
-        onLaunch={() => undefined}
-      />
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
+        <Phase34ProofCallout
+          title="Details proof starts on first-read runtime truth, not on a secondary tab"
+          detail="Use this route to confirm the info tab already explains runtime and dependency state, tab labels stay readable above the fold, and Mods, Resource Packs, Shaders, Worlds, and Screenshots still feel like one workspace when you switch between them."
+        />
+        <ModpackDetails
+          modpackId="alpha"
+          initialTab="info"
+          initialMetadata={fixtureMetadata}
+          initialMods={fixtureMods}
+          hydrateFromIpc={false}
+          onBack={() => undefined}
+          onNavigate={() => undefined}
+          onLaunch={() => undefined}
+        />
+      </div>
     </Phase19ShellFrame>
   );
 }
@@ -1122,24 +1267,24 @@ function Phase21DetailsDensityScenario({ onReady }: ManualVerificationScenarioPr
 
   useReadyByText(
     onReady,
-    ['FriendLauncher', PHASE_21_RUNTIME_FIXTURE.name, 'Crowded Routing Diagnostics Companion'],
-    'Phase 21 constrained-width details proof rendered with longer metadata and dense mod content inside the real shell.',
+    ['FriendLauncher', PHASE_21_RUNTIME_FIXTURE.name, 'Legacy density regression route'],
+    'Phase 21 constrained-width details regression route rendered after the main Phase 34 proof so long metadata and long tab labels can still stress the real shell.',
   );
 
   return (
     <Phase19ShellFrame mode="modpacks" ownership="route" language="ru">
       <div className="flex min-h-0 flex-1 justify-center overflow-y-auto p-4 sm:p-6">
         <div className="flex w-full max-w-[980px] min-w-0 flex-col gap-4">
-          <Phase21ProofCallout
-            title="Details hierarchy holds at constrained desktop width"
-            detail="This state keeps the real shell, long metadata, Russian tab labels, and a dense mods tab on screen together so wrapping or CTA drift is immediately visible."
+          <Phase34ProofCallout
+            title="Legacy density regression route"
+            detail="Use this only after the main Phase 34 details proof passes. It keeps constrained width, long Russian labels, and heavy metadata on screen together so tab reachability regressions still show up under stress."
           />
           <ModpackDetails
             modpackId="alpha"
-            initialTab="mods"
-            initialExpandedModId="crowded-routing"
+            initialTab="info"
             initialMetadata={fixtureMetadata}
             initialMods={fixtureMods}
+            hydrateFromIpc={false}
             onBack={() => undefined}
             onNavigate={() => undefined}
             onLaunch={() => undefined}
@@ -1217,7 +1362,7 @@ function AddModScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
     ['FriendLauncher', 'Modrinth', 'Sodium'],
-    'Phase 19 add-content proof rendered inside the real shell with title-bar clearance, demoted shell launch, and one route-owned add action.',
+    'Phase 35 add-content proof rendered inside the real shell with a fixed action rail, retained selections, and itemized mixed-success recovery.',
   );
 
   return (
@@ -1231,15 +1376,15 @@ function GuidedResourcePacksScenario({ onReady }: ManualVerificationScenarioProp
   useReadyByText(
     onReady,
     ['FriendLauncher', 'Painterly Depth Reloaded', 'Have a local resource pack .zip already?', 'Instance-scoped resource packs'],
-    'Phase 31 guided resource-pack browser proof rendered with direct catalog fixtures and explicit in-route local fallback.',
+    'Phase 35 guided resource-pack browser proof rendered with direct catalog fixtures, explicit local fallback, and runtime-scoped copy on the live route.',
   );
 
   return (
     <Phase19ShellFrame mode="modpacks" ownership="route">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
-        <Phase31ProofCallout
+        <Phase35ProofCallout
           title="Guided resource-pack browsing stays specific to the launcher story"
-          detail="Use this route to verify that resource-pack guidance is no longer hidden behind the generic add-content shell: the catalog is resource-pack specific, local .zip fallback stays on-route, and the copy remains instance-scoped instead of pretending compatibility proof."
+          detail="Use this route to verify that resource-pack guidance stays on the live route with explicit local fallback, runtime-scoped copy, and no fake compatibility promise or marketplace framing."
         />
         <AddModPage modpackId="alpha" contentType="resourcepack" onBack={() => undefined} />
       </div>
@@ -1251,19 +1396,19 @@ function GuidedResourcePacksRecoveryScenario({ onReady }: ManualVerificationScen
   useReadyByText(
     onReady,
     ['Local fallback now proves recoverable resource-pack failure', 'Have a local resource pack .zip already?'],
-    'Phase 31 guided resource-pack fallback proof rendered with partial local-import recovery that stays on-surface.',
+    'Phase 35 guided resource-pack fallback proof rendered with partial local-import recovery that stays on-surface.',
   );
 
   useGuidedActionNoticeReady({
     onReady: () => undefined,
     actionNeedle: 'Import local .zip',
-    message: 'Phase 31 guided resource-pack fallback proof rendered with partial local-import recovery that stays on-surface.',
+    message: 'Phase 35 guided resource-pack fallback proof rendered with partial local-import recovery that stays on-surface.',
   });
 
   return (
     <Phase19ShellFrame mode="modpacks" ownership="route">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
-        <Phase31ProofCallout
+        <Phase35ProofCallout
           title="Local fallback now proves recoverable resource-pack failure"
           detail="This proof auto-opens the guided local import path and lands in a partial-success recovery state, so reviewers can see fallback and actionable failure copy together without stepping outside the route shell."
         />
@@ -1277,15 +1422,15 @@ function GuidedShadersScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
     ['FriendLauncher', 'Shader runtime', 'Needs setup', 'Photon Bloom Lite', 'Have a local shader pack .zip already?'],
-    'Phase 31 guided shader browser proof rendered with needs-setup runtime guidance and shader-specific fixtures.',
+    'Phase 35 guided shader browser proof rendered with needs-setup runtime guidance, shader-specific fixtures, and honest live-route capability copy.',
   );
 
   return (
     <Phase19ShellFrame mode="modpacks" ownership="route">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
-        <Phase31ProofCallout
+        <Phase35ProofCallout
           title="Guided shader browsing now carries honest capability guidance"
-          detail="Use this route to verify that the shader browser mounts with runtime-aware needs-setup messaging, keeps local .zip import secondary, and avoids reading like a generic mod or marketplace screen."
+          detail="Use this route to verify that the shader browser mounts with runtime-aware capability messaging, keeps local .zip fallback secondary, and stays honest about what FMCL knows or has not confirmed yet."
         />
         <AddModPage modpackId="alpha" contentType="shader" onBack={() => undefined} />
       </div>
@@ -1303,15 +1448,15 @@ function GuidedShadersRecoveryScenario({ onReady }: ManualVerificationScenarioPr
       'FMCL kept these shader installs blocked for the current runtime: Photon Bloom Lite.',
       'Review the shader runtime card above, then retry.',
     ],
-    message: 'Phase 31 guided shader recovery proof rendered with unsupported runtime guidance and retry-ready blocked install copy.',
+    message: 'Phase 35 guided shader recovery proof rendered with unsupported runtime guidance and retry-ready blocked install copy.',
   });
 
   return (
     <Phase19ShellFrame mode="modpacks" ownership="route">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
-        <Phase31ProofCallout
+        <Phase35ProofCallout
           title="Blocked shader installs stay on-surface with the runtime reason"
-          detail="This proof auto-selects a shader fixture and triggers the guided install path under an unsupported runtime so reviewers can see the red runtime card and retry-ready recovery language together."
+          detail="This proof auto-selects a shader fixture and triggers the guided install path under an unsupported runtime so reviewers can see the runtime card, retry-ready recovery copy, and unchanged action rail together."
         />
         <AddModPage modpackId="alpha" contentType="shader" onBack={() => undefined} />
       </div>
@@ -1359,7 +1504,7 @@ function AddModModalScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
     ['FriendLauncher', 'Gamma Runtime', 'Add mods', 'Sodium'],
-    'Phase 19 add-mod modal proof rendered over the real shell with title-bar clearance, demoted shell launch, and visible final helper and action edges.',
+    'Phase 35 add-mod modal proof rendered over the real shell with a fixed action rail, locked exits during install, and on-surface mixed-success recovery.',
   );
 
   return (
@@ -1420,19 +1565,19 @@ function ResourcePacksScenario({ onReady }: ManualVerificationScenarioProps) {
 function Phase21SecondaryDensityScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByTextAndImageSource(
     onReady,
-    ['FriendLauncher', 'Installed Resource Packs', 'Painterly Depth Annotated UI Pack'],
+    ['FriendLauncher', 'Installed Resource Packs', 'Legacy secondary-workspace regression route'],
     MEDIA_FALLBACK_PATH,
     1,
-    'Phase 21 dense secondary-content proof rendered in the real shell with long labels, fallback art, and crowded resource-pack rows.',
+    'Phase 21 secondary-content regression route rendered after the main Phase 34 proof so dense resource-pack rows and fallback art can still stress the shared workspace.',
   );
 
   return (
     <Phase19ShellFrame mode="modpacks" ownership="route">
       <div className="flex min-h-0 flex-1 justify-center overflow-y-auto p-4 sm:p-6">
         <div className="flex w-full max-w-[1120px] min-w-0 flex-col gap-4">
-          <Phase21ProofCallout
-            title="Secondary content stays legible when rows get busy"
-            detail="This resource-pack route keeps long labels, mixed artwork states, and enough rows on screen to expose nested-scroll or unlabeled-value regressions."
+          <Phase34ProofCallout
+            title="Legacy secondary-workspace regression route"
+            detail="Use this after the main Phase 34 details proof to stress dense resource-pack rows, mixed artwork states, and shared-workspace grammar without mistaking this route for the current success criteria."
           />
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             <ResourcePacksTab
@@ -1644,7 +1789,7 @@ function UtilitiesScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
     ['Download mirrors', 'Popular Modpacks', 'Alpha Pack'],
-    'Utilities surface rendered with mirrors priority and local statistics.',
+    'Phase 36 utility proof rendered with task-focused mirrors and statistics surfaces inside the shared settings contract.',
   );
 
   return (

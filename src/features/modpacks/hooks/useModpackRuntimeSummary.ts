@@ -9,7 +9,7 @@ import {
 } from '../../../components/sidebar/modpackRuntimeDependencies';
 
 export type ModpackRuntimeSummarySource = 'config' | 'metadata' | 'fallback' | 'unknown';
-export type ModpackRuntimeSummaryStatus = 'healthy' | 'warning' | 'error';
+export type ModpackRuntimeSummaryStatus = 'healthy' | 'warning' | 'error' | 'unverified';
 export type ModpackShaderCapabilityStatus = 'supported' | 'needs-setup' | 'unsupported' | 'unverified';
 export type ModpackShaderCapabilityReason =
   | RuntimeDependencyWarning
@@ -160,7 +160,9 @@ export function buildModpackRuntimeSummary(input: ModpackRuntimeSummaryInput): M
     ? 'error'
     : runtime.warnings.length > 0
       ? 'warning'
-      : 'healthy';
+      : source !== 'config'
+        ? 'unverified'
+        : 'healthy';
   const shaderCapability = buildShaderCapability({
     source,
     runtime,
@@ -268,19 +270,7 @@ export function getModpackShaderCapabilityDescription(
         'FMCL can read this modpack runtime ({{runtime}}), but it does not see shader support configured there yet.',
       ).replace('{{runtime}}', runtimeLabel);
     case 'runtime_source_unverified': {
-      const sourceLabel = translateWithFallback(
-        t,
-        summary.source === 'metadata'
-          ? 'modpacks.shader_capability_source_metadata'
-          : summary.source === 'fallback'
-            ? 'modpacks.shader_capability_source_fallback'
-            : 'modpacks.shader_capability_source_unknown',
-        summary.source === 'metadata'
-          ? 'metadata'
-          : summary.source === 'fallback'
-            ? 'launcher fallback data'
-            : 'runtime details that are not confirmed yet',
-      );
+      const sourceLabel = getModpackRuntimeSourceLabel(summary.source, t);
 
       return translateWithFallback(
         t,
@@ -299,6 +289,58 @@ export function getModpackShaderCapabilityDescription(
   }
 }
 
+export function getModpackRuntimeSourceLabel(
+  source: ModpackRuntimeSummarySource,
+  t: (key: string) => string,
+): string {
+  return translateWithFallback(
+    t,
+    source === 'metadata'
+      ? 'modpacks.shader_capability_source_metadata'
+      : source === 'fallback'
+        ? 'modpacks.shader_capability_source_fallback'
+        : 'modpacks.shader_capability_source_unknown',
+    source === 'metadata'
+      ? 'metadata'
+      : source === 'fallback'
+        ? 'launcher fallback data'
+        : 'runtime details that are not confirmed yet',
+  );
+}
+
+export function getModpackRuntimeSourceDescription(
+  source: ModpackRuntimeSummarySource,
+  t: (key: string) => string,
+): string {
+  switch (source) {
+    case 'config':
+      return translateWithFallback(
+        t,
+        'modpacks.runtime_summary_config_desc',
+        "FMCL is reading runtime details from this modpack's saved configuration.",
+      );
+    case 'metadata':
+      return translateWithFallback(
+        t,
+        'modpacks.runtime_summary_metadata_desc',
+        'FMCL is still reading runtime details from pack metadata. Saved modpack settings can still replace this.',
+      );
+    case 'fallback':
+      return translateWithFallback(
+        t,
+        'modpacks.runtime_summary_fallback_desc',
+        'FMCL is still reading runtime details from launcher fallback data. Saved modpack settings can still replace this.',
+      );
+    case 'unknown':
+    default:
+      return translateWithFallback(
+        t,
+        'modpacks.runtime_summary_unknown_desc',
+        'FMCL has not confirmed runtime details for this modpack yet.',
+      );
+  }
+}
+
 export function getModpackRuntimeStatusLabel(
   status: ModpackRuntimeSummaryStatus,
   t: (key: string) => string,
@@ -306,6 +348,8 @@ export function getModpackRuntimeStatusLabel(
   switch (status) {
     case 'healthy':
       return translateWithFallback(t, 'modpacks.runtime_status_healthy', 'Ready');
+    case 'unverified':
+      return translateWithFallback(t, 'modpacks.runtime_status_unverified', 'Unverified');
     case 'warning':
       return translateWithFallback(t, 'modpacks.runtime_status_warning', 'Warning');
     case 'error':

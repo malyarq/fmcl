@@ -4,7 +4,7 @@ import {
   type ModpackRuntimeSummaryStatus,
 } from '../../features/modpacks/hooks/useModpackRuntimeSummary';
 import {
-  getRuntimeDependencyWarningMessage,
+  getRuntimeDependencyWarningGuidance,
   getModloaderDisplayLabel,
   type RuntimeDependencyState,
 } from './modpackRuntimeDependencies';
@@ -21,12 +21,16 @@ export function ModpackDependencySummary(props: {
   status?: ModpackRuntimeSummaryStatus;
 }) {
   const { runtime, t, className, status } = props;
-  const runtimeWarnings = runtime.warnings.map((warning) => getRuntimeDependencyWarningMessage(warning, t));
+  const runtimeWarnings = runtime.warnings.map((warning) =>
+    getRuntimeDependencyWarningGuidance(warning, t),
+  );
   const resolvedStatus =
     status ?? (!runtime.minecraftVersion ? 'error' : runtimeWarnings.length > 0 ? 'warning' : 'healthy');
   const statusToneClasses =
     resolvedStatus === 'healthy'
       ? 'border-border/70 bg-background/75 text-foreground'
+      : resolvedStatus === 'unverified'
+        ? 'border-border/70 bg-background/75 text-secondary'
       : resolvedStatus === 'warning'
         ? 'border-amber-500/35 bg-amber-500/12 text-amber-950 dark:text-amber-100'
         : 'border-red-500/35 bg-red-500/12 text-red-900 dark:text-red-100';
@@ -93,7 +97,10 @@ export function ModpackDependencySummary(props: {
           data-testid="modpack-dependency-warnings"
         >
           {runtimeWarnings.map((warning) => (
-            <p key={warning}>{warning}</p>
+            <div key={warning.warning} className="space-y-1" data-testid="modpack-dependency-guidance">
+              <p>{warning.message}</p>
+              <p className="font-semibold text-amber-950 dark:text-amber-50">{warning.nextStep}</p>
+            </div>
           ))}
         </div>
       ) : null}

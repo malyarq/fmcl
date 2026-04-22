@@ -39,7 +39,7 @@ function renderGuidedView(view: ManualVerificationView) {
 }
 
 function getGuidedSurfaceText() {
-  return screen.getByTestId('add-mod-page-scroll').textContent ?? '';
+  return screen.getByTestId('add-mod-page-body').textContent ?? '';
 }
 
 afterEach(() => {
@@ -54,7 +54,7 @@ describe('guided manual verification proof', () => {
 
     await waitFor(() => {
       expect(onReady).toHaveBeenCalledWith(
-        'Phase 31 guided resource-pack browser proof rendered with direct catalog fixtures and explicit in-route local fallback.',
+        'Phase 35 guided resource-pack browser proof rendered with direct catalog fixtures, explicit local fallback, and runtime-scoped copy on the live route.',
       );
     }, { timeout: 4000 });
 
@@ -73,7 +73,7 @@ describe('guided manual verification proof', () => {
 
     await waitFor(() => {
       expect(onReady).toHaveBeenCalledWith(
-        'Phase 31 guided shader browser proof rendered with needs-setup runtime guidance and shader-specific fixtures.',
+        'Phase 35 guided shader browser proof rendered with needs-setup runtime guidance, shader-specific fixtures, and honest live-route capability copy.',
       );
     }, { timeout: 4000 });
 
@@ -90,7 +90,7 @@ describe('guided manual verification proof', () => {
 
     await waitFor(() => {
       expect(onReady).toHaveBeenCalledWith(
-        'Phase 31 guided resource-pack fallback proof rendered with partial local-import recovery that stays on-surface.',
+        'Phase 35 guided resource-pack fallback proof rendered with partial local-import recovery that stays on-surface.',
       );
     }, { timeout: 4000 });
 
@@ -107,7 +107,7 @@ describe('guided manual verification proof', () => {
 
     await waitFor(() => {
       expect(onReady).toHaveBeenCalledWith(
-        'Phase 31 guided shader recovery proof rendered with unsupported runtime guidance and retry-ready blocked install copy.',
+        'Phase 35 guided shader recovery proof rendered with unsupported runtime guidance and retry-ready blocked install copy.',
       );
     }, { timeout: 4000 });
 

@@ -34,10 +34,10 @@ export const ModpackDetailsActions: React.FC<ModpackDetailsActionsProps> = ({
 }) => {
   return (
     <section
-      className="flex h-full flex-col gap-3 rounded-2xl border border-border/60 bg-background/70 p-3 sm:p-4"
+      className="flex h-full flex-col gap-2.5 rounded-2xl border border-border/60 bg-background/70 p-3"
       data-testid="modpack-details-actions"
     >
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <div className="kicker-label">{t('general.play')}</div>
         <Button
           variant="primary"
@@ -80,7 +80,7 @@ export const ModpackDetailsActions: React.FC<ModpackDetailsActionsProps> = ({
         </div>
       )}
 
-      <div className="border-t border-border/60 pt-3">
+      <div className="border-t border-border/60 pt-2.5">
         <div className="kicker-label">{t('modpacks.actions_title')}</div>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <Button variant="secondary" size="sm" onClick={onRename} className="w-full">

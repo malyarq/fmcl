@@ -1,40 +1,61 @@
 # AGENTS.md — FriendLauncher (FMCL)
 
-## Project Overview
-Electron-based Minecraft launcher with P2P multiplayer (FriendTunnel).
-Stack: Electron + React + TypeScript + TailwindCSS + Vite.
+## Project Purpose
+FriendLauncher is an Electron-based Minecraft launcher with vanilla play, modpacks, updater flows, account management, and FriendTunnel multiplayer.
 
-## Directory Structure
-- `electron/` — Main process (services, IPC handlers, preload bridges)
-- `src/` — Renderer process (React UI components, contexts, features)
-- `shared/` — Shared contracts and types (IPC channels, API types)
-- `docs/` — Documentation (EN/RU)
+Stack: `Electron` + `React` + `TypeScript` + `TailwindCSS` + `Vite`.
 
-## Build & Verify Commands
-- `npx tsc --noEmit` — TypeScript type check (MUST pass)
-- `npx eslint src/` — Lint frontend (MUST have 0 errors, warnings OK)
-- `npx eslint electron/` — Lint backend
-- `npm run dev` — Run dev server (Vite + Electron)
-- `npm run build` — Production build
+## Start Here
+- App shell and renderer boot: `src/main.tsx`, `src/App.tsx`, `src/components/AppLayout.tsx`
+- Main process boot and windows: `electron/app/bootstrap.ts`, `electron/app/lifecycle.ts`, `electron/window/windowManager.ts`
+- Preload and exposed browser APIs: `electron/preload.ts`, `electron/preload/bridges/*`
+- IPC contract and handler registration: `shared/contracts/*`, `shared/contracts/windowApi.ts`, `electron/ipc/ipcManager.ts`, `electron/ipc/handlers/*`, `src/services/ipc/*`
+- UI areas:
+  - classic/simple play: `src/components/SimplePlayDashboard.tsx`, `src/components/Sidebar.tsx`
+  - modpacks: `src/components/modpacks/*`, `src/features/modpacks/*`
+  - settings/theme/i18n: `src/components/settings/*`, `src/contexts/SettingsContext.tsx`, `src/contexts/settings/i18n.ts`
+  - accounts: `src/features/accounts/*`
+  - multiplayer: `src/features/multiplayer/*`
+- Current product bugs and QA context: `docs/KNOWN_ISSUES.md` and the latest local QA audit notes under `docs/ru/`
 
-## Coding Standards
-- Use TypeScript strict mode. Never use `any` — use `unknown` or specific types.
-- IPC contracts defined in `shared/contracts/` and registered in `electron/ipc/ipcManager.ts`.
-- Preload bridges in `electron/preload/bridges/` expose API via `window.api.*`.
-- Frontend IPC wrappers in `src/services/ipc/` — UI code should NOT call `window.*` directly.
-- React hooks must follow rules-of-hooks strictly (no conditional hooks).
-- Use `useCallback` for functions passed to `useEffect` dependencies.
-- All user-facing strings in `src/locales/en.json` and `src/locales/ru.json`.
-- Update `docs/ru/contracts-map.md` when adding/changing IPC channels.
-- Update both `docs/en/roadmap.md` AND `docs/ru/roadmap.md` when completing features.
+## Directory Guide
+- `electron/` — main-process lifecycle, windows, preload, IPC handlers, native services. See `electron/AGENTS.md`.
+- `src/` — renderer UI, contexts, features, IPC wrappers, manual verification UI. See `src/AGENTS.md`.
+- `shared/` — contracts and types shared by main and renderer. See `shared/AGENTS.md`.
+- `docs/` — architecture, roadmap, testing, contracts, known issues. See `docs/AGENTS.md`.
 
-## Known Issues (fix these first)
-See `docs/KNOWN_ISSUES.md` for current bugs and warnings.
+## Build And Verify
+- `npx tsc --noEmit` — TypeScript type check. Must pass after code changes.
+- `npx eslint src/` — renderer lint.
+- `npx eslint electron/` — main-process lint.
+- `npx vitest run` — test suite.
+- `npm run lint` — full lint with zero warnings.
+- `npm run dev` — interactive Vite dev session. Use only when manual verification is necessary.
+- `npm run build` — production build.
 
-## Testing
-- No test framework configured yet. When adding tests, use Vitest.
-- Run tests with: `npx vitest run`
+## Non-Negotiables
+- Use TypeScript strict mode. Do not introduce `any`; use exact types or `unknown`.
+- Define IPC contracts in `shared/contracts/*`, register channels in `electron/ipc/ipcManager.ts`, expose preload surface through `electron/preload/bridges/*` and `electron/preload.ts`, and consume them through `src/services/ipc/*`.
+- Renderer UI should not call `window.*` APIs directly when an IPC wrapper exists.
+- All user-facing strings belong in `src/locales/en.json` and `src/locales/ru.json`.
+- Update `docs/ru/contracts-map.md` when adding or changing IPC channels.
+- Update both `docs/en/roadmap.md` and `docs/ru/roadmap.md` when a feature is completed.
+- Prefer nearby `__tests__` as the behavioral reference before changing a feature.
+
+## Agent Workflow
+- Read the nearest `AGENTS.md` before editing inside a subdirectory.
+- Start from the narrowest relevant entrypoint instead of scanning the whole repository.
+- For UI bugs, inspect the component, its hooks, its IPC wrapper, and nearby tests together.
+- For IPC work, trace the full path in this order: shared contract -> preload bridge -> IPC handler -> renderer wrapper -> UI consumer.
+- For documentation tasks, update both language variants when the document is mirrored in `docs/en` and `docs/ru`.
+
+## Process Hygiene
+- Do not leave long-lived processes, terminals, browser sessions, watchers, or spawned agents running after the task.
+- Before final handoff, stop any `npm run dev`, `vite`, `electron`, `vitest --watch`, manual verification server, headless browser, or MCP watch that you started.
+- Reuse an existing interactive session when possible; do not open duplicate dev servers for the same repo.
+- If you are unsure what is still running, inspect with `ps -ax | rg '/Users/kszinikov/fmcl|vite|electron|vitest|playwright|chromium'` and stop only the processes started for this repo/task.
+- If you spawned sub-agents, watches, or background PTY sessions, close or unwatch them before finishing.
 
 ## Git
-- Atomic commits: 1 feature/fix = 1 commit
-- Conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`
+- Keep commits atomic: one feature or fix per commit.
+- Use conventional commit prefixes: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`.

@@ -1,10 +1,12 @@
 import type { CSSProperties } from 'react';
 import { Globe2, LayoutGrid, Menu, PanelLeftClose, PanelsTopLeft, Settings2 } from 'lucide-react';
-import { BrandMark } from '../branding/BrandMark';
 import { BrandWordmark } from '../branding/BrandWordmark';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import type { UIMode } from '../../contexts/settings/types';
+
+export const SIDEBAR_COMPACT_CONTROL_CLASSNAME =
+  'transition-all duration-500 ease-out scale-100 translate-y-0 opacity-100';
 
 export function SidebarHeader(props: {
   appVersion: string;
@@ -37,22 +39,23 @@ export function SidebarHeader(props: {
   return (
     <div className={cn("relative mb-3", isCollapsed && "mb-2")}>
       {onToggleCollapse && isCollapsed && (
-        <button 
-          onClick={onToggleCollapse} 
+        <Button
+          variant="ghost"
+          size="sm"
+          geometry="compact-control"
+          onClick={onToggleCollapse}
           aria-label={t('sidebar.expand') || 'Expand sidebar'}
           aria-controls={contentId}
           aria-expanded={!isCollapsed}
-          className={cn(
-            'mx-auto flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-card/78 text-secondary transition-all duration-300 ease-out hover:bg-card/96 hover:text-foreground',
-            'mx-auto block',
-          )}
+          data-testid="sidebar-expand-button"
+          className={cn('mx-auto block', SIDEBAR_COMPACT_CONTROL_CLASSNAME)}
           style={{
             transition: 'opacity 300ms ease-out, transform 300ms ease-out',
             transform: 'scale(1)',
           }}
         >
-          <Menu className="h-4 w-4" />
-        </button>
+          <Menu className="h-5 w-5" />
+        </Button>
       )}
 
       {/* Header content - скрывается при сворачивании */}
@@ -60,28 +63,20 @@ export function SidebarHeader(props: {
         "transition-all duration-300 ease-out",
         isCollapsed ? "opacity-0 h-0 overflow-hidden" : "opacity-100"
       )}>
-        <div className="mb-2 flex items-start justify-between">
-          <div className="flex min-w-0 items-start gap-3">
-            <BrandMark
-              data-testid="sidebar-app-icon"
-              role="app-icon"
-              alt="FriendLauncher app icon"
-              frame="brand"
-              size="sm"
-              wrapperClassName="mt-0.5 shrink-0"
+        <div className="mb-2 flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <BrandWordmark
+              as="p"
+              tone="default"
+              data-testid="sidebar-app-title"
+              className="text-[15px] leading-none text-foreground sm:text-base"
             />
-            <div className="min-w-0">
-              <BrandWordmark
-                tone="default"
-                className="truncate text-base text-foreground sm:text-lg"
-              />
-              <p className="mt-1 truncate text-xs text-secondary">
-                {currentModeLabel} • v{appVersion}
-              </p>
-            </div>
+            <p className="text-[11px] leading-4 text-secondary">
+              {currentModeLabel} • v{appVersion}
+            </p>
           </div>
           <div className={cn(
-            "flex gap-1 transition-all duration-500 ease-out",
+            "flex shrink-0 gap-1 transition-all duration-500 ease-out",
             isCollapsed 
               ? "opacity-0 pointer-events-none scale-95" 
               : "opacity-100 pointer-events-auto scale-100"
@@ -91,7 +86,7 @@ export function SidebarHeader(props: {
               size="sm" 
               data-tour="multiplayer"
               onClick={onShowMultiplayer} 
-              className="px-2 transition-all duration-500 ease-out" 
+              className="h-8 w-8 px-0 transition-all duration-500 ease-out"
               title={t('multiplayer.title') || 'Multiplayer'}
             >
               <Globe2 className="h-4 w-4" />
@@ -101,7 +96,7 @@ export function SidebarHeader(props: {
               size="sm" 
               data-tour="settings"
               onClick={onShowSettings} 
-              className="px-2 transition-all duration-500 ease-out" 
+              className="h-8 w-8 px-0 transition-all duration-500 ease-out"
               title={t('general.settings') || 'Settings'}
             >
               <Settings2 className="h-4 w-4" />
@@ -114,7 +109,7 @@ export function SidebarHeader(props: {
                 aria-label={t('sidebar.collapse') || 'Collapse sidebar'}
                 aria-controls={contentId}
                 aria-expanded={!isCollapsed}
-                className="px-2 transition-all duration-500 ease-out"
+                className="h-8 w-8 px-0 transition-all duration-500 ease-out"
                 title={t('sidebar.collapse') || 'Collapse sidebar'}
               >
                 <PanelLeftClose className="h-4 w-4" />
@@ -126,11 +121,11 @@ export function SidebarHeader(props: {
 
       {/* Mode switcher - трансформируется */}
       <div className={cn(
-        'mt-3 rounded-[20px] border border-border/60 bg-background/84 shadow-inner transition-all duration-500 ease-out',
+        'mt-3 rounded-[18px] border border-border/60 bg-background/84 shadow-inner transition-all duration-500 ease-out',
         isCollapsed 
-          ? "flex flex-col w-full gap-0.5 p-0.5" 
+          ? "flex w-full flex-col gap-1 p-1"
           : "flex w-full p-1"
-      )}>
+      )} data-testid="sidebar-mode-switcher">
         <button
           type="button"
           data-tour="classic"
@@ -138,10 +133,10 @@ export function SidebarHeader(props: {
           aria-label={isCollapsed ? simpleLabel : undefined}
           aria-pressed={uiMode === 'simple'}
           className={cn(
-            'flex items-center justify-center font-medium rounded-full transition-all duration-500 ease-out',
+            'flex items-center justify-center font-medium transition-all duration-500 ease-out',
             isCollapsed 
-              ? 'px-2 py-1.5 flex-none' 
-              : 'flex-1 px-3 py-1',
+              ? 'min-h-10 rounded-2xl px-2 py-1.5 flex-none'
+              : 'flex-1 rounded-full px-3 py-1',
             uiMode === 'simple'
               ? 'bg-card text-foreground shadow-sm'
               : 'text-secondary hover:text-foreground'
@@ -163,10 +158,10 @@ export function SidebarHeader(props: {
           aria-label={isCollapsed ? modpacksLabel : undefined}
           aria-pressed={uiMode === 'modpacks'}
           className={cn(
-            'flex items-center justify-center font-medium rounded-full transition-all duration-500 ease-out',
+            'flex items-center justify-center font-medium transition-all duration-500 ease-out',
             isCollapsed 
-              ? 'px-2 py-1.5 flex-none' 
-              : 'flex-1 px-3 py-1',
+              ? 'min-h-10 rounded-2xl px-2 py-1.5 flex-none'
+              : 'flex-1 rounded-full px-3 py-1',
             uiMode === 'modpacks'
               ? 'bg-card text-foreground shadow-sm'
               : 'text-secondary hover:text-foreground'

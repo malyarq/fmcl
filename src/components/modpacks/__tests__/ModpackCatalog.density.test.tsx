@@ -202,6 +202,7 @@ describe('Modpack catalog density', () => {
     expect(within(card as HTMLElement).getByText('Minecraft Version')).toBeTruthy();
     expect(within(card as HTMLElement).getByText('1.20.1')).toBeTruthy();
     expect(within(card as HTMLElement).getByText('Updated')).toBeTruthy();
+    expect(within(card as HTMLElement).queryByText('Modrinth')).toBeNull();
     expect(within(card as HTMLElement).queryByText('Downloads')).toBeNull();
     expect(screen.queryByText('Long-form pack summary with enough detail to stress the catalog card and footer layout.')).toBeNull();
   });
@@ -225,7 +226,7 @@ describe('Modpack catalog density', () => {
     expect(screen.queryByTestId('installed-modpack-summary')).toBeNull();
     expect(within(controls).getByText('Minecraft Version: 1.20.1')).toBeTruthy();
     expect(within(controls).getByText('Modloader: Fabric')).toBeTruthy();
-    expect(within(controls).getByText('Active: Secondary Archive Pack with Old Save Compatibility')).toBeTruthy();
+    expect(within(controls).queryByText(/^Active:/i)).toBeNull();
 
     const actionShell = screen.getByTestId('installed-modpack-actions-alpha');
     const card = screen
@@ -238,6 +239,8 @@ describe('Modpack catalog density', () => {
     expect(card).not.toBeNull();
     expect(within(card as HTMLElement).getByText('Minecraft Version')).toBeTruthy();
     expect(within(card as HTMLElement).getByText('Updated')).toBeTruthy();
+    expect(within(card as HTMLElement).queryByText('CurseForge')).toBeNull();
+    expect(within(card as HTMLElement).queryByText('Modrinth')).toBeNull();
     expect(within(card as HTMLElement).queryByText('Version')).toBeNull();
     expect(within(card as HTMLElement).queryByText('Modloader')).toBeNull();
     expect(screen.queryByText('Installed pack summary with enough words to compete with metadata tiles and action buttons.')).toBeNull();

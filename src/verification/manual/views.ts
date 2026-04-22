@@ -60,7 +60,7 @@ export type ManualVerificationViewMeta = {
 const OVERVIEW_VIEW: ManualVerificationViewMeta = {
   id: 'overview',
   label: 'Overview',
-  description: 'Manual verification hub for the milestone-owned v0.5.0 closeout matrix and retained historical proof routes.',
+  description: 'Manual proof hub for the current Phase 34 details-hierarchy, first-read runtime truth, and shared-content-workspace contract, plus retained historical regression routes.',
   group: 'hub',
   milestone: 'v0.5.0',
 };
@@ -145,47 +145,77 @@ export const CLOSEOUT_VIEWS: ManualVerificationViewMeta[] = [
 export const GENERAL_VIEWS: ManualVerificationViewMeta[] = [
   { id: 'welcome', label: 'Welcome', description: 'First-run welcome overlay.', group: 'general' },
   { id: 'tour', label: 'Tour', description: 'Onboarding spotlight with stable targets.', group: 'general' },
-  { id: 'dashboard', label: 'Launcher Home', description: 'Phase 20 launcher-home proof inside the real shell for one canonical mark, one wordmark, and one shell-owned Play CTA.', group: 'general' },
-  { id: 'settings-appearance', label: 'Settings -> Appearance', description: 'Shell-integrated appearance proof for preset ancestry, bounded customization, and honest launcher-runtime control boundaries.', group: 'general' },
+  {
+    id: 'dashboard',
+    label: 'Launcher Home',
+    description: 'Phase 33 classic runtime truth proof for short Vanilla wording and cold-start labels that must match the actual launch target.',
+    group: 'general',
+  },
+  {
+    id: 'settings-appearance',
+    label: 'Settings -> Appearance',
+    description: 'Phase 36 behavior-driven settings proof for duplicate-copy removal, preset predictability, aligned control geometry, and visible-effect scope on the live appearance surface.',
+    group: 'general',
+  },
   { id: 'settings-accounts', label: 'Settings -> Accounts', description: 'Settings shell with accounts continuity.', group: 'general' },
   { id: 'accounts', label: 'Accounts', description: 'Standalone account management and skin panel.', group: 'general' },
-  { id: 'modpack-list', label: 'Modpack List', description: 'Installed modpack cards and actions.', group: 'general' },
-  { id: 'modpack-create', label: 'Create Wizard', description: 'Shell-integrated create wizard proof with a route-owned primary action.', group: 'general' },
-  { id: 'modpack-browser', label: 'Modpack Browser', description: 'Shell-integrated content-heavy proof with route-owned browsing controls and neutral fallback art for missing covers.', group: 'general' },
-  { id: 'modpack-details', label: 'Modpack Details', description: 'Shell-integrated details proof for route-owned CTA hierarchy and bottom-edge visibility.', group: 'general' },
+  {
+    id: 'modpack-list',
+    label: 'Modpack List',
+    description: 'Phase 33 installed catalog proof for a compact header, minimal card metadata, and coherent primary actions.',
+    group: 'general',
+  },
+  { id: 'modpack-create', label: 'Create Wizard', description: 'Phase 35 create-wizard proof for a fixed action rail, runtime-aware failure explanations, and explicit post-commit recovery on the same surface.', group: 'general' },
+  {
+    id: 'modpack-browser',
+    label: 'Modpack Browser',
+    description: 'Phase 33 remote catalog proof for compact controls, minimal card metadata, coherent primary actions, and neutral fallback art.',
+    group: 'general',
+  },
+  {
+    id: 'modpack-details',
+    label: 'Modpack Details',
+    description: 'Phase 34 details proof for tab reachability above the fold, first-read runtime authority, and one shared content workspace across Mods, Resource Packs, Shaders, Worlds, and Screenshots.',
+    group: 'general',
+  },
   { id: 'modpack-export', label: 'Export', description: 'Shell-integrated export-route proof for flow-first actions and visible final content edges.', group: 'general' },
-  { id: 'modpack-add', label: 'Add Content', description: 'Shell-integrated add-content route proof with demoted shell launch and visible result endings.', group: 'general' },
+  { id: 'modpack-add', label: 'Add Content', description: 'Phase 35 add-content route proof for a fixed action rail, retained selections, and itemized mixed-success recovery on the live route.', group: 'general' },
   {
     id: 'guided-resourcepacks',
     label: 'Guided Resource Packs',
-    description: 'Phase 31 guided resource-pack browser proof with direct route-owned browsing, explicit local .zip fallback, and instance-scoped copy.',
+    description: 'Phase 35 guided resource-pack browser proof with runtime-scoped copy, explicit local .zip fallback, and no commerce framing.',
     group: 'general',
   },
   {
     id: 'guided-resourcepacks-recovery',
     label: 'Guided Resource Pack Recovery',
-    description: 'Phase 31 guided resource-pack fallback proof showing partial local import recovery without leaving the guided route shell.',
+    description: 'Phase 35 guided resource-pack fallback proof showing partial local import recovery and retry-ready fallback without leaving the guided route shell.',
     group: 'general',
   },
   {
     id: 'guided-shaders',
     label: 'Guided Shaders',
-    description: 'Phase 31 guided shader browser proof with needs-setup runtime guidance, explicit local fallback, and shader-specific catalog fixtures.',
+    description: 'Phase 35 guided shader browser proof with needs-setup runtime guidance, honest capability copy, explicit local fallback, and shader-specific catalog fixtures.',
     group: 'general',
   },
   {
     id: 'guided-shaders-recovery',
     label: 'Guided Shader Recovery',
-    description: 'Phase 31 guided shader recovery proof with unsupported-runtime guidance and retry-ready blocked install state.',
+    description: 'Phase 35 guided shader recovery proof with unsupported-runtime guidance and retry-ready blocked install state.',
     group: 'general',
   },
   { id: 'modpack-install', label: 'Install', description: 'Shell-integrated install-route proof for route-owned CTA hierarchy.', group: 'general' },
   { id: 'modpack-import-preview', label: 'Import Preview', description: 'Shell-integrated import-preview proof with visible final import controls.', group: 'general' },
-  { id: 'modpack-add-modal', label: 'Add Mod Modal', description: 'Shell-integrated modal proof showing add-mod overlay state above the real shell.', group: 'general' },
+  { id: 'modpack-add-modal', label: 'Add Mod Modal', description: 'Phase 35 add-mod modal proof for a fixed action rail, locked exits during install, and on-surface mixed-success recovery above the real shell.', group: 'general' },
   { id: 'resource-packs', label: 'Resource Packs', description: 'Shell-integrated deep-media proof with no-art pack thumbnails routed through the shared fallback policy.', group: 'general' },
   { id: 'share', label: 'Share', description: 'Share-code modal on the refreshed secondary surface.', group: 'general' },
   { id: 'screenshots', label: 'Screenshots', description: 'Screenshot gallery with live fixture imagery.', group: 'general' },
-  { id: 'utilities', label: 'Utilities', description: 'Mirrors priority and local statistics utilities.', group: 'general' },
+  {
+    id: 'utilities',
+    label: 'Utilities',
+    description: 'Phase 36 utility proof for embedded mirrors and statistics surfaces after duplicate settings copy is removed from the shared shell.',
+    group: 'general',
+  },
   { id: 'content', label: 'Content', description: 'Representative world datapack management flow.', group: 'general' },
 ];
 
@@ -224,7 +254,7 @@ export const LEGACY_VIEWS: ManualVerificationViewMeta[] = [
   {
     id: 'phase-21-details-density',
     label: 'Phase 21 Details Density',
-    description: 'Constrained-width details proof with long metadata, longer tab labels, and dense mod content inside the real shell.',
+    description: 'Retained regression route for constrained-width details, long metadata, and long tab labels after the main Phase 34 details proof passes.',
     group: 'legacy',
   },
   {
@@ -242,7 +272,7 @@ export const LEGACY_VIEWS: ManualVerificationViewMeta[] = [
   {
     id: 'phase-21-secondary-density',
     label: 'Phase 21 Secondary Density',
-    description: 'Dense resource-pack management proof with long labels, fallback art, and enough secondary content to reveal hierarchy issues.',
+    description: 'Retained regression route for dense resource-pack rows, fallback art, and shared-workspace stress after the main Phase 34 details proof passes.',
     group: 'legacy',
   },
 ];
