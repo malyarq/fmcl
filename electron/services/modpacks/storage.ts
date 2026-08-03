@@ -1,8 +1,23 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import type { ModpackMetadata, ModpackSource } from '../../../shared/types/modpack';
 import type { ModpackConfig } from '../instances/types';
 import type { ModpacksMetadataIndex } from './types';
+import { AtomicJsonStore } from '../storage/atomicJsonStore';
+
+function isModpacksMetadataIndex(value: unknown): value is ModpacksMetadataIndex {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<ModpacksMetadataIndex>;
+  return (candidate.selectedModpack === undefined || typeof candidate.selectedModpack === 'string')
+    && (candidate.modpacks === undefined
+      || (typeof candidate.modpacks === 'object' && candidate.modpacks !== null && !Array.isArray(candidate.modpacks)));
+}
+
+function createMetadataStore(rootPath: string): AtomicJsonStore<ModpacksMetadataIndex> {
+  return new AtomicJsonStore(getModpacksMetadataPath(rootPath), {
+    version: 1,
+    validate: isModpacksMetadataIndex,
+  });
+}
 
 /**
  * Путь к файлу с метаданными модпаков
@@ -18,6 +33,14 @@ export function getModpacksMetadataPath(rootPath: string): string {
 let metadataCache: ModpacksMetadataIndex | null = null;
 let lastRootPath: string | null = null;
 
+/** Keeps restored control-plane bytes from being shadowed by a stale metadata cache. */
+export function invalidateModpacksMetadataCache(rootPath: string): void {
+  if (lastRootPath === rootPath) {
+    metadataCache = null;
+    lastRootPath = null;
+  }
+}
+
 export function loadModpacksMetadata(rootPath: string): ModpacksMetadataIndex {
   // Use cache if available and path matches
   if (metadataCache && lastRootPath === rootPath) {
@@ -25,9 +48,8 @@ export function loadModpacksMetadata(rootPath: string): ModpacksMetadataIndex {
     return JSON.parse(JSON.stringify(metadataCache));
   }
 
-  const metadataPath = getModpacksMetadataPath(rootPath);
-
-  if (!fs.existsSync(metadataPath)) {
+  const loaded = createMetadataStore(rootPath).read();
+  if (!loaded) {
     // Create empty index if file doesn't exist
     const empty: ModpacksMetadataIndex = {
       selectedModpack: 'default',
@@ -38,34 +60,21 @@ export function loadModpacksMetadata(rootPath: string): ModpacksMetadataIndex {
     return JSON.parse(JSON.stringify(empty));
   }
 
-  try {
-    const raw = fs.readFileSync(metadataPath, 'utf-8');
-    const parsed = JSON.parse(raw) as ModpacksMetadataIndex;
+  const parsed: ModpacksMetadataIndex = {
+    selectedModpack: loaded.value.selectedModpack || 'default',
+    modpacks: loaded.value.modpacks || {},
+  };
+  metadataCache = parsed;
+  lastRootPath = rootPath;
 
-    // Normalize
-    if (!parsed.selectedModpack) parsed.selectedModpack = 'default';
-    if (!parsed.modpacks) parsed.modpacks = {};
-
-    metadataCache = parsed;
-    lastRootPath = rootPath;
-
-    return JSON.parse(JSON.stringify(parsed));
-  } catch (error) {
-    console.error('Failed to load modpacks metadata:', error);
-    const empty: ModpacksMetadataIndex = {
-      selectedModpack: 'default',
-      modpacks: {},
-    };
-    return empty;
-  }
+  return JSON.parse(JSON.stringify(parsed));
 }
 
 /**
  * Save modpacks metadata
  */
 export function saveModpacksMetadata(rootPath: string, metadata: ModpacksMetadataIndex): void {
-  const metadataPath = getModpacksMetadataPath(rootPath);
-  fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2), 'utf-8');
+  createMetadataStore(rootPath).write(metadata);
 
   // Update cache
   metadataCache = JSON.parse(JSON.stringify(metadata));

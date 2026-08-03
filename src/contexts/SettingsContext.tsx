@@ -15,6 +15,7 @@ import { applyThemeToDocument, extractThemeOverrides, pruneThemeConfig, resolveA
 import { createTranslator, getLocaleForLanguage } from './settings/i18n';
 import { getAccentClassForColor, getAccentHexForColor, getAccentStylesForColor, getPresetAccentSafelistClassName } from './settings/accent';
 import { formatDateForLocale, formatNumberForLocale } from '../utils/format';
+import { windowControlsIPC } from '../services/ipc/windowControlsIPC';
 
 interface SettingsState {
     minecraftPath: string;
@@ -331,9 +332,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     // Sync console window state with state
     useEffect(() => {
         if (showConsole) {
-            window.windowControls?.openConsole();
+            windowControlsIPC.openConsole();
         } else {
-            window.windowControls?.closeConsole();
+            windowControlsIPC.closeConsole();
         }
     }, [showConsole]);
 

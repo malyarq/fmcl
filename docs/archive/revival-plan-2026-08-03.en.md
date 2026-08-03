@@ -1,5 +1,7 @@
 # FriendLauncher Revival Plan
 
+> **Historical record.** This audit drove the v0.7.0 recovery release and the v0.7.1 patch. It is preserved as the decision and completion record, not as current product documentation. Remaining work is tracked in the [current roadmap](../en/roadmap.md).
+
 Audit date: 2026-08-03. Baseline: `v0.6.0`; target: a trustworthy `v0.7.0`.
 
 ## Stack decision

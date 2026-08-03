@@ -70,8 +70,6 @@ vi.mock('../../../services/ipc/modpacksIPC', () => ({
   modpacksIPC: {
     getModpackInfoFromFile: (...args: unknown[]) => getModpackInfoFromFileMock(...args),
     import: (...args: unknown[]) => importMock(...args),
-    installCurseForge: vi.fn(),
-    installModrinth: vi.fn(),
     setSelected: vi.fn(),
   },
 }));
@@ -134,15 +132,6 @@ describe('Modpack import theme seams', () => {
     });
 
     mockMatchMedia();
-    Object.defineProperty(window, 'api', {
-      writable: true,
-      value: {
-        ipcRenderer: {
-          on: vi.fn(),
-          off: vi.fn(),
-        },
-      },
-    });
   });
 
   it('renders the preview modal with semantic metadata surfaces and accent-content actions', async () => {

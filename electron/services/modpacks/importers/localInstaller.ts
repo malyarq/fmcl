@@ -208,6 +208,67 @@ export async function importModpack(filePath: string, targetDir: string): Promis
   }
 }
 
+/**
+ * Extract a supported local archive into a caller-owned private staging directory.
+ * This function deliberately has no knowledge of live instance indexes or metadata.
+ */
+export async function stageArchiveImport(filePath: string, stagingDir: string): Promise<{
+  manifest: ModpackManifest;
+  format: Exclude<ModpackFormat, 'zip'>;
+  missing: string[];
+}> {
+  const safeFilePath = assertAbsolutePath(filePath, 'Modpack file path');
+  const safeStagingDir = assertAbsolutePath(stagingDir, 'Operation staging directory');
+  const info = await getModpackInfoFromFile(safeFilePath);
+  if (!info.format || !info.manifest || info.format === 'zip') {
+    throw new Error('Unsupported import archive format');
+  }
+
+  const zip = await openValidatedZip(safeFilePath, 'Modpack archive');
+  try {
+    await fs.promises.mkdir(safeStagingDir, { recursive: true });
+    const missing: string[] = [];
+    if (info.format === 'curseforge') {
+      await extractOverrides(zip, resolvePathWithinRoot(safeStagingDir, info.manifest.overrides || 'overrides', 'Overrides directory'), info.manifest.overrides || 'overrides');
+    } else if (info.format === 'modrinth') {
+      const entryMap = buildZipEntryLookup(zip);
+      const tasks: ArchiveWriteTask[] = [];
+      const requiredMissing: string[] = [];
+      for (const file of info.manifest.files) {
+        if (!file.path) continue;
+        const normalizedFilePath = normalizeArchiveRelativePath(file.path, 'Modrinth file path');
+        const entry = entryMap.get(normalizedFilePath);
+        if (entry && !entry.fileName.endsWith('/')) {
+          tasks.push({ entry, targetPath: resolvePathWithinRoot(safeStagingDir, normalizedFilePath, `Modrinth file "${file.path}"`) });
+        } else if (file.required) {
+          requiredMissing.push(file.path);
+        } else {
+          missing.push(file.path);
+        }
+      }
+      if (requiredMissing.length > 0) throw new Error(`Required Modrinth archive files are missing: ${requiredMissing.join(', ')}`);
+      await writeArchiveTasks(zip, tasks);
+      await extractOverrides(zip, resolvePathWithinRoot(safeStagingDir, 'overrides', 'Overrides directory'), 'overrides');
+    } else {
+      const manifestEntry = zip.getEntries().find((entry) => entry.fileName.endsWith('mmc-pack.json') && !entry.fileName.includes('__MACOSX'));
+      if (!manifestEntry) throw new Error('MultiMC pack missing mmc-pack.json');
+      const manifestPath = normalizeArchiveRelativePath(manifestEntry.fileName, 'MultiMC manifest path');
+      const zipRoot = path.posix.dirname(manifestPath) === '.' ? '' : path.posix.dirname(manifestPath);
+      const minecraftPrefix = zipRoot ? `${zipRoot}/.minecraft/` : '.minecraft/';
+      const tasks = zip.getEntries().flatMap((entry): ArchiveWriteTask[] => {
+        const entryPath = normalizeArchiveRelativePath(entry.fileName, 'Archive entry path');
+        if (!entryPath.startsWith(minecraftPrefix) || entry.fileName.endsWith('/')) return [];
+        const relativePath = entryPath.slice(minecraftPrefix.length);
+        return relativePath ? [{ entry, targetPath: resolvePathWithinRoot(safeStagingDir, relativePath, `Archive entry "${entry.fileName}"`) }] : [];
+      });
+      await writeArchiveTasks(zip, tasks);
+    }
+    return { manifest: info.manifest, format: info.format, missing };
+  } finally {
+    zip.close();
+  }
+}
+
 async function extractOverrides(zip: ValidatedZip, targetDir: string, zipPath: string): Promise<void> {
   const safeTargetDir = assertAbsolutePath(targetDir, 'Overrides directory');
   const safeZipPath = normalizeArchiveRelativePath(zipPath, 'Archive overrides path');

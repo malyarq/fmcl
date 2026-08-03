@@ -1,13 +1,10 @@
 import { toIpcError } from './ipcError';
 
-type NetworkApi = Window['networkAPI'];
-type NamespacedNetworkApi = Window['api']['network'];
+type NetworkApi = Window['api']['network'];
 
-function getNetworkApi(): NamespacedNetworkApi | NetworkApi | undefined {
+function getNetworkApi(): NetworkApi | undefined {
   if (typeof window === 'undefined') return undefined;
-  if (window.api?.network) return window.api.network;
-  if (window.networkAPI) return window.networkAPI;
-  return undefined;
+  return window.api?.network;
 }
 
 function hasNetwork(): boolean {

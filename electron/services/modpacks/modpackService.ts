@@ -16,7 +16,6 @@ import {
   getOrCreateModpackMetadata,
   updateModpackMetadata as updateMetadata,
 } from './storage';
-import { generateManifestFromInstance } from './exporters/manifestGenerator';
 import { exportToCurseForge, exportToModrinth, exportToZip } from './exporters';
 import { importModpack, getModpackInfoFromFile } from './importers';
 import type { ModPlatformService } from '../mods/platform/modPlatformService';
@@ -212,11 +211,10 @@ export class ModpackService extends BaseModpackService {
   }
 
   /**
-   * Удалить модпак (включая метаданные)
+   * Roll back a modpack created by an internal operation that did not publish.
    */
-  public deleteModpack(rootPath: string, modpackId: string): void {
-    // Удалить модпак через базовый метод
-    super.deleteModpack(rootPath, modpackId);
+  public cleanupFailedCreation(rootPath: string, modpackId: string): void {
+    super.cleanupFailedCreation(rootPath, modpackId);
 
     // Удалить метаданные
     const metadata = loadModpacksMetadata(rootPath);
@@ -227,48 +225,6 @@ export class ModpackService extends BaseModpackService {
       }
       saveModpacksMetadata(rootPath, metadata);
     }
-  }
-
-  /**
-   * Экспорт модпака из текущего инстанса (генерация манифеста)
-   */
-  public async exportModpackFromInstance(
-    rootPath: string,
-    modpackId: string,
-    name: string,
-    version: string,
-    author?: string,
-    platformService?: ModPlatformService,
-  ): Promise<ModpackManifest> {
-    const modpackDir = this.getModpackDir(rootPath, modpackId);
-
-    if (!fs.existsSync(modpackDir)) {
-      throw new Error(`Modpack directory not found: ${modpackDir}`);
-    }
-
-    const manifest = await generateManifestFromInstance(
-      modpackDir,
-      name,
-      version,
-      author,
-      platformService,
-    );
-
-    // Сохранить манифест в папку модпака
-    const manifestPath = path.join(modpackDir, 'manifest.json');
-    fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
-
-    // Обновить метаданные модпака
-    const metadata = this.getModpackMetadata(rootPath, modpackId);
-    metadata.name = name;
-    metadata.version = version;
-    if (author) {
-      metadata.author = author;
-    }
-    metadata.updatedAt = new Date().toISOString();
-    this.updateModpackMetadata(rootPath, modpackId, metadata);
-
-    return manifest;
   }
 
   /**
@@ -446,7 +402,7 @@ export class ModpackService extends BaseModpackService {
       return { id: modpackId, config, metadata };
     } catch (error) {
       if (createdModpack && modpackId) {
-        this.deleteModpack(safeRootPath, modpackId);
+        this.cleanupFailedCreation(safeRootPath, modpackId);
       }
       throw error;
     }

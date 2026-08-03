@@ -53,16 +53,19 @@ function diff(a, b) {
 
 function main() {
   const allowed = loadAllowedChannels()
-  const ru = loadDocsChannels('docs/ru/contracts-map.md')
-  const en = loadDocsChannels('docs/en/contracts-map.md')
+  const maps = [
+    ['English', loadDocsChannels('docs/en/contracts-map.md')],
+    ['Russian', loadDocsChannels('docs/ru/contracts-map.md')],
+  ]
 
-  const docsUnion = new Set([...ru, ...en])
+  let hasMismatch = false
+  for (const [language, documented] of maps) {
+    const missingInDocs = diff(allowed, documented)
+    const missingInAllowlist = diff(documented, allowed)
 
-  const missingInDocs = diff(allowed, docsUnion)
-  const missingInAllowlist = diff(docsUnion, allowed)
-
-  if (missingInDocs.length || missingInAllowlist.length) {
-    console.error('[contracts] Mismatch detected')
+    if (!missingInDocs.length && !missingInAllowlist.length) continue
+    hasMismatch = true
+    console.error(`[contracts] ${language} map mismatch`)
     if (missingInDocs.length) {
       console.error('\nMissing in docs (present in allowlist):')
       for (const c of missingInDocs) console.error(`- ${c}`)
@@ -71,11 +74,11 @@ function main() {
       console.error('\nMissing in allowlist (present in docs):')
       for (const c of missingInAllowlist) console.error(`- ${c}`)
     }
-    process.exit(1)
   }
 
-  console.log(`[contracts] OK (${allowed.size} channels)`)
+  if (hasMismatch) process.exit(1)
+
+  console.log(`[contracts] OK (${allowed.size} channels in each language map)`)
 }
 
 main()
-

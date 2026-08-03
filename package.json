@@ -20,10 +20,14 @@
     "test:full:neoforge": "node scripts/test-full.js --stage=neoforge",
     "build": "tsc && vite build && electron-builder",
     "lint": "eslint . --max-warnings 0",
+    "docs:check": "node scripts/check-docs.cjs",
     "contracts:check": "node scripts/check-contracts.cjs",
     "ipc:check": "node scripts/check-ipc-handlers.cjs",
+    "legacy-import:check": "node scripts/check-no-legacy-modpacks-import.cjs",
+    "legacy-provider-install:check": "node scripts/check-no-legacy-provider-install.cjs",
+    "architecture:check": "node scripts/check-architecture.cjs",
     "audit:prod": "npm audit --omit=dev --audit-level=high",
-    "verify": "npm test && npm run lint && npx tsc -p tsconfig.json --noEmit && npm run contracts:check && npm run ipc:check && npm run audit:prod",
+    "verify": "npm test && npm run lint && npx tsc -p tsconfig.json --noEmit && npm run docs:check && npm run contracts:check && npm run ipc:check && npm run legacy-import:check && npm run architecture:check && npm run audit:prod",
     "preview": "vite preview",
     "release": "node scripts/release.js",
     "postinstall": "node scripts/postinstall-fix-xmcl-bytebuffer.cjs"
@@ -53,7 +57,7 @@
     "react-virtuoso": "^4.18.1",
     "tailwind-merge": "^3.4.0",
     "tree-kill": "^1.2.2",
-    "undici": "^6.27.0",
+    "undici": "^6.28.0",
     "yauzl": "^3.4.0",
     "yazl": "^3.3.1"
   },
@@ -84,24 +88,24 @@
     "typescript": "^5.9.3",
     "vite": "^7.3.6",
     "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6",
+    "vite-plugin-electron-renderer": "^1.0.0",
     "vitest": "^4.1.4"
   },
   "overrides": {
     "@xmcl/curseforge": {
-      "undici": "^7.28.0"
+      "undici": "^7.29.0"
     },
     "@xmcl/file-transfer": {
-      "undici": "^7.28.0"
+      "undici": "^7.29.0"
     },
     "@xmcl/installer": {
-      "undici": "^7.28.0"
+      "undici": "^7.29.0"
     },
     "@xmcl/modrinth": {
-      "undici": "^7.28.0"
+      "undici": "^7.29.0"
     },
     "@xmcl/user": {
-      "undici": "^7.28.0",
+      "undici": "^7.29.0",
       "uuid": "^11.1.1"
     },
     "js-yaml": "^4.3.0",

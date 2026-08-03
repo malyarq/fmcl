@@ -18,6 +18,7 @@ vi.mock('electron', () => ({
 }));
 
 import { MirrorsService } from '../mirrorsService';
+import { AtomicJsonStore } from '../../storage/atomicJsonStore';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-mirrors-service-'));
@@ -139,5 +140,29 @@ describe('MirrorsService priority ordering', () => {
     expect(insecure?.isDisabled).toBe(true);
     expect(insecure?.disabledReason).toBe('insecureRemoteHttp');
     expect(service.getSelectedMirror()?.id).toBe('official');
+  });
+
+  it('does not silently replace malformed mirror configuration with defaults', () => {
+    const userDataPath = createTempDir();
+    tempDirs.push(userDataPath);
+    mocked.appGetPath.mockImplementation(() => userDataPath);
+    const mirrorsFile = path.join(userDataPath, 'mirrors.json');
+    fs.writeFileSync(mirrorsFile, '{broken mirrors');
+    const original = fs.readFileSync(mirrorsFile);
+
+    expect(() => new MirrorsService()).toThrow(/recovery backup are unavailable/);
+    expect(fs.readFileSync(mirrorsFile)).toEqual(original);
+  });
+
+  it('does not publish in-memory mirror changes when persistence fails', async () => {
+    const service = new MirrorsService();
+    const before = service.getMirrors();
+    vi.spyOn(AtomicJsonStore.prototype, 'write').mockImplementationOnce(() => {
+      throw new Error('disk full');
+    });
+
+    await expect(service.addCustomMirror('Loopback Mirror', 'http://127.0.0.1:8080'))
+      .rejects.toThrow('disk full');
+    expect(service.getMirrors()).toEqual(before);
   });
 });

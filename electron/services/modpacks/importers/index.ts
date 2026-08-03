@@ -1,1 +1,1 @@
-export { detectModpackFormat, getModpackInfoFromFile, importModpack } from './localInstaller';
+export { detectModpackFormat, getModpackInfoFromFile, importModpack, stageArchiveImport } from './localInstaller';

@@ -1,13 +1,10 @@
 import { toIpcError } from './ipcError';
 
-type SettingsApi = Window['settings'];
-type NamespacedSettingsApi = Window['api']['settings'];
+type SettingsApi = Window['api']['settings'];
 
-function getSettingsApi(): NamespacedSettingsApi | SettingsApi | undefined {
+function getSettingsApi(): SettingsApi | undefined {
   if (typeof window === 'undefined') return undefined;
-  if (window.api?.settings) return window.api.settings;
-  if (window.settings) return window.settings;
-  return undefined;
+  return window.api?.settings;
 }
 
 function hasSettings(): boolean {

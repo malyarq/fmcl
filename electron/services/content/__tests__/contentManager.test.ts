@@ -61,6 +61,30 @@ describe('ContentManager', () => {
     expect(fs.readFileSync(destinationPath, 'utf-8')).toBe('copy fallback');
   });
 
+  it('preserves an existing destination when both link and fallback copy fail', async () => {
+    const rootDir = createTempRoot();
+    tempDirs.push(rootDir);
+
+    const sourcePath = path.join(rootDir, 'source.txt');
+    const destinationPath = path.join(rootDir, 'mods', 'existing.txt');
+    writeFile(sourcePath, 'new content');
+    writeFile(destinationPath, 'working old content');
+
+    const manager = new ContentManager(rootDir);
+    const hash = await manager.importFile(sourcePath);
+    vi.spyOn(fs, 'linkSync').mockImplementation(() => {
+      throw new Error('cross-device');
+    });
+    vi.spyOn(fs, 'copyFileSync').mockImplementation(() => {
+      throw new Error('disk full');
+    });
+
+    await expect(manager.linkFile(destinationPath, hash)).rejects.toThrow('disk full');
+
+    expect(fs.readFileSync(destinationPath, 'utf-8')).toBe('working old content');
+    expect(fs.readdirSync(path.dirname(destinationPath))).toEqual(['existing.txt']);
+  });
+
   it('deduplicates matching files and reports saved space in stats', async () => {
     const rootDir = createTempRoot();
     tempDirs.push(rootDir);

@@ -2,18 +2,50 @@ import fs from 'node:fs';
 import path from 'node:path';
 import type { ModpackConfig, ModpackRuntime, ModpacksIndex } from './types';
 import { ensureXmclFolders, getModpackConfigPath, getModpackDir, getModpacksIndexPath } from './paths';
+import { loadModpackConfigFile, saveModpackConfigFile } from './configStore';
+import { AtomicJsonStore, getAtomicJsonBackupPath } from '../storage/atomicJsonStore';
+
+type IndexDocument = {
+  selectedModpack?: unknown;
+  selectedInstance?: unknown;
+  modpacks?: unknown;
+  instances?: unknown;
+};
+
+function isIndexDocument(value: unknown): value is IndexDocument {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const candidate = value as IndexDocument;
+  const hasValidEntries = (entries: unknown): boolean => {
+    if (!entries || typeof entries !== 'object' || Array.isArray(entries)) return false;
+    return Object.entries(entries).every(([id, metadata]) => (
+      id.length > 0
+      && Boolean(metadata)
+      && typeof metadata === 'object'
+      && !Array.isArray(metadata)
+      && typeof (metadata as { name?: unknown }).name === 'string'
+    ));
+  };
+
+  const canonical = typeof candidate.selectedModpack === 'string'
+    && hasValidEntries(candidate.modpacks);
+  const legacy = typeof candidate.selectedInstance === 'string'
+    && hasValidEntries(candidate.instances);
+  return canonical || legacy;
+}
+
+function createIndexStore(rootPath: string): AtomicJsonStore<IndexDocument> {
+  return new AtomicJsonStore(getModpacksIndexPath(rootPath), {
+    version: 1,
+    validate: isIndexDocument,
+  });
+}
 
 function loadExistingDefaultConfig(rootPath: string): ModpackConfig | null {
   const cfgPath = getModpackConfigPath(rootPath, 'default');
-  if (!fs.existsSync(cfgPath)) {
+  if (!fs.existsSync(cfgPath) && !fs.existsSync(getAtomicJsonBackupPath(cfgPath))) {
     return null;
   }
-
-  try {
-    return JSON.parse(fs.readFileSync(cfgPath, 'utf-8')) as ModpackConfig;
-  } catch {
-    return null;
-  }
+  return loadModpackConfigFile(rootPath, 'default');
 }
 
 /**
@@ -22,8 +54,8 @@ function loadExistingDefaultConfig(rootPath: string): ModpackConfig | null {
  */
 export function ensureModpacksMigratedFile(rootPath: string, seedDefault?: Partial<ModpackConfig>) {
   ensureXmclFolders(rootPath);
-  const indexPath = getModpacksIndexPath(rootPath);
-  if (fs.existsSync(indexPath)) return;
+  const indexStore = createIndexStore(rootPath);
+  if (indexStore.read()) return;
 
   const now = new Date().toISOString();
   const existingDefaultConfig = loadExistingDefaultConfig(rootPath);
@@ -60,17 +92,17 @@ export function ensureModpacksMigratedFile(rootPath: string, seedDefault?: Parti
     updatedAt: now,
   };
 
-  fs.writeFileSync(indexPath, JSON.stringify(index, null, 2), 'utf-8');
+  indexStore.write(index);
   if (!existingDefaultConfig) {
     // Keep exact path behavior (modpack.json inside modpacks/default)
-    fs.writeFileSync(getModpackConfigPath(rootPath, 'default'), JSON.stringify(cfg, null, 2), 'utf-8');
+    saveModpackConfigFile(rootPath, cfg);
   }
 }
 
 export function loadModpacksIndexFile(rootPath: string): ModpacksIndex {
-  const indexPath = getModpacksIndexPath(rootPath);
-  const raw = fs.readFileSync(indexPath, 'utf-8');
-  const parsed = JSON.parse(raw) as Record<string, unknown>;
+  const loaded = createIndexStore(rootPath).read();
+  if (!loaded) throw new Error(`Modpacks index does not exist: ${getModpacksIndexPath(rootPath)}`);
+  const parsed = loaded.value;
   // minimal normalization - migrate old format if needed
   const result: ModpacksIndex = {
     selectedModpack: 'default',
@@ -93,10 +125,5 @@ export function loadModpacksIndexFile(rootPath: string): ModpacksIndex {
 }
 
 export function saveModpacksIndexFile(rootPath: string, index: ModpacksIndex) {
-  fs.writeFileSync(getModpacksIndexPath(rootPath), JSON.stringify(index, null, 2), 'utf-8');
+  createIndexStore(rootPath).write(index);
 }
-
-// Legacy aliases for backward compatibility
-export const ensureInstancesMigratedFile = ensureModpacksMigratedFile;
-export const loadInstancesIndexFile = loadModpacksIndexFile;
-export const saveInstancesIndexFile = saveModpacksIndexFile;

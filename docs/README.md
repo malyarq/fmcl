@@ -1,38 +1,65 @@
-# FriendLauncher docs
+# FriendLauncher documentation
 
-[English](#english) | [Русский](#russian)
+The documentation is split by audience and language. English and Russian variants describe the same behavior; code, tests, and workflow files remain the final source of truth.
 
----
+[English](#english) · [Русский](#russian) · [Historical documents](archive/README.md)
 
-<a name="english"></a>
 ## English
 
-This folder documents **project conventions** so refactors don’t break runtime behavior and so new code lands “in the right place”.
+### Players
 
-- **Architecture**: [`docs/en/architecture.md`](./en/architecture.md)
-- **Code style**: [`docs/en/code-style.md`](./en/code-style.md)
-- **Design System**: [`docs/en/design-system.md`](./en/design-system.md)
-- **Contracts (IPC + `window.*`)**:
-  - Canonical map (EN): [`docs/en/contracts-map.md`](./en/contracts-map.md)
-  - Canonical map (RU): [`docs/ru/contracts-map.md`](./ru/contracts-map.md)
-  - Maintenance rules (EN): [`docs/en/contracts.md`](./en/contracts.md)
-- **Development workflow**: [`docs/en/development.md`](./en/development.md)
-- **Testing**: [`docs/en/testing.md`](./en/testing.md)
+- [User guide](en/user-guide.md) — installation, first launch, updates, and data safety
+- [Troubleshooting](en/troubleshooting.md) — common launch, Java, content, network, and update failures
+- [Known issues](en/known-issues.md) — confirmed limitations in the current stable release
 
----
+### Contributors
 
-<a name="russian"></a>
+- [Development](en/development.md) — environment, commands, and day-to-day workflow
+- [Testing](en/testing.md) — unit, visual, installation, CI, and release checks
+- [Architecture](en/architecture.md) — process boundaries and directory ownership
+- [Code style](en/code-style.md) — reviewable engineering rules
+- [IPC contracts](en/contracts.md) and [contract map](en/contracts-map.md)
+- [Design system](en/design-system.md) — tokens, shared components, and accessibility rules
+- [Contributing](../CONTRIBUTING.md)
+
+### Maintainers
+
+- [Release runbook](en/releasing.md)
+- [Security model](en/security.md) and [reporting policy](../SECURITY.md)
+- [Roadmap](en/roadmap.md)
+- [Changelog](../CHANGELOG.md)
+- [Third-party notices](../THIRD_PARTY_NOTICES.md)
+
 ## Русский
 
-Эта папка фиксирует **конвенции проекта**, чтобы рефакторинги не ломали поведение и чтобы новый код складывался “по местам”.
+### Пользователям
 
-- **Архитектура**: [`docs/ru/architecture.md`](./ru/architecture.md)
-- **Кодстайл**: [`docs/ru/code-style.md`](./ru/code-style.md)
-- **Design System**: [`docs/ru/design-system.md`](./ru/design-system.md)
-- **Контракты (IPC + `window.*`)**:
-  - Карта (RU): [`docs/ru/contracts-map.md`](./ru/contracts-map.md)
-  - Map (EN): [`docs/en/contracts-map.md`](./en/contracts-map.md)
-  - Правила поддержки (RU): [`docs/ru/contracts.md`](./ru/contracts.md)
-- **Разработка / команды**: [`docs/ru/development.md`](./ru/development.md)
-- **Тестирование**: [`docs/ru/testing.md`](./ru/testing.md)
+- [Руководство](ru/user-guide.md) — установка, первый запуск, обновления и сохранность данных
+- [Решение проблем](ru/troubleshooting.md) — запуск, Java, контент, сеть и обновления
+- [Известные проблемы](ru/known-issues.md) — подтверждённые ограничения стабильной версии
 
+### Разработчикам
+
+- [Разработка](ru/development.md) — окружение, команды и рабочий процесс
+- [Тестирование](ru/testing.md) — unit, visual, installation, CI и release-проверки
+- [Архитектура](ru/architecture.md) — границы процессов и ответственность каталогов
+- [Кодстайл](ru/code-style.md) — проверяемые инженерные правила
+- [IPC-контракты](ru/contracts.md) и [карта контрактов](ru/contracts-map.md)
+- [Дизайн-система](ru/design-system.md) — токены, общие компоненты и доступность
+- [Участие в разработке](../CONTRIBUTING.md)
+
+### Мейнтейнерам
+
+- [Выпуск релиза](ru/releasing.md)
+- [Модель безопасности](ru/security.md) и [политика сообщения об уязвимостях](../SECURITY.md)
+- [Роадмап](ru/roadmap.md)
+- [История изменений](../CHANGELOG.md)
+- [Уведомления о сторонних компонентах](../THIRD_PARTY_NOTICES.md)
+
+## Maintenance rules
+
+- Update both language variants when a mirrored document changes.
+- Do not use dated plans as current product documentation; move completed plans to `docs/archive/`.
+- Verify commands against `package.json` and workflows against `.github/workflows/`.
+- Run `npm run contracts:check` after changing the IPC channel map.
+- Keep local Markdown links valid.

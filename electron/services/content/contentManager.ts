@@ -53,9 +53,13 @@ export class ContentManager {
         // If file does not exist in store, copy it
         if (!fs.existsSync(storeDest)) {
             // Copy to a temp file first to ensure atomicity
-            const tempDest = `${storeDest}.tmp-${Date.now()}`;
-            fs.copyFileSync(sourcePath, tempDest);
-            fs.renameSync(tempDest, storeDest);
+            const tempDest = `${storeDest}.tmp-${crypto.randomUUID()}`;
+            try {
+                fs.copyFileSync(sourcePath, tempDest, fs.constants.COPYFILE_EXCL);
+                fs.renameSync(tempDest, storeDest);
+            } finally {
+                fs.rmSync(tempDest, { force: true });
+            }
         }
 
         return hash;
@@ -63,7 +67,8 @@ export class ContentManager {
 
     /**
      * Create a hard link from the store to the destination.
-     * If the destination exists, it is removed first (unless it is already the correct hard link).
+     * The replacement is prepared beside the destination and atomically published,
+     * so a failed link/copy cannot destroy the existing user file.
      */
     public async linkFile(destinationPath: string, hash: string): Promise<void> {
         const storePath = this.getStorePath(hash);
@@ -87,17 +92,20 @@ export class ContentManager {
                 return; // Already linked
             }
 
-            // If not linked, remove it
-            fs.unlinkSync(destinationPath);
         }
 
-        // Create hard link
+        const stagedPath = path.join(destDir, `.${path.basename(destinationPath)}.${crypto.randomUUID()}.tmp`);
         try {
-            fs.linkSync(storePath, destinationPath);
-        } catch (error) {
-            // Fallback to copy if hard link fails (e.g. cross-device link)
-            console.warn(`Failed to create hard link for ${hash}, falling back to copy:`, error);
-            fs.copyFileSync(storePath, destinationPath);
+            try {
+                fs.linkSync(storePath, stagedPath);
+            } catch (error) {
+                // Fallback to copy if hard link fails (e.g. cross-device link)
+                console.warn(`Failed to create hard link for ${hash}, falling back to copy:`, error);
+                fs.copyFileSync(storePath, stagedPath, fs.constants.COPYFILE_EXCL);
+            }
+            fs.renameSync(stagedPath, destinationPath);
+        } finally {
+            fs.rmSync(stagedPath, { force: true });
         }
     }
 

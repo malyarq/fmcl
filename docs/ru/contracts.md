@@ -1,43 +1,52 @@
-## Контракты (Русский)
+# IPC-контракты
 
-У проекта есть две публичные поверхности, которые должны оставаться стабильными:
+IPC — внутренняя граница приложения между sandboxed renderer и Electron main process. Это не публичный сетевой API, но совместимость важна: renderer, preload и main собираются и поставляются вместе.
 
-1) **Имена IPC каналов + payload’ы** (renderer ↔ main)  
-2) **`window.*` API**, которое отдаёт preload (renderer)
+## Источники истины
 
-Каноничная карта (RU): [`docs/ru/contracts-map.md`](./contracts-map.md).
+| Что | Источник |
+| --- | --- |
+| Разрешённые имена каналов | `shared/contracts/ipcChannels.ts` |
+| Типы preload-доменов | `shared/contracts/*` |
+| Поддерживаемый namespace | `shared/contracts/windowApi.ts` |
+| Exposed capabilities | `electron/preload.ts`, `electron/preload/bridges/*` |
+| Поведение main process | `electron/ipc/ipcManager.ts`, `electron/ipc/handlers/*` |
+| Валидация на границе | `electron/ipc/validation/*` |
+| Доступ renderer | `src/services/ipc/*` |
+| Читаемый список каналов | [Карта контрактов](contracts-map.md) |
 
----
+TypeScript contracts и runtime validation определяют payload shape. Карта каналов — поддерживаемый индекс, а не замена коду.
 
-## Если меняешь IPC / preload
+## Чеклист изменения
 
-Если ты добавляешь/переименовываешь/удаляешь что-то в:
+При добавлении или изменении cross-process операции:
 
-- `electron/ipc/handlers/*`
-- `electron/ipc/ipcManager.ts`
-- `electron/preload.ts`
-- `electron/preload/bridges/*`
+1. Опишите typed request/result в `shared/contracts/*` или общем доменном типе.
+2. При необходимости добавьте канал в `shared/contracts/ipcChannels.ts`.
+3. Откройте узкую capability через domain preload bridge.
+4. Добавьте её в `FriendLauncherApi`, если она относится к `window.api`.
+5. Провалидируйте в main process каждое значение, которым управляет renderer.
+6. Зарегистрируйте тонкий handler, передающий работу domain service.
+7. Добавьте или обновите renderer wrapper в `src/services/ipc/*`.
+8. Покройте success, invalid input и failure focused-тестами.
+9. Обновите обе карты контрактов.
+10. Запустите проверки ниже.
 
-то обязательно обнови:
+```bash
+npm run contracts:check
+npm run ipc:check
+npm run architecture:check
+npx tsc -p tsconfig.json --noEmit
+```
 
-- `docs/en/contracts-map.md` + `docs/ru/contracts-map.md` (карта контрактов)
-- `src/vite-env.d.ts` (типы для renderer)
-- `src/services/ipc/*` (предпочтительный путь вызова)
+## Правила совместимости
 
----
+- Удаление или переименование канала либо обязательного поля — breaking change для packaged app boundary.
+- Новое optional field обычно совместимо, если каждый consumer учитывает его отсутствие.
+- Нельзя переиспользовать существующее имя канала с другим смыслом.
+- Секреты и privileged filesystem data не должны попадать в renderer DTO.
+- UI-код вызывает typed wrapper или узкую capability `window.api.<domain>`; универсального renderer IPC API больше нет.
 
-## Предпочтительный путь в renderer
+## Renderer surface
 
-- **Нужно**: `src/services/ipc/<domain>IPC.ts`
-- **Не нужно**: размазывать прямые `window.<bridge>.*` вызовы по UI
-- **Не нужно**: `window.ipcRenderer` (escape hatch), если есть альтернатива
-
-Если escape hatch всё-таки нужен — зафиксируй это в `contracts-map.md` и по возможности добавь типизированную обёртку.
-
----
-
-## Простое правило про versioning
-
-- Переименование канала или изменение payload’а = **breaking change**.
-- Добавление нового необязательного поля обычно **не breaking**.
-
+`window.api` — единственный Electron capability global. Верхнеуровневые aliases и generic allowlisted renderer bridge удалены в разработке v0.8.0. `npm run architecture:check` запрещает raw channel strings, legacy globals и возврат универсального моста в `src/`.

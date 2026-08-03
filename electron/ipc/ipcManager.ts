@@ -11,7 +11,6 @@ import { registerLauncherHandlers } from './handlers/launcherHandlers'
 import { registerModsHandlers } from './handlers/modsHandlers'
 import { registerNetworkHandlers } from './handlers/networkHandlers'
 import { registerSettingsHandlers } from './handlers/settingsHandlers'
-import { registerUpdaterHandlers } from './handlers/updaterHandlers'
 import { registerWindowHandlers } from './handlers/windowHandlers'
 import { registerResourcePacksHandlers } from './handlers/resourcePacksHandlers'
 import { registerShadersHandlers } from './handlers/shadersHandlers'
@@ -27,6 +26,8 @@ import { MirrorsService } from '../services/mirrors/mirrorsService'
 import { registerStatisticsHandlers } from './handlers/statisticsHandlers'
 import { registerExternalLinksHandlers } from './handlers/externalLinksHandlers'
 import { StatisticsService } from '../services/stats/statisticsService'
+import type { OperationRunner } from '../services/operations/operationRunner'
+import { registerOperationsHandlers } from './handlers/operationsHandlers'
 
 import { registerShareHandlers } from './handlers/shareHandlers'
 import { ShareService } from '../services/sharing/shareService'
@@ -57,19 +58,19 @@ export class IPCManager {
         mirrorsService: MirrorsService,
         statisticsService: StatisticsService,
         shareService: ShareService,
+        operations: OperationRunner,
     }) {
-        const { window, launcher, networkService, modPlatforms, modpacks, accountService, mirrorsService, statisticsService, shareService } = params
+        const { window, launcher, networkService, modPlatforms, modpacks, accountService, mirrorsService, statisticsService, shareService, operations } = params
         const sendLog = createThrottledLauncherLogSender()
 
         registerWindowHandlers({ window })
         registerLauncherHandlers({ window, launcher, sendLog })
         registerCacheHandlers({ window })
         registerModsHandlers({ modPlatforms })
-        registerModpacksHandlers({ modpacks, modPlatforms, window })
+        registerModpacksHandlers({ modpacks, modPlatforms })
         registerNetworkHandlers({ window, networkService, sendLog })
         registerSettingsHandlers({ window })
         registerAssetsHandlers()
-        registerUpdaterHandlers({ window, modpacks })
         registerAppUpdaterHandlers()
         registerResourcePacksHandlers()
         registerShadersHandlers()
@@ -82,5 +83,6 @@ export class IPCManager {
         registerStatisticsHandlers({ statisticsService })
         registerShareHandlers({ shareService })
         registerExternalLinksHandlers()
+        registerOperationsHandlers({ runner: operations })
     }
 }

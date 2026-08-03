@@ -1,13 +1,10 @@
 import { toIpcError } from './ipcError';
 
-type LauncherApi = Window['launcher'];
-type NamespacedLauncherApi = Window['api']['launcher'];
+type LauncherApi = Window['api']['launcher'];
 
-function getLauncherApi(): NamespacedLauncherApi | LauncherApi | undefined {
+function getLauncherApi(): LauncherApi | undefined {
   if (typeof window === 'undefined') return undefined;
-  if (window.api?.launcher) return window.api.launcher;
-  if (window.launcher) return window.launcher;
-  return undefined;
+  return window.api?.launcher;
 }
 
 function hasLauncher(): boolean {

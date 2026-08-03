@@ -14,3 +14,4 @@ export type {
 export * from './account';
 export * from './mirrors';
 export * from './statistics';
+export * from './screenshots';

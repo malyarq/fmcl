@@ -1,5 +1,4 @@
-type WindowControlsApi = Window['windowControls'];
-type NamespacedWindowControlsApi = Window['api']['windowControls'];
+type WindowControlsApi = Window['api']['windowControls'];
 
 function usesNativeMacWindowControls(): boolean {
   if (typeof navigator === 'undefined') {
@@ -10,22 +9,16 @@ function usesNativeMacWindowControls(): boolean {
 }
 
 function hasWindowControls(): boolean {
-  return typeof window !== 'undefined' && Boolean(window.api?.windowControls || window.windowControls);
+  return typeof window !== 'undefined' && Boolean(window.api?.windowControls);
 }
 
 function hasMethod<K extends keyof WindowControlsApi>(key: K): boolean {
-  const api = (typeof window !== 'undefined' ? (window.api?.windowControls ?? window.windowControls) : undefined) as
-    | NamespacedWindowControlsApi
-    | WindowControlsApi
-    | undefined;
+  const api = typeof window !== 'undefined' ? window.api?.windowControls : undefined;
   return Boolean(api && typeof api[key] === 'function');
 }
 
 function requireWindowControls(methodName: string): WindowControlsApi {
-  const api = (typeof window !== 'undefined' ? (window.api?.windowControls ?? window.windowControls) : undefined) as
-    | NamespacedWindowControlsApi
-    | WindowControlsApi
-    | undefined;
+  const api = typeof window !== 'undefined' ? window.api?.windowControls : undefined;
   if (!api) {
     throw new Error(`[windowControlsIPC] window controls API is not available (method: ${methodName})`);
   }
@@ -57,6 +50,16 @@ export const windowControlsIPC = {
   close(): void {
     if (!hasMethod('close')) return;
     requireWindowControls('close').close();
+  },
+
+  openConsole(): void {
+    if (!hasMethod('openConsole')) return;
+    requireWindowControls('openConsole').openConsole();
+  },
+
+  closeConsole(): void {
+    if (!hasMethod('closeConsole')) return;
+    requireWindowControls('closeConsole').closeConsole();
   },
 };
 

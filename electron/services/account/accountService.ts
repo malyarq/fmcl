@@ -1,5 +1,4 @@
 import path from 'path';
-import fs from 'fs';
 import { randomUUID } from 'crypto';
 import { safeStorage } from 'electron';
 import type { Account } from '@shared/types';
@@ -7,6 +6,7 @@ import type { AccountSkinState } from '@shared/contracts/account';
 import { YggdrasilClient } from './yggdrasil';
 import { assertTrustedEndpointUrl } from '../../security/trustedEndpoints';
 import { buildAccountSkinState, detectSkinProvider } from './skinProviders';
+import { AtomicJsonStore } from '../storage/atomicJsonStore';
 
 type InternalAccount = Account & {
     accessToken?: string;
@@ -30,14 +30,44 @@ type PersistedAccountState = {
     selectedAccountId: string | null;
 };
 
+function isOptionalString(value: unknown): value is string | undefined {
+    return value === undefined || typeof value === 'string';
+}
+
+function isPersistedAccount(value: unknown): value is PersistedAccount {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+    const account = value as Partial<PersistedAccount>;
+    return typeof account.id === 'string'
+        && typeof account.name === 'string'
+        && (account.type === 'offline' || account.type === 'third-party')
+        && isOptionalString(account.authServerUrl)
+        && isOptionalString(account.accessToken)
+        && isOptionalString(account.clientToken)
+        && isOptionalString(account.encryptedAccessToken)
+        && isOptionalString(account.encryptedClientToken);
+}
+
+function isPersistedAccountState(value: unknown): value is PersistedAccountState {
+    if (!value || typeof value !== 'object') return false;
+    const candidate = value as Partial<PersistedAccountState>;
+    return Array.isArray(candidate.accounts)
+        && candidate.accounts.every(isPersistedAccount)
+        && (candidate.selectedAccountId === null || typeof candidate.selectedAccountId === 'string');
+}
+
 export class AccountService {
-    private accountsFile: string;
+    private accountsStore: AtomicJsonStore<PersistedAccountState>;
     private state: InternalAccountState;
 
     constructor(userDataPath: string) {
-        this.accountsFile = path.join(userDataPath, 'accounts.json');
-        this.state = this.loadAccounts();
-        this.saveAccounts();
+        this.accountsStore = new AtomicJsonStore(path.join(userDataPath, 'accounts.json'), {
+            version: 1,
+            mode: 0o600,
+            validate: isPersistedAccountState,
+        });
+        const loaded = this.loadAccounts();
+        this.state = loaded.state;
+        if (loaded.shouldPersist) this.saveAccounts(this.state);
     }
 
     private applyDerivedAccountFields(account: InternalAccount): InternalAccount {
@@ -96,78 +126,75 @@ export class AccountService {
         }
     }
 
-    private loadAccounts(): InternalAccountState {
-        try {
-            if (fs.existsSync(this.accountsFile)) {
-                const data = fs.readFileSync(this.accountsFile, 'utf-8');
-                const parsed = JSON.parse(data) as Partial<PersistedAccountState>;
-                const accounts = Array.isArray(parsed.accounts)
-                    ? parsed.accounts.map((account) => {
-                        const {
-                            encryptedAccessToken,
-                            encryptedClientToken,
-                            accessToken,
-                            clientToken,
-                            ...publicAccount
-                        } = account;
-                        const hydratedAccount = this.revalidateAccount({
-                            ...publicAccount,
-                            accessToken: this.decryptSecret(encryptedAccessToken) ?? accessToken,
-                            clientToken: this.decryptSecret(encryptedClientToken) ?? clientToken,
-                        });
-                        if (hydratedAccount.type === 'third-party' && !safeStorage.isEncryptionAvailable()) {
-                            return this.applyDerivedAccountFields({
-                                ...hydratedAccount,
-                                accessToken: undefined,
-                                clientToken: undefined,
-                                isDisabled: true,
-                                disabledReason: 'secureStorageUnavailable',
-                            });
-                        }
-                        return hydratedAccount;
-                    })
-                    : [];
-                const selectedAccountId = accounts.some(
-                    (account) => account.id === parsed.selectedAccountId && !account.isDisabled,
-                )
-                    ? parsed.selectedAccountId ?? null
-                    : this.getFirstEnabledAccountId(accounts);
-                return { accounts, selectedAccountId };
-            }
-        } catch (error) {
-            console.error('Failed to load accounts:', error);
+    private loadAccounts(): { state: InternalAccountState; shouldPersist: boolean } {
+        const loaded = this.accountsStore.read();
+        if (loaded) {
+            const parsed = loaded.value;
+            const hasPlaintextSecrets = parsed.accounts.some(
+                (account) => Boolean(account.accessToken || account.clientToken),
+            );
+            const accounts = parsed.accounts.map((account) => {
+                const {
+                    encryptedAccessToken,
+                    encryptedClientToken,
+                    accessToken,
+                    clientToken,
+                    ...publicAccount
+                } = account;
+                const hydratedAccount = this.revalidateAccount({
+                    ...publicAccount,
+                    accessToken: this.decryptSecret(encryptedAccessToken) ?? accessToken,
+                    clientToken: this.decryptSecret(encryptedClientToken) ?? clientToken,
+                });
+                if (hydratedAccount.type === 'third-party' && !safeStorage.isEncryptionAvailable()) {
+                    return this.applyDerivedAccountFields({
+                        ...hydratedAccount,
+                        accessToken: undefined,
+                        clientToken: undefined,
+                        isDisabled: true,
+                        disabledReason: 'secureStorageUnavailable',
+                    });
+                }
+                return hydratedAccount;
+            });
+            const selectedAccountId = accounts.some(
+                (account) => account.id === parsed.selectedAccountId && !account.isDisabled,
+            )
+                ? parsed.selectedAccountId
+                : this.getFirstEnabledAccountId(accounts);
+            return {
+                state: { accounts, selectedAccountId },
+                shouldPersist: hasPlaintextSecrets
+                    || (safeStorage.isEncryptionAvailable() && (loaded.legacy || loaded.source === 'backup')),
+            };
         }
-        return { accounts: [], selectedAccountId: null };
+        return {
+            state: { accounts: [], selectedAccountId: null },
+            shouldPersist: true,
+        };
     }
 
-    private saveAccounts() {
-        try {
-            fs.mkdirSync(path.dirname(this.accountsFile), { recursive: true });
-            const accounts = this.state.accounts.map((account): PersistedAccount => {
-                const { accessToken, clientToken, ...publicAccount } = account;
-                if (!safeStorage.isEncryptionAvailable()) return publicAccount;
+    private saveAccounts(state: InternalAccountState): void {
+        const accounts = state.accounts.map((account): PersistedAccount => {
+            const { accessToken, clientToken, ...publicAccount } = account;
+            if (!safeStorage.isEncryptionAvailable()) return publicAccount;
 
-                return {
-                    ...publicAccount,
-                    encryptedAccessToken: accessToken
-                        ? safeStorage.encryptString(accessToken).toString('base64')
-                        : undefined,
-                    encryptedClientToken: clientToken
-                        ? safeStorage.encryptString(clientToken).toString('base64')
-                        : undefined,
-                };
-            });
-            const persistedState: PersistedAccountState = {
-                accounts,
-                selectedAccountId: this.state.selectedAccountId,
+            return {
+                ...publicAccount,
+                encryptedAccessToken: accessToken
+                    ? safeStorage.encryptString(accessToken).toString('base64')
+                    : undefined,
+                encryptedClientToken: clientToken
+                    ? safeStorage.encryptString(clientToken).toString('base64')
+                    : undefined,
             };
-            const tempPath = `${this.accountsFile}.tmp`;
-            fs.writeFileSync(tempPath, JSON.stringify(persistedState, null, 2), { mode: 0o600 });
-            fs.renameSync(tempPath, this.accountsFile);
-            fs.chmodSync(this.accountsFile, 0o600);
-        } catch (error) {
-            console.error('Failed to save accounts:', error);
-        }
+        });
+        this.accountsStore.write({ accounts, selectedAccountId: state.selectedAccountId });
+    }
+
+    private commitState(state: InternalAccountState): void {
+        this.saveAccounts(state);
+        this.state = state;
     }
 
     private toPublicAccount(account: InternalAccount): Account {
@@ -205,11 +232,10 @@ export class AccountService {
             isDisabled: false,
         };
         const nextAccount = this.applyDerivedAccountFields(account);
-        this.state.accounts.push(nextAccount);
-        if (!this.state.selectedAccountId) {
-            this.state.selectedAccountId = nextAccount.id;
-        }
-        this.saveAccounts();
+        this.commitState({
+            accounts: [...this.state.accounts, nextAccount],
+            selectedAccountId: this.state.selectedAccountId ?? nextAccount.id,
+        });
         return this.toPublicAccount(nextAccount);
     }
 
@@ -243,14 +269,10 @@ export class AccountService {
         };
         const hydratedAccount = this.applyDerivedAccountFields(account);
 
-        if (existingIndex !== -1) {
-            this.state.accounts[existingIndex] = hydratedAccount;
-        } else {
-            this.state.accounts.push(hydratedAccount);
-        }
-
-        this.state.selectedAccountId = hydratedAccount.id;
-        this.saveAccounts();
+        const accounts = [...this.state.accounts];
+        if (existingIndex !== -1) accounts[existingIndex] = hydratedAccount;
+        else accounts.push(hydratedAccount);
+        this.commitState({ accounts, selectedAccountId: hydratedAccount.id });
         return this.toPublicAccount(hydratedAccount);
     }
 
@@ -270,25 +292,25 @@ export class AccountService {
         }
 
         const refreshedAccount = this.revalidateAccount(this.state.accounts[index]);
-        this.state.accounts[index] = refreshedAccount;
-        this.saveAccounts();
+        const accounts = [...this.state.accounts];
+        accounts[index] = refreshedAccount;
+        this.commitState({ ...this.state, accounts });
 
         return buildAccountSkinState(refreshedAccount);
     }
 
     public selectAccount(accountId: string): void {
         if (this.state.accounts.some((account) => account.id === accountId && !account.isDisabled)) {
-            this.state.selectedAccountId = accountId;
-            this.saveAccounts();
+            this.commitState({ ...this.state, selectedAccountId: accountId });
         }
     }
 
     public removeAccount(accountId: string): void {
-        this.state.accounts = this.state.accounts.filter(a => a.id !== accountId);
-        if (this.state.selectedAccountId === accountId) {
-            this.state.selectedAccountId = this.state.accounts.length > 0 ? this.state.accounts[0].id : null;
-        }
-        this.saveAccounts();
+        const accounts = this.state.accounts.filter(a => a.id !== accountId);
+        const selectedAccountId = this.state.selectedAccountId === accountId
+            ? this.getFirstEnabledAccountId(accounts)
+            : this.state.selectedAccountId;
+        this.commitState({ accounts, selectedAccountId });
     }
 
     // Refresh token for selected account if needed
@@ -319,8 +341,9 @@ export class AccountService {
                     // Update in state
                     const index = this.state.accounts.findIndex(a => a.id === account.id);
                     if (index !== -1) {
-                        this.state.accounts[index] = updatedAccount;
-                        this.saveAccounts();
+                        const accounts = [...this.state.accounts];
+                        accounts[index] = updatedAccount;
+                        this.commitState({ ...this.state, accounts });
                     }
                     return updatedAccount;
                 }

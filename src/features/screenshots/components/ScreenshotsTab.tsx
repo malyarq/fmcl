@@ -4,7 +4,7 @@ import { useSettings } from '../../../contexts/SettingsContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { screenshotsIPC } from '../../../services/ipc/screenshotsIPC';
-import type { Screenshot } from '../../../../electron/services/screenshots/screenshotService';
+import type { Screenshot } from '@shared/types/screenshots';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 import { LazyImage } from '../../../components/ui/LazyImage';
 import { Button } from '../../../components/ui/Button';

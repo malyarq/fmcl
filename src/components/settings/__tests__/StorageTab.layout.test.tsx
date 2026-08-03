@@ -49,9 +49,8 @@ describe('StorageTab layout', () => {
       />,
     );
 
-    await waitFor(() => {
-      expect(getContentStatsMock).toHaveBeenCalledOnce();
-    });
+    await waitFor(() => expect(getContentStatsMock).toHaveBeenCalledOnce());
+    await screen.findByText('Cleanup');
 
     expect(screen.queryByRole('heading', { name: 'Storage' })).toBeNull();
     expect(screen.getByText('Cleanup')).toBeTruthy();

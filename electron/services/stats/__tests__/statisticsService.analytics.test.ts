@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StatisticsService } from '../statisticsService';
+import { AtomicJsonStore } from '../../storage/atomicJsonStore';
 
 function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-statistics-service-'));
@@ -16,6 +17,7 @@ describe('StatisticsService analytics', () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.useRealTimers();
 
     for (const dir of tempDirs.splice(0)) {
@@ -71,5 +73,29 @@ describe('StatisticsService analytics', () => {
     expect(payload.version).toBe(1);
     expect(payload.statistics.popularModpacks[0]?.name).toBe('Alpha Pack');
     expect(payload.statistics.usageTrend[0]?.date).toBe('2026-04-12');
+  });
+
+  it('does not silently replace malformed statistics with zeroes', () => {
+    const root = createTempDir();
+    tempDirs.push(root);
+    const statsPath = path.join(root, 'statistics.json');
+    fs.writeFileSync(statsPath, '{broken statistics');
+    const original = fs.readFileSync(statsPath);
+
+    expect(() => new StatisticsService(statsPath)).toThrow(/recovery backup are unavailable/);
+    expect(fs.readFileSync(statsPath)).toEqual(original);
+  });
+
+  it('does not advance in-memory statistics when persistence fails', () => {
+    const root = createTempDir();
+    tempDirs.push(root);
+    const service = new StatisticsService(path.join(root, 'statistics.json'));
+    const before = service.getStats();
+    vi.spyOn(AtomicJsonStore.prototype, 'write').mockImplementationOnce(() => {
+      throw new Error('disk full');
+    });
+
+    expect(() => service.recordLaunch('alpha', 'Alpha Pack')).toThrow('disk full');
+    expect(service.getStats()).toEqual(before);
   });
 });

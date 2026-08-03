@@ -20,6 +20,15 @@ import { MirrorsService } from '../services/mirrors/mirrorsService';
 import { StatisticsService } from '../services/stats/statisticsService';
 import { ShareService } from '../services/sharing/shareService';
 import { loadFullTestConfig } from './fullTestConfig';
+import { OperationRunner } from '../services/operations/operationRunner';
+import { createDuplicateOperationAdapter } from '../services/operations/duplicateOperation';
+import { createImportOperationAdapter } from '../services/operations/importOperation';
+import { createLiveProviderInstallers, createProviderInstallOperationAdapters } from '../services/operations/providerInstallOperation';
+import { createUpdateOperationAdapter } from '../services/operations/updateOperation';
+import { createDeleteOperationAdapter } from '../services/operations/deleteOperation';
+import { createExportOperationAdapter } from '../services/operations/exportOperation';
+import { InstanceExporterService } from '../services/instances/exporter/InstanceExporterService';
+import { exportToZip } from '../services/modpacks/exporters/zipExporter';
 
 function configureAppRoot() {
   const __filename = fileURLToPath(import.meta.url);
@@ -210,6 +219,37 @@ export function bootstrapMain() {
     const mirrorsService = new MirrorsService();
     const statisticsService = new StatisticsService();
     const { modpacks, launcherManager, modPlatforms, networkService, shareService } = createServices({ authServerUrl, accountService, mirrorsService, statisticsService });
+    const instanceExporter = new InstanceExporterService(modpacks);
+    const operations = new OperationRunner([
+      createDuplicateOperationAdapter(),
+      createImportOperationAdapter(),
+      createUpdateOperationAdapter(),
+      createDeleteOperationAdapter(),
+      createExportOperationAdapter({
+        platformService: modPlatforms,
+        writeArchive: async ({ rootPath, instanceId, format, outputPath, options }) => {
+          const hasInstanceExportOptions = options?.includeSaves !== undefined
+            || options?.includeScreenshots !== undefined
+            || options?.includeResourcePacks !== undefined
+            || options?.includeShaders !== undefined
+            || options?.includeMods !== undefined;
+          if (format === 'multimc' || hasInstanceExportOptions) {
+            await instanceExporter.exportInstance(rootPath, instanceId, format, outputPath, options);
+            return;
+          }
+          await exportToZip(modpacks.getModpackDir(rootPath, instanceId), outputPath);
+        },
+      }),
+      ...createProviderInstallOperationAdapters({
+        installers: createLiveProviderInstallers(modpacks, {
+          curseforge: () => modPlatforms.getCurseForgeClient(),
+          modrinth: () => modPlatforms.getModrinthClient(),
+        }),
+      }),
+    ], { registryPath: app.getPath('appData') });
+
+    // Recovery must finish before mutating operation handlers are registered.
+    await operations.recoverRegistered(modpacks.getDefaultRootPath());
 
     // --- Register IPC Handlers ---
     IPCManager.registerAllHandlers({
@@ -222,6 +262,7 @@ export function bootstrapMain() {
       mirrorsService,
       statisticsService,
       shareService,
+      operations,
     });
 
     let consoleWinRef: BrowserWindow | null = null;

@@ -1,11 +1,11 @@
 import { Mirror, MirrorMoveDirection, MirrorState } from '@shared/types';
 import { app } from 'electron';
-import fs from 'fs';
 import path from 'path';
 import { randomUUID } from 'crypto';
 
 import { net as electronNet } from 'electron';
 import { assertTrustedEndpointUrl } from '../../security/trustedEndpoints';
+import { AtomicJsonStore } from '../storage/atomicJsonStore';
 
 const DEFAULT_MIRRORS: Mirror[] = [
     {
@@ -31,13 +31,24 @@ type PersistedMirrorState = Partial<MirrorState> & {
     selectedMirrorId?: string;
 };
 
+function isPersistedMirrorState(value: unknown): value is PersistedMirrorState {
+    if (!value || typeof value !== 'object') return false;
+    const candidate = value as PersistedMirrorState;
+    return (candidate.mirrors === undefined || Array.isArray(candidate.mirrors))
+        && (candidate.autoSelect === undefined || typeof candidate.autoSelect === 'boolean')
+        && (candidate.selectedMirrorId === undefined || typeof candidate.selectedMirrorId === 'string');
+}
+
 export class MirrorsService {
     private state: MirrorState = this.createInitialState();
-    private mirrorsFile: string;
+    private mirrorsStore: AtomicJsonStore<PersistedMirrorState>;
 
     constructor() {
         const userDataPath = app.getPath('userData');
-        this.mirrorsFile = path.join(userDataPath, 'mirrors.json');
+        this.mirrorsStore = new AtomicJsonStore(path.join(userDataPath, 'mirrors.json'), {
+            version: 1,
+            validate: isPersistedMirrorState,
+        });
         this.loadMirrors();
     }
 
@@ -125,50 +136,40 @@ export class MirrorsService {
     }
 
     private loadMirrors() {
-        try {
-            if (fs.existsSync(this.mirrorsFile)) {
-                const data = fs.readFileSync(this.mirrorsFile, 'utf-8');
-                const savedState = JSON.parse(data) as PersistedMirrorState;
-                const savedMirrors = Array.isArray(savedState.mirrors) ? savedState.mirrors : [];
-                const customMirrors = savedMirrors
-                    .filter((mirror) => mirror.type === 'custom')
-                    .map((mirror) => this.revalidateMirror(mirror));
-                const mergedMirrors = [
-                    ...DEFAULT_MIRRORS.map((mirror) => this.cloneMirror(mirror)),
-                    ...customMirrors,
-                ];
-                const orderedMirrors = this.orderMirrors(
-                    mergedMirrors,
-                    savedMirrors.map((mirror) => mirror.id),
-                    savedState.selectedMirrorId,
-                );
-                const nextState: MirrorState = {
-                    mirrors: this.decorateMirrors(orderedMirrors),
-                    autoSelect: savedState.autoSelect === true,
-                };
+        const loaded = this.mirrorsStore.read();
+        if (loaded) {
+            const savedState = loaded.value;
+            const savedMirrors = Array.isArray(savedState.mirrors) ? savedState.mirrors : [];
+            const customMirrors = savedMirrors
+                .filter((mirror) => mirror.type === 'custom')
+                .map((mirror) => this.revalidateMirror(mirror));
+            const mergedMirrors = [
+                ...DEFAULT_MIRRORS.map((mirror) => this.cloneMirror(mirror)),
+                ...customMirrors,
+            ];
+            const orderedMirrors = this.orderMirrors(
+                mergedMirrors,
+                savedMirrors.map((mirror) => mirror.id),
+                savedState.selectedMirrorId,
+            );
+            const nextState: MirrorState = {
+                mirrors: this.decorateMirrors(orderedMirrors),
+                autoSelect: savedState.autoSelect === true,
+            };
 
-                this.state = nextState;
-
-                const normalized = JSON.stringify(this.createPersistedState(nextState), null, 2);
-                if (normalized !== JSON.stringify(savedState, null, 2)) {
-                    fs.writeFileSync(this.mirrorsFile, normalized);
-                }
+            const normalized = JSON.stringify(this.createPersistedState(nextState), null, 2);
+            if (loaded.legacy
+                || loaded.source === 'backup'
+                || normalized !== JSON.stringify(savedState, null, 2)) {
+                this.mirrorsStore.write(this.createPersistedState(nextState));
             }
-        } catch (error) {
-            console.error('Failed to load mirrors:', error);
+            this.state = nextState;
         }
     }
 
-    private saveMirrors() {
-        try {
-            fs.writeFileSync(this.mirrorsFile, JSON.stringify(this.createPersistedState(this.state), null, 2));
-        } catch (error) {
-            console.error('Failed to save mirrors:', error);
-        }
-    }
-
-    private setMirrors(mirrors: Mirror[]) {
-        this.state.mirrors = this.decorateMirrors(mirrors);
+    private commitState(state: MirrorState) {
+        this.mirrorsStore.write(this.createPersistedState(state));
+        this.state = state;
     }
 
     public getMirrors(): Mirror[] {
@@ -198,8 +199,10 @@ export class MirrorsService {
             isDisabled: false,
         };
 
-        this.setMirrors([...this.state.mirrors, mirror]);
-        this.saveMirrors();
+        this.commitState({
+            ...this.state,
+            mirrors: this.decorateMirrors([...this.state.mirrors, mirror]),
+        });
         return this.getMirrors().find((item) => item.id === mirror.id) ?? mirror;
     }
 
@@ -211,8 +214,10 @@ export class MirrorsService {
             throw new Error('Cannot remove default mirrors');
         }
 
-        this.setMirrors(this.state.mirrors.filter((item) => item.id !== id));
-        this.saveMirrors();
+        this.commitState({
+            ...this.state,
+            mirrors: this.decorateMirrors(this.state.mirrors.filter((item) => item.id !== id)),
+        });
     }
 
     public async selectMirror(id: string): Promise<void> {
@@ -220,8 +225,10 @@ export class MirrorsService {
         if (!mirror) throw new Error('Mirror not found');
         if (mirror.isDisabled) throw new Error('Mirror is disabled because its URL is insecure');
 
-        this.setMirrors(this.orderMirrors(this.state.mirrors, [id]));
-        this.saveMirrors();
+        this.commitState({
+            ...this.state,
+            mirrors: this.decorateMirrors(this.orderMirrors(this.state.mirrors, [id])),
+        });
     }
 
     public async moveMirror(id: string, direction: MirrorMoveDirection): Promise<void> {
@@ -238,8 +245,7 @@ export class MirrorsService {
         const nextMirrors = this.state.mirrors.map((mirror) => this.cloneMirror(mirror));
         const [mirror] = nextMirrors.splice(currentIndex, 1);
         nextMirrors.splice(targetIndex, 0, mirror);
-        this.setMirrors(nextMirrors);
-        this.saveMirrors();
+        this.commitState({ ...this.state, mirrors: this.decorateMirrors(nextMirrors) });
     }
 
     public async testSpeed(url: string): Promise<number> {
@@ -255,8 +261,7 @@ export class MirrorsService {
     }
 
     public async setAutoSelect(enabled: boolean): Promise<void> {
-        this.state.autoSelect = enabled;
-        this.saveMirrors();
+        this.commitState({ ...this.state, autoSelect: enabled });
         if (enabled) {
             await this.autoSelectBestMirror();
         }
@@ -291,7 +296,9 @@ export class MirrorsService {
         const bestMirrorId = validResults[0].id;
 
         console.log(`Auto-selected mirror: ${bestMirrorId} with latency ${validResults[0].latency}ms`);
-        this.setMirrors(this.orderMirrors(this.state.mirrors, orderedIds));
-        this.saveMirrors();
+        this.commitState({
+            ...this.state,
+            mirrors: this.decorateMirrors(this.orderMirrors(this.state.mirrors, orderedIds)),
+        });
     }
 }

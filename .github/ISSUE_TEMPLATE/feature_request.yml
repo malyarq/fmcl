@@ -1,0 +1,35 @@
+name: Feature request
+description: Propose a user problem or bounded improvement
+title: "[Feature]: "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the user problem before proposing an implementation.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Explain the smallest useful behavior and how a player would use it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and trade-offs
+      description: Note current workarounds, data migration, provider restrictions, or platform differences.
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: I checked the current roadmap and existing issues.
+          required: true
+        - label: This request does not contain credentials, private data, or vulnerability details.
+          required: true

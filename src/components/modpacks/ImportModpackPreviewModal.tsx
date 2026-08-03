@@ -1,11 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
+import { useModpackListContext } from '../../contexts/ModpackContext';
 import { Modal } from '../ui/Modal';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import type { ModpackManifest } from '@shared/types/modpack';
+import { ImportOperationStatus } from './ImportOperationStatus';
+import { useArchiveImportOperation } from './useArchiveImportOperation';
 
 interface ImportModpackPreviewModalProps {
   filePath: string;
@@ -21,12 +24,22 @@ export const ImportModpackPreviewModal: React.FC<ImportModpackPreviewModalProps>
   onImport,
 }) => {
   const { t, getAccentStyles } = useSettings();
+  const { refresh } = useModpackListContext();
   const [loading, setLoading] = useState(true);
   const [info, setInfo] = useState<{
     format: 'curseforge' | 'modrinth' | 'zip' | null;
     manifest: ModpackManifest | null;
     error?: string;
   } | null>(null);
+  const onPublished = useCallback(async () => {
+    await refresh();
+    onImport();
+  }, [onImport, refresh]);
+  const { operation, error: operationError, isActive: importing, start } = useArchiveImportOperation({
+    filePath,
+    enabled: isOpen,
+    onPublished,
+  });
 
   useEffect(() => {
     if (!isOpen || !filePath) return;
@@ -47,9 +60,8 @@ export const ImportModpackPreviewModal: React.FC<ImportModpackPreviewModalProps>
     loadInfo();
   }, [isOpen, filePath]);
 
-  const handleImport = () => {
-    onImport();
-    onClose();
+  const handleImport = async () => {
+    await start();
   };
 
   if (!isOpen) return null;
@@ -58,6 +70,7 @@ export const ImportModpackPreviewModal: React.FC<ImportModpackPreviewModalProps>
     <Modal
       isOpen={isOpen}
       onClose={onClose}
+      closeDisabled={importing}
       title={t('modpacks.import_preview') || 'Предпросмотр модпака'}
       className="max-w-2xl"
     >
@@ -75,6 +88,7 @@ export const ImportModpackPreviewModal: React.FC<ImportModpackPreviewModalProps>
           </div>
         ) : info?.manifest ? (
           <>
+            <ImportOperationStatus operation={operation} error={operationError} t={t} />
             <div className="surface-soft p-4">
               <h3 className="mb-4 text-lg font-bold text-foreground">
                 {info.manifest.name || path.basename(filePath)}
@@ -156,6 +170,7 @@ export const ImportModpackPreviewModal: React.FC<ImportModpackPreviewModalProps>
                 onClick={onClose}
                 variant="secondary"
                 className="flex-1"
+                disabled={importing}
               >
                 {t('general.cancel')}
               </Button>
@@ -163,6 +178,7 @@ export const ImportModpackPreviewModal: React.FC<ImportModpackPreviewModalProps>
                 onClick={handleImport}
                 className={cn("flex-1 text-[rgb(var(--accent-content))]", getAccentStyles('bg').className)}
                 style={getAccentStyles('bg').style}
+                isLoading={importing}
               >
                 {t('modpacks.import') || 'Импортировать'}
               </Button>

@@ -36,11 +36,10 @@ export type LauncherProgressEvent = TaskProgressData;
  * Core launcher API (launch + versions + events).
  *
  * Mods and Modpacks are exposed via dedicated domain APIs:
- * - `window.mods` (see `shared/contracts/mods.ts`)
- * - `window.modpacks` (see `shared/contracts/modpacks.ts`)
+ * - `window.api.mods` (see `shared/contracts/mods.ts`)
+ * - `window.api.modpacks` (see `shared/contracts/modpacks.ts`)
  *
- * Note: runtime may still provide legacy aliases on `window.launcher`,
- * but they are intentionally NOT part of this type.
+ * The renderer reaches this contract through `window.api.launcher` only.
  */
 export interface LauncherAPI {
   launch: (options: LauncherLaunchOptions) => Promise<void>;
@@ -56,4 +55,3 @@ export interface LauncherAPI {
   onProgress: (callback: (progress: LauncherProgressEvent) => void) => () => void;
   onClose: (callback: (code: number) => void) => () => void;
 }
-

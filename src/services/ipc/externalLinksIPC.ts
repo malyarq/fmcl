@@ -1,14 +1,9 @@
 import type { ExternalLinkRequest, ExternalLinksAPI } from '@shared/contracts/externalLinks'
 import { toIpcError } from './ipcError'
 
-type NamespacedExternalLinksApi = Window['api']['externalLinks']
-type LegacyExternalLinksApi = Window['externalLinks']
-
-function getExternalLinksApi(): NamespacedExternalLinksApi | LegacyExternalLinksApi | undefined {
+function getExternalLinksApi(): ExternalLinksAPI | undefined {
   if (typeof window === 'undefined') return undefined
-  if (window.api?.externalLinks) return window.api.externalLinks
-  if (window.externalLinks) return window.externalLinks
-  return undefined
+  return window.api?.externalLinks
 }
 
 function requireExternalLinksApi(methodName: string): ExternalLinksAPI {

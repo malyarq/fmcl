@@ -1,0 +1,71 @@
+name: Bug report
+description: Report a reproducible FriendLauncher problem that is not security-sensitive
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report vulnerabilities, credentials, private server addresses, or exploit details here. Use [private vulnerability reporting](https://github.com/malyarq/fmcl/security/advisories/new).
+
+  - type: input
+    id: version
+    attributes:
+      label: FriendLauncher version
+      description: Use the exact version from the application or release filename.
+      placeholder: v0.7.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: minecraft
+    attributes:
+      label: Minecraft and modloader
+      description: Include Minecraft, Forge/Fabric/NeoForge/OptiFine, and Java versions when relevant.
+      placeholder: Minecraft 1.20.1, Fabric 0.x, Java 17
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Explain the expected result and the actual result.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and screenshots
+      description: Remove tokens, account identifiers, room codes, private addresses, and personal filesystem paths before attaching anything.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Safety checks
+      options:
+        - label: I reproduced this on the latest stable release or explained why I could not.
+          required: true
+        - label: This report contains no vulnerability details or secrets.
+          required: true

@@ -1,275 +1,157 @@
+import type { FriendLauncherApi } from '@shared/contracts';
+import type { ModpackMetadata } from '@shared/types/modpack';
 import type { ModpackConfig, ModpackListItem } from '../../contexts/instances/types';
 import { toIpcError } from './ipcError';
 
-type ModpacksApi = Window['modpacks'];
-type NamespacedModpacksApi = Window['api']['modpacks'];
+type ModpacksApi = FriendLauncherApi['modpacks'];
 
-type LegacyLauncherModpacks = Partial<{
-  listModpacks: (rootPath?: string) => Promise<ModpackListItem[]>;
-  bootstrapModpacks: (seed?: Partial<ModpackConfig>, rootPath?: string) => Promise<{ index?: unknown; selectedId?: string; config?: ModpackConfig }>;
-  getSelectedModpack: (rootPath?: string) => Promise<string | null>;
-  setSelectedModpack: (id: string, rootPath?: string) => Promise<{ ok: boolean }>;
-  createModpack: (name: string, rootPath?: string) => Promise<{ id?: string } | null>;
-  renameModpack: (id: string, name: string, rootPath?: string) => Promise<{ ok: boolean }>;
-  duplicateModpack: (sourceId: string, name?: string, rootPath?: string) => Promise<{ id?: string } | null>;
-  deleteModpack: (id: string, rootPath?: string) => Promise<{ ok: boolean }>;
-  getModpackConfig: (id: string, rootPath?: string) => Promise<ModpackConfig | null>;
-  saveModpackConfig: (cfg: ModpackConfig, rootPath?: string) => Promise<{ ok: boolean }>;
-  scanJava: () => Promise<{ path: string; version: string; majorVersion: number; valid: boolean }[]>;
-}>;
-
-// Helper to access ipcRenderer directly
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const ipc = () => (window as any).ipcRenderer;
-
-function hasModpacks(): boolean {
-  return typeof window !== 'undefined' && Boolean(window.api?.modpacks || window.modpacks);
-}
-
-function hasMethod<K extends keyof ModpacksApi>(key: K): boolean {
-  const api = (typeof window !== 'undefined' ? (window.api?.modpacks ?? window.modpacks) : undefined) as
-    | NamespacedModpacksApi
-    | ModpacksApi
-    | undefined;
-  return Boolean(api && typeof api[key] === 'function');
-}
-
-function requireModpacks(methodName: string): ModpacksApi {
-  const api = (typeof window !== 'undefined' ? (window.api?.modpacks ?? window.modpacks) : undefined) as
-    | NamespacedModpacksApi
-    | ModpacksApi
-    | undefined;
-  if (!api) {
-    throw new Error(`[modpacksIPC] modpacks API is not available (method: ${methodName})`);
+function api(): ModpacksApi {
+  const modpacks = typeof window !== 'undefined' ? window.api?.modpacks : undefined;
+  if (!modpacks) {
+    throw new Error('[modpacksIPC] modpacks API is not available');
   }
-  return api;
+  return modpacks;
 }
 
-async function call<T>(methodName: string, fn: () => Promise<T>): Promise<T> {
+async function call<T>(method: string, fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
-  } catch (err) {
-    const e = toIpcError({ namespace: 'modpacksIPC', method: methodName }, err);
-    console.error(e);
-    throw e;
+  } catch (error) {
+    const ipcError = toIpcError({ namespace: 'modpacksIPC', method }, error);
+    console.error(ipcError);
+    throw ipcError;
   }
 }
 
 export const modpacksIPC = {
-  list(rootPath?: string): Promise<ModpackListItem[]> {
-    if (!hasModpacks() || !hasMethod('listModpacks')) {
-      // Backward compatibility: older builds exposed modpack APIs on window.launcher.
-      const legacy = (window as unknown as { launcher?: unknown }).launcher as LegacyLauncherModpacks | undefined;
-      if (!legacy || typeof legacy.listModpacks !== 'function') return Promise.resolve([]);
-      return legacy.listModpacks(rootPath) as Promise<ModpackListItem[]>;
-    }
-    return call('listModpacks', () => requireModpacks('listModpacks').listModpacks(rootPath)) as Promise<ModpackListItem[]>;
-  },
-
-  listWithMetadata(rootPath?: string) {
-    return call('listModpacksWithMetadata', () => requireModpacks('listModpacksWithMetadata').listModpacksWithMetadata(rootPath));
-  },
-
-  bootstrap(
-    seed?: Partial<ModpackConfig>,
+  isAvailable: () => typeof window !== 'undefined' && Boolean(window.api?.modpacks),
+  list: (rootPath?: string) => call(
+    'listModpacks',
+    () => api().listModpacks(rootPath) as Promise<ModpackListItem[]>,
+  ),
+  listWithMetadata: (rootPath?: string) => call(
+    'listModpacksWithMetadata',
+    () => api().listModpacksWithMetadata(rootPath),
+  ),
+  bootstrap: (seed?: Partial<ModpackConfig>, rootPath?: string) => call(
+    'bootstrapModpacks',
+    () => api().bootstrapModpacks(seed, rootPath) as Promise<{
+      index?: unknown;
+      selectedId?: string;
+      config?: ModpackConfig;
+    }>,
+  ),
+  getSelected: (rootPath?: string) => call(
+    'getSelectedModpack',
+    () => api().getSelectedModpack(rootPath) as Promise<string | null>,
+  ),
+  setSelected: (id: string, rootPath?: string) => call(
+    'setSelectedModpack',
+    () => api().setSelectedModpack(id, rootPath),
+  ),
+  create: (name: string, rootPath?: string) => call(
+    'createModpack',
+    () => api().createModpack(name, rootPath) as Promise<{ id?: string; config?: ModpackConfig }>,
+  ),
+  rename: (id: string, name: string, rootPath?: string) => call(
+    'renameModpack',
+    () => api().renameModpack(id, name, rootPath),
+  ),
+  getConfig: (id: string, rootPath?: string) => call(
+    'getModpackConfig',
+    () => api().getModpackConfig(id, rootPath) as Promise<ModpackConfig | null>,
+  ),
+  saveConfig: (cfg: ModpackConfig, rootPath?: string) => call(
+    'saveModpackConfig',
+    () => api().saveModpackConfig(cfg, rootPath),
+  ),
+  getMetadata: (modpackId: string, rootPath?: string) => call(
+    'getModpackMetadata',
+    () => api().getModpackMetadata(modpackId, rootPath),
+  ),
+  updateMetadata: (modpackId: string, updates: Partial<ModpackMetadata>, rootPath?: string) => call(
+    'updateModpackMetadata',
+    () => api().updateModpackMetadata(modpackId, updates, rootPath),
+  ),
+  scanJava: () => call('scanJava', () => api().scanJava()),
+  searchCurseForge: (
+    query: string,
+    mcVersion?: string,
+    loader?: string,
+    sort?: 'popularity' | 'date' | 'alphabetical',
+    offset?: number,
+    limit?: number,
+  ) => call(
+    'searchCurseForgeModpacks',
+    () => api().searchCurseForgeModpacks(query, mcVersion, loader, sort, offset, limit),
+  ),
+  searchModrinth: (
+    query: string,
+    mcVersion?: string,
+    loader?: string,
+    sort?: 'popularity' | 'date' | 'alphabetical',
+    offset?: number,
+    limit?: number,
+  ) => call(
+    'searchModrinthModpacks',
+    () => api().searchModrinthModpacks(query, mcVersion, loader, sort, offset, limit),
+  ),
+  getCurseForgeVersions: (projectId: number) => call(
+    'getCurseForgeModpackVersions',
+    () => api().getCurseForgeModpackVersions(projectId),
+  ),
+  getModrinthVersions: (projectId: string) => call(
+    'getModrinthModpackVersions',
+    () => api().getModrinthModpackVersions(projectId),
+  ),
+  getModpackInfoFromFile: (filePath: string) => call(
+    'getModpackInfoFromFile',
+    () => api().getModpackInfoFromFile(filePath),
+  ),
+  createFromManifest: (manifest: unknown, rootPath?: string) => call(
+    'createFromManifest',
+    () => api().createFromManifest(manifest, rootPath),
+  ),
+  createLocal: (
+    name: string,
+    version: string,
+    minecraftVersion: string,
+    modLoader?: { type: string; version?: string },
     rootPath?: string,
-  ): Promise<{ index?: unknown; selectedId?: string; config?: ModpackConfig }> {
-    if (!hasModpacks() || !hasMethod('bootstrapModpacks')) {
-      const legacy = (window as unknown as { launcher?: unknown }).launcher as LegacyLauncherModpacks | undefined;
-      if (!legacy || typeof legacy.bootstrapModpacks !== 'function') return Promise.resolve({});
-      return legacy.bootstrapModpacks(seed, rootPath) as Promise<{ index?: unknown; selectedId?: string; config?: ModpackConfig }>;
-    }
-    return call('bootstrapModpacks', () => requireModpacks('bootstrapModpacks').bootstrapModpacks(seed, rootPath)) as Promise<{ index?: unknown; selectedId?: string; config?: ModpackConfig }>;
-  },
-
-  getSelected(rootPath?: string): Promise<string | null> {
-    if (!hasModpacks() || !hasMethod('getSelectedModpack')) {
-      const legacy = (window as unknown as { launcher?: unknown }).launcher as LegacyLauncherModpacks | undefined;
-      if (!legacy || typeof legacy.getSelectedModpack !== 'function') return Promise.resolve(null);
-      return legacy.getSelectedModpack(rootPath) as Promise<string | null>;
-    }
-    return call('getSelectedModpack', () => requireModpacks('getSelectedModpack').getSelectedModpack(rootPath)) as Promise<string | null>;
-  },
-
-  setSelected(id: string, rootPath?: string): Promise<{ ok: boolean }> {
-    if (!hasModpacks() || !hasMethod('setSelectedModpack')) {
-      const legacy = (window as unknown as { launcher?: unknown }).launcher as LegacyLauncherModpacks | undefined;
-      if (!legacy || typeof legacy.setSelectedModpack !== 'function') return Promise.resolve({ ok: true });
-      return legacy.setSelectedModpack(id, rootPath) as Promise<{ ok: boolean }>;
-    }
-    return call('setSelectedModpack', () => requireModpacks('setSelectedModpack').setSelectedModpack(id, rootPath)) as Promise<{ ok: boolean }>;
-  },
-
-  create(name: string, rootPath?: string): Promise<{ id?: string } | null> {
-    if (!hasModpacks() || !hasMethod('createModpack')) {
-      const legacy = (window as unknown as { launcher?: unknown }).launcher as LegacyLauncherModpacks | undefined;
-      if (!legacy || typeof legacy.createModpack !== 'function') return Promise.resolve(null);
-      return legacy.createModpack(name, rootPath) as Promise<{ id?: string } | null>;
-    }
-    return call('createModpack', () => requireModpacks('createModpack').createModpack(name, rootPath)) as Promise<{ id?: string } | null>;
-  },
-
-  rename(id: string, name: string, rootPath?: string): Promise<{ ok: boolean }> {
-    if (!hasModpacks() || !hasMethod('renameModpack')) {
-      const legacy = (window as unknown as { launcher?: unknown }).launcher as LegacyLauncherModpacks | undefined;
-      if (!legacy || typeof legacy.renameModpack !== 'function') return Promise.resolve({ ok: true });
-      return legacy.renameModpack(id, name, rootPath) as Promise<{ ok: boolean }>;
-    }
-    return call('renameModpack', () => requireModpacks('renameModpack').renameModpack(id, name, rootPath)) as Promise<{ ok: boolean }>;
-  },
-
-  duplicate(sourceId: string, name?: string, rootPath?: string): Promise<{ id?: string } | null> {
-    if (!hasModpacks() || !hasMethod('duplicateModpack')) {
-      const legacy = (window as unknown as { launcher?: unknown }).launcher as LegacyLauncherModpacks | undefined;
-      if (!legacy || typeof legacy.duplicateModpack !== 'function') return Promise.resolve(null);
-      return legacy.duplicateModpack(sourceId, name, rootPath) as Promise<{ id?: string } | null>;
-    }
-    return call('duplicateModpack', () => requireModpacks('duplicateModpack').duplicateModpack(sourceId, name, rootPath)) as Promise<{ id?: string } | null>;
-  },
-
-  remove(id: string, rootPath?: string): Promise<{ ok: boolean }> {
-    if (!hasModpacks() || !hasMethod('deleteModpack')) {
-      const legacy = (window as unknown as { launcher?: unknown }).launcher as LegacyLauncherModpacks | undefined;
-      if (!legacy || typeof legacy.deleteModpack !== 'function') return Promise.resolve({ ok: true });
-      return legacy.deleteModpack(id, rootPath) as Promise<{ ok: boolean }>;
-    }
-    return call('deleteModpack', () => requireModpacks('deleteModpack').deleteModpack(id, rootPath)) as Promise<{ ok: boolean }>;
-  },
-
-  getConfig(id: string, rootPath?: string): Promise<ModpackConfig | null> {
-    if (!hasModpacks() || !hasMethod('getModpackConfig')) {
-      const legacy = (window as unknown as { launcher?: unknown }).launcher as LegacyLauncherModpacks | undefined;
-      if (!legacy || typeof legacy.getModpackConfig !== 'function') return Promise.resolve(null);
-      return legacy.getModpackConfig(id, rootPath) as Promise<ModpackConfig | null>;
-    }
-    return call('getModpackConfig', () => requireModpacks('getModpackConfig').getModpackConfig(id, rootPath)) as Promise<ModpackConfig | null>;
-  },
-
-  saveConfig(cfg: ModpackConfig, rootPath?: string): Promise<{ ok: boolean }> {
-    if (!hasModpacks() || !hasMethod('saveModpackConfig')) {
-      const legacy = (window as unknown as { launcher?: unknown }).launcher as LegacyLauncherModpacks | undefined;
-      if (!legacy || typeof legacy.saveModpackConfig !== 'function') return Promise.resolve({ ok: true });
-      return legacy.saveModpackConfig(cfg, rootPath) as Promise<{ ok: boolean }>;
-    }
-    return call('saveModpackConfig', () => requireModpacks('saveModpackConfig').saveModpackConfig(cfg, rootPath)) as Promise<{ ok: boolean }>;
-  },
-
-  getMetadata(modpackId: string, rootPath?: string) {
-    return call('getModpackMetadata', () => requireModpacks('getModpackMetadata').getModpackMetadata(modpackId, rootPath));
-  },
-
-  updateMetadata(modpackId: string, updates: Partial<import('@shared/types/modpack').ModpackMetadata>, rootPath?: string) {
-    return call('updateModpackMetadata', () => requireModpacks('updateModpackMetadata').updateModpackMetadata(modpackId, updates, rootPath));
-  },
-
-  scanJava(): Promise<{ path: string; version: string; majorVersion: number; valid: boolean }[]> {
-    return call('scanJava', () => requireModpacks('scanJava').scanJava());
-  },
-
-  // Поиск модпаков
-  searchCurseForge(
-    query: string,
-    mcVersion?: string,
-    loader?: string,
-    sort?: 'popularity' | 'date' | 'alphabetical',
-    offset?: number,
-    limit?: number,
-  ) {
-    return call('searchCurseForgeModpacks', () => requireModpacks('searchCurseForgeModpacks').searchCurseForgeModpacks(query, mcVersion, loader, sort, offset, limit));
-  },
-
-  searchModrinth(
-    query: string,
-    mcVersion?: string,
-    loader?: string,
-    sort?: 'popularity' | 'date' | 'alphabetical',
-    offset?: number,
-    limit?: number,
-  ) {
-    return call('searchModrinthModpacks', () => requireModpacks('searchModrinthModpacks').searchModrinthModpacks(query, mcVersion, loader, sort, offset, limit));
-  },
-
-  getCurseForgeVersions(projectId: number) {
-    return call('getCurseForgeModpackVersions', () => requireModpacks('getCurseForgeModpackVersions').getCurseForgeModpackVersions(projectId));
-  },
-
-  getModrinthVersions(projectId: string) {
-    return call('getModrinthModpackVersions', () => requireModpacks('getModrinthModpackVersions').getModrinthModpackVersions(projectId));
-  },
-
-  // Установка модпаков
-  installCurseForge(projectId: number, fileId: number, targetModpackId?: string, rootPath?: string) {
-    return call('installCurseForgeModpack', () => requireModpacks('installCurseForgeModpack').installCurseForgeModpack(projectId, fileId, targetModpackId, rootPath));
-  },
-
-  installModrinth(projectId: string, versionId: string, targetModpackId?: string, rootPath?: string) {
-    return call('installModrinthModpack', () => requireModpacks('installModrinthModpack').installModrinthModpack(projectId, versionId, targetModpackId, rootPath));
-  },
-
-  // Получение информации о модпаке из файла
-  getModpackInfoFromFile(filePath: string) {
-    return call('getModpackInfoFromFile', () => requireModpacks('getModpackInfoFromFile').getModpackInfoFromFile(filePath));
-  },
-
-  // Импорт модпака
-  import(filePath: string, targetModpackId?: string, rootPath?: string) {
-    return call('importModpack', () => requireModpacks('importModpack').importModpack(filePath, targetModpackId, rootPath));
-  },
-
-  // Создание по манифесту
-  createFromManifest(manifest: unknown, rootPath?: string) {
-    return call('createFromManifest', () => requireModpacks('createFromManifest').createFromManifest(manifest, rootPath));
-  },
-
-  // Создание локального модпака
-  createLocal(name: string, version: string, minecraftVersion: string, modLoader?: { type: string; version?: string }, rootPath?: string) {
-    return call('createLocalModpack', () => requireModpacks('createLocalModpack').createLocalModpack(name, version, minecraftVersion, modLoader, rootPath));
-  },
-
-  // Экспорт модпака
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  export(modpackId: string, format: 'curseforge' | 'modrinth' | 'zip' | 'multimc', outputPath: string, options?: any, rootPath?: string) {
-    return call('exportModpack', () => requireModpacks('exportModpack').exportModpack(modpackId, format, outputPath, options, rootPath));
-  },
-
-  // Получение списка модов в модпаке
-  getMods(modpackId: string, rootPath?: string) {
-    return call('getModpackMods', () => requireModpacks('getModpackMods').getModpackMods(modpackId, rootPath));
-  },
-
-  // Удаление мода из модпака
-  removeMod(modpackId: string, modPath: string, rootPath?: string) {
-    return call('removeModFromModpack', () => requireModpacks('removeModFromModpack').removeModFromModpack(modpackId, modPath, rootPath));
-  },
-
-  // Включить/выключить мод (.jar <-> .jar.disabled)
-  setModEnabled(modpackId: string, modPath: string, enabled: boolean, rootPath?: string) {
-    return call('setModEnabled', () => requireModpacks('setModEnabled').setModEnabled(modpackId, modPath, enabled, rootPath));
-  },
-
-  // Резервное копирование модпака
-  backup(modpackId: string, rootPath?: string) {
-    return call('backupModpack', () => requireModpacks('backupModpack').backupModpack(modpackId, rootPath));
-  },
-
-  // Добавление мода в модпак
-  addMod(modpackId: string, mod: { platform: 'curseforge' | 'modrinth'; projectId: string | number; versionId: string | number }, rootPath?: string) {
-    return call('addModToModpack', () => requireModpacks('addModToModpack').addModToModpack(modpackId, mod, rootPath));
-  },
-
-  resolvePath(id: string, rootPath?: string): Promise<string> {
-    return ipc()?.invoke('modpacks:resolvePath', id, rootPath) ?? Promise.resolve('');
-  },
-
-  // Управление контентом
-  getContentStats(): Promise<{ totalSize: number; dedupedSize: number; totalFiles: number; storedFiles: number }> {
-    return call('getContentStats', () => requireModpacks('getContentStats').getContentStats());
-  },
-
-  cleanupContent(): Promise<{ freedSize: number; deletedFiles: number }> {
-    return call('cleanupContent', () => requireModpacks('cleanupContent').cleanupContent());
-  },
+  ) => call(
+    'createLocalModpack',
+    () => api().createLocalModpack(name, version, minecraftVersion, modLoader, rootPath),
+  ),
+  getMods: (modpackId: string, rootPath?: string) => call(
+    'getModpackMods',
+    () => api().getModpackMods(modpackId, rootPath),
+  ),
+  removeMod: (modpackId: string, modPath: string, rootPath?: string) => call(
+    'removeModFromModpack',
+    () => api().removeModFromModpack(modpackId, modPath, rootPath),
+  ),
+  setModEnabled: (modpackId: string, modPath: string, enabled: boolean, rootPath?: string) => call(
+    'setModEnabled',
+    () => api().setModEnabled(modpackId, modPath, enabled, rootPath),
+  ),
+  backup: (modpackId: string, rootPath?: string) => call(
+    'backupModpack',
+    () => api().backupModpack(modpackId, rootPath),
+  ),
+  addMod: (
+    modpackId: string,
+    mod: { platform: 'curseforge' | 'modrinth'; projectId: string | number; versionId: string | number },
+    rootPath?: string,
+  ) => call(
+    'addModToModpack',
+    () => api().addModToModpack(modpackId, mod, rootPath),
+  ),
+  resolvePath: (id: string, rootPath?: string) => call(
+    'resolvePath',
+    () => api().resolvePath(id, rootPath),
+  ),
+  getContentStats: () => call('getContentStats', () => api().getContentStats()),
+  cleanupContent: () => call('cleanupContent', () => api().cleanupContent()),
 };
 
 export type ModpacksIPC = typeof modpacksIPC;
-

@@ -16,13 +16,14 @@ Stack: `Electron` + `React` + `TypeScript` + `TailwindCSS` + `Vite`.
   - settings/theme/i18n: `src/components/settings/*`, `src/contexts/SettingsContext.tsx`, `src/contexts/settings/i18n.ts`
   - accounts: `src/features/accounts/*`
   - multiplayer: `src/features/multiplayer/*`
-- Current product bugs and QA context: `docs/KNOWN_ISSUES.md` and the latest local QA audit notes under `docs/ru/`
+- Current product limitations and QA context: `docs/KNOWN_ISSUES.md`, `docs/en/known-issues.md`, and `docs/ru/known-issues.md`
 
 ## Directory Guide
 - `electron/` — main-process lifecycle, windows, preload, IPC handlers, native services. See `electron/AGENTS.md`.
 - `src/` — renderer UI, contexts, features, IPC wrappers, manual verification UI. See `src/AGENTS.md`.
 - `shared/` — contracts and types shared by main and renderer. See `shared/AGENTS.md`.
 - `docs/` — architecture, roadmap, testing, contracts, known issues. See `docs/AGENTS.md`.
+- `.planning/` — current milestone truth in `PROJECT.md`, `REQUIREMENTS.md`, `ROADMAP.md`, and `STATE.md`; historical evidence lives in the named archive subdirectories. See `.planning/README.md`.
 
 ## Build And Verify
 - `npx tsc --noEmit` — TypeScript type check. Must pass after code changes.
@@ -34,12 +35,13 @@ Stack: `Electron` + `React` + `TypeScript` + `TailwindCSS` + `Vite`.
 - `npm run build` — production build.
 
 ## Non-Negotiables
-- Use TypeScript strict mode. Do not introduce `any`; use exact types or `unknown`.
+- Use TypeScript strict mode. Prefer exact types or `unknown`; any unavoidable explicit `any` must stay narrowly scoped, justified, and lint-clean.
 - Define IPC contracts in `shared/contracts/*`, register channels in `electron/ipc/ipcManager.ts`, expose preload surface through `electron/preload/bridges/*` and `electron/preload.ts`, and consume them through `src/services/ipc/*`.
 - Renderer UI should not call `window.*` APIs directly when an IPC wrapper exists.
 - All user-facing strings belong in `src/locales/en.json` and `src/locales/ru.json`.
-- Update `docs/ru/contracts-map.md` when adding or changing IPC channels.
+- Update both `docs/en/contracts-map.md` and `docs/ru/contracts-map.md` when adding or changing IPC channels.
 - Update both `docs/en/roadmap.md` and `docs/ru/roadmap.md` when a feature is completed.
+- Run `npm run docs:check` after changing maintained Markdown documentation.
 - Prefer nearby `__tests__` as the behavioral reference before changing a feature.
 
 ## Agent Workflow

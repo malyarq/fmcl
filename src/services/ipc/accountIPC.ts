@@ -1,14 +1,9 @@
 import type { AccountAPI } from '@shared/contracts/account'
 import { toIpcError } from './ipcError'
 
-type NamespacedAccountApi = Window['api']['account']
-type LegacyAccountApi = Window['account']
-
-function getAccountApi(): NamespacedAccountApi | LegacyAccountApi | undefined {
+function getAccountApi(): AccountAPI | undefined {
   if (typeof window === 'undefined') return undefined
-  if (window.api?.account) return window.api.account
-  if (window.account) return window.account
-  return undefined
+  return window.api?.account
 }
 
 function requireAccountApi(methodName: string): AccountAPI {

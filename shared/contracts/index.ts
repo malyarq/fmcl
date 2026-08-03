@@ -4,8 +4,6 @@ export type {
   ModpackSearchResultItem,
   ModpackSearchResult,
   ModpackVersionDescriptor,
-  ModpackInstallProgress,
-  ModpackInstallResult,
 } from './modpacks';
 export type { ModsAPI } from './mods';
 export type { NetworkAPI, NetworkMode, LanDiscoverEvent } from './network';
@@ -19,10 +17,7 @@ export type {
 } from './cache';
 export type { SettingsAPI } from './settings';
 export type { AssetsAPI } from './assets';
-export type { InstanceUpdaterAPI, InstanceUpdaterProgress } from './updater';
-export type { InstanceUpdaterSyncOptions } from './updater';
 export type { AppUpdaterAPI, AppUpdaterAvailableInfo, AppUpdaterProgress } from './appUpdater';
-export type { IpcRendererAPI } from './ipcRenderer';
 export type { AllowedIpcChannel } from './ipcChannels';
 export type { FriendLauncherApi } from './windowApi';
 export type { AccountAPI, AccountSkinState } from './account';
@@ -45,3 +40,28 @@ export type {
   ShaderPackAcquisitionStatus,
 } from './shaders';
 export type { WorldInfo, WorldsAPI } from './worlds';
+export type {
+  Datapack,
+  DatapackSearchResult,
+  DatapackSearchResultItem,
+  DatapackVersion,
+  DatapacksAPI,
+} from './datapacks';
+export type {
+  DialogsAPI,
+  OpenDialogResult,
+  SaveDialogResult,
+  ShowOpenDialogOptions,
+  ShowSaveDialogOptions,
+} from './dialogs';
+export type { ScreenshotsAPI } from './screenshots';
+export type { Screenshot } from '../types/screenshots';
+export type {
+  OperationKind,
+  OperationPhase,
+  OperationProgress,
+  OperationResult,
+  OperationSnapshot,
+  OperationStartRequest,
+  OperationsAPI,
+} from './operations';

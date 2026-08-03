@@ -1,14 +1,9 @@
 import type { MirrorsAPI } from '@shared/contracts/mirrors'
 import { toIpcError } from './ipcError'
 
-type NamespacedMirrorsApi = Window['api']['mirrors']
-type LegacyMirrorsApi = Window['mirrors']
-
-function getMirrorsApi(): NamespacedMirrorsApi | LegacyMirrorsApi | undefined {
+function getMirrorsApi(): MirrorsAPI | undefined {
   if (typeof window === 'undefined') return undefined
-  if (window.api?.mirrors) return window.api.mirrors
-  if (window.mirrors) return window.mirrors
-  return undefined
+  return window.api?.mirrors
 }
 
 function requireMirrorsApi(methodName: string): MirrorsAPI {

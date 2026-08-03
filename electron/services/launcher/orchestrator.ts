@@ -10,7 +10,7 @@ import { RuntimeDownloadService } from '../runtime/downloadService';
 import { TaskRunner } from '../runtime/taskRunner';
 import { VanillaService } from '../runtime/vanillaService';
 import { ModpackService } from '../modpacks/modpackService';
-import { ModsService } from '../mods/modsService';
+import { logInstalledMods } from '../mods/logInstalledMods';
 import { VersionListService } from '../versions/versionListService';
 import { parseRequestedVersion } from '../versions/versionResolver';
 import { patchUndiciThrowOnError } from '../../utils/undiciPatcher';
@@ -37,7 +37,7 @@ export class LauncherManager {
   private readonly tasks: TaskRunner;
   private readonly vanilla: VanillaService;
   private readonly instances: ModpackService;
-  private readonly mods: ModsService;
+  private readonly logInstalledMods: typeof logInstalledMods;
 
   private readonly authServerUrl: string;
   private readonly accountService?: AccountService;
@@ -52,7 +52,7 @@ export class LauncherManager {
     tasks?: TaskRunner;
     vanilla?: VanillaService;
     instances?: ModpackService;
-    mods?: ModsService;
+    logInstalledMods?: typeof logInstalledMods;
 
     authServerUrl?: string;
     accountService?: AccountService;
@@ -70,7 +70,7 @@ export class LauncherManager {
     this.tasks = deps?.tasks ?? new TaskRunner(this.downloads);
     this.vanilla = deps?.vanilla ?? new VanillaService(this.downloads, this.tasks);
     this.instances = deps?.instances ?? new ModpackService();
-    this.mods = deps?.mods ?? new ModsService();
+    this.logInstalledMods = deps?.logInstalledMods ?? logInstalledMods;
 
     this.authServerUrl = deps?.authServerUrl ?? 'http://127.0.0.1:25530';
     this.accountService = deps?.accountService;
@@ -193,7 +193,7 @@ export class LauncherManager {
       await prefetchLegacyForgeRuntimeDeps({ instancePath: modpackPath, mcVersion, downloadProvider, onLog });
     }
 
-    await this.mods.logInstalledMods(rootPath, onLog, modpackPath);
+    await this.logInstalledMods(rootPath, onLog, modpackPath);
 
     const { destInjectorPath } = await ensureAuthInjector({
       rootPath,
@@ -316,4 +316,3 @@ export class LauncherManager {
     }
   }
 }
-

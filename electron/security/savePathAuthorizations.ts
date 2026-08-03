@@ -8,23 +8,30 @@ function normalize(candidate: string): string {
   return path.normalize(assertAbsolutePath(candidate, 'Save path'));
 }
 
+function authorizationKey(ownerId: number, candidate: string): string {
+  if (!Number.isSafeInteger(ownerId) || ownerId < 0) {
+    throw new Error('Save path authorization owner is invalid');
+  }
+  return `${ownerId}\0${candidate}`;
+}
+
 function pruneExpired(now = Date.now()): void {
   for (const [candidate, expiresAt] of authorizedPaths) {
     if (expiresAt <= now) authorizedPaths.delete(candidate);
   }
 }
 
-export function authorizeSavePath(candidate: string): string {
+export function authorizeSavePath(ownerId: number, candidate: string): string {
   pruneExpired();
   const safePath = normalize(candidate);
-  authorizedPaths.set(safePath, Date.now() + AUTHORIZATION_TTL_MS);
+  authorizedPaths.set(authorizationKey(ownerId, safePath), Date.now() + AUTHORIZATION_TTL_MS);
   return safePath;
 }
 
-export function consumeAuthorizedSavePath(candidate: string): string {
+export function consumeAuthorizedSavePath(ownerId: number, candidate: string): string {
   pruneExpired();
   const safePath = normalize(candidate);
-  if (!authorizedPaths.delete(safePath)) {
+  if (!authorizedPaths.delete(authorizationKey(ownerId, safePath))) {
     throw new Error('Save path was not authorized by a recent native save dialog');
   }
   return safePath;

@@ -1,53 +1,29 @@
-## Карта публичных контрактов (Русский)
+# Карта IPC-контрактов
 
-Цель: зафиксировать живую поверхность IPC, preload и renderer-контрактов для shipped-релиза FMCL.
+Цель: зафиксировать живую поверхность IPC, preload и renderer-контрактов FMCL.
 
 **Источники истины**
 
 - Регистрация IPC: `electron/ipc/ipcManager.ts` + `electron/ipc/handlers/*`
+- Валидация на границе: `electron/ipc/validation/*`
 - Preload surface: `electron/preload.ts` + `electron/preload/bridges/*`
 - Allowlist: `shared/contracts/ipcChannels.ts`
 - Тип объединённого renderer API: `shared/contracts/windowApi.ts`
 - Renderer-обёртки: `src/services/ipc/*`
 
-Дата снимка: **2026-04-21**
+Снимок: **ветка разработки v0.8.0, 2026-08-03**. `npm run contracts:check` проверяет соответствие языковых карт allowlist каналов; `npm run architecture:check` проверяет границу renderer.
 
 ---
 
 ## 1) Preload surface
 
-### 1.1 Legacy globals, которые реально экспонируются в `electron/preload.ts`
+### 1.1 Поддерживаемый API для renderer-кода
 
-- `window.networkAPI`
-- `window.ipcRenderer`
-- `window.launcher`
-- `window.modpacks`
-- `window.mods`
-- `window.updater`
-- `window.appUpdater`
-- `window.windowControls`
-- `window.cache`
-- `window.settings`
-- `window.assets`
-- `window.screenshots`
-- `window.account`
-- `window.mirrors`
-- `window.share`
-- `window.externalLinks`
-
-Примечания:
-
-- `window.screenshots` — это живой legacy bridge из preload, который используется через `src/services/ipc/screenshotsIPC.ts`.
-- Статистика доступна только через namespaced API: используй `window.api.statistics`. Top-level `window.statistics` в preload нет.
-
-### 1.2 Поддерживаемый namespaced API для renderer-кода
-
-`window.api` содержит:
+`electron/preload.ts` экспортирует ровно один global — `window.api`. Он содержит:
 
 - `window.api.launcher`
 - `window.api.modpacks`
 - `window.api.mods`
-- `window.api.updater`
 - `window.api.appUpdater`
 - `window.api.windowControls`
 - `window.api.network`
@@ -56,46 +32,51 @@
 - `window.api.assets`
 - `window.api.resourcePacks`
 - `window.api.shaders`
-- `window.api.ipcRenderer`
+- `window.api.screenshots`
+- `window.api.worlds`
+- `window.api.datapacks`
+- `window.api.dialogs`
 - `window.api.account`
 - `window.api.mirrors`
 - `window.api.statistics`
 - `window.api.share`
 - `window.api.externalLinks`
+- `window.api.operations`
 
-Предпочтительное правило: новый renderer-код должен использовать `window.api.*` или типизированные обёртки из `src/services/ipc/*`, а не raw `window.*`.
+Универсальной capability `invoke/send/on/off` и верхнеуровневых Electron aliases нет. UI-компоненты обычно используют типизированные обёртки из `src/services/ipc/*`.
 
 ---
 
 ## 2) Renderer-обёртки
 
-### 2.1 Базовые обёртки
-
-- `src/services/ipc/launcherIPC.ts` → `window.api.launcher`
-- `src/services/ipc/modpacksIPC.ts` → `window.api.modpacks`
-- `src/services/ipc/networkIPC.ts` → `window.api.network`
-- `src/services/ipc/settingsIPC.ts` → `window.api.settings`
-- `src/services/ipc/cacheIPC.ts` → `window.api.cache`
-- `src/services/ipc/assetsIPC.ts` → `window.api.assets`
-- `src/services/ipc/appUpdaterIPC.ts` → `window.api.appUpdater`
-- `src/services/ipc/windowControlsIPC.ts` → `window.api.windowControls`
-
-### 2.2 Release-critical typed wrappers из поздних фаз
+### 2.1 Namespaced и domain wrappers
 
 - `src/services/ipc/accountIPC.ts` → `window.api.account`
-- `src/services/ipc/mirrorsIPC.ts` → `window.api.mirrors`
-- `src/services/ipc/statisticsIPC.ts` → `window.api.statistics`
-- `src/services/ipc/shareIPC.ts` → `window.api.share`
+- `src/services/ipc/appUpdaterIPC.ts` → `window.api.appUpdater`
+- `src/services/ipc/assetsIPC.ts` → `window.api.assets`
+- `src/services/ipc/cacheIPC.ts` → `window.api.cache`
+- `src/services/ipc/datapacksIPC.ts` → `window.api.datapacks`
+- `src/services/ipc/dialogIPC.ts` → `window.api.dialogs`
 - `src/services/ipc/externalLinksIPC.ts` → `window.api.externalLinks`
-- `src/services/ipc/screenshotsIPC.ts` → `window.screenshots`
+- `src/services/ipc/launcherIPC.ts` → `window.api.launcher`
+- `src/services/ipc/mirrorsIPC.ts` → `window.api.mirrors`
+- `src/services/ipc/modpacksIPC.ts` → `window.api.modpacks`
+- `src/services/ipc/operationsIPC.ts` → `window.api.operations`
+- `src/services/ipc/modsIPC.ts` → `window.api.mods`
+- `src/services/ipc/networkIPC.ts` → `window.api.network`
 - `src/services/ipc/resourcePacksIPC.ts` → `window.api.resourcePacks`
+- `src/services/ipc/screenshotsIPC.ts` → `window.api.screenshots`
+- `src/services/ipc/settingsIPC.ts` → `window.api.settings`
 - `src/services/ipc/shadersIPC.ts` → `window.api.shaders`
+- `src/services/ipc/shareIPC.ts` → `window.api.share`
+- `src/services/ipc/statisticsIPC.ts` → `window.api.statistics`
+- `src/services/ipc/windowControlsIPC.ts` → `window.api.windowControls`
+- `src/services/ipc/worldsIPC.ts` → `window.api.worlds`
 
-### 2.3 Нативный браузерный `window.*` (не Electron contracts)
+### 2.2 Нативный браузерный `window.*` (не Electron contracts)
 
 - `window.addEventListener` / `window.removeEventListener`
 - `window.location.reload()`
-- `window.confirm(...)`
 - `window.matchMedia(...)`
 
 ---
@@ -139,7 +120,6 @@
 - `instances:setSelected`
 - `instances:create`
 - `instances:rename`
-- `instances:duplicate`
 - `instances:delete`
 - `instances:getConfig`
 - `instances:saveConfig`
@@ -176,10 +156,8 @@
 - `cache:cleanupImage`
 - `cache:resolveImage`
 
-### 3.8 Updaters
+### 3.8 App updater
 
-- `updater:sync`
-- `updater:progress`
 - `app-updater:check`
 - `app-updater:download`
 - `app-updater:quit-and-install`
@@ -199,8 +177,6 @@
 - `modpacks:setSelected`
 - `modpacks:create`
 - `modpacks:rename`
-- `modpacks:duplicate`
-- `modpacks:delete`
 - `modpacks:getConfig`
 - `modpacks:saveConfig`
 - `modpacks:getMetadata`
@@ -209,13 +185,8 @@
 - `modpacks:searchModrinth`
 - `modpacks:getCurseForgeVersions`
 - `modpacks:getModrinthVersions`
-- `modpacks:installCurseForge`
-- `modpacks:installModrinth`
-- `modpacks:exportFromInstance`
 - `modpacks:createLocal`
-- `modpacks:export`
 - `modpacks:getModpackInfoFromFile`
-- `modpacks:import`
 - `modpacks:addMod`
 - `modpacks:removeMod`
 - `modpacks:setModEnabled`
@@ -227,7 +198,6 @@
 - `modpacks:getContentStats`
 - `modpacks:resolvePath`
 - `modpacks:scanJava`
-- `modpacks:updateProgress`
 
 ### 3.10 Ресурспаки, шейдеры, миры, датапаки
 
@@ -296,10 +266,23 @@
 - `stats:export`
 - `externalLinks:open`
 
+### 3.13 Транзакционные операции
+
+- `operations:start`
+- `operations:get`
+- `operations:listRecovered`
+- `operations:cancel`
+- `operations:subscribe`
+- `operations:unsubscribe`
+- `operations:update`
+
+`window.api.operations` предоставляет типизированные вызовы запуска, чтения, отмены и подписки. Активная операция доступна для чтения, отмены и подписки только renderer-процессу, который её запустил. Восстановленные terminal-снимки после перезапуска отдаются только в sanitизированном read-only виде: их нельзя отменить или запустить повторно.
+
 ---
 
-## 4) Release notes для контрактных потребителей
+## 4) Чеклист поддержки
 
 - По возможности используй типизированные обёртки из `src/services/ipc/*`.
 - Держи синхронными `shared/contracts/ipcChannels.ts`, этот документ и `docs/en/contracts-map.md`.
 - Если добавляешь или удаляешь preload globals, обновляй `electron/preload.ts` и всю историю типизации renderer-поверхности (`shared/contracts/*`, `src/vite-env.d.ts` или локальную аугментацию в wrapper-файле) в том же изменении.
+- Перед коммитом запускай `npm run contracts:check`, `npm run ipc:check` и TypeScript.

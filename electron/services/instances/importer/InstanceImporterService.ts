@@ -185,7 +185,7 @@ export class InstanceImporterService {
             return id;
         } catch (error) {
             if (createdModpackId) {
-                this.modpackService.deleteModpack(rootPath, createdModpackId);
+                this.modpackService.cleanupFailedCreation(rootPath, createdModpackId);
             }
             throw error;
         }

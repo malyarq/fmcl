@@ -38,18 +38,6 @@ export interface ModpackVersionDescriptor {
   }>;
 }
 
-export interface ModpackInstallProgress {
-  downloaded: number;
-  total: number;
-  stage: string;
-}
-
-export interface ModpackInstallResult {
-  modpackId: string;
-  config: unknown;
-  metadata: ModpackMetadata;
-}
-
 export interface ModpacksAPI {
   listModpacks: (rootPath?: string) => Promise<Array<{ id: string; name: string; path: string; selected: boolean }>>;
   listModpacksWithMetadata: (rootPath?: string) => Promise<Array<{ id: string; name: string; path: string; selected: boolean; metadata: ModpackMetadata }>>;
@@ -58,8 +46,6 @@ export interface ModpacksAPI {
   setSelectedModpack: (modpackId: string, rootPath?: string) => Promise<{ ok: boolean }>;
   createModpack: (name: string, rootPath?: string) => Promise<{ id: string; config: unknown }>;
   renameModpack: (modpackId: string, name: string, rootPath?: string) => Promise<{ ok: boolean }>;
-  duplicateModpack: (sourceId: string, name?: string, rootPath?: string) => Promise<{ id: string; config: unknown }>;
-  deleteModpack: (modpackId: string, rootPath?: string) => Promise<{ ok: boolean }>;
   getModpackConfig: (modpackId: string, rootPath?: string) => Promise<unknown>;
   saveModpackConfig: (cfg: unknown, rootPath?: string) => Promise<{ ok: boolean }>;
   getModpackMetadata: (modpackId: string, rootPath?: string) => Promise<ModpackMetadata>;
@@ -83,29 +69,7 @@ export interface ModpacksAPI {
   ) => Promise<ModpackSearchResult>;
   getCurseForgeModpackVersions: (projectId: number) => Promise<ModpackVersionDescriptor[]>;
   getModrinthModpackVersions: (projectId: string) => Promise<ModpackVersionDescriptor[]>;
-  // Установка модпаков
-  installCurseForgeModpack: (
-    projectId: number,
-    fileId: number,
-    targetModpackId?: string,
-    rootPath?: string,
-    onProgress?: (progress: ModpackInstallProgress) => void,
-  ) => Promise<ModpackInstallResult>;
-  installModrinthModpack: (
-    projectId: string,
-    versionId: string,
-    targetModpackId?: string,
-    rootPath?: string,
-    onProgress?: (progress: ModpackInstallProgress) => void,
-  ) => Promise<ModpackInstallResult>;
-  // Фаза 4: Создание и экспорт модпаков
-  exportModpackFromInstance: (
-    modpackId: string,
-    name: string,
-    version: string,
-    author?: string,
-    rootPath?: string,
-  ) => Promise<unknown>; // ModpackManifest
+  // Создание модпаков
   createLocalModpack: (
     name: string,
     version: string,
@@ -117,24 +81,11 @@ export interface ModpacksAPI {
     manifest: unknown, // ModpackManifest
     rootPath?: string,
   ) => Promise<{ id: string }>;
-  exportModpack: (
-    modpackId: string,
-    format: 'curseforge' | 'modrinth' | 'zip' | 'multimc',
-    outputPath: string,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    options?: any,
-    rootPath?: string,
-  ) => Promise<{ ok: boolean }>;
   getModpackInfoFromFile: (filePath: string) => Promise<{
     format: 'curseforge' | 'modrinth' | 'zip' | null;
     manifest: unknown | null; // ModpackManifest
     error?: string;
   }>;
-  importModpack: (
-    filePath: string,
-    targetModpackId?: string,
-    rootPath?: string,
-  ) => Promise<{ id: string; config: unknown; metadata: ModpackMetadata }>;
   addModToModpack: (
     modpackId: string,
     mod: { platform: 'curseforge' | 'modrinth'; projectId: string | number; versionId: string | number },

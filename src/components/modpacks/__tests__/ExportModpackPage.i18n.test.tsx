@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { ExportModpackPage } from '../ExportModpackPage';
@@ -70,9 +70,8 @@ describe('ExportModpackPage i18n seams', () => {
     expect(screen.getByText('Include shader packs')).toBeTruthy();
     expect(screen.getByText('Include mods (JAR files)')).toBeTruthy();
 
-    await waitFor(() => {
-      expect(screen.getByDisplayValue('C:\\Users\\tester\\Desktop\\Alpha Pack.zip')).toBeTruthy();
-    });
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(getDesktopPathMock).not.toHaveBeenCalled();
 
     expect(container.textContent).not.toContain('modpacks.export_format_multimc');
     expect(container.textContent).not.toContain('modpacks.include_shaders');

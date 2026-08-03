@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
@@ -9,6 +9,8 @@ import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import type { ModpackManifest } from '@shared/types/modpack';
 import { useModpackListContext } from '../../contexts/ModpackContext';
 import { toDisplayErrorMessage } from '../../utils/displayError';
+import { ImportOperationStatus } from './ImportOperationStatus';
+import { isPublished, useArchiveImportOperation } from './useArchiveImportOperation';
 
 interface ImportModpackPreviewPageProps {
   filePath: string;
@@ -27,6 +29,8 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
   onBack,
 }) => {
   const { t, getAccentStyles, formatNumber } = useSettings();
+  const translationRef = useRef(t);
+  translationRef.current = t;
   const toast = useToast();
   const { refresh } = useModpackListContext();
   const [loading, setLoading] = useState(true);
@@ -35,7 +39,11 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
     manifest: ModpackManifest | null;
     error?: string;
   } | null>(null);
-  const [importing, setImporting] = useState(false);
+  const publishedToastRef = useRef<string | null>(null);
+  const onPublished = useCallback(async () => {
+    await refresh();
+  }, [refresh]);
+  const { operation, error: operationError, isActive: importing, start } = useArchiveImportOperation({ filePath, onPublished });
 
   useEffect(() => {
     const loadInfo = async () => {
@@ -50,7 +58,7 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
           manifest: null,
           error: toDisplayErrorMessage(
             error,
-            t('modpacks.unable_to_load_info') || 'Unable to load modpack information',
+            translationRef.current('modpacks.unable_to_load_info') || 'Unable to load modpack information',
           ),
         });
       } finally {
@@ -59,22 +67,17 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
     };
 
     loadInfo();
-  }, [filePath, t]);
+  }, [filePath]);
 
   const handleImport = async () => {
-    setImporting(true);
-    try {
-      await modpacksIPC.import(filePath);
-      await refresh();
-      toast.success(t('modpacks.import_success') || 'Модпак успешно импортирован!');
-      onBack();
-    } catch (error) {
-      console.error('Error importing modpack:', error);
-      toast.error(t('modpacks.import_error') || 'Ошибка при импорте модпака');
-    }
-
-    setImporting(false);
+    await start();
   };
+
+  useEffect(() => {
+    if (!operation || !isPublished(operation) || publishedToastRef.current === operation.id) return;
+    publishedToastRef.current = operation.id;
+    toast.success(t('modpacks.import_success') || 'Modpack imported successfully!');
+  }, [operation, t, toast]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -118,6 +121,7 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
             />
           ) : info?.manifest ? (
             <>
+              <ImportOperationStatus operation={operation} error={operationError} t={t} />
               <div className="surface-soft p-4">
                 <h3 className="mb-4 text-lg font-bold text-foreground">
                   {info.manifest.name || path.basename(filePath)}

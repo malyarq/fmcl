@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   checks:
-    name: Lint + Typecheck + Contracts
+    name: Test + Lint + Typecheck + Docs + Contracts
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -34,6 +34,9 @@ jobs:
 
       - name: Typecheck
         run: npx tsc -p tsconfig.json --noEmit
+
+      - name: Documentation check
+        run: npm run docs:check
 
       - name: Contracts check
         run: npm run contracts:check

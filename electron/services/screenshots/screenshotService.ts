@@ -3,15 +3,7 @@ import path from 'node:path';
 import fs from 'node:fs/promises';
 import { assertChildName, resolvePathWithinRoot } from '../../security/pathGuards';
 import { resolveScreenshotsDir } from '../instances/paths';
-
-
-export interface Screenshot {
-    name: string;
-    path: string;
-    url: string; // file:// url for frontend
-    createdAt: number;
-    size: number;
-}
+import type { Screenshot } from '@shared/types/screenshots';
 
 export class ScreenshotService {
     constructor() { }

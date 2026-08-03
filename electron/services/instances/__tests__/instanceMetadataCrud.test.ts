@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ModpackService } from '../instanceService';
 import { loadModpacksMetadata, saveModpacksMetadata } from '../../modpacks/storage';
 import type { ModpackMetadata } from '../../../../shared/types/modpack';
@@ -34,6 +34,7 @@ describe('ModpackService metadata CRUD', () => {
   const tempDirs: string[] = [];
 
   afterEach(() => {
+    vi.restoreAllMocks();
     for (const dir of tempDirs) {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -68,42 +69,6 @@ describe('ModpackService metadata CRUD', () => {
       sourceVersionId: seededMetadata.sourceVersionId,
     });
     expect(metadata.updatedAt).not.toBe(seededMetadata.updatedAt);
-  });
-
-  it('duplicates metadata for the new modpack id without dropping source fields', () => {
-    const rootDir = createRootDir();
-    tempDirs.push(rootDir);
-
-    const created = service.createModpack(rootDir, 'Original Pack', {
-      runtime: { minecraft: '1.20.1', modLoader: { type: 'fabric', version: '0.16.0' } },
-    });
-    const seededMetadata = createSeedMetadata(created.id, created.config.name);
-    saveModpacksMetadata(rootDir, {
-      selectedModpack: created.id,
-      modpacks: {
-        [created.id]: seededMetadata,
-      },
-    });
-
-    const duplicated = service.duplicateModpack(rootDir, created.id, 'Original Pack Copy');
-    const metadataIndex = loadModpacksMetadata(rootDir);
-    const duplicatedMetadata = metadataIndex.modpacks[duplicated.id];
-
-    expect(metadataIndex.selectedModpack).toBe(duplicated.id);
-    expect(duplicatedMetadata).toMatchObject({
-      id: duplicated.id,
-      name: 'Original Pack Copy',
-      version: seededMetadata.version,
-      source: seededMetadata.source,
-      sourceId: seededMetadata.sourceId,
-      sourceVersionId: seededMetadata.sourceVersionId,
-      iconUrl: seededMetadata.iconUrl,
-      description: seededMetadata.description,
-      author: seededMetadata.author,
-      minecraftVersion: seededMetadata.minecraftVersion,
-    });
-    expect(duplicatedMetadata.createdAt).not.toBe(seededMetadata.createdAt);
-    expect(duplicatedMetadata.updatedAt).not.toBe(seededMetadata.updatedAt);
   });
 
   it('rebuilds a missing selected modpack config from persisted metadata truth instead of stale defaults', () => {
@@ -165,4 +130,60 @@ describe('ModpackService metadata CRUD', () => {
       modLoader: { type: 'fabric', version: '0.16.0' },
     });
   });
+
+  it('does not replace a malformed modpacks index with a default index', () => {
+    const rootDir = createRootDir();
+    tempDirs.push(rootDir);
+    const indexPath = getModpacksIndexPath(rootDir);
+    fs.writeFileSync(indexPath, '{broken index');
+    const original = fs.readFileSync(indexPath);
+
+    expect(() => service.loadModpacksIndex(rootDir)).toThrow(/recovery backup are unavailable/);
+    expect(fs.readFileSync(indexPath)).toEqual(original);
+  });
+
+  it('rejects a syntactically valid index with a non-record modpack registry', () => {
+    const rootDir = createRootDir();
+    tempDirs.push(rootDir);
+    const indexPath = getModpacksIndexPath(rootDir);
+    fs.writeFileSync(indexPath, JSON.stringify({
+      _fmclSchemaVersion: 1,
+      selectedModpack: 'default',
+      modpacks: [],
+    }));
+    const original = fs.readFileSync(indexPath);
+
+    expect(() => service.loadModpacksIndex(rootDir)).toThrow(/recovery backup are unavailable/);
+    expect(fs.readFileSync(indexPath)).toEqual(original);
+  });
+
+  it('does not reconstruct defaults over a malformed modpack config', () => {
+    const rootDir = createRootDir();
+    tempDirs.push(rootDir);
+    const created = service.createModpack(rootDir, 'Important Pack');
+    const configPath = getModpackConfigPath(rootDir, created.id);
+    fs.writeFileSync(configPath, '{broken config');
+    const original = fs.readFileSync(configPath);
+
+    expect(() => service.loadModpackConfig(rootDir, created.id)).toThrow(/recovery backup are unavailable/);
+    expect(fs.readFileSync(configPath)).toEqual(original);
+  });
+
+  it('rejects a syntactically valid config with a malformed runtime', () => {
+    const rootDir = createRootDir();
+    tempDirs.push(rootDir);
+    const created = service.createModpack(rootDir, 'Important Pack');
+    const configPath = getModpackConfigPath(rootDir, created.id);
+    fs.writeFileSync(configPath, JSON.stringify({
+      _fmclSchemaVersion: 1,
+      id: created.id,
+      name: 'Important Pack',
+      runtime: [],
+    }));
+    const original = fs.readFileSync(configPath);
+
+    expect(() => service.loadModpackConfig(rootDir, created.id)).toThrow(/recovery backup are unavailable/);
+    expect(fs.readFileSync(configPath)).toEqual(original);
+  });
+
 });

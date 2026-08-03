@@ -11,6 +11,20 @@ import type {
     StatisticsState,
     UsageTrendPoint,
 } from '@shared/types/statistics';
+import { AtomicJsonStore } from '../storage/atomicJsonStore';
+
+function isStatisticsState(value: unknown): value is StatisticsState {
+    if (!value || typeof value !== 'object') return false;
+    const candidate = value as Partial<StatisticsState>;
+    return Boolean(candidate.global)
+        && typeof candidate.global === 'object'
+        && Boolean(candidate.instances)
+        && typeof candidate.instances === 'object'
+        && !Array.isArray(candidate.instances)
+        && Boolean(candidate.history)
+        && typeof candidate.history === 'object'
+        && !Array.isArray(candidate.history);
+}
 
 function formatDayKey(timestamp: number): string {
     const date = new Date(timestamp);
@@ -34,11 +48,16 @@ function cloneHistory(history: StatisticsHistory): StatisticsHistory {
 
 export class StatisticsService {
     private statsFile: string;
+    private statsStore: AtomicJsonStore<StatisticsState>;
     private state: StatisticsState;
 
     constructor(statsFilePath?: string) {
         const userDataPath = statsFilePath ? undefined : app.getPath('userData');
         this.statsFile = statsFilePath ?? path.join(userDataPath as string, 'statistics.json');
+        this.statsStore = new AtomicJsonStore(this.statsFile, {
+            version: 1,
+            validate: isStatisticsState,
+        });
         this.state = this.loadStats();
     }
 
@@ -71,36 +90,33 @@ export class StatisticsService {
     }
 
     private loadStats(): StatisticsState {
-        try {
-            if (fs.existsSync(this.statsFile)) {
-                const data = fs.readFileSync(this.statsFile, 'utf-8');
-                return this.normalizeStatsState(JSON.parse(data));
-            }
-        } catch (error) {
-            console.error('Failed to load statistics:', error);
-        }
-        return this.getEmptyState();
+        const loaded = this.statsStore.read();
+        return loaded ? this.normalizeStatsState(loaded.value) : this.getEmptyState();
     }
 
-    private saveStats() {
-        try {
-            fs.mkdirSync(path.dirname(this.statsFile), { recursive: true });
-            fs.writeFileSync(this.statsFile, JSON.stringify(this.state, null, 2));
-        } catch (error) {
-            console.error('Failed to save statistics:', error);
-        }
+    private commitState(state: StatisticsState): void {
+        this.statsStore.write(state);
+        this.state = state;
     }
 
-    private getHistoryEntry(timestamp: number) {
+    private cloneState(): StatisticsState {
+        return {
+            global: { ...this.state.global },
+            instances: cloneInstances(this.state.instances),
+            history: cloneHistory(this.state.history),
+        };
+    }
+
+    private getHistoryEntry(state: StatisticsState, timestamp: number) {
         const day = formatDayKey(timestamp);
-        if (!this.state.history[day]) {
-            this.state.history[day] = {
+        if (!state.history[day]) {
+            state.history[day] = {
                 launches: 0,
                 playTime: 0,
             };
         }
 
-        return this.state.history[day];
+        return state.history[day];
     }
 
     private getPopularModpacks(): PopularModpackStats[] {
@@ -162,39 +178,41 @@ export class StatisticsService {
 
     public recordLaunch(instanceId?: string, name?: string) {
         const timestamp = Date.now();
-        this.state.global.totalLaunches++;
-        this.state.global.lastPlayed = timestamp;
-        this.getHistoryEntry(timestamp).launches++;
+        const nextState = this.cloneState();
+        nextState.global.totalLaunches++;
+        nextState.global.lastPlayed = timestamp;
+        this.getHistoryEntry(nextState, timestamp).launches++;
 
         if (instanceId) {
-            if (!this.state.instances[instanceId]) {
-                this.state.instances[instanceId] = {
+            if (!nextState.instances[instanceId]) {
+                nextState.instances[instanceId] = {
                     playTime: 0,
                     launches: 0,
                     lastPlayed: 0,
                     name: name,
                 };
             }
-            this.state.instances[instanceId].launches++;
-            this.state.instances[instanceId].lastPlayed = timestamp;
+            nextState.instances[instanceId].launches++;
+            nextState.instances[instanceId].lastPlayed = timestamp;
             if (name) {
-                this.state.instances[instanceId].name = name;
+                nextState.instances[instanceId].name = name;
             }
         }
 
-        this.saveStats();
+        this.commitState(nextState);
     }
 
     public recordPlayTime(durationMs: number, instanceId?: string) {
         if (durationMs <= 0) return;
 
-        this.state.global.totalPlayTime += durationMs;
-        this.getHistoryEntry(Date.now()).playTime += durationMs;
+        const nextState = this.cloneState();
+        nextState.global.totalPlayTime += durationMs;
+        this.getHistoryEntry(nextState, Date.now()).playTime += durationMs;
 
-        if (instanceId && this.state.instances[instanceId]) {
-            this.state.instances[instanceId].playTime += durationMs;
+        if (instanceId && nextState.instances[instanceId]) {
+            nextState.instances[instanceId].playTime += durationMs;
         }
 
-        this.saveStats();
+        this.commitState(nextState);
     }
 }

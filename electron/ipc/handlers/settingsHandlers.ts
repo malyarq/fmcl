@@ -46,11 +46,11 @@ export function registerSettingsHandlers(deps: { window: BrowserWindow }) {
   })
 
   ipcMain.removeHandler('dialog:showSaveDialog')
-  ipcMain.handle('dialog:showSaveDialog', async (_evt, options: unknown) => {
+  ipcMain.handle('dialog:showSaveDialog', async (event, options: unknown) => {
     try {
       const result = await dialog.showSaveDialog(window, validateSaveDialogOptions(options))
       if (!result.canceled && result.filePath) {
-        authorizeSavePath(result.filePath)
+        authorizeSavePath(event.sender.id, result.filePath)
       }
       return result
     } catch (error: unknown) {

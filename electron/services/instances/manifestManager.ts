@@ -1,5 +1,5 @@
-import fs from 'node:fs';
 import path from 'node:path';
+import { AtomicJsonStore } from '../storage/atomicJsonStore';
 
 export interface InstalledMod {
     fileName: string;
@@ -15,27 +15,30 @@ export interface InstanceManifest {
     mods: InstalledMod[];
 }
 
+function isInstanceManifest(value: unknown): value is InstanceManifest {
+    if (!value || typeof value !== 'object') return false;
+    const candidate = value as Partial<InstanceManifest>;
+    return candidate.version === 1 && Array.isArray(candidate.mods);
+}
+
 export class InstanceManifestManager {
     private getManifestPath(instancePath: string): string {
         return path.join(instancePath, 'instance-manifest.json');
     }
 
+    private getStore(instancePath: string): AtomicJsonStore<InstanceManifest> {
+        return new AtomicJsonStore(this.getManifestPath(instancePath), {
+            version: 1,
+            validate: isInstanceManifest,
+        });
+    }
+
     public loadManifest(instancePath: string): InstanceManifest {
-        const p = this.getManifestPath(instancePath);
-        if (!fs.existsSync(p)) {
-            return { version: 1, mods: [] };
-        }
-        try {
-            return JSON.parse(fs.readFileSync(p, 'utf-8'));
-        } catch (e) {
-            console.error('Failed to parse instance-manifest.json', e);
-            return { version: 1, mods: [] };
-        }
+        return this.getStore(instancePath).read()?.value ?? { version: 1, mods: [] };
     }
 
     public saveManifest(instancePath: string, manifest: InstanceManifest) {
-        const p = this.getManifestPath(instancePath);
-        fs.writeFileSync(p, JSON.stringify(manifest, null, 2));
+        this.getStore(instancePath).write(manifest);
     }
 
     public addMod(instancePath: string, mod: InstalledMod) {

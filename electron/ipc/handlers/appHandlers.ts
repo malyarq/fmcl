@@ -7,8 +7,11 @@ import { validateBoundedString } from '../validation/privilegedPayloads'
 const MAX_TEXT_EXPORT_BYTES = 16 * 1024 * 1024
 
 export function registerAppHandlers() {
-    ipcMain.handle('app:saveFile', async (_evt, filePath: unknown, content: unknown) => {
-        const safePath = consumeAuthorizedSavePath(validateBoundedString(filePath, 'Save path', { maxLength: 4_096 }))
+    ipcMain.handle('app:saveFile', async (event, filePath: unknown, content: unknown) => {
+        const safePath = consumeAuthorizedSavePath(
+            event.sender.id,
+            validateBoundedString(filePath, 'Save path', { maxLength: 4_096 }),
+        )
         const safeContent = validateBoundedString(content, 'File content', {
             allowEmpty: true,
             maxLength: MAX_TEXT_EXPORT_BYTES,

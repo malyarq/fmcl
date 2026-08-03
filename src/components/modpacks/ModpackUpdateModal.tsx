@@ -1,16 +1,21 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../ui/Button';
 import { DegradedStateView } from '../layout/DegradedStateView';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { Modal } from '../ui/Modal';
-import { ProgressBar } from '../ui/ProgressBar';
 import { Select } from '../ui/Select';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
 import type { ModpackVersionDescriptor } from '@shared/contracts';
 import { toDisplayErrorMessage } from '../../utils/displayError';
 import { isSuspiciousUiText, sanitizeUiText } from '../../utils/safeUiText';
+import { ProviderInstallOperationState } from './ProviderInstallOperationState';
+import {
+  isPublishedProviderInstall,
+  isProviderInstallTerminal,
+  useProviderInstallOperation,
+} from './useProviderInstallOperation';
 
 interface ModpackUpdateModalProps {
   modpackId: string;
@@ -60,30 +65,17 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
   const [versions, setVersions] = useState<ModpackVersionDescriptor[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [updating, setUpdating] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [updateProgress, setUpdateProgress] = useState<{ downloaded: number; total: number; stage: string } | null>(null);
+  const { operation, error: operationError, isActive, start, cancel } = useProviderInstallOperation(isOpen);
+  const completedOperationRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen) return;
-
-    // Слушать события прогресса обновления
-    const handleProgress = (_event: unknown, ...args: unknown[]) => {
-      const progress = args[0] as { downloaded: number; total: number; stage: string };
-      setUpdateProgress(progress);
-    };
-
-    const ipcRenderer = window.api?.ipcRenderer;
-    if (ipcRenderer) {
-      ipcRenderer.on('modpacks:updateProgress', handleProgress);
-    }
-
-    return () => {
-      if (ipcRenderer) {
-        ipcRenderer.off('modpacks:updateProgress', handleProgress);
-      }
-    };
-  }, [isOpen]);
+    if (!operation || !isProviderInstallTerminal(operation) || completedOperationRef.current === operation.id) return;
+    completedOperationRef.current = operation.id;
+    if (!isPublishedProviderInstall(operation)) return;
+    onUpdated?.();
+    onClose();
+  }, [onClose, onUpdated, operation]);
 
   const loadVersions = useCallback(async () => {
     setLoading(true);
@@ -119,40 +111,29 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
   const handleUpdate = async () => {
     if (!selectedVersion) return;
 
-    setUpdating(true);
-    setUpdateProgress(null);
-    try {
-      // Создать резервную копию перед обновлением
-      setUpdateProgress({ downloaded: 0, total: 100, stage: t('modpacks.backing_up') || 'Создание резервной копии...' });
-      try {
-        const backup = await modpacksIPC.backup(modpackId, minecraftPath);
-        console.log('Backup created:', backup.backupPath);
-      } catch (backupError) {
-        console.error('Error creating backup:', backupError);
-        // Продолжить обновление даже если бэкап не удался
+    if (source === 'curseforge') {
+      const version = versions.find((item) => item.versionId === selectedVersion);
+      if (!version?.fileId) {
+        toast.error(t('modpacks.update_error') || 'Ошибка при обновлении модпака');
+        return;
       }
-
-      if (source === 'curseforge') {
-        // For CurseForge, we need fileId from the version
-        const version = versions.find((v) => v.versionId === selectedVersion);
-        if (!version || !version.fileId) {
-          throw new Error('Invalid version: fileId is missing');
-        }
-        await modpacksIPC.installCurseForge(Number(sourceId), version.fileId, modpackId, minecraftPath);
-      } else {
-        await modpacksIPC.installModrinth(sourceId, selectedVersion, modpackId, minecraftPath);
-      }
-      
-      setUpdateProgress(null);
-      onUpdated?.();
-      onClose();
-    } catch (error) {
-      console.error('Error updating modpack:', error);
-      setUpdateProgress(null);
-      toast.error(t('modpacks.update_error') || 'Ошибка при обновлении модпака');
-    } finally {
-      setUpdating(false);
+      await start({
+        kind: 'install-curseforge',
+        projectId: Number(sourceId),
+        fileId: version.fileId,
+        destinationId: modpackId,
+        rootPath: minecraftPath,
+      });
+      return;
     }
+
+    await start({
+      kind: 'install-modrinth',
+      projectId: sourceId,
+      versionId: selectedVersion,
+      destinationId: modpackId,
+      rootPath: minecraftPath,
+    });
   };
 
   if (!isOpen) return null;
@@ -214,7 +195,7 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
               </Select>
             </div>
 
-            {selectedVersion && !updating && (
+            {selectedVersion && !isActive && (
               <div>
                 <label className="block text-sm font-medium text-zinc-900 dark:text-white mb-2">
                   {t('modpacks.changelog') || 'Список изменений'}
@@ -246,27 +227,36 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
               </div>
             )}
 
-            {updating && updateProgress && (
-              <ProgressBar
-                value={(updateProgress.downloaded / updateProgress.total) * 100}
-                label={updateProgress.stage}
-                valueLabel={`${Math.round((updateProgress.downloaded / updateProgress.total) * 100)}%`}
-                animated
-              />
+            {operation && <ProviderInstallOperationState operation={operation} t={t} />}
+
+            {operationError && (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3" role="alert">
+                {operationError instanceof Error ? operationError.message : t('modpacks.update_error')}
+              </div>
             )}
 
             <div className="flex gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-700">
               <Button
                 variant="primary"
-                onClick={handleUpdate}
-                disabled={!selectedVersion || updating}
+                onClick={() => {
+                  if (isActive) void cancel();
+                  else void handleUpdate();
+                }}
+                disabled={!selectedVersion || operation?.status === 'cancelling'}
                 className="flex-1"
                 style={getAccentStyles('bg').style}
-                isLoading={updating}
+                isLoading={isActive}
               >
-                {updating ? t('modpacks.updating') || 'Обновление...' : t('modpacks.update') || 'Обновить'}
+                {isActive ? t('general.cancel') : t('modpacks.update') || 'Обновить'}
               </Button>
-              <Button variant="secondary" onClick={onClose}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  if (isActive) void cancel();
+                  else onClose();
+                }}
+                disabled={operation?.status === 'cancelling'}
+              >
                 {t('general.cancel')}
               </Button>
             </div>

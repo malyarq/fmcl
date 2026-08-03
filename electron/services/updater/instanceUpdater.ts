@@ -18,6 +18,10 @@ interface Manifest {
     files: ManifestFile[];
 }
 
+export type UpdaterSyncOptions = {
+    checkCancelled?: () => void;
+};
+
 const MAX_MANIFEST_BYTES = 1024 * 1024;
 const MAX_MANIFEST_FILES = 2_000;
 const MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024;
@@ -128,7 +132,8 @@ export class Updater {
      * @param destPath Destination file path
      * @throws Error if download fails
      */
-    private async downloadFile(file: ManifestFile, destPath: string) {
+    private async downloadFile(file: ManifestFile, destPath: string, checkCancelled: () => void) {
+        checkCancelled();
         await fs.promises.mkdir(path.dirname(destPath), { recursive: true });
 
         const response = await fetch(file.url, { redirect: 'error' });
@@ -146,6 +151,12 @@ export class Updater {
         let received = 0;
         const verifier = new Transform({
             transform(chunk: Buffer, _encoding, callback) {
+                try {
+                    checkCancelled();
+                } catch (error) {
+                    callback(error as Error);
+                    return;
+                }
                 received += chunk.length;
                 if (received > file.size || received > MAX_FILE_BYTES) {
                     callback(new Error(`Download exceeds declared size for ${file.path}`));
@@ -177,7 +188,13 @@ export class Updater {
      * @param onProgress Progress callback with status message and percentage
      * @throws Error if manifest cannot be loaded or sync fails
      */
-    public async sync(manifestUrl: string, onProgress: (status: string, progress: number) => void) {
+    public async sync(
+        manifestUrl: string,
+        onProgress: (status: string, progress: number) => void,
+        options: UpdaterSyncOptions = {},
+    ) {
+        const checkCancelled = options.checkCancelled ?? (() => undefined);
+        checkCancelled();
         onProgress('Fetching manifest...', 0);
 
         let manifest: Manifest;
@@ -193,6 +210,7 @@ export class Updater {
         let processed = 0;
 
         for (const file of manifest.files) {
+            checkCancelled();
             const destPath = resolvePathWithinRoot(this.instancePath, file.path, 'Updater file path');
             const localHash = await this.getFileHash(destPath);
 
@@ -200,7 +218,7 @@ export class Updater {
                 onProgress(`Downloading ${path.basename(file.path)}...`, (processed / totalFiles) * 100);
 
                 try {
-                    await this.downloadFile(file, destPath);
+                    await this.downloadFile(file, destPath, checkCancelled);
                 } catch (e) {
                     console.error(`Error downloading ${file.path}:`, e);
                     throw e;

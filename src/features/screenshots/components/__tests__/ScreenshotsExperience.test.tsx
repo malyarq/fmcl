@@ -2,7 +2,7 @@
 
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Screenshot } from '../../../../../electron/services/screenshots/screenshotService';
+import type { Screenshot } from '@shared/types/screenshots';
 import { ScreenshotsTab } from '../ScreenshotsTab';
 import { ScreenshotLightbox } from '../ScreenshotLightbox';
 import { createTranslator } from '../../../../contexts/settings/i18n';

@@ -1,79 +1,80 @@
-## Development (English)
+# Development
 
----
+## Requirements
 
-## Commands
-
-Prerequisites: Node.js 24 and npm 11. Run `nvm use` and prefer `npm ci` for a reproducible install.
-
-From `package.json`:
-
-- `npm run dev` — start Vite (Electron is handled by the Vite Electron plugin config)
-- `npm run build` — `tsc` + `vite build` + `electron-builder`
-- `npm run lint` — ESLint (warnings are treated as failure)
-- `npm run verify` — unit, lint, type, IPC contract and production audit gates
-- `npm run audit:prod` — fail on critical production dependency advisories
-- `npm run test:visual:closeout` — macOS Chromium visual baseline
-- `npm run preview` — preview Vite build
-- `npm run release -- 0.7.0 --dry-run` — non-mutating release preflight
-- `npm run release -- 0.7.0` — prepare a local commit and tag; add `--push` only after review
-- `npm run postinstall` — fixes XMCL bytebuffer via `scripts/postinstall-fix-xmcl-bytebuffer.cjs`
-
-### Testing
-
-Full installation tests verify that the launcher can install Minecraft versions and modloaders correctly:
-
-- `npm run test:full` — run all installation tests (vanilla + all modloaders)
-- `npm run test:full:vanilla` — test vanilla installation only
-- `npm run test:full:forge` — test Forge installation
-- `npm run test:full:fabric` — test Fabric installation
-- `npm run test:full:neoforge` — test NeoForge installation
-
-You can also use the test script directly with additional options:
+- Node.js 24.x — pinned by `.nvmrc` and enforced by `package.json#engines`
+- npm 11.x — pinned by `package.json#packageManager`
+- Git
+- Platform packaging tools required by electron-builder when producing installers
+- Java and network access only for the optional full-installation harness
 
 ```bash
-node scripts/test-full.js [options]
+nvm use
+npm ci
 ```
 
-Options:
-- `--stage=<stage>` — Test stage: `vanilla`, `forge`, `fabric`, `neoforge` (default: all)
-- `--provider=<id>` — Download provider: `auto`, `mojang`, `bmclapi` (default: `auto`)
-- `--limit=<N>` — Limit number of versions to test (default: unlimited)
-- `--only=<versions>` — Comma-separated list of specific versions to test (e.g., `1.20.1,1.19.2`)
+`npm ci` runs the validated XMCL compatibility postinstall automatically. Do not run `npm run postinstall` a second time unless you are diagnosing that patch.
 
-Examples:
+## Common commands
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start Vite and the development Electron app. Stop it when finished. |
+| `npm test` | Run the Vitest unit, component, service, security, and smoke suite once. |
+| `npm run lint` | Run ESLint over the repository; warnings fail the command. |
+| `npx tsc -p tsconfig.json --noEmit` | Type-check without writing build output. |
+| `npm run docs:check` | Validate maintained Markdown links, required files, latest-release link, index coverage, and EN/RU mirrors. |
+| `npm run contracts:check` | Compare documented IPC channels with the channel allowlist. |
+| `npm run ipc:check` | Reject IPC calls that are not present in the allowlist. |
+| `npm run audit:prod` | Fail on high or critical production dependency advisories. |
+| `npm run verify` | Run unit tests, lint, typecheck, documentation/contract checks, IPC checks, and production audit. |
+| `npm run test:visual:closeout` | Compare the macOS Chromium screenshots with the committed baselines. |
+| `npm run test:full` | Run the real Minecraft/modloader installation harness. |
+| `npm run build -- --publish never` | Compile and package the application locally without publishing. |
+| `npm run preview` | Preview only the built renderer in a browser; this is not a functional Electron launcher. |
+
+See [Testing](testing.md) for the boundaries and prerequisites of each check.
+
+## Daily workflow
+
+1. Start from a clean, current `main`.
+2. Read the nearest `AGENTS.md` for the area being changed.
+3. Inspect the existing component/service and nearby tests before editing.
+4. Keep cross-process changes aligned across shared contract, preload, validation/handler, service, renderer wrapper, and UI.
+5. Add or update tests proportional to the change.
+6. Run the narrowest relevant checks, then `npm run verify` before committing.
+7. Run visual regression for UI changes and a packaging build for release or packaging changes.
+
+## Source layout
+
+- `src/` — React renderer, contexts, feature UI, translations, typed IPC wrappers
+- `electron/` — Electron main process, preload, handlers, security policies, and services
+- `shared/` — cross-process contracts and types
+- `tests/` — shared test setup, smoke tests, and Playwright visual tests
+- `scripts/` — release, contract, compatibility, and installation helpers
+- `docs/` — player, contributor, and maintainer documentation
+
+The full process boundary is described in [Architecture](architecture.md).
+
+## Environment and secrets
+
+- Never commit provider keys, account tokens, signing certificates, passwords, or local absolute paths.
+- Official builds intentionally leave CurseForge browsing disabled; a local `CURSEFORGE_API_KEY` is for development only and does not make the public distribution contract complete.
+- Release signing secrets are optional and currently not configured. Do not pass empty `CSC_*` values to electron-builder.
+
+## Renderer and Electron behavior
+
+- Renderer code must not import Node.js or Electron modules.
+- New cross-process calls use `window.api` through `src/services/ipc/*`.
+- Main-process handlers validate renderer input before calling a service.
+- `npm run dev` is long-lived and may start Electron helper processes; close it after manual verification.
+
+## Release preparation
+
+Use a version that does not already exist. The active milestone is `v0.8.0`; keep the command reusable for later releases:
+
 ```bash
-# Test only Forge with a limit of 5 versions
-node scripts/test-full.js --stage=forge --limit=5
-
-# Test specific versions
-node scripts/test-full.js --only=1.20.1,1.19.2
-
-# Test with a specific download provider
-node scripts/test-full.js --provider=bmclapi
+npm run release -- <version> --dry-run
 ```
 
-The harness uses an isolated temporary user-data directory so it cannot overwrite a real FMCL installation. Results and logs are printed during the run and removed with that temporary directory on exit.
-
----
-
-## Contract discipline during refactors
-
-Before/after changing IPC or preload:
-
-- keep `contracts-map.md` accurate
-- keep `src/vite-env.d.ts` accurate
-- prefer using `src/services/ipc/*` inside renderer
-
----
-
-## Notes on recent refactors (structure)
-
-- UI splits: prefer extracting large UI files into small components under a dedicated folder (e.g. `src/components/sidebar/*`, `src/components/layout/*`, settings pieces under `src/components/settings/*`).
-- Main-process splits: if a domain grows large, extract helpers into a subfolder and keep a thin facade (e.g. `electron/services/launcher/forge/*`, `electron/services/launcher/modLoaders/*`, `electron/services/network/*`).
-
----
-
-## Line endings (Windows)
-
-If you see Git warnings like “LF will be replaced by CRLF”, consider standardizing with a `.gitattributes` later. For now: avoid mixing line endings within the same file.
+The dry run does not change tracked files, commits, tags, or remotes, but it does execute verification and packaging and therefore refreshes ignored build output. The authoritative workflow, including `latest`, GitHub Actions, checksums, and rollback, is in [Releasing](releasing.md).

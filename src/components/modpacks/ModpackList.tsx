@@ -11,6 +11,8 @@ import { rectFromElement, type AnchoredAlign, type AnchoredRect } from '../ui/an
 import { SkeletonLoader } from '../ui/SkeletonLoader';
 import { LazyImage } from '../ui/LazyImage';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import { operationsIPC } from '../../services/ipc/operationsIPC';
+import type { OperationSnapshot } from '@shared/contracts';
 import type { ModpackManifest, ModpackMetadata } from '@shared/types/modpack';
 import { cn } from '../../utils/cn';
 import { ShareModal } from '../../features/share/ShareModal';
@@ -100,18 +102,18 @@ function formatLoaderLabel(
 
 // Uses ModpackListContext — only updates when modpacks/selectedId change, not when config changes (downloads).
 function useModpackListValues() {
-  const { modpacks, selectedId, select, remove, rename, duplicate, refresh } = useModpackListContext();
+  const { modpacks, selectedId, select, rename, duplicate, refresh, loadSelected } = useModpackListContext();
   const modpacksKey = useMemo(() => modpacks.map(m => m.id).sort().join(','), [modpacks]);
   return useMemo(() => ({
     modpacks,
     selectedId,
     select,
-    remove,
     rename,
     duplicate,
     refresh,
+    loadSelected,
     modpacksKey,
-  }), [modpacks, selectedId, select, remove, rename, duplicate, refresh, modpacksKey]);
+  }), [modpacks, selectedId, select, rename, duplicate, refresh, loadSelected, modpacksKey]);
 }
 
 // Internal component that doesn't re-render when context config changes
@@ -119,20 +121,21 @@ const ModpackListComponentInternal: React.FC<{
   contextModpacks: ReturnType<typeof useModpackListValues>['modpacks'];
   selectedId: string;
   select: ReturnType<typeof useModpackListValues>['select'];
-  remove: ReturnType<typeof useModpackListValues>['remove'];
   rename: ReturnType<typeof useModpackListValues>['rename'];
   duplicate: ReturnType<typeof useModpackListValues>['duplicate'];
   refresh: ReturnType<typeof useModpackListValues>['refresh'];
+  loadSelected: ReturnType<typeof useModpackListValues>['loadSelected'];
   modpacksKey: string;
-  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string } | { type: 'export'; modpackId: string }) => void;
+  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string } | { type: 'export'; modpackId: string } | { type: 'importPreview'; filePath: string }) => void;
   onCreateWizard?: () => void;
-}> = ({ contextModpacks: _contextModpacks, selectedId, select, remove, rename, duplicate, refresh, modpacksKey, onNavigate, onCreateWizard }) => {
+}> = ({ contextModpacks: _contextModpacks, selectedId, select, rename, duplicate, refresh, loadSelected, modpacksKey, onNavigate, onCreateWizard }) => {
   const { t, getAccentStyles, minecraftPath } = useSettings();
   const toast = useToast();
   const confirm = useConfirm();
   const [modpacks, setModpacks] = useState<ModpackListItemWithMetadata[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<unknown | null>(null);
+  const [deleteOperation, setDeleteOperation] = useState<OperationSnapshot | null>(null);
   const [availableUpdatesById, setAvailableUpdatesById] = useState<Record<string, ModpackUpdateInfo>>({});
   const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{
@@ -142,6 +145,14 @@ const ModpackListComponentInternal: React.FC<{
   } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const contextMenuTriggerRef = useRef<HTMLElement | null>(null);
+  const unsubscribeDeleteRef = useRef<(() => void) | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => () => {
+    isMountedRef.current = false;
+    unsubscribeDeleteRef.current?.();
+    unsubscribeDeleteRef.current = null;
+  }, []);
 
   // Share state
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -312,26 +323,58 @@ const ModpackListComponentInternal: React.FC<{
       cancelText: t('general.cancel') || 'Отмена',
     });
     if (confirmed) {
-      // Optimistic update: immediately remove from UI
-      const deletedModpack = modpacks.find(m => m.id === id);
-      setModpacks(prev => prev.filter(m => m.id !== id));
-
       try {
-        await remove(id);
-        await refresh();
-        // Reload to ensure consistency
-        await loadModpacks();
+        const started = await operationsIPC.start({ kind: 'delete', rootPath: minecraftPath, instanceId: id });
+        setDeleteOperation(started);
+        await new Promise<void>((resolve, reject) => {
+          let terminal: OperationSnapshot | null = null;
+          let unsubscribe: (() => void) | null = null;
+          let released = false;
+          let completed = false;
+          const release = () => {
+            if (released) return;
+            released = true;
+            unsubscribe?.();
+            if (unsubscribeDeleteRef.current === release) unsubscribeDeleteRef.current = null;
+          };
+          const complete = async (snapshot: OperationSnapshot) => {
+            if (completed) return;
+            completed = true;
+            release();
+            try {
+              if (hasCommittedDelete(snapshot)) {
+                await refresh();
+                await loadSelected();
+                await loadModpacks();
+              }
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
+          };
+          const onSnapshot = (snapshot: OperationSnapshot) => {
+            setDeleteOperation(snapshot);
+            if (!isTerminal(snapshot)) return;
+            terminal = snapshot;
+            if (unsubscribe) void complete(snapshot);
+          };
+          void operationsIPC.subscribe(started.id, onSnapshot).then((nextUnsubscribe) => {
+            unsubscribe = nextUnsubscribe;
+            if (!isMountedRef.current) {
+              nextUnsubscribe();
+              return;
+            }
+            unsubscribeDeleteRef.current?.();
+            unsubscribeDeleteRef.current = release;
+            if (terminal) void complete(terminal);
+          }, reject);
+        });
       } catch (error) {
-        // Rollback on error
         console.error('Error deleting modpack:', error);
         toast.error(t('modpacks.delete_error') || 'Ошибка при удалении модпака');
-        if (deletedModpack) {
-          setModpacks(prev => [...prev, deletedModpack].sort((a, b) => a.name.localeCompare(b.name)));
-        }
-        await loadModpacks(); // Reload to restore correct state
       }
     }
-  }, [remove, refresh, loadModpacks, toast, t, confirm, modpacks]);
+  }, [confirm, loadModpacks, loadSelected, minecraftPath, refresh, t, toast]);
 
   const handleRename = useCallback(async (id: string, currentName: string) => {
     const nextName = await confirm.prompt({
@@ -504,19 +547,11 @@ const ModpackListComponentInternal: React.FC<{
       return;
     }
 
-    for (const file of modpackFiles) {
-      try {
-        // In Electron, file objects from drag & drop have a path property
-        const filePath = (file as unknown as { path?: string }).path || file.name;
-        await modpacksIPC.import(filePath);
-        await refresh();
-        await loadModpacks();
-      } catch (error) {
-        console.error('Error importing modpack:', error);
-        toast.error(t('modpacks.import_error') || `Ошибка при импорте модпака: ${file.name}`);
-      }
-    }
-  }, [refresh, loadModpacks, toast, t]);
+    const file = modpackFiles[0];
+    if (!file) return;
+    const filePath = (file as unknown as { path?: string }).path || file.name;
+    onNavigate?.({ type: 'importPreview', filePath });
+  }, [onNavigate, toast, t]);
 
   const handleImportShareCode = useCallback(async (manifest: ModpackManifest) => {
     try {
@@ -842,6 +877,11 @@ const ModpackListComponentInternal: React.FC<{
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
+        {deleteOperation && (
+          <div role="status" data-testid="delete-operation-status" data-operation-status={deleteOperation.status}>
+            {deleteOperation.status}
+          </div>
+        )}
         <ModpackCatalogControls
           rootTestId="installed-modpack-filters"
           headerTestId="installed-modpack-catalog-header"
@@ -1201,7 +1241,7 @@ const MemoizedModpackListInternal = React.memo(ModpackListComponentInternal);
 
 // Wrapper component that extracts values from context
 const ModpackListComponent: React.FC<{
-  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string } | { type: 'export'; modpackId: string }) => void;
+  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string } | { type: 'export'; modpackId: string } | { type: 'importPreview'; filePath: string }) => void;
   onCreateWizard?: () => void;
 }> = ({ onNavigate, onCreateWizard }) => {
   const values = useModpackListValues();
@@ -1210,10 +1250,10 @@ const ModpackListComponent: React.FC<{
     contextModpacks={values.modpacks}
     selectedId={values.selectedId}
     select={values.select}
-    remove={values.remove}
     rename={values.rename}
     duplicate={values.duplicate}
     refresh={values.refresh}
+    loadSelected={values.loadSelected}
     modpacksKey={values.modpacksKey}
     onNavigate={onNavigate}
     onCreateWizard={onCreateWizard}
@@ -1221,3 +1261,15 @@ const ModpackListComponent: React.FC<{
 };
 
 export const ModpackList = ModpackListComponent;
+
+function hasCommittedDelete(snapshot: OperationSnapshot): snapshot is OperationSnapshot & {
+  status: 'succeeded' | 'recovered';
+  result: { status: 'succeeded' | 'recovered'; instanceId?: string };
+} {
+  return (snapshot.status === 'succeeded' || snapshot.status === 'recovered')
+    && snapshot.result?.status === snapshot.status;
+}
+
+function isTerminal(snapshot: OperationSnapshot): boolean {
+  return ['succeeded', 'recovered', 'degraded', 'cancelled', 'failed', 'recovery-required'].includes(snapshot.status);
+}

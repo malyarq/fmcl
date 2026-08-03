@@ -3,6 +3,32 @@ import path from 'node:path';
 import type { ModpackConfig, ModpackRuntime } from './types';
 import { getModpackConfigPath, getModpackDir } from './paths';
 import { loadModpacksMetadata } from '../modpacks/storage';
+import { AtomicJsonStore } from '../storage/atomicJsonStore';
+
+function isModpackConfig(value: unknown): value is ModpackConfig {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const candidate = value as Partial<ModpackConfig>;
+  const runtime = candidate.runtime;
+  return typeof candidate.id === 'string'
+    && typeof candidate.name === 'string'
+    && Boolean(runtime)
+    && typeof runtime === 'object'
+    && !Array.isArray(runtime)
+    && typeof runtime.minecraft === 'string'
+    && (runtime.modLoader === undefined
+      || (Boolean(runtime.modLoader)
+        && typeof runtime.modLoader === 'object'
+        && !Array.isArray(runtime.modLoader)
+        && ['vanilla', 'forge', 'fabric', 'quilt', 'neoforge'].includes(runtime.modLoader.type)
+        && (runtime.modLoader.version === undefined || typeof runtime.modLoader.version === 'string')));
+}
+
+function createConfigStore(rootPath: string, modpackId: string): AtomicJsonStore<ModpackConfig> {
+  return new AtomicJsonStore(getModpackConfigPath(rootPath, modpackId), {
+    version: 1,
+    validate: isModpackConfig,
+  });
+}
 
 function resolveRecoveredRuntime(rootPath: string, modpackId: string): ModpackRuntime {
   const metadata = loadModpacksMetadata(rootPath).modpacks[modpackId];
@@ -20,8 +46,9 @@ function resolveRecoveredRuntime(rootPath: string, modpackId: string): ModpackRu
 }
 
 export function loadModpackConfigFile(rootPath: string, modpackId: string): ModpackConfig {
-  const cfgPath = getModpackConfigPath(rootPath, modpackId);
-  if (!fs.existsSync(cfgPath)) {
+  const store = createConfigStore(rootPath, modpackId);
+  const loaded = store.read();
+  if (!loaded) {
     // If index says modpack exists but file missing, reconstruct minimal config.
     const metadata = loadModpacksMetadata(rootPath).modpacks[modpackId];
     const now = new Date().toISOString();
@@ -36,10 +63,10 @@ export function loadModpackConfigFile(rootPath: string, modpackId: string): Modp
     };
     fs.mkdirSync(getModpackDir(rootPath, modpackId), { recursive: true });
     fs.mkdirSync(path.join(getModpackDir(rootPath, modpackId), 'mods'), { recursive: true });
-    fs.writeFileSync(cfgPath, JSON.stringify(cfg, null, 2), 'utf-8');
+    store.write(cfg);
     return cfg;
   }
-  return JSON.parse(fs.readFileSync(cfgPath, 'utf-8')) as ModpackConfig;
+  return loaded.value;
 }
 
 export function saveModpackConfigFile(rootPath: string, cfg: ModpackConfig) {
@@ -48,9 +75,5 @@ export function saveModpackConfigFile(rootPath: string, cfg: ModpackConfig) {
   fs.mkdirSync(dir, { recursive: true });
   cfg.updatedAt = now;
   if (!cfg.createdAt) cfg.createdAt = now;
-  fs.writeFileSync(getModpackConfigPath(rootPath, cfg.id), JSON.stringify(cfg, null, 2), 'utf-8');
+  createConfigStore(rootPath, cfg.id).write(cfg);
 }
-
-// Legacy aliases for backward compatibility
-export const loadInstanceConfigFile = loadModpackConfigFile;
-export const saveInstanceConfigFile = saveModpackConfigFile;

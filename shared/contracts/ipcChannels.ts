@@ -3,8 +3,8 @@
  *
  * This is used to:
  * - document public contracts
- * - type `window.ipcRenderer` in renderer
- * - enforce a runtime allowlist in preload
+ * - keep the main/preload channel inventory auditable
+ * - validate that typed preload bridges only use registered channels
  *
  * If you add/remove/rename IPC channels, update this list AND the contracts-map docs.
  */
@@ -44,7 +44,6 @@ export const allowedIpcChannels = [
   'instances:setSelected',
   'instances:create',
   'instances:rename',
-  'instances:duplicate',
   'instances:delete',
   'instances:getConfig',
   'instances:saveConfig',
@@ -84,10 +83,6 @@ export const allowedIpcChannels = [
   'cache:cleanupImage',
   'cache:resolveImage',
 
-  // instance updater (manifest sync)
-  'updater:sync',
-  'updater:progress',
-
   // app auto-updater (launcher updates)
   'app-updater:check',
   'app-updater:download',
@@ -107,8 +102,6 @@ export const allowedIpcChannels = [
   'modpacks:setSelected',
   'modpacks:create',
   'modpacks:rename',
-  'modpacks:duplicate',
-  'modpacks:delete',
   'modpacks:getConfig',
   'modpacks:saveConfig',
   'modpacks:getMetadata',
@@ -117,13 +110,8 @@ export const allowedIpcChannels = [
   'modpacks:searchModrinth',
   'modpacks:getCurseForgeVersions',
   'modpacks:getModrinthVersions',
-  'modpacks:installCurseForge',
-  'modpacks:installModrinth',
-  'modpacks:exportFromInstance',
   'modpacks:createLocal',
-  'modpacks:export',
   'modpacks:getModpackInfoFromFile',
-  'modpacks:import',
   'modpacks:addMod',
   'modpacks:removeMod',
   'modpacks:setModEnabled',
@@ -136,8 +124,6 @@ export const allowedIpcChannels = [
   'modpacks:resolvePath',
   'modpacks:scanJava',
 
-  // modpacks events
-  'modpacks:updateProgress',
   // resource packs
   'resourcePacks:list',
   'resourcePacks:enable',
@@ -212,6 +198,15 @@ export const allowedIpcChannels = [
 
   // external links
   'externalLinks:open',
+
+  // transactional operations
+  'operations:start',
+  'operations:get',
+  'operations:listRecovered',
+  'operations:cancel',
+  'operations:subscribe',
+  'operations:unsubscribe',
+  'operations:update',
 ] as const;
 
 export type AllowedIpcChannel = typeof allowedIpcChannels[number];

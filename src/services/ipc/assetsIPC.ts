@@ -1,13 +1,10 @@
 import { toIpcError } from './ipcError';
 
-type AssetsApi = Window['assets'];
-type NamespacedAssetsApi = Window['api']['assets'];
+type AssetsApi = Window['api']['assets'];
 
-function getAssetsApi(): NamespacedAssetsApi | AssetsApi | undefined {
+function getAssetsApi(): AssetsApi | undefined {
   if (typeof window === 'undefined') return undefined;
-  if (window.api?.assets) return window.api.assets;
-  if (window.assets) return window.assets;
-  return undefined;
+  return window.api?.assets;
 }
 
 function hasAssets(): boolean {

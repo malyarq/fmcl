@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { SetStateAction } from 'react';
+import type { OperationSnapshot } from '@shared/contracts';
 import { useSettings, useUIMode } from './SettingsContext';
 import { CLASSIC_MODPACK_ID } from '../../shared/constants';
 import type { ModpackConfig, ModpackListItem, ModLoaderType, NetworkMode } from './instances/types';
@@ -38,6 +39,7 @@ interface ModpackContextState {
   create: (name: string) => Promise<void>;
   rename: (id: string, name: string) => Promise<void>;
   duplicate: (sourceId: string, name?: string) => Promise<void>;
+  duplicateOperation: OperationSnapshot | null;
   remove: (id: string) => Promise<void>;
 
   saveConfig: (cfg: ModpackConfig) => Promise<void>;
@@ -65,6 +67,7 @@ const ModpackListContext = createContext<{
   rename: (id: string, name: string) => Promise<void>;
   duplicate: (sourceId: string, name?: string) => Promise<void>;
   refresh: () => Promise<void>;
+  loadSelected: () => Promise<void>;
 } | undefined>(undefined);
 
 export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -289,7 +292,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const effectiveSetGameResolution = isClassicMode ? setClassicGameResolution : setGameResolution;
   const effectiveSetAutoConnectServer = isClassicMode ? setClassicAutoConnectServer : setAutoConnectServer;
 
-  const { select, create, rename, duplicate, remove } = useInstanceCrudActions({
+  const { select, create, rename, duplicate, duplicateOperation, remove } = useInstanceCrudActions({
     rootPath,
     selectedId,
     setSelectedId,
@@ -304,9 +307,10 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     select,
     remove,
     refresh,
+    loadSelected,
     rename,
     duplicate,
-  }), [modpacks, selectedId, select, remove, refresh, rename, duplicate]);
+  }), [modpacks, selectedId, select, remove, refresh, loadSelected, rename, duplicate]);
 
   const value = useMemo<ModpackContextState>(() => ({
     isReady,
@@ -319,6 +323,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     create,
     rename,
     duplicate,
+    duplicateOperation,
     remove,
     saveConfig: effectiveSaveConfig,
     patchConfig: effectivePatchConfig,
@@ -336,6 +341,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     create,
     duplicate,
+    duplicateOperation,
     effectiveConfig,
     effectiveModpackId,
     effectivePatchConfig,

@@ -1,25 +1,16 @@
-import { ipcMain, type BrowserWindow } from 'electron'
+import { ipcMain } from 'electron'
 import type { ModpackService } from '../../services/modpacks/modpackService'
 import type { ModPlatformService } from '../../services/mods/platform/modPlatformService'
-import { downloadCurseForgeModpack } from '../../services/modpacks/installers/curseforgeInstaller'
-import { downloadModrinthModpack } from '../../services/modpacks/installers/modrinthInstaller'
-import {
-  InstanceExporterService,
-  type ExportOptions,
-} from '../../services/instances/exporter/InstanceExporterService'
-import { InstanceImporterService } from '../../services/instances/importer/InstanceImporterService'
 import {
   validateAddModPayload,
   validateBoolean,
   validateBootstrapSeed,
   validateBoundedString,
   validateEnum,
-  validateExportOptions,
   validateFilesystemPath,
   validateIdentifier,
   validateInteger,
   validateModpackConfig,
-  validateModpackExportFormat,
   validateModpackManifest,
   validateModpackMetadataUpdates,
   validateOptionalBoundedString,
@@ -69,22 +60,10 @@ function validateOptionalLimit(value: unknown): number | undefined {
 export function registerModpacksHandlers(deps: {
   modpacks: ModpackService
   modPlatforms: ModPlatformService
-  window?: BrowserWindow
 }) {
-  const { modpacks, modPlatforms, window } = deps
-  const exporter = new InstanceExporterService(modpacks)
-  const importer = new InstanceImporterService(modpacks, modpacks)
-
+  const { modpacks, modPlatforms } = deps
   const resolveRootPath = (rootPath?: unknown) => (
     validateOptionalRootPath(rootPath) ?? modpacks.getDefaultRootPath()
-  )
-
-  const hasInstanceExportOptions = (options?: ExportOptions) => (
-    options?.includeSaves !== undefined
-    || options?.includeScreenshots !== undefined
-    || options?.includeResourcePacks !== undefined
-    || options?.includeShaders !== undefined
-    || options?.includeMods !== undefined
   )
 
   ipcMain.removeHandler('modpacks:list')
@@ -92,56 +71,9 @@ export function registerModpacksHandlers(deps: {
     return modpacks.listModpacks(resolveRootPath(rootPath))
   })
 
-  ipcMain.removeHandler('modpacks:export')
-  ipcMain.handle('modpacks:export', async (
-    _evt,
-    modpackId: unknown,
-    format: unknown,
-    outputPath: unknown,
-    options?: unknown,
-    rootPath?: unknown,
-  ) => {
-    const safeRootPath = resolveRootPath(rootPath)
-    const safeModpackId = validateIdentifier(modpackId, 'Modpack id')
-    const safeFormat = validateModpackExportFormat(format)
-    const safeOutputPath = requireFilesystemPath(outputPath, 'Modpack export output path')
-    const safeOptions = validateExportOptions(options)
-
-    if (safeFormat === 'multimc') {
-      await exporter.exportInstance(safeRootPath, safeModpackId, 'multimc', safeOutputPath, safeOptions)
-    } else if (safeFormat === 'zip' && hasInstanceExportOptions(safeOptions)) {
-      await exporter.exportInstance(safeRootPath, safeModpackId, 'zip', safeOutputPath, safeOptions)
-    } else {
-      await modpacks.exportModpack(
-        safeRootPath,
-        safeModpackId,
-        safeFormat,
-        safeOutputPath,
-        safeOptions,
-        modPlatforms,
-      )
-    }
-
-    return { ok: true }
-  })
-
   ipcMain.removeHandler('modpacks:getModpackInfoFromFile')
   ipcMain.handle('modpacks:getModpackInfoFromFile', async (_evt, filePath: unknown) => {
     return await modpacks.getModpackInfoFromFile(requireFilesystemPath(filePath, 'Modpack file path'))
-  })
-
-  ipcMain.removeHandler('modpacks:import')
-  ipcMain.handle('modpacks:import', async (
-    _evt,
-    filePath: unknown,
-    targetModpackId?: unknown,
-    rootPath?: unknown,
-  ) => {
-    return importer.importInstance(
-      resolveRootPath(rootPath),
-      requireFilesystemPath(filePath, 'Modpack import path'),
-      validateOptionalBoundedString(targetModpackId, 'Target modpack id', { maxLength: 128 }),
-    )
   })
 
   ipcMain.removeHandler('modpacks:listWithMetadata')
@@ -180,21 +112,6 @@ export function registerModpacksHandlers(deps: {
       validateIdentifier(modpackId, 'Modpack id'),
       validateBoundedString(name, 'Modpack name', { maxLength: 120 }),
     )
-  })
-
-  ipcMain.removeHandler('modpacks:duplicate')
-  ipcMain.handle('modpacks:duplicate', async (_evt, sourceId: unknown, name?: unknown, rootPath?: unknown) => {
-    return modpacks.duplicateModpack(
-      resolveRootPath(rootPath),
-      validateIdentifier(sourceId, 'Source modpack id'),
-      validateOptionalBoundedString(name, 'Duplicated modpack name', { maxLength: 120 }),
-    )
-  })
-
-  ipcMain.removeHandler('modpacks:delete')
-  ipcMain.handle('modpacks:delete', async (_evt, modpackId: unknown, rootPath?: unknown) => {
-    modpacks.deleteModpack(resolveRootPath(rootPath), validateIdentifier(modpackId, 'Modpack id'))
-    return { ok: true }
   })
 
   ipcMain.removeHandler('modpacks:getConfig')
@@ -273,76 +190,6 @@ export function registerModpacksHandlers(deps: {
   ipcMain.handle('modpacks:getModrinthVersions', async (_evt, projectId: unknown) => {
     return modPlatforms.getModrinthModpackVersions(
       validateBoundedString(projectId, 'Modrinth project id', { maxLength: 128 }),
-    )
-  })
-
-  ipcMain.removeHandler('modpacks:installCurseForge')
-  ipcMain.handle('modpacks:installCurseForge', async (
-    _evt,
-    projectId: unknown,
-    fileId: unknown,
-    targetModpackId?: unknown,
-    rootPath?: unknown,
-  ) => {
-    const safeRootPath = resolveRootPath(rootPath)
-    const curseforge = modPlatforms.getCurseForgeClient()
-    if (!curseforge) {
-      throw new Error('CurseForge API key is not configured')
-    }
-
-    return downloadCurseForgeModpack(curseforge, modpacks, {
-      projectId: validateInteger(projectId, 'CurseForge project id', { min: 1 }),
-      fileId: validateInteger(fileId, 'CurseForge file id', { min: 1 }),
-      targetModpackId: validateOptionalBoundedString(targetModpackId, 'Target modpack id', { maxLength: 128 }),
-      rootPath: safeRootPath,
-      onProgress: (progress) => {
-        if (window && !window.isDestroyed()) {
-          window.webContents.send('modpacks:updateProgress', progress)
-        }
-      },
-    })
-  })
-
-  ipcMain.removeHandler('modpacks:installModrinth')
-  ipcMain.handle('modpacks:installModrinth', async (
-    _evt,
-    projectId: unknown,
-    versionId: unknown,
-    targetModpackId?: unknown,
-    rootPath?: unknown,
-  ) => {
-    const safeRootPath = resolveRootPath(rootPath)
-    const modrinth = modPlatforms.getModrinthClient()
-
-    return downloadModrinthModpack(modrinth, modpacks, {
-      projectId: validateBoundedString(projectId, 'Modrinth project id', { maxLength: 128 }),
-      versionId: validateBoundedString(versionId, 'Modrinth version id', { maxLength: 128 }),
-      targetModpackId: validateOptionalBoundedString(targetModpackId, 'Target modpack id', { maxLength: 128 }),
-      rootPath: safeRootPath,
-      onProgress: (progress) => {
-        if (window && !window.isDestroyed()) {
-          window.webContents.send('modpacks:updateProgress', progress)
-        }
-      },
-    })
-  })
-
-  ipcMain.removeHandler('modpacks:exportFromInstance')
-  ipcMain.handle('modpacks:exportFromInstance', async (
-    _evt,
-    modpackId: unknown,
-    name: unknown,
-    version: unknown,
-    author?: unknown,
-    rootPath?: unknown,
-  ) => {
-    return modpacks.exportModpackFromInstance(
-      resolveRootPath(rootPath),
-      validateIdentifier(modpackId, 'Modpack id'),
-      validateBoundedString(name, 'Modpack name', { maxLength: 120 }),
-      validateBoundedString(version, 'Modpack version', { maxLength: 64 }),
-      validateOptionalBoundedString(author, 'Modpack author', { maxLength: 120 }),
-      modPlatforms,
     )
   })
 

@@ -122,4 +122,53 @@ describe('AccountService secret boundaries', () => {
     expect(reloadedService.getSelectedAccount()).toBeNull();
     expect(await reloadedService.ensureActiveAccountValid()).toBeNull();
   });
+
+  it('does not replace malformed account state with an empty account list', () => {
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    tempDirs.push(userDataPath);
+    const accountsPath = path.join(userDataPath, 'accounts.json');
+    fs.writeFileSync(accountsPath, '{malformed account state');
+    const original = fs.readFileSync(accountsPath);
+
+    expect(() => new AccountService(userDataPath)).toThrow(/recovery backup are unavailable/);
+    expect(fs.readFileSync(accountsPath)).toEqual(original);
+    expect(fs.existsSync(`${accountsPath}.bak`)).toBe(false);
+  });
+
+  it('rejects structurally invalid account entries instead of crashing during hydration', () => {
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    tempDirs.push(userDataPath);
+    const accountsPath = path.join(userDataPath, 'accounts.json');
+    fs.writeFileSync(accountsPath, JSON.stringify({
+      accounts: [null],
+      selectedAccountId: null,
+    }));
+    const original = fs.readFileSync(accountsPath);
+
+    expect(() => new AccountService(userDataPath)).toThrow(/recovery backup are unavailable/);
+    expect(fs.readFileSync(accountsPath)).toEqual(original);
+  });
+
+  it('recovers from a valid backup and preserves the corrupt primary for diagnosis', () => {
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    tempDirs.push(userDataPath);
+    const accountsPath = path.join(userDataPath, 'accounts.json');
+    fs.writeFileSync(accountsPath, '{malformed account state');
+    fs.writeFileSync(`${accountsPath}.bak`, JSON.stringify({
+      accounts: [{ id: 'offline-1', type: 'offline', name: 'Recovered Player' }],
+      selectedAccountId: 'offline-1',
+    }));
+
+    const service = new AccountService(userDataPath);
+
+    expect(service.getSelectedAccount()).toMatchObject({
+      id: 'offline-1',
+      name: 'Recovered Player',
+    });
+    expect(fs.readFileSync(`${accountsPath}.corrupt`, 'utf8')).toBe('{malformed account state');
+    expect(JSON.parse(fs.readFileSync(accountsPath, 'utf8'))).toMatchObject({
+      _fmclSchemaVersion: 1,
+      selectedAccountId: 'offline-1',
+    });
+  });
 });

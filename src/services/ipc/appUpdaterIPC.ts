@@ -1,13 +1,10 @@
 import { toIpcError } from './ipcError';
 
-type AppUpdaterApi = Window['appUpdater'];
-type NamespacedAppUpdaterApi = Window['api']['appUpdater'];
+type AppUpdaterApi = Window['api']['appUpdater'];
 
-function getAppUpdaterApi(): NamespacedAppUpdaterApi | AppUpdaterApi | undefined {
+function getAppUpdaterApi(): AppUpdaterApi | undefined {
   if (typeof window === 'undefined') return undefined;
-  if (window.api?.appUpdater) return window.api.appUpdater;
-  if (window.appUpdater) return window.appUpdater;
-  return undefined;
+  return window.api?.appUpdater;
 }
 
 function hasAppUpdater(): boolean {

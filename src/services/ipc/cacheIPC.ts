@@ -1,13 +1,10 @@
 import { toIpcError } from './ipcError';
 
-type CacheApi = Window['cache'];
-type NamespacedCacheApi = Window['api']['cache'];
+type CacheApi = Window['api']['cache'];
 
-function getCacheApi(): NamespacedCacheApi | CacheApi | undefined {
+function getCacheApi(): CacheApi | undefined {
   if (typeof window === 'undefined') return undefined;
-  if (window.api?.cache) return window.api.cache;
-  if (window.cache) return window.cache;
-  return undefined;
+  return window.api?.cache;
 }
 
 function hasCache(): boolean {

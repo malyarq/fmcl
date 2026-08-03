@@ -1,12 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
-import { ProgressBar } from '../ui/ProgressBar';
 import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
-import type { ModpackSearchResultItem, ModpackVersionDescriptor, ModpackInstallProgress } from '@shared/contracts';
+import type { ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import { ProviderInstallOperationState } from './ProviderInstallOperationState';
+import {
+  hasPublishedProviderInstance,
+  isPublishedProviderInstall,
+  isProviderInstallTerminal,
+  useProviderInstallOperation,
+} from './useProviderInstallOperation';
 
 interface InstallModpackModalProps {
   isOpen: boolean;
@@ -27,73 +33,30 @@ export const InstallModpackModal: React.FC<InstallModpackModalProps> = ({
   const [selectedVersion, setSelectedVersion] = useState<ModpackVersionDescriptor | null>(
     versions[0] || null
   );
-  const [installing, setInstalling] = useState(false);
-  const [progress, setProgress] = useState<ModpackInstallProgress | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const { operation, error, isActive, start, cancel } = useProviderInstallOperation(isOpen);
+  const completedOperationRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!operation || !isProviderInstallTerminal(operation) || completedOperationRef.current === operation.id) return;
+    completedOperationRef.current = operation.id;
+    if (!isPublishedProviderInstall(operation)) return;
 
-    // Слушать события прогресса установки
-    const handleProgress = (_event: unknown, ...args: unknown[]) => {
-      const progressData = args[0] as ModpackInstallProgress;
-      setProgress(progressData);
-    };
-
-    const ipcRenderer = window.api?.ipcRenderer;
-    if (ipcRenderer) {
-      ipcRenderer.on('modpacks:updateProgress', handleProgress);
+    if (hasPublishedProviderInstance(operation)) {
+      void modpacksIPC.setSelected(operation.result.instanceId).catch((nextError) => {
+        console.warn('Failed to select modpack:', nextError);
+      });
     }
-
-    return () => {
-      if (ipcRenderer) {
-        ipcRenderer.off('modpacks:updateProgress', handleProgress);
-      }
-    };
-  }, [isOpen]);
+    window.setTimeout(onClose, 2000);
+  }, [onClose, operation]);
 
   const handleInstall = async () => {
     if (!selectedVersion) return;
 
-    setInstalling(true);
-    setError(null);
-    setProgress({ downloaded: 0, total: 100, stage: t('modpacks.installing') });
-
-    try {
-      let result;
-
-      if (platform === 'curseforge') {
-        result = await modpacksIPC.installCurseForge(
-          Number(modpack.projectId),
-          Number(selectedVersion.versionId)
-        );
-      } else {
-        result = await modpacksIPC.installModrinth(
-          modpack.projectId,
-          selectedVersion.versionId
-        );
-      }
-
-      setSuccess(true);
-      // Select the newly installed modpack
-      try {
-        await modpacksIPC.setSelected(result.modpackId);
-      } catch (err) {
-        console.warn('Failed to select modpack:', err);
-      }
-      setTimeout(() => {
-        onClose();
-        setSuccess(false);
-        setInstalling(false);
-        setProgress(null);
-        // Optionally refresh modpack list or navigate
-        window.location.reload(); // Reload to show the new modpack
-      }, 2000);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('modpacks.install_error'));
-      setInstalling(false);
+    if (platform === 'curseforge') {
+      await start({ kind: 'install-curseforge', projectId: Number(modpack.projectId), fileId: Number(selectedVersion.versionId) });
+      return;
     }
+    await start({ kind: 'install-modrinth', projectId: modpack.projectId, versionId: selectedVersion.versionId });
   };
 
 
@@ -133,7 +96,7 @@ export const InstallModpackModal: React.FC<InstallModpackModalProps> = ({
               const version = versions.find((v) => v.versionId === e.target.value);
               setSelectedVersion(version || null);
             }}
-            disabled={installing}
+            disabled={isActive}
           >
             {versions.map((version) => (
               <option key={version.versionId} value={version.versionId}>
@@ -143,12 +106,11 @@ export const InstallModpackModal: React.FC<InstallModpackModalProps> = ({
           </Select>
         )}
 
-        {/* Version Info */}
-        {selectedVersion && (
+        {(selectedVersion ? (
           <div className="surface-soft grid grid-cols-2 gap-4 p-4">
             <div>
               <p className="helper-text mb-1">
-                {t('modpacks.minecraft_version')}
+                {String(t('modpacks.minecraft_version'))}
               </p>
               <p className="text-sm font-mono font-bold text-foreground">
                 {selectedVersion.mcVersions[0] || '—'}
@@ -156,58 +118,46 @@ export const InstallModpackModal: React.FC<InstallModpackModalProps> = ({
             </div>
             <div>
               <p className="helper-text mb-1">
-                {t('modpacks.loader')}
+                {String(t('modpacks.loader'))}
               </p>
               <p className="text-sm font-mono font-bold text-foreground">
                 {selectedVersion.loaders.join(', ') || '—'}
               </p>
             </div>
           </div>
-        )}
+        ) : null) as React.ReactNode}
 
-        {/* Progress */}
-        {installing && progress && (
-          <ProgressBar
-            value={progress.total > 0 ? (progress.downloaded / progress.total) * 100 : 0}
-            label={progress.stage}
-            valueLabel={progress.total > 0 ? `${Math.round((progress.downloaded / progress.total) * 100)}%` : '0%'}
-            animated
-          />
-        )}
+        {operation && <ProviderInstallOperationState operation={operation} t={t} />}
 
-        {/* Success Message */}
-        {success && (
-          <div className="rounded-lg border border-[rgb(var(--accent-main))]/25 bg-[rgb(var(--accent-main))]/10 p-3">
-            <p className="text-sm text-foreground">
-              {t('modpacks.install_success')}
-            </p>
-          </div>
-        )}
-
-        {/* Error Message */}
-        {error && (
+        {error ? (
           <div className="rounded-lg border border-[rgb(var(--color-error))]/25 bg-[rgb(var(--color-error))]/10 p-3">
-            <p className="text-sm text-[rgb(var(--color-error))]">{error}</p>
+            <p className="text-sm text-[rgb(var(--color-error))]">{error instanceof Error ? error.message : t('modpacks.install_error')}</p>
           </div>
-        )}
+        ) : null}
 
         {/* Action Buttons */}
         <div className="flex gap-3 pt-2">
           <Button
-            onClick={onClose}
+            onClick={() => {
+              if (isActive) void cancel();
+              else onClose();
+            }}
             variant="secondary"
-            disabled={installing}
+            disabled={operation?.status === 'cancelling'}
             className="flex-1"
           >
             {t('general.cancel')}
           </Button>
           <Button
-            onClick={handleInstall}
-            disabled={!selectedVersion || installing || success}
+            onClick={() => {
+              if (isActive) void cancel();
+              else void handleInstall();
+            }}
+            disabled={!selectedVersion || operation?.status === 'cancelling'}
             className={cn("flex-1 text-[rgb(var(--accent-content))]", getAccentStyles('bg').className)}
             style={getAccentStyles('bg').style}
           >
-            {installing ? t('modpacks.installing') : t('modpacks.install')}
+            {isActive ? t('general.cancel') : t('modpacks.install')}
           </Button>
         </div>
       </div>

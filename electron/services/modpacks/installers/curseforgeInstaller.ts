@@ -9,6 +9,8 @@ import { ensureDir } from '../../mods/platform/fsUtils';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { createModpackMetadataFromConfig } from '../storage';
 import { extractZipSafely, openValidatedZip } from '../../../security/archivePolicy';
+import { assertChildName, resolvePathWithinRoot } from '../../../security/pathGuards';
+import { assertPublicHttpsUrl } from '../../../security/remoteUrls';
 
 export interface CurseForgeModpackInstallOptions {
   projectId: number;
@@ -16,12 +18,14 @@ export interface CurseForgeModpackInstallOptions {
   targetModpackId?: string;
   rootPath?: string;
   onProgress?: (progress: { downloaded: number; total: number; stage: string }) => void;
+  checkCancelled?: () => void;
 }
 
 export interface CurseForgeModpackInstallResult {
   modpackId: string;
   config: unknown;
   metadata: ModpackMetadata;
+  missing: Array<{ path: string; reason: string }>;
 }
 
 /**
@@ -32,13 +36,15 @@ export async function downloadCurseForgeModpack(
   modpackService: ModpackService,
   options: CurseForgeModpackInstallOptions,
 ): Promise<CurseForgeModpackInstallResult> {
-  const { projectId, fileId, targetModpackId, rootPath, onProgress } = options;
+  const { projectId, fileId, targetModpackId, rootPath, onProgress, checkCancelled } = options;
+  const throwIfCancelled = () => checkCancelled?.();
   const root = rootPath ?? modpackService.getDefaultRootPath();
   modpackService.ensureModpacksMigrated(root);
 
   onProgress?.({ downloaded: 0, total: 100, stage: 'Получение информации о модпаке...' });
 
   // Получить информацию о файле модпака
+  throwIfCancelled();
   const modpackFile = await curseforge.getModFile(projectId, fileId);
   const downloadUrl = modpackFile.downloadUrl;
   if (!downloadUrl) {
@@ -57,10 +63,11 @@ export async function downloadCurseForgeModpack(
   try {
     const sha1 = modpackFile.hashes?.find((h) => h.algo === 1 /* sha1 */)?.value;
     await download({
-      url: downloadUrl,
+      url: assertPublicHttpsUrl(downloadUrl, 'CurseForge modpack download URL'),
       destination: tempZipPath,
       validator: sha1 ? { algorithm: 'sha1', hash: sha1 } : undefined,
     });
+    throwIfCancelled();
 
     onProgress?.({ downloaded: 30, total: 100, stage: 'Распаковка модпака...' });
 
@@ -109,29 +116,33 @@ export async function downloadCurseForgeModpack(
 
     const totalMods = manifest.files.length;
     let installedMods = 0;
+    const missing: Array<{ path: string; reason: string }> = [];
 
     for (const file of manifest.files) {
+      const missingPath = `curseforge:${file.projectID ?? 'missing'}/${file.fileID ?? 'missing'}`;
       if (!file.projectID || !file.fileID) {
-        console.warn(`Skipping mod: missing projectID or fileID`);
+        if (file.required) throw new Error(`Required CurseForge file is missing identifiers: ${missingPath}`);
+        missing.push({ path: missingPath, reason: 'provider file identifiers are missing' });
         continue;
       }
       try {
+        throwIfCancelled();
         const modFile = await curseforge.getModFile(file.projectID, file.fileID);
         const modDownloadUrl = modFile.downloadUrl;
         if (!modDownloadUrl) {
-          console.warn(`Skipping mod ${file.projectID}/${file.fileID}: no download URL`);
-          continue;
+          throw new Error('provider did not return a download URL');
         }
 
-        const modDestination = path.join(modsDir, modFile.fileName);
+        const modDestination = resolvePathWithinRoot(modsDir, assertChildName(modFile.fileName, 'CurseForge mod filename'), 'CurseForge mod destination');
         const modSha1 = modFile.hashes?.find((h) => h.algo === 1 /* sha1 */)?.value;
 
         await download({
-          url: modDownloadUrl,
+          url: assertPublicHttpsUrl(modDownloadUrl, `CurseForge mod ${file.projectID}/${file.fileID} download URL`),
           destination: modDestination,
           validator: modSha1 ? { algorithm: 'sha1', hash: modSha1 } : undefined,
         });
 
+        throwIfCancelled();
         installedMods++;
         onProgress?.({
           downloaded: 50 + Math.floor((installedMods / totalMods) * 40),
@@ -139,22 +150,24 @@ export async function downloadCurseForgeModpack(
           stage: `Установка модов (${installedMods}/${totalMods})...`,
         });
       } catch (error) {
-        console.error(`Failed to install mod ${file.projectID}/${file.fileID}:`, error);
-        // Продолжаем установку других модов даже если один не удался
+        if (file.required) throw error;
+        missing.push({ path: missingPath, reason: error instanceof Error ? error.message : 'optional provider download failed' });
       }
     }
 
     onProgress?.({ downloaded: 90, total: 100, stage: 'Копирование конфигов...' });
 
     // Скопировать overrides
-    const overridesDir = path.join(extractDir, manifest.overrides || 'overrides');
+    const overridesDir = resolvePathWithinRoot(extractDir, manifest.overrides || 'overrides', 'CurseForge overrides directory');
     if (fs.existsSync(overridesDir)) {
       // Рекурсивно скопировать все файлы из overrides
       const copyRecursive = (src: string, dest: string) => {
         const entries = fs.readdirSync(src, { withFileTypes: true });
         for (const entry of entries) {
-          const srcPath = path.join(src, entry.name);
-          const destPath = path.join(dest, entry.name);
+          throwIfCancelled();
+          const safeName = assertChildName(entry.name, 'CurseForge override entry');
+          const srcPath = resolvePathWithinRoot(src, safeName, 'CurseForge override source');
+          const destPath = resolvePathWithinRoot(dest, safeName, 'CurseForge override destination');
           if (entry.isDirectory()) {
             ensureDir(destPath);
             copyRecursive(srcPath, destPath);
@@ -201,6 +214,7 @@ export async function downloadCurseForgeModpack(
       modpackId,
       config,
       metadata: updatedMetadata,
+      missing,
     };
   } finally {
     // Удалить временные файлы

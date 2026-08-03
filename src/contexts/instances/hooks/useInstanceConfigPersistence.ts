@@ -23,35 +23,47 @@ export function useInstanceConfigPersistence(params: {
   const { rootPath, setConfig } = params;
 
   const saveTimer = useRef<number | null>(null);
-  const pendingCfg = useRef<ModpackConfig | null>(null);
+  const pendingSave = useRef<{ cfg: ModpackConfig; rootPath?: string } | null>(null);
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
 
-  const flushSave = useCallback(async () => {
-    const cfg = pendingCfg.current;
-    pendingCfg.current = null;
-    if (!cfg) return;
-    await saveModpackConfigSvc(cfg, rootPath);
-  }, [rootPath]);
+  const flushSave = useCallback((): Promise<void> => {
+    if (saveTimer.current) window.clearTimeout(saveTimer.current);
+    saveTimer.current = null;
+    const pending = pendingSave.current;
+    pendingSave.current = null;
+    if (!pending) return saveQueue.current;
+
+    const persist = () => saveModpackConfigSvc(pending.cfg, pending.rootPath);
+    saveQueue.current = saveQueue.current.then(persist, persist);
+    return saveQueue.current;
+  }, []);
 
   const scheduleSave = useCallback(
     (cfg: ModpackConfig) => {
-      pendingCfg.current = cfg;
+      pendingSave.current = { cfg, rootPath };
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
       saveTimer.current = window.setTimeout(() => {
         saveTimer.current = null;
         void flushSave();
       }, 250);
     },
-    [flushSave]
+    [flushSave, rootPath]
   );
 
-  // Best-effort cleanup to avoid leaving timers around on unmount.
+  // Flush the previous root before switching and flush pending work on unmount.
   useEffect(() => {
     return () => {
-      if (saveTimer.current) window.clearTimeout(saveTimer.current);
-      saveTimer.current = null;
-      pendingCfg.current = null;
+      void flushSave();
     };
-  }, []);
+  }, [flushSave, rootPath]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      void flushSave();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [flushSave]);
 
   const saveConfig = useCallback(
     async (cfg: ModpackConfig) => {
@@ -206,6 +218,6 @@ export function useInstanceConfigPersistence(params: {
     setGameExtraArgs,
     setGameResolution,
     setAutoConnectServer,
+    flushSave,
   };
 }
-

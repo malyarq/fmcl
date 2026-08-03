@@ -1,14 +1,9 @@
 import type { ShareAPI } from '@shared/contracts/share'
 import { toIpcError } from './ipcError'
 
-type NamespacedShareApi = Window['api']['share']
-type LegacyShareApi = Window['share']
-
-function getShareApi(): NamespacedShareApi | LegacyShareApi | undefined {
+function getShareApi(): ShareAPI | undefined {
   if (typeof window === 'undefined') return undefined
-  if (window.api?.share) return window.api.share
-  if (window.share) return window.share
-  return undefined
+  return window.api?.share
 }
 
 function requireShareApi(methodName: string): ShareAPI {

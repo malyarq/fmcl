@@ -22,6 +22,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref }}
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -47,6 +50,14 @@ jobs:
             echo "Invalid release tag: $VERSION" >&2
             exit 1
           fi
+          if ! git rev-parse --verify --quiet "refs/tags/$VERSION^{commit}" >/dev/null; then
+            echo "Release tag does not exist: $VERSION" >&2
+            exit 1
+          fi
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse "refs/tags/$VERSION^{commit}")" ]; then
+            echo "Checked out source does not match release tag: $VERSION" >&2
+            exit 1
+          fi
           VERSION_NUMBER=${VERSION#v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
@@ -65,6 +76,9 @@ jobs:
 
       - name: Typecheck
         run: npx tsc --noEmit
+
+      - name: Documentation check
+        run: npm run docs:check
 
       - name: Contracts check
         run: npm run contracts:check
@@ -93,6 +107,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -198,9 +214,8 @@ jobs:
             echo
             gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
               -f tag_name="$RELEASE_TAG" \
-              -f target_commitish="$GITHUB_SHA" \
               --jq '.body'
           } > release-notes.md
-          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "${RELEASE_TAG#v}" --notes-file release-notes.md --latest
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "${RELEASE_TAG#v}" --notes-file release-notes.md --latest
           gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file release-notes.md --latest
           gh release upload "$RELEASE_TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber

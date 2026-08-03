@@ -1,41 +1,12 @@
 import { toIpcError } from './ipcError';
+import type { DialogsAPI } from '@shared/contracts';
 
-export interface ShowSaveDialogOptions {
-  title?: string;
-  defaultPath?: string;
-  filters?: Array<{ name: string; extensions: string[] }>;
-}
-
-export interface ShowOpenDialogOptions {
-  title?: string;
-  filters?: Array<{ name: string; extensions: string[] }>;
-  properties?: Array<'openFile' | 'openDirectory' | 'multiSelections'>;
-}
-
-export interface SaveDialogResult {
-  canceled: boolean;
-  filePath?: string;
-}
-
-export interface OpenDialogResult {
-  canceled: boolean;
-  filePaths: string[];
-}
-
-type IpcRendererApi = Window['api']['ipcRenderer'];
-
-function getIpcRenderer(): IpcRendererApi | undefined {
-  if (typeof window === 'undefined') return undefined;
-  return window.api?.ipcRenderer;
-}
-
-function requireIpcRenderer(methodName: string): IpcRendererApi {
-  const ipc = getIpcRenderer();
-  if (!ipc) {
-    throw new Error(`[dialogIPC] ipcRenderer is not available (method: ${methodName})`);
-  }
-  return ipc;
-}
+export type {
+  OpenDialogResult,
+  SaveDialogResult,
+  ShowOpenDialogOptions,
+  ShowSaveDialogOptions,
+} from '@shared/contracts';
 
 async function call<T>(methodName: string, fn: () => Promise<T>): Promise<T> {
   try {
@@ -47,29 +18,21 @@ async function call<T>(methodName: string, fn: () => Promise<T>): Promise<T> {
   }
 }
 
-export const dialogIPC = {
-  showSaveDialog(options: ShowSaveDialogOptions): Promise<SaveDialogResult> {
-    return call('showSaveDialog', () => 
-      requireIpcRenderer('showSaveDialog').invoke<SaveDialogResult>('dialog:showSaveDialog', options)
-    );
+export const dialogIPC: DialogsAPI = {
+  showSaveDialog(options) {
+    return call('showSaveDialog', () => window.api.dialogs.showSaveDialog(options));
   },
 
-  showOpenDialog(options: ShowOpenDialogOptions): Promise<OpenDialogResult> {
-    return call('showOpenDialog', () => 
-      requireIpcRenderer('showOpenDialog').invoke<OpenDialogResult>('dialog:showOpenDialog', options)
-    );
+  showOpenDialog(options) {
+    return call('showOpenDialog', () => window.api.dialogs.showOpenDialog(options));
   },
 
-  getDesktopPath(): Promise<string> {
-    return call('getDesktopPath', () => 
-      requireIpcRenderer('getDesktopPath').invoke<string>('dialog:getDesktopPath')
-    );
+  getDesktopPath() {
+    return call('getDesktopPath', () => window.api.dialogs.getDesktopPath());
   },
 
-  saveFile(filePath: string, content: string): Promise<void> {
-    return call('saveFile', () =>
-      requireIpcRenderer('saveFile').invoke<void>('app:saveFile', filePath, content)
-    );
+  saveFile(filePath, content) {
+    return call('saveFile', () => window.api.dialogs.saveFile(filePath, content));
   },
 };
 

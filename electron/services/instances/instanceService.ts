@@ -10,10 +10,7 @@ import {
   getModpackDir,
   getModpacksIndexPath,
 } from './paths';
-import {
-  duplicateModpackMetadata,
-  syncRenamedModpackMetadata,
-} from '../modpacks/storage';
+import { syncRenamedModpackMetadata } from '../modpacks/storage';
 
 export type { ModpackConfig, ModpacksIndex, ModpackRuntime, ModLoaderType, NetworkMode } from './types';
 import { javaScanner, type DetectedJava } from '../java/javaScanner';
@@ -136,7 +133,7 @@ export class ModpackService {
     return { id, config: cfg };
   }
 
-  public deleteModpack(rootPath: string, modpackId: string) {
+  public cleanupFailedCreation(rootPath: string, modpackId: string): void {
     const idx = this.loadModpacksIndex(rootPath);
     if (!idx.modpacks[modpackId]) return;
 
@@ -192,58 +189,6 @@ export class ModpackService {
     this.saveModpackConfig(rootPath, cfg);
     syncRenamedModpackMetadata(rootPath, cfg);
     return { ok: true } as const;
-  }
-
-  /**
-   * Duplicate a modpack directory and config.
-   * By default copies full modpack directory (including mods/). Saves a new modpack.json with new id/name.
-   */
-  public duplicateModpack(rootPath: string, sourceId: string, name?: string) {
-    const idx = this.loadModpacksIndex(rootPath);
-    if (!idx.modpacks[sourceId]) throw new Error(`Modpack ${sourceId} not found`);
-    const sourceCfg = this.loadModpackConfig(rootPath, sourceId);
-
-    const baseName = (name?.trim() || `${sourceCfg.name} Copy`).trim();
-    const slug = baseName
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-      .slice(0, 40) || 'modpack-copy';
-
-    let id = slug;
-    let i = 2;
-    while (idx.modpacks[id]) id = `${slug}-${i++}`;
-
-    const srcDir = this.getModpackDir(rootPath, sourceId);
-    const dstDir = this.getModpackDir(rootPath, id);
-    fs.mkdirSync(dstDir, { recursive: true });
-    try {
-      // Node 16+ supports fs.cpSync
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
-      fs.cpSync(srcDir, dstDir, { recursive: true, force: true });
-    } catch {
-      // Fallback: at least ensure mods folder exists
-      fs.mkdirSync(path.join(dstDir, 'mods'), { recursive: true });
-    }
-
-    const now = new Date().toISOString();
-    const cfg: ModpackConfig = {
-      ...sourceCfg,
-      id,
-      name: baseName,
-      createdAt: now,
-      updatedAt: now,
-    };
-    this.saveModpackConfig(rootPath, cfg);
-
-    idx.modpacks[id] = { name: baseName };
-    idx.selectedModpack = id;
-    this.saveModpacksIndex(rootPath, idx);
-    duplicateModpackMetadata(rootPath, sourceId, cfg);
-
-    return { id, config: cfg } as const;
   }
 
   public async scanJava(): Promise<DetectedJava[]> {

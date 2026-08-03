@@ -2,7 +2,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Screenshot } from '../../../../../electron/services/screenshots/screenshotService';
+import type { Screenshot } from '@shared/types/screenshots';
 import { createTranslator } from '../../../../contexts/settings/i18n';
 import { ScreenshotsTab } from '../ScreenshotsTab';
 

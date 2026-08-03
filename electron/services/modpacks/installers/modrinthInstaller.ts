@@ -9,6 +9,8 @@ import { ensureDir } from '../../mods/platform/fsUtils';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { createModpackMetadataFromConfig } from '../storage';
 import { extractZipSafely, openValidatedZip } from '../../../security/archivePolicy';
+import { assertChildName, resolvePathWithinRoot } from '../../../security/pathGuards';
+import { assertPublicHttpsUrl } from '../../../security/remoteUrls';
 
 export interface ModrinthModpackInstallOptions {
   projectId: string;
@@ -16,12 +18,14 @@ export interface ModrinthModpackInstallOptions {
   targetModpackId?: string;
   rootPath?: string;
   onProgress?: (progress: { downloaded: number; total: number; stage: string }) => void;
+  checkCancelled?: () => void;
 }
 
 export interface ModrinthModpackInstallResult {
   modpackId: string;
   config: unknown;
   metadata: ModpackMetadata;
+  missing: Array<{ path: string; reason: string }>;
 }
 
 /**
@@ -32,13 +36,15 @@ export async function downloadModrinthModpack(
   modpackService: ModpackService,
   options: ModrinthModpackInstallOptions,
 ): Promise<ModrinthModpackInstallResult> {
-  const { projectId, versionId, targetModpackId, rootPath, onProgress } = options;
+  const { projectId, versionId, targetModpackId, rootPath, onProgress, checkCancelled } = options;
+  const throwIfCancelled = () => checkCancelled?.();
   const root = rootPath ?? modpackService.getDefaultRootPath();
   modpackService.ensureModpacksMigrated(root);
 
   onProgress?.({ downloaded: 0, total: 100, stage: 'Получение информации о модпаке...' });
 
   // Получить информацию о версии модпака
+  throwIfCancelled();
   const version = await modrinth.getProjectVersion(versionId);
   if (!version.files || version.files.length === 0) {
     throw new Error('Modrinth modpack version has no files');
@@ -62,10 +68,11 @@ export async function downloadModrinthModpack(
   try {
     const sha1 = mrpackFile.hashes?.sha1;
     await download({
-      url: mrpackFile.url,
+      url: assertPublicHttpsUrl(mrpackFile.url, 'Modrinth modpack download URL'),
       destination: tempZipPath,
       validator: sha1 ? { algorithm: 'sha1', hash: sha1 } : undefined,
     });
+    throwIfCancelled();
 
     onProgress?.({ downloaded: 30, total: 100, stage: 'Распаковка модпака...' });
 
@@ -117,38 +124,33 @@ export async function downloadModrinthModpack(
     // Установить все файлы из манифеста
     const totalFiles = manifest.files.length;
     let installedFiles = 0;
+    const missing: Array<{ path: string; reason: string }> = [];
 
     for (const file of manifest.files) {
       try {
+        throwIfCancelled();
         // Определить путь назначения относительно корня модпака
         const filePath = file.path || '';
         if (!filePath) {
-          console.warn('Skipping file with no path');
-          continue;
+          throw new Error('provider file path is missing');
         }
 
-        // Проверка безопасности пути
-        if (filePath.includes('..') || filePath.startsWith('/') || filePath.startsWith('\\')) {
-          console.warn(`Skipping unsafe file path: ${filePath}`);
-          continue;
-        }
-
-        const destination = path.join(modpackDir, filePath);
+        const destination = resolvePathWithinRoot(modpackDir, filePath, 'Modrinth provider file destination');
         ensureDir(path.dirname(destination));
 
         // Скачать файл
         if (!file.downloads || file.downloads.length === 0) {
-          console.warn(`Skipping file ${filePath}: no download URLs`);
-          continue;
+          throw new Error('provider did not return a download URL');
         }
 
         const sha1 = file.hashes?.sha1;
         await download({
-          url: file.downloads,
+          url: file.downloads.map((url) => assertPublicHttpsUrl(url, `Modrinth file ${filePath} download URL`)),
           destination,
           validator: sha1 ? { algorithm: 'sha1', hash: sha1 } : undefined,
         });
 
+        throwIfCancelled();
         installedFiles++;
         onProgress?.({
           downloaded: 50 + Math.floor((installedFiles / totalFiles) * 40),
@@ -156,8 +158,8 @@ export async function downloadModrinthModpack(
           stage: `Установка файлов (${installedFiles}/${totalFiles})...`,
         });
       } catch (error) {
-        console.error(`Failed to install file ${file.path}:`, error);
-        // Продолжаем установку других файлов даже если один не удался
+        if (file.required) throw error;
+        missing.push({ path: file.path || 'missing-path', reason: error instanceof Error ? error.message : 'optional provider download failed' });
       }
     }
 
@@ -169,8 +171,10 @@ export async function downloadModrinthModpack(
       const copyRecursive = (src: string, dest: string) => {
         const entries = fs.readdirSync(src, { withFileTypes: true });
         for (const entry of entries) {
-          const srcPath = path.join(src, entry.name);
-          const destPath = path.join(dest, entry.name);
+          throwIfCancelled();
+          const safeName = assertChildName(entry.name, 'Modrinth override entry');
+          const srcPath = resolvePathWithinRoot(src, safeName, 'Modrinth override source');
+          const destPath = resolvePathWithinRoot(dest, safeName, 'Modrinth override destination');
           if (entry.isDirectory()) {
             ensureDir(destPath);
             copyRecursive(srcPath, destPath);
@@ -219,6 +223,7 @@ export async function downloadModrinthModpack(
       modpackId,
       config,
       metadata: updatedMetadata,
+      missing,
     };
   } finally {
     // Удалить временные файлы

@@ -5,7 +5,7 @@ import { Button } from '../../../components/ui/Button';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { useConfirm } from '../../../contexts/ConfirmContext';
-import type { Screenshot } from '../../../../electron/services/screenshots/screenshotService';
+import type { Screenshot } from '@shared/types/screenshots';
 import { screenshotsIPC } from '../../../services/ipc/screenshotsIPC';
 
 interface ScreenshotLightboxProps {

@@ -5,7 +5,7 @@ import type { Account, Mirror, ModpackManifest, ModpackMetadata, StatisticsOverv
 import type { ModEntry } from '@shared/types/mods';
 import type { ResourcePack } from '@shared/types/resourcePack';
 import type { ModpackConfig } from '../../contexts/instances/types';
-import type { Screenshot } from '../../../electron/services/screenshots/screenshotService';
+import type { Screenshot } from '@shared/types/screenshots';
 import { APP_ICON_PATH } from '../../app/assets/branding';
 
 const ICON_PATH = APP_ICON_PATH;
@@ -1039,33 +1039,6 @@ export function installManualVerificationEnvironment() {
       }
       return { ok: true };
     },
-    duplicateModpack: async (sourceId: string, name?: string) => {
-      const source = findConfig(state, sourceId);
-      if (!source) {
-        return { id: '' };
-      }
-      const id = `${sourceId}-copy`;
-      const duplicated: ModpackConfig = {
-        ...structuredClone(source),
-        id,
-        name: name?.trim() || `${source.name} Copy`,
-      };
-      state.modpacks.push(duplicated);
-      state.metadata[id] = {
-        ...structuredClone(state.metadata[sourceId] ?? baseMetadata.alpha),
-        id,
-        name: duplicated.name,
-      };
-      return { id, config: structuredClone(duplicated) };
-    },
-    deleteModpack: async (modpackId: string) => {
-      state.modpacks = state.modpacks.filter((cfg) => cfg.id !== modpackId);
-      delete state.metadata[modpackId];
-      if (state.selectedModpackId === modpackId) {
-        state.selectedModpackId = state.modpacks[0]?.id ?? 'classic';
-      }
-      return { ok: true };
-    },
     getModpackConfig: async (modpackId: string) => structuredClone(findConfig(state, modpackId)),
     saveModpackConfig: async (cfg: unknown) => {
       const nextConfig = cfg as ModpackConfig;
@@ -1085,30 +1058,13 @@ export function installManualVerificationEnvironment() {
       createSearchResponse(query, offset, limit, view),
     getCurseForgeModpackVersions: async () => structuredClone(modpackVersions),
     getModrinthModpackVersions: async () => structuredClone(modpackVersions),
-    installCurseForgeModpack: async () => ({
-      modpackId: 'alpha',
-      config: structuredClone(getConfigsForView(view).alpha),
-      metadata: structuredClone(getMetadataForView(view).alpha),
-    }),
-    installModrinthModpack: async () => ({
-      modpackId: 'alpha',
-      config: structuredClone(getConfigsForView(view).alpha),
-      metadata: structuredClone(getMetadataForView(view).alpha),
-    }),
-    exportModpackFromInstance: async () => structuredClone(getMetadataForView(view).alpha),
     createLocalModpack: async () => ({
       id: 'alpha',
       config: structuredClone(getConfigsForView(view).alpha),
       metadata: structuredClone(getMetadataForView(view).alpha),
     }),
     createFromManifest: async () => ({ id: 'alpha' }),
-    exportModpack: async () => ({ ok: true }),
     getModpackInfoFromFile: async () => ({ format: 'modrinth' as const, manifest: structuredClone(sharedManifest) }),
-    importModpack: async () => ({
-      id: 'alpha',
-      config: structuredClone(getConfigsForView(view).alpha),
-      metadata: structuredClone(getMetadataForView(view).alpha),
-    }),
     addModToModpack: async () => ({ ok: true }),
     removeModFromModpack: async () => ({ ok: true }),
     setModEnabled: async () => ({ ok: true }),
@@ -1316,73 +1272,37 @@ export function installManualVerificationEnvironment() {
     isAutoSelectEnabled: async () => false,
   };
 
-  const ipcRenderer = {
-    invoke: async <T,>(channel: string, ..._args: unknown[]): Promise<T> => {
-      if (channel === 'dialog:showSaveDialog') {
-        return {
-          canceled: false,
-          filePath: `${DESKTOP_PATH}/alpha-pack.zip`,
-        } as T;
-      }
-      if (channel === 'dialog:showOpenDialog') {
-        return {
-          canceled: true,
-          filePaths: [],
-        } as T;
-      }
-      if (channel === 'dialog:getDesktopPath') {
-        return DESKTOP_PATH as T;
-      }
-      if (channel === 'modpacks:resolvePath') {
-        const [modpackId] = _args as [string];
-        return `/mock/.minecraft/instances/${modpackId}` as T;
-      }
-      if (channel === 'datapacks:list') {
-        return structuredClone(installedDatapacks) as T;
-      }
-      if (channel === 'datapacks:enable' || channel === 'datapacks:disable' || channel === 'datapacks:delete') {
-        return { ok: true } as T;
-      }
-      if (channel === 'datapacks:search') {
-        return structuredClone(datapackSearchResults) as T;
-      }
-      if (channel === 'datapacks:getVersions') {
-        return [{ id: 'immersive-world-events-1.0.0' }] as T;
-      }
-      if (channel === 'datapacks:install') {
-        return { ok: true } as T;
-      }
-      if (channel === 'resourcePacks:list') {
-        return getResourcePacksForView(view) as T;
-      }
-      if (
-        channel === 'resourcePacks:enable'
-        || channel === 'resourcePacks:disable'
-        || channel === 'resourcePacks:reorder'
-        || channel === 'resourcePacks:delete'
-      ) {
-        return { ok: true } as T;
-      }
-      if (channel === 'resourcePacks:add' || channel === 'resourcePacks:import') {
-        return createResourcePackAcquisitionResult(view) as T;
-      }
-      if (channel === 'shaders:list') {
-        return getShadersForView() as T;
-      }
-      if (channel === 'shaders:disable' || channel === 'shaders:setActive' || channel === 'shaders:openFolder') {
-        return undefined as T;
-      }
-      if (channel === 'shaders:delete') {
-        return true as T;
-      }
-      if (channel === 'shaders:add') {
-        return createShaderAcquisitionResult() as T;
-      }
-      throw new Error(`Unhandled manual verification ipc channel: ${channel}`);
-    },
-    on: () => undefined,
-    off: () => undefined,
-    send: () => undefined,
+  const dialogsApi = {
+    showSaveDialog: async () => ({
+      canceled: false,
+      filePath: `${DESKTOP_PATH}/alpha-pack.zip`,
+    }),
+    showOpenDialog: async () => ({ canceled: true, filePaths: [] }),
+    getDesktopPath: async () => DESKTOP_PATH,
+    saveFile: async () => ({ ok: true }),
+  };
+
+  const worldsApi = {
+    list: async () => [{
+      name: 'Alpha World',
+      folderName: 'AlphaWorld',
+      lastPlayed: hoursAgo(2),
+      sizeBytes: 128 * 1024 * 1024,
+    }],
+    delete: async () => undefined,
+    backup: async (folderName: string) => `${DESKTOP_PATH}/${folderName}.zip`,
+    duplicate: async (folderName: string) => `${folderName}-copy`,
+    openFolder: async () => undefined,
+  };
+
+  const datapacksApi = {
+    list: async () => structuredClone(installedDatapacks),
+    enable: async () => ({ ok: true }),
+    disable: async () => ({ ok: true }),
+    delete: async () => ({ ok: true }),
+    search: async () => structuredClone(datapackSearchResults),
+    install: async () => ({ ok: true }),
+    getVersions: async () => [{ id: 'immersive-world-events-1.0.0' }],
   };
 
   const windowControls = {
@@ -1392,8 +1312,46 @@ export function installManualVerificationEnvironment() {
     closeConsole: () => Promise.resolve(),
   };
 
+  let nextOperationId = 0;
+  const operationSnapshots = new Map<string, Record<string, unknown>>();
+  const operations = {
+    start: async (request: { kind: string; instanceId?: string }) => {
+      const id = `manual-operation-${++nextOperationId}`;
+      if (request.kind === 'delete' && request.instanceId) {
+        state.modpacks = state.modpacks.filter((cfg) => cfg.id !== request.instanceId);
+        delete state.metadata[request.instanceId];
+        if (state.selectedModpackId === request.instanceId) {
+          state.selectedModpackId = state.modpacks[0]?.id ?? 'classic';
+        }
+      }
+      const snapshot = {
+        id,
+        kind: request.kind,
+        status: request.kind === 'delete' ? 'succeeded' : 'queued',
+        phase: request.kind === 'delete' ? 'completed' : 'started',
+        progress: { completed: request.kind === 'delete' ? 1 : 0, total: 1 },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        result: request.kind === 'delete' && request.instanceId
+          ? { status: 'succeeded', instanceId: request.instanceId }
+          : undefined,
+      };
+      operationSnapshots.set(id, snapshot);
+      return snapshot;
+    },
+    get: async (operationId: string) => operationSnapshots.get(operationId) ?? null,
+    listRecovered: async () => [],
+    cancel: async () => ({ cancelled: false }),
+    subscribe: async (operationId: string, listener: (snapshot: unknown) => void) => {
+      const snapshot = operationSnapshots.get(operationId);
+      if (snapshot) listener(snapshot);
+      return () => undefined;
+    },
+  };
+
   const api = {
     modpacks: modpacksApi,
+    operations,
     account: accountApi,
     externalLinks: externalLinksApi,
     mods: modsApi,
@@ -1403,27 +1361,21 @@ export function installManualVerificationEnvironment() {
     windowControls,
     resourcePacks: resourcePacksApi,
     shaders: shadersApi,
-    ipcRenderer,
+    dialogs: dialogsApi,
+    worlds: worldsApi,
+    datapacks: datapacksApi,
+    screenshots: {
+      list: async () => {
+        if (view === PHASE_24_DEGRADED_CLOSEOUT_VIEW) {
+          throw new Error('[IPC] screenshots failed: Screenshots folder unavailable');
+        }
+        return structuredClone(screenshots);
+      },
+      delete: async () => ({ ok: true }),
+      rename: async () => ({ ok: true }),
+      openFolder: async () => ({ ok: true }),
+    },
   } as unknown as FriendLauncherApi;
 
   window.api = api;
-  (window as typeof window & { ipcRenderer?: typeof ipcRenderer }).ipcRenderer = ipcRenderer;
-  window.modpacks = modpacksApi as unknown as Window['modpacks'];
-  window.account = accountApi as unknown as Window['account'];
-  window.externalLinks = externalLinksApi as unknown as Window['externalLinks'];
-  window.mods = modsApi as unknown as Window['mods'];
-  window.mirrors = mirrorsApi as unknown as Window['mirrors'];
-  window.share = shareApi as unknown as Window['share'];
-  window.screenshots = {
-    list: async () => {
-      if (view === PHASE_24_DEGRADED_CLOSEOUT_VIEW) {
-        throw new Error('[IPC] screenshots failed: Screenshots folder unavailable');
-      }
-      return structuredClone(screenshots);
-    },
-    delete: async () => ({ ok: true }),
-    rename: async () => ({ ok: true }),
-    openFolder: async () => ({ ok: true }),
-  };
-  window.windowControls = windowControls;
 }

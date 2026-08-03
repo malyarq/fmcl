@@ -1,93 +1,124 @@
-## Архитектура (Русский)
+# Архитектура
 
-FriendLauncher — это **Electron** приложение с **React (Vite)** renderer’ом. Важно держать границы слоёв жёсткими:
+FriendLauncher — десктопное Electron-приложение с React renderer, который собирается через Vite. Архитектура не даёт веб-интерфейсу прямой доступ к Node.js и возможностям операционной системы.
 
-- **Electron main process (`electron/`)**: доступ к ОС, файловой системе, сети, запуск игры.
-- **Preload (`electron/preload.ts` + `electron/preload/bridges/*`)**: *единственное* место, где renderer получает API через `contextBridge`.
-- **Renderer (`src/`)**: UI/состояние. Никаких импортов Node/Electron.
+```mermaid
+flowchart LR
+  UI["React renderer\nsrc/"] --> W["Типизированные обёртки\nsrc/services/ipc/"]
+  W --> P["Preload bridges\nelectron/preload/"]
+  P --> I["IPC handlers и валидация\nelectron/ipc/"]
+  I --> S["Доменные сервисы\nelectron/services/"]
+  S --> OS["Файловая система, сеть, Java, Electron API"]
+  C["Общие контракты\nshared/contracts/"] -. типы .-> W
+  C -. типы .-> P
+  C -. типы .-> I
+```
 
----
+## Границы процессов
 
-## Правила слоёв (самое важное)
+### Renderer (`src/`)
 
-- **Renderer не должен дергать IPC-каналы напрямую**.
-  - Используем обёртки `src/services/ipc/*` (типизация, единая обработка ошибок).
-- В новом коде предпочитаем `window.api.*` (namespaced preload surface) вместо legacy `window.*` глобалов.
-- **Сервисы не должны импортировать IPC wiring**.
-  - IPC — это “проводка”, бизнес-логика живёт в сервисах.
-- **Renderer не привязываем к структуре Electron-папок**.
-  - Renderer общается через `window.*` (preload) или `src/services/ipc/*`.
+Renderer отвечает за интерфейс, локальное состояние представления, переводы и координацию пользовательских сценариев. Он работает с `nodeIntegration: false`, `contextIsolation: true` и включённым Electron sandbox.
 
----
+Правила:
 
-## Multi-instance заметки
+- Не импортировать Node.js или Electron.
+- Не обращаться к файловой системе или сети через случайные browser globals.
+- Использовать обёртки `src/services/ipc/*`; не размазывать вызовы `window.api.*` по компонентам.
+- Любую пользовательскую строку добавлять и в `src/locales/en.json`, и в `src/locales/ru.json`.
 
-- Приложение может запускаться в нескольких инстансах (dev или prod). Для второго инстанса `userData` получает суффикс (например `_2`).
-- **Не используем жёстко фиксированные порты**. Любые локальные сервера должны выводить порт из “слота” инстанса.
-  - Пример: локальный auth mock (для `authlib-injector`) слушает:
-    - slot 1: `http://127.0.0.1:25530`
-    - slot 2: `http://127.0.0.1:25531`
-    - и т.д.
+### Preload (`electron/preload.ts`, `electron/preload/bridges/`)
 
----
+Preload — граница возможностей между renderer и main process. Он экспортирует ровно один global — `window.api` из `shared/contracts/windowApi.ts`. Каждая возможность описана узким доменным контрактом; raw-методы `invoke`, `send`, `on` и `off` renderer-коду не доступны.
 
-## Где что лежит сейчас
+### Main process (`electron/`)
 
-### Electron
+Main process отвечает за окна, lifecycle, нативные диалоги, Java-процессы, загрузки, архивы, аккаунты, игровые файлы, обновления и multiplayer networking.
 
-- **IPC wiring**: `electron/ipc/ipcManager.ts`
-- **IPC handlers по доменам**: `electron/ipc/handlers/*Handlers.ts`
-- **Троттлинг логов**: `electron/ipc/logThrottler.ts`
-- **Preload surface**:
-  - сборщик: `electron/preload.ts`
-  - домены: `electron/preload/bridges/*Bridge.ts`
-- **Утилиты (низкоуровневое/инфра)**: `electron/utils/*`
-- **Launcher-домен**: `electron/services/launcher/*` (инсталлеры/типы/launch flow)
-  - Forge-хелперы: `electron/services/launcher/forge/*`
-  - Инсталлеры модлоадеров: `electron/services/launcher/modLoaders/*`
-- **Network-домен (Hyperswarm core + helpers)**: `electron/services/network/*`
-  - core: `electron/services/network/networkManager.ts`
-  - helpers: `electron/services/network/{hostPeer,joinPeer,muxer,types}.ts`
-- **Сервисы (домены)**: `electron/services/*` (download/modpacks/java/launcher/mirrors/mods/network/runtime/updater/versions)
-  - modpacks разнесён: `electron/services/instances/{paths,types,indexStore,configStore}.ts` (примечание: имя папки оставлено для совместимости, но сервис - ModpackService)
-  - mods platform разнесён: `electron/services/mods/platform/{loaderMapping,modrinthUtils,fsUtils}.ts`
+- `electron/app/` — bootstrap, lifecycle, сборка сервисов, full-install harness
+- `electron/window/` — безопасное создание BrowserWindow и защита навигации
+- `electron/ipc/` — регистрация handlers и проверка данных на границе процесса
+- `electron/security/` — правила для путей, URL, архивов, permissions и save-path
+- `electron/services/` — доменная логика
+- `electron/preload/` — типизированные возможности для renderer
 
-### Renderer
+IPC handler валидирует неизвестные входные данные и передаёт работу сервису. Сервисы не должны импортировать регистрацию handler или preload.
 
-- **Слой IPC (предпочтительно)**: `src/services/ipc/*`
-- **Сервисы (чистые, без React)**: `src/services/*` (например `src/services/versions/*`)
-- **UI**: `src/components/*`
-  - настройки разнесены: `src/components/settings/tabs/*` + `src/components/settings/utils/*`
-  - заголовок табов настроек: `src/components/settings/SettingsTabsHeader.tsx`
-  - части layout: `src/components/layout/*`
-  - части sidebar: `src/components/sidebar/*`
-- **Состояние (contexts)**:
-  - обёртки: `src/contexts/*Context.tsx`
-  - доменные модули: `src/contexts/instances/*` (примечание: имя папки оставлено, но контекст - ModpackContext), `src/contexts/settings/*`
-- **App composition**:
-  - корень: `src/App.tsx`
-  - app-хуки: `src/app/hooks/*`
+### Общие контракты (`shared/`)
 
----
+- `shared/contracts/*` описывает preload-интерфейсы и IPC DTO.
+- `shared/contracts/ipcChannels.ts` содержит allowlist каналов.
+- `shared/contracts/windowApi.ts` задаёт поддерживаемый `window.api`.
+- `shared/types/*` содержит доменные данные, общие для процессов.
 
-## Направление зависимостей (безопасный дефолт)
+Не создавайте отдельную копию cross-process типа в renderer или main process.
 
-Electron:
+## Основные домены
 
-- `electron/ipc/*` → `electron/services/*`, `electron/* managers`
-- `electron/app/*` (bootstrap/lifecycle) → `electron/services/*`, `electron/utils/*`
-- `electron/services/*` → **не импортируют** из `electron/ipc/*` и `electron/preload/*` (wiring остаётся “тонким”)
-- `electron/utils/*` → низкоуровневые патчи/хелперы без доменной логики
+| Домен | Main process | Renderer |
+| --- | --- | --- |
+| Запуск и Java | `electron/services/launcher/`, `electron/services/java/` | `src/features/launcher/`, `src/components/SimplePlayDashboard.tsx` |
+| Инстансы модпаков | базовый filesystem/index сервис в `electron/services/instances/`; расширенный фасад import, metadata, content и export в `electron/services/modpacks/` | `src/components/modpacks/`, `src/features/modpacks/`, `src/contexts/ModpackContext.tsx` |
+| Моды и провайдеры | `electron/services/mods/` | экраны контента и `src/services/ipc/modsIPC.ts` |
+| Аккаунты | `electron/services/account/` | `src/features/accounts/` |
+| Мультиплеер | `electron/services/network/` | `src/features/multiplayer/` |
+| Обновления | `electron/services/updater/` | `src/features/updater/` |
+| Контент | `electron/services/{resourcePacks,shaders,worlds,screenshots,content}/` | функции контента внутри modpack details |
 
-Renderer:
+Расширенный `electron/services/modpacks/modpackService.ts` сейчас наследует низкоуровневый instance service. Это совместимый переходный слой, а не приглашение добавлять в фасад новые обязанности.
 
-- `src/components/*`, `src/contexts/*`, `src/features/*/hooks/*`, `src/app/hooks/*` → `src/services/ipc/*` → `window.*` (preload)
+## Устойчивое локальное состояние
 
----
+Управляемые JSON-файлы состояния используют версионируемый `AtomicJsonStore` из `electron/services/storage/`. Запись сначала создаётся рядом с целевым файлом, синхронизируется и публикуется атомарным rename; предыдущий корректный документ сохраняется в `.bak`. Повреждённый или неподдерживаемый документ не заменяется пустым значением и остаётся доступен для восстановления. Пересоздаваемые кэши и сторонние форматы Minecraft намеренно не входят в этот контракт.
 
-## Имена и владение
+Install, import, update и разрушительные операции над несколькими файлами проходят через stage, journal и recovery operation engine. Атомарность отдельного control file дополняет, но не заменяет журналируемый сценарий с каталогами. Archive export — намеренное исключение для внешнего пути: после перезапуска операция становится `recovery-required` и сохраняет все артефакты, потому что недоверенный journal не может восстановить истёкшее разрешение native dialog на запись.
 
-- **Имена IPC каналов** — часть публичного API: менять их = breaking change.
-- **`window.*` API** — часть публичного API: менять имена/сигнатуры = breaking change.
-- Каноничная карта контрактов: `docs/ru/contracts-map.md` и `docs/en/contracts-map.md`.
+### Протокол root mutation lock
 
+Разрушительные root-wide операции используют протокол v3 в `.fmcl-operations/locks`. Неизменяемые записи Lamport bakery (`choosing` и `ticket`) выбирают одного writer; каждая запись содержит случайный token и уникальный путь к локальному Node socket процесса-владельца. Contender удаляет запись только когда socket однозначно отказал или отклонил этот token. Таймауты и другие неоднозначные ошибки локальной сети считаются live и блокируют операцию. Смерть token никогда не разрешает удалять общий endpoint процесса. После `SIGKILL` в системной временной папке может остаться неактивная запись socket со случайным именем; она не переиспользуется. Поэтому протокол не опирается на PID reuse или прошедшее время и безопасен при suspend процесса.
+
+После победы в bakery writer удерживает атомарно опубликованный canonical bridge `mutation.lock` весь callback. Это не позволяет обычному живому старому O_EXCL owner работать одновременно с v3 callback. Marker `mutation.lock.v3` задаёт границу offline upgrade: перед обновлением до v3, откатом версии или смешиванием сборок остановите все процессы FMCL, которые используют один custom launcher root. V3 не reclaim-ит pre-v3 canonical marker: операция fail-closed завершается `ROOT_LOCK_OFFLINE_UPGRADE_REQUIRED`. Гонки stale-reclaimer из pre-v3 явно не поддерживаются.
+
+## Направление зависимостей
+
+Нормальное направление:
+
+```text
+renderer component/context
+  -> renderer IPC wrapper
+  -> preload contract/bridge
+  -> validated IPC handler
+  -> domain service
+  -> operating system или внешний провайдер
+```
+
+Обратные импорты запрещены. Доменные сервисы не должны импортировать renderer, preload или регистрацию IPC.
+
+## Инварианты безопасности
+
+- Данные renderer считаются недоверенными на входе main process.
+- Пути разрешаются через общие path guards и остаются внутри одобренного root.
+- Удалённые URL проходят общую policy, архивы — единую archive policy.
+- Секреты аккаунтов остаются в main process и шифруются Electron `safeStorage`, когда он доступен.
+- Навигация на внешние адреса блокируется внутри приложения и проходит через проверяемый external-link handler.
+- Обновление приложения скачивается только после согласия пользователя.
+
+Подробности: [модель безопасности](security.md) и [известные проблемы](known-issues.md).
+
+## Несколько инстансов в разработке
+
+В dev можно запустить второй локальный инстанс с суффиксом в Electron `userData`. Порты локальных helper-сервисов зависят от номера инстанса; не добавляйте новый фиксированный порт в обход этой схемы.
+
+## Изменение cross-process функции
+
+Проверьте весь путь:
+
+1. общий тип или контракт;
+2. preload bridge и тип `window.api`;
+3. валидацию и handler в main process;
+4. доменный сервис;
+5. renderer-обёртку;
+6. UI и тесты;
+7. обе карты контрактов, если меняется канал.
+
+Перед ревью запустите `npm run contracts:check`, `npm run ipc:check`, `npm run architecture:check` и релевантные тесты.
