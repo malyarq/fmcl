@@ -28,7 +28,7 @@ async function waitForVerificationReady(page: Page, viewId: string) {
     .toBe('ready');
 }
 
-test.describe('v0.5.0 closeout screenshots', () => {
+test.describe('current release-candidate closeout screenshots', () => {
   for (const view of PLAYWRIGHT_CLOSEOUT_VIEWS) {
     test(view.id, async ({ page }) => {
       await page.setViewportSize(getViewport(view.viewport));

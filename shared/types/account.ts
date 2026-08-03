@@ -1,5 +1,8 @@
 export type AccountType = 'offline' | 'third-party';
-export type AccountDisabledReason = 'insecureRemoteHttp';
+export type AccountDisabledReason =
+    | 'insecureRemoteHttp'
+    | 'secureStorageUnavailable'
+    | 'reauthenticationRequired';
 export type AccountSkinProvider = 'blessing-skin' | 'littleskin';
 
 export interface AuthProfile {
@@ -16,8 +19,6 @@ export interface Account {
     // For Third-Party (Authlib Injector)
     authServerUrl?: string; // The API root URL
     loginIdentity?: string;
-    accessToken?: string;
-    clientToken?: string;
     user?: {
         id: string;
         properties?: Array<{ name: string; value: string }>;

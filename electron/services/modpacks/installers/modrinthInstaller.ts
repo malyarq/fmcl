@@ -2,13 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { download } from '@xmcl/file-transfer';
-import AdmZip from 'adm-zip';
 import { ModrinthV2Client } from '@xmcl/modrinth';
 import { ModpackService } from '../modpackService';
 import { parseModrinthManifest } from '../parsers/modrinthParser';
 import { ensureDir } from '../../mods/platform/fsUtils';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { createModpackMetadataFromConfig } from '../storage';
+import { extractZipSafely, openValidatedZip } from '../../../security/archivePolicy';
 
 export interface ModrinthModpackInstallOptions {
   projectId: string;
@@ -70,9 +70,13 @@ export async function downloadModrinthModpack(
     onProgress?.({ downloaded: 30, total: 100, stage: 'Распаковка модпака...' });
 
     // Распаковать .mrpack (это ZIP архив)
-    const zip = new AdmZip(tempZipPath);
+    const zip = await openValidatedZip(tempZipPath, 'Modrinth modpack');
     const extractDir = path.join(tempDir, 'extracted');
-    zip.extractAllTo(extractDir, true);
+    try {
+      await extractZipSafely(zip, extractDir);
+    } finally {
+      zip.close();
+    }
 
     onProgress?.({ downloaded: 40, total: 100, stage: 'Парсинг манифеста...' });
 

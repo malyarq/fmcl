@@ -362,6 +362,13 @@ describe('secondary content tabs', () => {
     expect(screen.getByText('Beta Tweaks')).toBeTruthy();
     expect(screen.getByText('Gamma Runtime')).toBeTruthy();
 
+    const controls = screen.getByTestId('mods-workspace-controls');
+    expect(controls.firstElementChild?.querySelector('input')).toBeTruthy();
+    expect(controls.lastElementChild?.className).toContain('sm:grid-cols-2');
+    expect(screen.getByRole('button', { name: '+ Add Mod' }).getAttribute('data-button-geometry')).toBe('catalog-primary');
+    expect(screen.getByRole('button', { name: 'Update' }).getAttribute('data-button-geometry')).toBe('catalog-primary');
+    expect(screen.getByTestId('mods-summary').querySelectorAll('.text-center')).toHaveLength(2);
+
     fireEvent.change(screen.getByRole('combobox'), {
       target: { value: 'disabled' },
     });

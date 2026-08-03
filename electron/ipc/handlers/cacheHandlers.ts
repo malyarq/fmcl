@@ -2,6 +2,7 @@ import { ipcMain, type BrowserWindow, app } from 'electron'
 import fs from 'fs'
 import path from 'path'
 import { ImageCacheService } from '../../services/cache/imageCacheService'
+import { assertPublicHttpsUrl } from '../../security/remoteUrls'
 
 export function registerCacheHandlers(deps: { window: BrowserWindow }) {
   const { window } = deps
@@ -61,10 +62,6 @@ export function registerCacheHandlers(deps: { window: BrowserWindow }) {
 
   ipcMain.removeHandler('cache:resolveImage')
   ipcMain.handle('cache:resolveImage', async (_event, sourceUrl: unknown) => {
-    if (typeof sourceUrl !== 'string' || !sourceUrl.trim()) {
-      throw new Error('Image cache resolve requires a non-empty URL')
-    }
-
-    return imageCacheService.resolveImage(sourceUrl)
+    return imageCacheService.resolveImage(assertPublicHttpsUrl(sourceUrl, 'Image URL'))
   })
 }

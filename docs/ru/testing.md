@@ -38,7 +38,7 @@ node scripts/test-full.js --only=1.20.1,1.19.2
 node scripts/test-full.js --provider=bmclapi
 ```
 
-Результаты и логи сохраняются в `%APPDATA%/FriendLauncher/logs/full-installation/` (или аналог на других ОС).
+Сценарий использует изолированную временную папку user-data и не может перезаписать рабочую установку FMCL. Результаты и логи печатаются во время прогона и удаляются вместе с этой папкой при завершении.
 
 ## CI
 

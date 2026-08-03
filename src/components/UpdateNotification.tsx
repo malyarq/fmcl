@@ -8,6 +8,7 @@ interface UpdateNotificationProps {
   status: UpdateStatus;
   updateInfo: UpdateInfo | null;
   onInstall: () => void;
+  onDownload: () => void;
 }
 
 // Notification banner that appears at the top when update is available
@@ -15,6 +16,7 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
   status,
   updateInfo,
   onInstall,
+  onDownload,
 }) => {
   const { t } = useSettings();
   const isDownloaded = status === 'downloaded';
@@ -64,9 +66,9 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
               {t('updater.install')}
             </Button>
           ) : (
-            <span className="text-xs text-zinc-600 dark:text-zinc-400">
-              {t('updater.downloading')}
-            </span>
+            <Button onClick={onDownload} variant="secondary" className="px-3 py-1.5 text-sm">
+              {t('updater.download')}
+            </Button>
           )}
         </div>
       </div>

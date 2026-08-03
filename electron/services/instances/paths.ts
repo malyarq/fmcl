@@ -33,6 +33,14 @@ export function resolveLauncherRootPath(rootPath?: string) {
   return path.resolve(candidatePath);
 }
 
+export function resolveApprovedLauncherRootPath(rootPath?: string) {
+  const safeRootPath = assertAbsolutePath(rootPath?.trim() || getDefaultRootPath(), 'Launcher root path');
+  if (!hasLauncherRootMarkers(safeRootPath)) {
+    throw new Error('Launcher root path must be the default path or a directory initialized by FriendLauncher');
+  }
+  return safeRootPath;
+}
+
 export function ensureXmclFolders(rootPath: string) {
   const base = resolveLauncherRootPath(rootPath);
   fs.mkdirSync(base, { recursive: true });

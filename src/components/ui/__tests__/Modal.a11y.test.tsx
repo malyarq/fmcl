@@ -109,4 +109,23 @@ describe('Modal accessibility', () => {
     fireEvent.scroll(modalBody as HTMLElement);
     expect(onScroll).toHaveBeenCalled();
   });
+
+  it('lets only the topmost nested modal handle Escape', async () => {
+    const closeOuter = vi.fn();
+    const closeInner = vi.fn();
+
+    render(
+      <Modal isOpen onClose={closeOuter} title="Outer dialog">
+        <Modal isOpen onClose={closeInner} title="Inner dialog">
+          <button type="button">Inner action</button>
+        </Modal>
+      </Modal>,
+    );
+
+    await screen.findByRole('dialog', { name: 'Inner dialog' });
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(closeInner).toHaveBeenCalledTimes(1);
+    expect(closeOuter).not.toHaveBeenCalled();
+  });
 });

@@ -50,13 +50,19 @@ const TitleBar = () => {
 
             <div data-testid="title-bar-window-controls" className="flex h-full items-center gap-1">
                 <button
+                    type="button"
                     onClick={() => windowControlsIPC.minimize()}
+                    aria-label="Minimize window"
+                    title="Minimize window"
                     className="no-drag flex h-7 w-8 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-background/80 hover:text-foreground"
                 >
                     <Minus className="h-4 w-4" />
                 </button>
                 <button
+                    type="button"
                     onClick={() => windowControlsIPC.close()}
+                    aria-label="Close window"
+                    title="Close window"
                     className="no-drag flex h-7 w-8 items-center justify-center rounded-lg text-secondary transition-colors hover:bg-red-500 hover:text-white"
                 >
                     <X className="h-4 w-4" />

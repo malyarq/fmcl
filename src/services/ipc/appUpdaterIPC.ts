@@ -50,6 +50,10 @@ export const appUpdaterIPC = {
     return call('check', () => requireAppUpdater('check').check());
   },
 
+  download(): ReturnType<AppUpdaterApi['download']> {
+    return call('download', () => requireAppUpdater('download').download());
+  },
+
   quitAndInstall(): ReturnType<AppUpdaterApi['quitAndInstall']> {
     try {
       return requireAppUpdater('quitAndInstall').quitAndInstall();
@@ -81,4 +85,3 @@ export const appUpdaterIPC = {
 };
 
 export type AppUpdaterIPC = typeof appUpdaterIPC;
-

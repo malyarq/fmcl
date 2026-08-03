@@ -142,7 +142,7 @@ describe('Catalog header actions', () => {
     });
   });
 
-  it('keeps browser header CTAs and primary card actions on the shared catalog-primary geometry seam', async () => {
+  it('keeps browser history and primary card actions on the shared catalog-primary geometry seam without duplicating import', async () => {
     render(
       <ModpackBrowser
         initialState={{ ...DEFAULT_MODPACK_BROWSER_STATE, platform: 'modrinth' }}
@@ -157,6 +157,10 @@ describe('Catalog header actions', () => {
     const headerCluster = screen.getByTestId('remote-modpack-primary-actions');
     const headerButtons = within(headerCluster).getAllByRole('button');
     const cardButton = screen.getByRole('button', { name: 'Open details: Alpha Pack' });
+
+    expect(headerButtons).toHaveLength(1);
+    expect(within(headerCluster).getByRole('button', { name: 'History' })).toBeTruthy();
+    expect(within(headerCluster).queryByRole('button', { name: 'Import' })).toBeNull();
 
     [...headerButtons, cardButton].forEach((button) => {
       expect(button.getAttribute('data-button-geometry')).toBe('catalog-primary');

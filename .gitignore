@@ -28,7 +28,6 @@ minecraft_data
 release
 dist-electron
 authlib-injector.log
-.test-config.json
 *storybook.log
 storybook-static
 

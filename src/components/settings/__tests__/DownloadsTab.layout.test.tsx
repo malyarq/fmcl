@@ -38,13 +38,15 @@ describe('DownloadsTab layout', () => {
 
     const root = container.firstElementChild as HTMLElement;
     const autoThreadsToggle = screen.getByRole('switch', { name: 'Auto Threads' });
-    const tuningShell = screen.getByText('Connection tuning').closest('.settings-section-shell') as HTMLElement;
+    const tuningShell = screen.getByTestId('downloads-tuning-section');
     const inputsCard = screen.getByDisplayValue('8').closest('.settings-control-card') as HTMLElement;
 
     expect(root.className).toContain('xl:grid-cols-[minmax(0,1.15fr)_minmax(19rem,0.85fr)]');
     expect(screen.getByText('Mirrors embedded surface')).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Downloads' })).toBeNull();
     expect(tuningShell.className).toContain('min-w-0');
+    expect(tuningShell.className).toContain('surface-muted');
+    expect(tuningShell.className).not.toContain('settings-section-shell');
     expect(autoThreadsToggle.className).toContain('settings-toggle-switch');
     expect(autoThreadsToggle.closest('.settings-toggle-row')).toBeTruthy();
     expect(inputsCard.className).toContain('settings-control-card');

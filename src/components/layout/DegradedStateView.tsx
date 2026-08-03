@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from '../../utils/cn';
 
 export type DegradedStateVariant = 'empty' | 'zero-results' | 'unavailable' | 'error';
-export type DegradedStateLayout = 'card' | 'inline';
+export type DegradedStateLayout = 'card' | 'inline' | 'workspace';
 
 type DegradedStateTone = {
   frame: string;
@@ -52,7 +52,7 @@ export function DegradedStateView({
   testId,
 }: DegradedStateViewProps) {
   const tone = DEGRADED_STATE_TONES[variant];
-  const isInline = layout === 'inline';
+  const isInline = layout === 'inline' || layout === 'workspace';
 
   return (
     <section

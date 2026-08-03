@@ -127,7 +127,7 @@ export function registerModpacksHandlers(deps: {
 
   ipcMain.removeHandler('modpacks:getModpackInfoFromFile')
   ipcMain.handle('modpacks:getModpackInfoFromFile', async (_evt, filePath: unknown) => {
-    return modpacks.getModpackInfoFromFile(requireFilesystemPath(filePath, 'Modpack file path'))
+    return await modpacks.getModpackInfoFromFile(requireFilesystemPath(filePath, 'Modpack file path'))
   })
 
   ipcMain.removeHandler('modpacks:import')

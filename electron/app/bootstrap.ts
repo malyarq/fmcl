@@ -19,6 +19,7 @@ import { AccountService } from '../services/account/accountService';
 import { MirrorsService } from '../services/mirrors/mirrorsService';
 import { StatisticsService } from '../services/stats/statisticsService';
 import { ShareService } from '../services/sharing/shareService';
+import { loadFullTestConfig } from './fullTestConfig';
 
 function configureAppRoot() {
   const __filename = fileURLToPath(import.meta.url);
@@ -30,20 +31,18 @@ function configureAppRoot() {
   process.env.APP_ROOT = path.join(__dirname, '..');
 }
 
-function loadTestConfig(): { enabled: boolean; stage?: string; provider?: string; limit?: string; only?: string } | null {
-  const appRoot = process.env.APP_ROOT!;
-  const testConfigPath = path.join(appRoot, '..', '.test-config.json');
-
-  try {
-    if (fs.existsSync(testConfigPath)) {
-      const content = fs.readFileSync(testConfigPath, 'utf-8');
-      return JSON.parse(content);
-    }
-  } catch {
-    // Ignore errors, return null
+function configureIsolatedTestUserData(): void {
+  const testUserDataPath = process.env['FMCL_TEST_USER_DATA'];
+  if (!testUserDataPath) {
+    return;
   }
 
-  return null;
+  if (process.env['NODE_ENV'] !== 'test' || !path.isAbsolute(testUserDataPath)) {
+    throw new Error('FMCL_TEST_USER_DATA requires NODE_ENV=test and an absolute path');
+  }
+
+  fs.mkdirSync(testUserDataPath, { recursive: true });
+  app.setPath('userData', testUserDataPath);
 }
 
 function resolveRuntimePaths() {
@@ -154,6 +153,7 @@ export function bootstrapMain() {
   // This ensures the userData folder uses the correct name
   app.setName('.fmcl');
   app.setAppUserModelId('com.friendlauncher.app');
+  configureIsolatedTestUserData();
 
   configureAppRoot();
   const paths = resolveRuntimePaths();
@@ -179,7 +179,7 @@ export function bootstrapMain() {
 
   app.whenReady().then(async () => {
     // Check for test configuration file
-    const testConfig = loadTestConfig();
+    const testConfig = loadFullTestConfig();
     if (testConfig?.enabled) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { enabled, ...testParams } = testConfig;

@@ -8,9 +8,13 @@ export function registerAppUpdaterHandlers() {
     return await autoUpdater.checkForUpdates()
   })
 
+  ipcMain.removeHandler('app-updater:download')
+  ipcMain.handle('app-updater:download', async () => {
+    return await autoUpdater.downloadUpdate()
+  })
+
   ipcMain.removeHandler('app-updater:quit-and-install')
   ipcMain.handle('app-updater:quit-and-install', () => {
     autoUpdater.quitAndInstall()
   })
 }
-

@@ -7,13 +7,20 @@
  */
 
 import { spawn } from 'child_process';
-import { writeFileSync, unlinkSync } from 'fs';
+import { mkdtempSync, rmSync, writeFileSync, unlinkSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { tmpdir } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = join(__dirname, '..');
+const nodeMajor = Number.parseInt(process.versions.node.split('.')[0] || '', 10);
+
+if (nodeMajor !== 24) {
+  console.error(`Full installation tests require Node.js 24.x (current: ${process.version}).`);
+  process.exit(1);
+}
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -54,8 +61,8 @@ Examples:
   }
 }
 
-// Create test config file
-const testConfigPath = join(projectRoot, '.test-config.json');
+const testUserDataPath = mkdtempSync(join(tmpdir(), 'fmcl-full-install-'));
+const testConfigPath = join(testUserDataPath, 'full-test-config.json');
 const testConfig = {
   enabled: true,
   stage: options.stage || null,
@@ -73,40 +80,82 @@ const cleanup = () => {
   } catch {
     // Ignore errors during cleanup
   }
+
+  try {
+    rmSync(testUserDataPath, { recursive: true, force: true });
+  } catch {
+    // Ignore errors during cleanup
+  }
 };
 
-// Find vite executable
+// Build once before launching Electron. Starting through the Vite dev watcher can
+// briefly execute a stale dist-electron/main.js and turn the smoke test into a
+// normal interactive launcher session.
 const vitePath = join(projectRoot, 'node_modules', 'vite', 'bin', 'vite.js');
+const electronCliPath = join(projectRoot, 'node_modules', 'electron', 'cli.js');
+let electronProcess = null;
 
-// Spawn vite process
-const viteProcess = spawn('node', [vitePath], {
+const buildProcess = spawn(process.execPath, [vitePath, 'build'], {
   cwd: projectRoot,
-  env: {
-    ...process.env,
-    NODE_ENV: 'test',
-  },
+  env: process.env,
   stdio: 'inherit',
   shell: false,
 });
 
-viteProcess.on('error', (error) => {
-  console.error('Failed to start vite:', error);
+buildProcess.on('error', (error) => {
+  console.error('Failed to build the full installation harness:', error);
   cleanup();
   process.exit(1);
 });
 
-viteProcess.on('exit', (code) => {
-  cleanup();
-  process.exit(code ?? 1);
+buildProcess.on('exit', (buildCode) => {
+  if (buildCode !== 0) {
+    cleanup();
+    process.exit(buildCode ?? 1);
+    return;
+  }
+
+  electronProcess = spawn(process.execPath, [electronCliPath, '.'], {
+    cwd: projectRoot,
+    env: {
+      ...process.env,
+      NODE_ENV: 'test',
+      FMCL_TEST_USER_DATA: testUserDataPath,
+      FMCL_FULL_TEST_CONFIG: testConfigPath,
+    },
+    stdio: 'inherit',
+    shell: false,
+  });
+
+  electronProcess.on('error', (error) => {
+    console.error('Failed to start Electron:', error);
+    cleanup();
+    process.exit(1);
+  });
+
+  electronProcess.on('exit', (code) => {
+    cleanup();
+    process.exit(code ?? 1);
+  });
 });
 
-// Handle process termination
+const stopChild = (signal) => {
+  if (electronProcess && !electronProcess.killed) {
+    electronProcess.kill(signal);
+    return;
+  }
+
+  if (!buildProcess.killed) {
+    buildProcess.kill(signal);
+  }
+};
+
+// Handle process termination. Cleanup happens after the child exits, which
+// prevents Electron helpers from recreating files inside a just-removed folder.
 process.on('SIGINT', () => {
-  cleanup();
-  viteProcess.kill('SIGINT');
+  stopChild('SIGINT');
 });
 
 process.on('SIGTERM', () => {
-  cleanup();
-  viteProcess.kill('SIGTERM');
+  stopChild('SIGTERM');
 });

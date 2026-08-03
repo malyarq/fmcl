@@ -4,6 +4,7 @@ import type { AppUpdaterAPI, AppUpdaterAvailableInfo, AppUpdaterProgress } from 
 // App auto-updater bridge (for updating the launcher itself).
 export const appUpdater: AppUpdaterAPI = {
   check: () => ipcRenderer.invoke('app-updater:check'),
+  download: () => ipcRenderer.invoke('app-updater:download'),
   quitAndInstall: () => {
     void ipcRenderer.invoke('app-updater:quit-and-install')
   },

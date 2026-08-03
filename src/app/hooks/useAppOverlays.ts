@@ -1,21 +1,23 @@
 import { useCallback, useState } from 'react';
 
 export function useAppOverlays() {
-  const [showSettings, setShowSettings] = useState(false);
-  const [showMultiplayer, setShowMultiplayer] = useState(false);
+  const [activeOverlay, setActiveOverlay] = useState<'settings' | 'multiplayer' | null>(null);
 
-  const openSettings = useCallback(() => setShowSettings(true), []);
-  const closeSettings = useCallback(() => setShowSettings(false), []);
-  const openMultiplayer = useCallback(() => setShowMultiplayer(true), []);
-  const closeMultiplayer = useCallback(() => setShowMultiplayer(false), []);
+  const openSettings = useCallback(() => setActiveOverlay('settings'), []);
+  const closeSettings = useCallback(() => {
+    setActiveOverlay((current) => current === 'settings' ? null : current);
+  }, []);
+  const openMultiplayer = useCallback(() => setActiveOverlay('multiplayer'), []);
+  const closeMultiplayer = useCallback(() => {
+    setActiveOverlay((current) => current === 'multiplayer' ? null : current);
+  }, []);
 
   return {
-    showSettings,
-    showMultiplayer,
+    showSettings: activeOverlay === 'settings',
+    showMultiplayer: activeOverlay === 'multiplayer',
     openSettings,
     closeSettings,
     openMultiplayer,
     closeMultiplayer,
   };
 }
-

@@ -1,0 +1,98 @@
+import { assertChildName } from '../../security/pathGuards';
+import type { LaunchGameOptions } from '../../services/launcher/orchestratorTypes';
+import type { DownloadProviderId } from '../../services/mirrors/providers';
+import {
+  validateBoolean,
+  validateBoundedString,
+  validateEnum,
+  validateFilesystemPath,
+  validateInteger,
+  validateOfflineNickname,
+} from './privilegedPayloads';
+
+const DOWNLOAD_PROVIDERS = ['mojang', 'bmcl', 'auto'] as const satisfies readonly DownloadProviderId[];
+const LAUNCH_OPTION_KEYS = new Set([
+  'nickname',
+  'version',
+  'ram',
+  'hideLauncher',
+  'gamePath',
+  'modpackId',
+  'modpackPath',
+  'javaPath',
+  'vmOptions',
+  'downloadProvider',
+  'autoDownloadThreads',
+  'downloadThreads',
+  'maxSockets',
+  'useOptiFine',
+  'instanceId',
+  'instancePath',
+]);
+
+function optionalBoolean(value: unknown, label: string): boolean | undefined {
+  return value === undefined ? undefined : validateBoolean(value, label);
+}
+
+function optionalPath(value: unknown, label: string): string | undefined {
+  return value === undefined || value === null || value === ''
+    ? undefined
+    : validateFilesystemPath(value, label, { maxLength: 4_096 });
+}
+
+function optionalChildName(value: unknown, label: string): string | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  return assertChildName(validateBoundedString(value, label, { maxLength: 128 }), label);
+}
+
+function optionalInteger(value: unknown, label: string, min: number, max: number): number | undefined {
+  return value === undefined ? undefined : validateInteger(value, label, { min, max });
+}
+
+export function validateLaunchGameOptions(value: unknown): LaunchGameOptions {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Launch options must be an object');
+  }
+  const record = value as Record<string, unknown>;
+  const unsupported = Object.keys(record).filter((key) => !LAUNCH_OPTION_KEYS.has(key));
+  if (unsupported.length) throw new Error(`Launch options contain unsupported fields: ${unsupported.join(', ')}`);
+
+  const version = validateBoundedString(record.version, 'Minecraft version', { maxLength: 128 });
+  if (!/^[A-Za-z0-9][A-Za-z0-9._+-]*$/.test(version)) {
+    throw new Error('Minecraft version contains unsupported characters');
+  }
+
+  const vmOptions = record.vmOptions === undefined ? undefined : (() => {
+    if (!Array.isArray(record.vmOptions) || record.vmOptions.length > 64) {
+      throw new Error('VM options must contain at most 64 items');
+    }
+    return record.vmOptions.map((entry, index) => validateBoundedString(entry, `VM option ${index}`, {
+      maxLength: 512,
+    }));
+  })();
+
+  return {
+    nickname: validateOfflineNickname(record.nickname),
+    version,
+    ram: validateInteger(record.ram, 'RAM', { min: 1, max: 64 }),
+    hideLauncher: optionalBoolean(record.hideLauncher, 'Hide launcher'),
+    gamePath: optionalPath(record.gamePath, 'Minecraft root path'),
+    modpackId: optionalChildName(record.modpackId, 'Modpack id'),
+    modpackPath: optionalPath(record.modpackPath, 'Modpack path'),
+    javaPath: optionalPath(record.javaPath, 'Java path'),
+    vmOptions,
+    downloadProvider: record.downloadProvider === undefined
+      ? undefined
+      : validateEnum(record.downloadProvider, 'Download provider', DOWNLOAD_PROVIDERS),
+    autoDownloadThreads: optionalBoolean(record.autoDownloadThreads, 'Automatic download threads'),
+    downloadThreads: optionalInteger(record.downloadThreads, 'Download threads', 1, 64),
+    maxSockets: optionalInteger(record.maxSockets, 'Maximum sockets', 1, 256),
+    useOptiFine: optionalBoolean(record.useOptiFine, 'Use OptiFine'),
+    instanceId: optionalChildName(record.instanceId, 'Legacy instance id'),
+    instancePath: optionalPath(record.instancePath, 'Legacy instance path'),
+  };
+}
+
+export function validateOptionalDownloadProvider(value: unknown): DownloadProviderId | undefined {
+  return value === undefined ? undefined : validateEnum(value, 'Download provider', DOWNLOAD_PROVIDERS);
+}

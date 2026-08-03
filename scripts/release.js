@@ -1,107 +1,91 @@
 #!/usr/bin/env node
 
-import { readFileSync, writeFileSync } from 'fs';
-import { execSync } from 'child_process';
-import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-const rootDir = join(__dirname, '..');
+const rootDir = join(dirname(fileURLToPath(import.meta.url)), '..');
+const rawArgs = process.argv.slice(2);
+const push = rawArgs.includes('--push');
+const dryRun = rawArgs.includes('--dry-run');
+const positional = rawArgs.filter((argument) => !argument.startsWith('--'));
+const version = positional[0];
+const commitMessage = positional.slice(1).join(' ') || (version ? `Release v${version}` : '');
 
-const args = process.argv.slice(2);
-const version = args[0];
-const commitMessage = args.slice(1).join(' ') || `Release v${version}`;
+function run(command, args, options = {}) {
+  return execFileSync(command, args, {
+    cwd: rootDir,
+    encoding: 'utf8',
+    stdio: options.capture ? 'pipe' : 'inherit',
+  });
+}
+
+function fail(message) {
+  console.error(`Error: ${message}`);
+  process.exit(1);
+}
 
 if (!version) {
-  console.error('❌ Error: Version is required');
-  console.log('Usage: npm run release <version> [commit message]');
-  console.log('Example: npm run release 1.2.3 "Added new feature"');
-  process.exit(1);
+  fail('version is required. Usage: npm run release -- 1.2.3 [message] [--dry-run] [--push]');
 }
 
-const versionRegex = /^\d+\.\d+\.\d+(-.*)?$/;
-if (!versionRegex.test(version)) {
-  console.error('❌ Error: Invalid version format. Use semver format (e.g., 1.2.3)');
-  process.exit(1);
+if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
+  fail('version must be valid SemVer without a leading v');
 }
-
-console.log(`🚀 Starting release for version ${version}...\n`);
 
 try {
-  console.log('📦 Updating version in package.json...');
-  const packageJsonPath = join(rootDir, 'package.json');
-  const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-  packageJson.version = version;
-  writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n', 'utf-8');
-  console.log(`✅ Version updated to ${version}\n`);
-
-  console.log('📝 Updating version in README.md...');
-  const readmePath = join(rootDir, 'README.md');
-  let readme = readFileSync(readmePath, 'utf-8');
-  
-  readme = readme.replace(
-    /(!\[Version\]\(https:\/\/img\.shields\.io\/badge\/version-)[\d.]+(-[^)]+)?(\))/g,
-    `$1${version}-green.svg$3`
-  );
-  
-  writeFileSync(readmePath, readme, 'utf-8');
-  console.log('✅ README.md updated\n');
-
-  console.log('🔍 Checking git status...');
-  try {
-    const status = execSync('git status --porcelain', { cwd: rootDir, encoding: 'utf-8' });
-    if (status.trim()) {
-      console.log('ℹ️  Uncommitted changes detected (they will be included in the release)\n');
-    }
-  } catch {
-    console.error('❌ Error: Failed to check git status. Make sure you are in a git repository.');
-    process.exit(1);
+  const status = run('git', ['status', '--porcelain'], { capture: true }).trim();
+  if (status) {
+    fail('the worktree must be clean before preparing a release');
   }
 
-  try {
-    const branch = execSync('git branch --show-current', { cwd: rootDir, encoding: 'utf-8' }).trim();
-    console.log(`🌿 Current branch: ${branch}\n`);
-  } catch {
-    // Ignore if branch detection fails
+  const branch = run('git', ['branch', '--show-current'], { capture: true }).trim();
+  if (!branch) {
+    fail('releases cannot be prepared from a detached HEAD');
   }
-
-  console.log('➕ Adding files to git...');
-  execSync('git add -A', { cwd: rootDir, stdio: 'inherit' });
-  console.log('✅ Files added\n');
-
-  console.log(`💾 Creating commit: "${commitMessage}"...`);
-  execSync(`git commit -m "${commitMessage}"`, { cwd: rootDir, stdio: 'inherit' });
-  console.log('✅ Commit created\n');
 
   const tagName = `v${version}`;
   try {
-    execSync(`git rev-parse -q --verify "refs/tags/${tagName}"`, { cwd: rootDir, stdio: 'pipe' });
-    console.error(`❌ Error: Tag ${tagName} already exists!`);
-    console.log('   If you want to recreate the tag, delete it first:');
-    console.log(`   git tag -d ${tagName}`);
-    console.log(`   git push origin :refs/tags/${tagName}`);
-    process.exit(1);
-  } catch {
-    // Tag doesn't exist, continue
+    run('git', ['rev-parse', '--verify', '--quiet', `refs/tags/${tagName}`], { capture: true });
+    fail(`tag ${tagName} already exists`);
+  } catch (error) {
+    if (error?.status === 1) {
+      // Expected: the tag does not exist yet.
+    } else {
+      throw error;
+    }
   }
 
-  console.log(`🏷️  Creating tag ${tagName}...`);
-  execSync(`git tag -a ${tagName} -m "Release ${tagName}"`, { cwd: rootDir, stdio: 'inherit' });
-  console.log(`✅ Tag ${tagName} created\n`);
+  console.log(`Verifying ${tagName} from branch ${branch}...`);
+  run('npm', ['run', 'verify']);
+  run('npm', ['run', 'build', '--', '--publish', 'never']);
 
-  console.log('📤 Pushing changes to remote repository...');
-  execSync('git push', { cwd: rootDir, stdio: 'inherit' });
-  execSync(`git push origin ${tagName}`, { cwd: rootDir, stdio: 'inherit' });
-  console.log('✅ Changes pushed\n');
+  if (dryRun) {
+    console.log(`Release preflight passed for ${tagName}; no files, commits, tags, or remotes were changed.`);
+    process.exit(0);
+  }
 
-  console.log('🎉 Release created successfully!');
-  console.log(`\n📋 Next steps:`);
-  console.log(`   - GitHub Actions will automatically start the build`);
-  console.log(`   - After successful build, the release will be published`);
-  console.log(`   - Track progress: https://github.com/malyarq/fmcl/actions\n`);
+  run('npm', ['version', version, '--no-git-tag-version', '--allow-same-version']);
 
+  const packageJson = JSON.parse(readFileSync(join(rootDir, 'package.json'), 'utf8'));
+  const packageLock = JSON.parse(readFileSync(join(rootDir, 'package-lock.json'), 'utf8'));
+  if (packageJson.version !== version || packageLock.version !== version) {
+    fail('package.json and package-lock.json did not receive the requested version');
+  }
+
+  run('git', ['add', '--', 'package.json', 'package-lock.json']);
+  run('git', ['commit', '-m', commitMessage]);
+  run('git', ['tag', '-a', tagName, '-m', `Release ${tagName}`]);
+
+  if (push) {
+    run('git', ['push', 'origin', branch]);
+    run('git', ['push', 'origin', tagName]);
+    console.log(`Release ${tagName} was pushed; GitHub Actions can now publish the artifacts.`);
+  } else {
+    console.log(`Release ${tagName} is prepared locally. Review it, then push the branch and tag explicitly.`);
+  }
 } catch (error) {
-  console.error('\n❌ Error creating release:', error.message);
-  process.exit(1);
+  const message = error instanceof Error ? error.message : String(error);
+  fail(message);
 }

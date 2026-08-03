@@ -181,6 +181,7 @@ Preferred rule: new renderer code should use `window.api.*` or the typed wrapper
 - `updater:sync`
 - `updater:progress`
 - `app-updater:check`
+- `app-updater:download`
 - `app-updater:quit-and-install`
 - `app-updater:status`
 - `app-updater:available`

@@ -1,6 +1,6 @@
 import { NetworkManager } from './networkManager';
 import { MinecraftLanDiscover, queryStatus, type Status } from '@xmcl/client';
-import { createUpnpClient, type UpnpClient } from '@xmcl/nat-api';
+import { upnpNat, type Gateway, type UPnPNAT } from '@achingbrain/nat-port-mapper';
 
 export type NetworkMode = 'hyperswarm' | 'xmcl_lan' | 'xmcl_upnp_host';
 
@@ -16,7 +16,9 @@ export class NetworkService {
   private mode: NetworkMode = 'hyperswarm';
 
   private lan?: MinecraftLanDiscover;
-  private upnp?: UpnpClient;
+  private upnp?: UPnPNAT;
+  private upnpGateway?: Gateway;
+  private readonly upnpMappings = new Map<number, number>();
 
   constructor(manager?: NetworkManager) {
     this.hyperswarm = manager ?? new NetworkManager();
@@ -50,7 +52,11 @@ export class NetworkService {
     await this.hyperswarm.stop(onLog);
     // Also stop LAN discovery broadcast/listener.
     await this.lanStop().catch(() => undefined);
-    // UPnP mappings are not automatically removed here; caller can unmap explicitly.
+    if (this.upnpGateway) {
+      await this.upnpGateway.stop().catch(() => undefined);
+      this.upnpGateway = undefined;
+      this.upnpMappings.clear();
+    }
   }
 
   // --- XMCL ping ---
@@ -92,29 +98,51 @@ export class NetworkService {
   }
 
   // --- Optional UPnP ---
-  public async upnpEnsureClient() {
-    if (!this.upnp) {
-      this.upnp = await createUpnpClient();
+  private async upnpEnsureGateway(): Promise<Gateway> {
+    if (this.upnpGateway) {
+      return this.upnpGateway;
     }
-    return this.upnp;
+
+    this.upnp ??= upnpNat({ autoRefresh: true });
+    const signal = AbortSignal.timeout(8_000);
+    for await (const gateway of this.upnp.findGateways({ signal })) {
+      this.upnpGateway = gateway;
+      return gateway;
+    }
+
+    throw new Error('No UPnP gateway was found on the local network');
   }
 
   public async upnpMapTcp(publicPort: number, privatePort: number, description = 'FriendLauncher', ttlSeconds = 60 * 30) {
-    const client = await this.upnpEnsureClient();
-    await client.map({
-      protocol: 'tcp',
-      public: publicPort,
-      private: privatePort,
+    const gateway = await this.upnpEnsureGateway();
+    let externalIp = '';
+
+    for await (const mapping of gateway.mapAll(privatePort, {
+      protocol: 'TCP',
+      externalPort: publicPort,
       description,
-      ttl: ttlSeconds,
-    });
-    const externalIp = await client.externalIp().catch(() => '');
+      ttl: ttlSeconds * 1_000,
+    })) {
+      externalIp = mapping.externalHost;
+      this.upnpMappings.set(publicPort, privatePort);
+      break;
+    }
+
+    if (!this.upnpMappings.has(publicPort)) {
+      throw new Error(`UPnP gateway could not map TCP port ${publicPort}`);
+    }
+
     return { externalIp };
   }
 
   public async upnpUnmapTcp(publicPort: number) {
-    const client = await this.upnpEnsureClient();
-    return await client.unmap({ protocol: 'tcp', public: publicPort });
+    const privatePort = this.upnpMappings.get(publicPort);
+    if (privatePort === undefined || !this.upnpGateway) {
+      return false;
+    }
+
+    await this.upnpGateway.unmap(privatePort);
+    this.upnpMappings.delete(publicPort);
+    return true;
   }
 }
-

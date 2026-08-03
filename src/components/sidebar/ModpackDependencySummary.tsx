@@ -86,8 +86,12 @@ export function ModpackDependencySummary(props: {
         ) : null}
         {runtime.useOptiFine ? (
           <div className="flex items-center justify-between gap-4">
-            <dt className="text-xs font-medium uppercase tracking-wide text-secondary">OptiFine</dt>
-            <dd className="text-sm font-semibold text-foreground">Enabled</dd>
+            <dt className="text-xs font-medium uppercase tracking-wide text-secondary">
+              {translateWithFallback(t, 'modpacks.optifine', 'OptiFine')}
+            </dt>
+            <dd className="text-sm font-semibold text-foreground">
+              {translateWithFallback(t, 'general.enabled', 'Enabled')}
+            </dd>
           </div>
         ) : null}
       </dl>

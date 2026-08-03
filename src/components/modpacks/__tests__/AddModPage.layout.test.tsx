@@ -108,11 +108,15 @@ describe('AddModPage flow layout', () => {
     const resultsScroll = screen.getByTestId('add-mod-results-scroll');
     const results = screen.getByTestId('add-mod-results');
     const actions = screen.getByTestId('add-mod-page-actions');
+    const controls = screen.getByTestId('add-mod-workspace-controls');
 
     expect(resultsScroll.className).toContain('overflow-y-auto');
     expect(resultsScroll.contains(results)).toBe(true);
     expect(resultsScroll.contains(actions)).toBe(false);
     expect(pageBody.contains(actions)).toBe(true);
+    expect(controls.className).toContain('surface-card');
+    expect(controls.firstElementChild?.querySelector('input')).toBeTruthy();
+    expect(controls.lastElementChild?.className).toContain('sm:grid-cols-2');
   });
 
   it('keeps guided resource-pack browsing instance-scoped without modloader filters', async () => {

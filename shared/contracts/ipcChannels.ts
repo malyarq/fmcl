@@ -90,6 +90,7 @@ export const allowedIpcChannels = [
 
   // app auto-updater (launcher updates)
   'app-updater:check',
+  'app-updater:download',
   'app-updater:quit-and-install',
   'app-updater:status',
   'app-updater:available',

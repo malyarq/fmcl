@@ -65,6 +65,12 @@ export const dialogIPC = {
       requireIpcRenderer('getDesktopPath').invoke<string>('dialog:getDesktopPath')
     );
   },
+
+  saveFile(filePath: string, content: string): Promise<void> {
+    return call('saveFile', () =>
+      requireIpcRenderer('saveFile').invoke<void>('app:saveFile', filePath, content)
+    );
+  },
 };
 
 export type DialogIPC = typeof dialogIPC;

@@ -41,7 +41,7 @@ export const DownloadsTab: React.FC<DownloadsTabProps> = ({
         <MirrorsSettings embedded={embedded} />
       </div>
 
-      <div className={tuningSectionClassName}>
+      <div className={tuningSectionClassName} data-testid="downloads-tuning-section">
         <div className="settings-section-copy">
           <h4 className="settings-embedded-title">{t('settings.downloadsTuningTitle')}</h4>
           <p className="settings-embedded-copy">{t('settings.downloadsTuningHint')}</p>

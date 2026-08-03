@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../contexts/settings/i18n';
 import {
@@ -73,6 +73,7 @@ function createProps(): AppLayoutProps {
       status: 'available',
       info: { version: '0.5.1' },
       onInstall: vi.fn(),
+      onDownload: vi.fn(),
     },
     overlays: {
       showSettings: false,
@@ -137,7 +138,8 @@ describe('UpdateNotification shell layout', () => {
   });
 
   it('renders the app update banner directly below the shared title-bar seam', () => {
-    render(<AppLayout {...createProps()} />);
+    const props = createProps();
+    render(<AppLayout {...props} />);
 
     const titleBar = screen.getByTestId('app-title-bar');
     const notifications = screen.getByTestId(APP_LAYOUT_NOTIFICATIONS_TEST_ID);
@@ -154,6 +156,8 @@ describe('UpdateNotification shell layout', () => {
     expect(banner.className).toContain('relative');
     expect(banner.className).not.toContain('fixed');
     expect(banner.textContent).toContain('Launcher update available');
+    fireEvent.click(screen.getByRole('button', { name: 'Download update' }));
+    expect(props.updates.onDownload).toHaveBeenCalledOnce();
     expect(banner.textContent).not.toContain('Review update');
   });
 

@@ -2,13 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { download } from '@xmcl/file-transfer';
-import AdmZip from 'adm-zip';
 import { CurseforgeV1Client } from '@xmcl/curseforge';
 import { ModpackService } from '../modpackService';
 import { parseCurseForgeManifest } from '../parsers/curseforgeParser';
 import { ensureDir } from '../../mods/platform/fsUtils';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { createModpackMetadataFromConfig } from '../storage';
+import { extractZipSafely, openValidatedZip } from '../../../security/archivePolicy';
 
 export interface CurseForgeModpackInstallOptions {
   projectId: number;
@@ -65,9 +65,13 @@ export async function downloadCurseForgeModpack(
     onProgress?.({ downloaded: 30, total: 100, stage: 'Распаковка модпака...' });
 
     // Распаковать ZIP
-    const zip = new AdmZip(tempZipPath);
+    const zip = await openValidatedZip(tempZipPath, 'CurseForge modpack');
     const extractDir = path.join(tempDir, 'extracted');
-    zip.extractAllTo(extractDir, true);
+    try {
+      await extractZipSafely(zip, extractDir);
+    } finally {
+      zip.close();
+    }
 
     onProgress?.({ downloaded: 40, total: 100, stage: 'Парсинг манифеста...' });
 

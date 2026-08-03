@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import AdmZip from 'adm-zip';
+import { SafeZipWriter } from '../../../security/zipWriter';
 import type { ModrinthManifest } from '../../../../shared/types/modpack';
 import { generateManifestFromInstance } from './manifestGenerator';
 import type { ModPlatformService } from '../../mods/platform/modPlatformService';
@@ -129,10 +129,10 @@ export async function exportToModrinth(
   };
 
   // Создать ZIP архив
-  const zip = new AdmZip();
+  const zip = new SafeZipWriter();
 
   // Добавить modrinth.index.json
-  zip.addFile('modrinth.index.json', Buffer.from(JSON.stringify(modrinthManifest, null, 2)));
+  zip.addBuffer('modrinth.index.json', Buffer.from(JSON.stringify(modrinthManifest, null, 2)));
 
   // Добавить все файлы модпака в архив
   for (const file of files) {
@@ -140,8 +140,7 @@ export async function exportToModrinth(
       // Локальный файл - добавить в архив
       const filePath = path.join(modpackDir, file.path);
       if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath);
-        zip.addFile(file.path.replace(/\\/g, '/'), content);
+        zip.addFile(file.path.replace(/\\/g, '/'), filePath);
       }
     }
   }
@@ -152,7 +151,7 @@ export async function exportToModrinth(
   }
 
   // Сохранить ZIP
-  zip.writeZip(outputPath);
+  await zip.writeTo(outputPath);
 }
 
 /**
@@ -198,7 +197,7 @@ async function addOverridesToManifest(
 /**
  * Рекурсивно добавить директорию в ZIP
  */
-function addDirectoryToZip(zip: AdmZip, dirPath: string, zipPath: string): void {
+function addDirectoryToZip(zip: SafeZipWriter, dirPath: string, zipPath: string): void {
   const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
   for (const entry of entries) {
@@ -208,8 +207,7 @@ function addDirectoryToZip(zip: AdmZip, dirPath: string, zipPath: string): void 
     if (entry.isDirectory()) {
       addDirectoryToZip(zip, fullPath, zipEntryPath);
     } else {
-      const content = fs.readFileSync(fullPath);
-      zip.addFile(zipEntryPath, content);
+      zip.addFile(zipEntryPath, fullPath);
     }
   }
 }

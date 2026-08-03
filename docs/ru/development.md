@@ -4,13 +4,19 @@
 
 ## Команды
 
+Требования: Node.js 24 и npm 11. Выполните `nvm use`, для воспроизводимой установки используйте `npm ci`.
+
 Из `package.json`:
 
 - `npm run dev` — старт Vite (Electron поднимается через конфиг плагина Vite/Electron)
 - `npm run build` — `tsc` + `vite build` + `electron-builder`
 - `npm run lint` — ESLint (warnings считаются падением)
+- `npm run verify` — unit, lint, type, IPC contract и production audit gates
+- `npm run audit:prod` — падение на critical advisory production-зависимостей
+- `npm run test:visual:closeout` — визуальный baseline macOS Chromium
 - `npm run preview` — предпросмотр Vite build
-- `npm run release` — release-скрипт
+- `npm run release -- 0.7.0 --dry-run` — release preflight без изменений
+- `npm run release -- 0.7.0` — локальный commit и tag; `--push` добавляется только после ревью
 - `npm run postinstall` — фикс XMCL bytebuffer через `scripts/postinstall-fix-xmcl-bytebuffer.cjs`
 
 ### Тестирование
@@ -47,7 +53,7 @@ node scripts/test-full.js --only=1.20.1,1.19.2
 node scripts/test-full.js --provider=bmclapi
 ```
 
-Результаты тестов и логи сохраняются в `%APPDATA%/FriendLauncher/logs/full-installation/` (или эквивалентная папка на других платформах).
+Сценарий использует изолированную временную папку user-data и не может перезаписать рабочую установку FMCL. Результаты и логи печатаются во время прогона и удаляются вместе с временной папкой при завершении.
 
 ---
 
@@ -71,4 +77,3 @@ node scripts/test-full.js --provider=bmclapi
 ## Переводы строк (Windows)
 
 Если видишь предупреждения Git вида “LF will be replaced by CRLF”, имеет смысл позже стандартизировать это через `.gitattributes`. Пока что: не смешивай разные переводы строк внутри одного файла.
-

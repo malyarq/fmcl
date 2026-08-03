@@ -181,6 +181,7 @@
 - `updater:sync`
 - `updater:progress`
 - `app-updater:check`
+- `app-updater:download`
 - `app-updater:quit-and-install`
 - `app-updater:status`
 - `app-updater:available`

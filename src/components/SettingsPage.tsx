@@ -46,7 +46,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
     } = useSettings();
 
     // App updater hook (without auto-check)
-    const { status, updateInfo, progress, checkForUpdates, installUpdate } = useAppUpdater(false);
+    const { status, updateInfo, progress, checkForUpdates, downloadUpdate, installUpdate } = useAppUpdater(false);
 
     // Show update modal when update becomes available
     React.useEffect(() => {
@@ -173,6 +173,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
                     progress={progress}
                     status={status as 'available' | 'downloading' | 'downloaded'}
                     onInstall={installUpdate}
+                    onDownload={downloadUpdate}
                 />
             )}
         </Modal>

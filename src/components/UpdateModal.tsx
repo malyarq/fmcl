@@ -14,6 +14,7 @@ interface UpdateModalProps {
   progress: UpdateProgress | null;
   status: 'available' | 'downloading' | 'downloaded';
   onInstall: () => void;
+  onDownload: () => void;
 }
 
 // Modal dialog for update notifications and progress
@@ -24,6 +25,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   progress,
   status,
   onInstall,
+  onDownload,
 }) => {
   const { t, getAccentStyles } = useSettings();
 
@@ -109,13 +111,18 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
               {t('updater.later')}
             </Button>
           ) : (
-            <Button
-              onClick={onClose}
-              variant="secondary"
-              className="flex-1"
-            >
-              {t('updater.later')}
-            </Button>
+            <>
+              <Button
+                onClick={onClose}
+                variant="secondary"
+                className="flex-1"
+              >
+                {t('updater.later')}
+              </Button>
+              <Button onClick={onDownload} className="flex-1">
+                {t('updater.download')}
+              </Button>
+            </>
           )}
         </div>
       </div>

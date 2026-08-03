@@ -2,8 +2,12 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   checks:
@@ -11,12 +15,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: '20'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
       - name: Install dependencies
@@ -37,7 +41,42 @@ jobs:
       - name: IPC allowlist check
         run: npm run ipc:check
 
+      - name: Production dependency audit
+        run: npm run audit:prod
+
       - name: Build
         run: npm run build -- --publish never
         env:
           CI: true
+
+  visual-regression:
+    name: Visual regression (macOS Chromium)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+
+      - name: Install Chromium
+        run: npx playwright install chromium
+
+      - name: Run visual closeout
+        run: npm run test:visual:closeout
+
+      - name: Upload visual diff on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-regression-results
+          path: test-results/
+          if-no-files-found: ignore

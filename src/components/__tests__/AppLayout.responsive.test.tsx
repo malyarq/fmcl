@@ -69,6 +69,7 @@ function createProps(): AppLayoutProps {
       status: 'idle',
       info: null,
       onInstall: vi.fn(),
+      onDownload: vi.fn(),
     },
     overlays: {
       showSettings: false,
@@ -156,7 +157,7 @@ describe('AppLayout responsive shell', () => {
     expect(screen.getByText('Simple play dashboard')).toBeTruthy();
   });
 
-  it('keeps the same safe-area contract when the route and shell state change', () => {
+  it('keeps the same safe-area contract when the route and shell state change', async () => {
     settingsState.sidebarPosition = 'right';
     uiModeState.value = 'modpacks';
     shellContractState.value = 'native-macos';
@@ -175,10 +176,10 @@ describe('AppLayout responsive shell', () => {
     expect(safeArea.className).toContain('pt-1');
     expect(notifications.previousElementSibling).toBe(screen.getByTestId('app-title-bar'));
     expect(screen.getByTestId('app-layout-split').className).toContain('flex-row-reverse');
-    expect(safeArea.contains(screen.getByText('Settings page'))).toBe(true);
-    expect(safeArea.contains(screen.getByText('Multiplayer page'))).toBe(true);
-    expect(safeArea.contains(screen.getByText('Modpack router'))).toBe(true);
+    expect(safeArea.contains(await screen.findByText('Settings page'))).toBe(true);
+    expect(screen.queryByText('Multiplayer page')).toBeNull();
+    expect(safeArea.contains(await screen.findByText('Modpack router'))).toBe(true);
     expect(screen.getByText('Settings page')).toBeTruthy();
-    expect(screen.getByText('Multiplayer page')).toBeTruthy();
+    expect(screen.queryByText('Multiplayer page')).toBeNull();
   });
 });

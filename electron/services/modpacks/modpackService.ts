@@ -22,7 +22,7 @@ import { importModpack, getModpackInfoFromFile } from './importers';
 import type { ModPlatformService } from '../mods/platform/modPlatformService';
 import { scanModsFolder } from '../mods/scanner';
 import type { ModEntry } from '../mods/types';
-import AdmZip from 'adm-zip';
+import { SafeZipWriter } from '../../security/zipWriter';
 import type { ContentManager } from '../content/contentManager';
 import { InstanceExporterService, type ExportOptions } from '../instances/exporter/InstanceExporterService';
 import { app } from 'electron';
@@ -375,12 +375,12 @@ export class ModpackService extends BaseModpackService {
   /**
    * Получить информацию о модпаке из файла (без импорта)
    */
-  public getModpackInfoFromFile(filePath: string): {
+  public async getModpackInfoFromFile(filePath: string): Promise<{
     format: 'curseforge' | 'modrinth' | 'zip' | 'multimc' | null;
     manifest: ModpackManifest | null;
     error?: string;
-  } {
-    return getModpackInfoFromFile(filePath);
+  }> {
+    return await getModpackInfoFromFile(filePath);
   }
 
   /**
@@ -646,21 +646,20 @@ export class ModpackService extends BaseModpackService {
       'Backup path',
     );
 
-    // Использовать adm-zip для создания архива
-    const zip = new AdmZip();
+    const zip = new SafeZipWriter();
 
     // Добавить все файлы из папки модпака в архив
     const addDirectoryToZip = (dir: string, zipPath: string = '') => {
       const files = fs.readdirSync(dir);
       for (const file of files) {
         const filePath = assertPathWithinRoot(modpackDir, path.join(dir, file), 'Modpack backup source path');
-        const stat = fs.statSync(filePath);
+        const stat = fs.lstatSync(filePath);
         const zipFilePath = zipPath ? path.join(zipPath, file) : file;
 
         if (stat.isDirectory()) {
           addDirectoryToZip(filePath, zipFilePath);
         } else {
-          zip.addFile(zipFilePath, fs.readFileSync(filePath));
+          zip.addFile(zipFilePath.replace(/\\/g, '/'), filePath);
         }
       }
     };
@@ -670,7 +669,7 @@ export class ModpackService extends BaseModpackService {
     }
 
     // Сохранить архив
-    zip.writeZip(backupPath);
+    await zip.writeTo(backupPath);
 
     return backupPath;
   }

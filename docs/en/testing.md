@@ -38,7 +38,7 @@ node scripts/test-full.js --only=1.20.1,1.19.2
 node scripts/test-full.js --provider=bmclapi
 ```
 
-Results and logs are saved to `%APPDATA%/FriendLauncher/logs/full-installation/` (or equivalent on other OSes).
+The harness uses an isolated temporary user-data directory, so it cannot overwrite a real FMCL installation. Results and logs are printed during the run and removed with that temporary directory on exit.
 
 ## CI
 

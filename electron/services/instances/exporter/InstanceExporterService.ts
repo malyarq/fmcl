@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import AdmZip from 'adm-zip';
 import { ModpackService } from '../instanceService';
 import type { ModpackConfig } from '../types';
+import { SafeZipWriter } from '../../../security/zipWriter';
 
 export interface ExportOptions {
     includeSaves?: boolean;
@@ -44,9 +44,9 @@ export class InstanceExporterService {
         outputPath: string,
         options: ExportOptions
     ): Promise<void> {
-        const zip = new AdmZip();
+        const zip = new SafeZipWriter();
         this.addFilesToZip(zip, instanceDir, '', options);
-        zip.writeZip(outputPath);
+        await zip.writeTo(outputPath);
     }
 
     private async exportAsMultiMC(
@@ -55,7 +55,7 @@ export class InstanceExporterService {
         outputPath: string,
         options: ExportOptions
     ): Promise<void> {
-        const zip = new AdmZip();
+        const zip = new SafeZipWriter();
 
         // 1. Create mmc-pack.json
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -113,7 +113,7 @@ export class InstanceExporterService {
             }
         }
 
-        zip.addFile('mmc-pack.json', Buffer.from(JSON.stringify(mmcPack, null, 2)));
+        zip.addBuffer('mmc-pack.json', Buffer.from(JSON.stringify(mmcPack, null, 2)));
 
         // 2. Create instance.cfg
         const instanceCfg = [
@@ -130,22 +130,22 @@ export class InstanceExporterService {
             'stats=0'
         ].join('\n');
 
-        zip.addFile('instance.cfg', Buffer.from(instanceCfg));
+        zip.addBuffer('instance.cfg', Buffer.from(instanceCfg));
 
         // 3. Add .minecraft folder contents
         this.addFilesToZip(zip, instanceDir, '.minecraft', options);
 
-        zip.writeZip(outputPath);
+        await zip.writeTo(outputPath);
     }
 
-    private addFilesToZip(zip: AdmZip, sourceDir: string, targetPrefix: string, options: ExportOptions) {
+    private addFilesToZip(zip: SafeZipWriter, sourceDir: string, targetPrefix: string, options: ExportOptions) {
         if (!fs.existsSync(sourceDir)) return;
 
         const files = fs.readdirSync(sourceDir);
 
         for (const file of files) {
             const fullPath = path.join(sourceDir, file);
-            const stats = fs.statSync(fullPath);
+            const stats = fs.lstatSync(fullPath);
             const relativePath = targetPrefix ? path.join(targetPrefix, file) : file;
 
             // Filtering
@@ -160,9 +160,8 @@ export class InstanceExporterService {
             if (stats.isDirectory()) {
                 this.addFilesToZip(zip, fullPath, relativePath, options);
             } else {
-                const content = fs.readFileSync(fullPath);
                 const zipPathNormalized = relativePath.replace(/\\/g, '/');
-                zip.addFile(zipPathNormalized, content);
+                zip.addFile(zipPathNormalized, fullPath);
             }
         }
     }

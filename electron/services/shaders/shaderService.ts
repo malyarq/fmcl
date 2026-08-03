@@ -1,6 +1,5 @@
 import fs from 'fs-extra';
 import path from 'node:path';
-import AdmZip from 'adm-zip';
 import type {
     ShaderPackAcquisitionIssue,
     ShaderPackAcquisitionIssueStatus,
@@ -8,6 +7,7 @@ import type {
 } from '../../../shared/contracts/shaders';
 import { assertAbsolutePath, assertChildName, resolvePathWithinRoot } from '../../security/pathGuards';
 import { resolveApprovedInstancePath, resolveShaderPacksDir } from '../instances/paths';
+import { openValidatedZip } from '../../security/archivePolicy';
 
 export interface ShaderPack {
     fileName: string;
@@ -44,9 +44,12 @@ export class ShadersService {
                 return false;
             }
 
-            const data = await fs.readFile(filePath);
-            const zip = new AdmZip(data);
-            return zip.getEntries().some((entry) => entry.entryName.startsWith('shaders/'));
+            const zip = await openValidatedZip(filePath, 'Shader archive');
+            try {
+                return zip.getEntries().some((entry) => entry.fileName.startsWith('shaders/'));
+            } finally {
+                zip.close();
+            }
         } catch {
             return false;
         }

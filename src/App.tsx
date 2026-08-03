@@ -53,7 +53,7 @@ function MainApp() {
   const { forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions, isLoading: isModloadersLoading } = useModSupportedVersions();
 
   // App updater with auto-check on mount
-  const { status: updateStatus, updateInfo, installUpdate } = useAppUpdater(true);
+  const { status: updateStatus, updateInfo, downloadUpdate, installUpdate } = useAppUpdater(true);
 
   const {
     nickname,
@@ -183,6 +183,7 @@ function MainApp() {
           status: updateStatus,
           info: updateInfo,
           onInstall: installUpdate,
+          onDownload: downloadUpdate,
         }}
         overlays={{
           showSettings,

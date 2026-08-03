@@ -5,6 +5,7 @@ import {
   validateOptionalRootPath,
   validateSaveDialogOptions,
 } from '../validation/privilegedPayloads'
+import { authorizeSavePath } from '../../security/savePathAuthorizations'
 
 export function registerSettingsHandlers(deps: { window: BrowserWindow }) {
   const { window } = deps
@@ -48,6 +49,9 @@ export function registerSettingsHandlers(deps: { window: BrowserWindow }) {
   ipcMain.handle('dialog:showSaveDialog', async (_evt, options: unknown) => {
     try {
       const result = await dialog.showSaveDialog(window, validateSaveDialogOptions(options))
+      if (!result.canceled && result.filePath) {
+        authorizeSavePath(result.filePath)
+      }
       return result
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error)

@@ -149,4 +149,21 @@ describe('ModpackCreationWizard explainability', () => {
 
     expect(screen.queryByText(/FMCL still sees a runtime issue in this draft/)).toBeNull();
   });
+
+  it('separates optional follow-up guidance from the successful create boundary', async () => {
+    createLocalMock.mockResolvedValue({ id: 'pack-1' });
+    updateMetadataMock.mockRejectedValue(new Error('metadata failed'));
+
+    render(<ModpackCreationWizard onBack={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText('Modpack name'), { target: { value: 'Calm Pack' } });
+    fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Optional metadata' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const followUpNotice = await screen.findByTestId('modpack-creation-recovery');
+    expect(followUpNotice.textContent).toContain('Created successfully.');
+    expect(followUpNotice.textContent).not.toMatch(/failed|error/i);
+    expect(screen.getByRole('button', { name: 'Finish' })).toBeTruthy();
+  });
 });

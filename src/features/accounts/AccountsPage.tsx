@@ -25,9 +25,23 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({ embedded = false }) 
         if (account.disabledReason === 'insecureRemoteHttp') {
             return t('accounts.disabledInsecureAuthServer');
         }
+        if (account.disabledReason === 'secureStorageUnavailable') {
+            return t('accounts.disabledSecureStorage');
+        }
+        if (account.disabledReason === 'reauthenticationRequired') {
+            return t('accounts.disabledReauthentication');
+        }
 
         return t('accounts.disabledRecovery');
     }, [t]);
+
+    const getAccountRecoveryMessage = useCallback((account: Account) => (
+        account.disabledReason === 'secureStorageUnavailable'
+            ? t('accounts.disabledSecureStorageRecovery')
+            : account.disabledReason === 'reauthenticationRequired'
+                ? t('accounts.disabledReauthenticationRecovery')
+                : t('accounts.disabledRecovery')
+    ), [t]);
 
     const loadAccounts = useCallback(async () => {
         const [list, current] = await Promise.all([
@@ -217,7 +231,7 @@ export const AccountsPage: React.FC<AccountsPageProps> = ({ embedded = false }) 
                                             <div className="space-y-1 text-sm">
                                                 <div className="break-all text-secondary">{account.authServerUrl ?? account.id}</div>
                                                 <div className="text-amber-700 dark:text-amber-200">{getAccountDisabledMessage(account)}</div>
-                                                <div className="text-secondary">{t('accounts.disabledRecovery')}</div>
+                                                <div className="text-secondary">{getAccountRecoveryMessage(account)}</div>
                                             </div>
                                         </div>
                                     </div>

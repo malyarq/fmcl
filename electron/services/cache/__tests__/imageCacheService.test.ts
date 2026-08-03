@@ -137,7 +137,7 @@ describe('ImageCacheService', () => {
     expect(state.totalSizeBytes).toBe(0)
   })
 
-  it('keeps the freshly resolved image available even if it exceeds the configured limit on its own', async () => {
+  it('rejects a single image that exceeds the safe per-image limit', async () => {
     const rootDir = createTempRoot()
     tempDirs.push(rootDir)
 
@@ -146,18 +146,12 @@ describe('ImageCacheService', () => {
     })
 
     await service.setMaxSizeBytes(32 * 1024 * 1024)
-    const result = await service.resolveImage('https://cdn.example.com/icons/oversized.png')
-    const [resolvedPath] = getCachedEntryPaths(rootDir)
+    await expect(service.resolveImage('https://cdn.example.com/icons/oversized.png'))
+      .rejects.toThrow('per-image size limit')
     const state = await service.getState()
 
-    expect(resolvedPath).toBeDefined()
-    if (!resolvedPath) {
-      throw new Error('Expected the oversized image to remain cached on disk')
-    }
-
-    expect(result.localUrl.startsWith('data:image/png;base64,')).toBe(true)
-    expect(fs.existsSync(resolvedPath)).toBe(true)
-    expect(state.entryCount).toBe(1)
-    expect(state.totalSizeBytes).toBeGreaterThan(32 * 1024 * 1024)
+    expect(getCachedEntryPaths(rootDir)).toEqual([])
+    expect(state.entryCount).toBe(0)
+    expect(state.totalSizeBytes).toBe(0)
   })
 })

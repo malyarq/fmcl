@@ -51,6 +51,11 @@ function getInitialFocusTarget(container: HTMLElement): HTMLElement {
     return getFocusableElements(container)[0] ?? container;
 }
 
+function isTopmostModal(element: HTMLElement | null): boolean {
+    const dialogs = document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]');
+    return element !== null && dialogs[dialogs.length - 1] === element;
+}
+
 function useReducedMotionState(isOpen: boolean): boolean {
     const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
@@ -167,6 +172,10 @@ export const Modal: React.FC<ModalProps> = ({
         }
 
         const handleKeyDown = (event: KeyboardEvent) => {
+            if (!isTopmostModal(dialogRef.current)) {
+                return;
+            }
+
             if (event.key === 'Escape') {
                 event.preventDefault();
                 requestClose();

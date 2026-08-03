@@ -4,13 +4,19 @@
 
 ## Commands
 
+Prerequisites: Node.js 24 and npm 11. Run `nvm use` and prefer `npm ci` for a reproducible install.
+
 From `package.json`:
 
 - `npm run dev` — start Vite (Electron is handled by the Vite Electron plugin config)
 - `npm run build` — `tsc` + `vite build` + `electron-builder`
 - `npm run lint` — ESLint (warnings are treated as failure)
+- `npm run verify` — unit, lint, type, IPC contract and production audit gates
+- `npm run audit:prod` — fail on critical production dependency advisories
+- `npm run test:visual:closeout` — macOS Chromium visual baseline
 - `npm run preview` — preview Vite build
-- `npm run release` — release script
+- `npm run release -- 0.7.0 --dry-run` — non-mutating release preflight
+- `npm run release -- 0.7.0` — prepare a local commit and tag; add `--push` only after review
 - `npm run postinstall` — fixes XMCL bytebuffer via `scripts/postinstall-fix-xmcl-bytebuffer.cjs`
 
 ### Testing
@@ -47,7 +53,7 @@ node scripts/test-full.js --only=1.20.1,1.19.2
 node scripts/test-full.js --provider=bmclapi
 ```
 
-Test results and logs are saved to `%APPDATA%/FriendLauncher/logs/full-installation/` (or equivalent on other platforms).
+The harness uses an isolated temporary user-data directory so it cannot overwrite a real FMCL installation. Results and logs are printed during the run and removed with that temporary directory on exit.
 
 ---
 
@@ -71,4 +77,3 @@ Before/after changing IPC or preload:
 ## Line endings (Windows)
 
 If you see Git warnings like “LF will be replaced by CRLF”, consider standardizing with a `.gitattributes` later. For now: avoid mixing line endings within the same file.
-

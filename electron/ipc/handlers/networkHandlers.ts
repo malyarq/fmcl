@@ -1,6 +1,13 @@
 import { ipcMain, type BrowserWindow } from 'electron'
 import type { NetworkService } from '../../services/network/networkService'
 import type { LogSender } from '../logThrottler'
+import { validateBoundedString, validateEnum, validateInteger } from '../validation/privilegedPayloads'
+
+const NETWORK_MODES = ['hyperswarm', 'xmcl_lan', 'xmcl_upnp_host'] as const
+
+function validatePort(value: unknown, label: string): number {
+  return validateInteger(value, label, { min: 1, max: 65_535 })
+}
 
 export function registerNetworkHandlers(deps: {
   window: BrowserWindow
@@ -10,15 +17,15 @@ export function registerNetworkHandlers(deps: {
   const { window, networkService, sendLog } = deps
 
   ipcMain.removeHandler('network:host')
-  ipcMain.handle('network:host', async (_evt, port) => {
-    return await networkService.hostTunnel(port, (msg) => {
+  ipcMain.handle('network:host', async (_evt, port: unknown) => {
+    return await networkService.hostTunnel(validatePort(port, 'LAN port'), (msg) => {
       sendLog(msg)
     })
   })
 
   ipcMain.removeHandler('network:join')
-  ipcMain.handle('network:join', async (_evt, code) => {
-    return await networkService.joinTunnel(code, (msg) => {
+  ipcMain.handle('network:join', async (_evt, code: unknown) => {
+    return await networkService.joinTunnel(validateBoundedString(code, 'Room code', { maxLength: 512 }), (msg) => {
       sendLog(msg)
     })
   })
@@ -37,14 +44,17 @@ export function registerNetworkHandlers(deps: {
   })
 
   ipcMain.removeHandler('network:setMode')
-  ipcMain.handle('network:setMode', async (_evt, mode) => {
-    networkService.setMode(mode)
+  ipcMain.handle('network:setMode', async (_evt, mode: unknown) => {
+    networkService.setMode(validateEnum(mode, 'Network mode', NETWORK_MODES))
     return { ok: true }
   })
 
   ipcMain.removeHandler('network:ping')
-  ipcMain.handle('network:ping', async (_evt, host: string, port?: number) => {
-    return await networkService.ping(host, port ?? 25565)
+  ipcMain.handle('network:ping', async (_evt, host: unknown, port?: unknown) => {
+    return await networkService.ping(
+      validateBoundedString(host, 'Server host', { maxLength: 253 }),
+      port === undefined ? 25565 : validatePort(port, 'Server port'),
+    )
   })
 
   let lanUnsubscribe: undefined | (() => void)
@@ -80,19 +90,24 @@ export function registerNetworkHandlers(deps: {
   })
 
   ipcMain.removeHandler('network:lanBroadcast')
-  ipcMain.handle('network:lanBroadcast', async (_evt, motd: string, port: number) => {
-    await networkService.lanBroadcast(motd, port)
+  ipcMain.handle('network:lanBroadcast', async (_evt, motd: unknown, port: unknown) => {
+    await networkService.lanBroadcast(
+      validateBoundedString(motd, 'LAN message', { maxLength: 256 }),
+      validatePort(port, 'LAN port'),
+    )
     return { ok: true }
   })
 
   ipcMain.removeHandler('network:upnpMapTcp')
-  ipcMain.handle('network:upnpMapTcp', async (_evt, publicPort: number, privatePort: number) => {
-    return await networkService.upnpMapTcp(publicPort, privatePort)
+  ipcMain.handle('network:upnpMapTcp', async (_evt, publicPort: unknown, privatePort: unknown) => {
+    return await networkService.upnpMapTcp(
+      validatePort(publicPort, 'Public port'),
+      validatePort(privatePort, 'Private port'),
+    )
   })
 
   ipcMain.removeHandler('network:upnpUnmapTcp')
-  ipcMain.handle('network:upnpUnmapTcp', async (_evt, publicPort: number) => {
-    return await networkService.upnpUnmapTcp(publicPort)
+  ipcMain.handle('network:upnpUnmapTcp', async (_evt, publicPort: unknown) => {
+    return await networkService.upnpUnmapTcp(validatePort(publicPort, 'Public port'))
   })
 }
-

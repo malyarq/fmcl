@@ -1,20 +1,24 @@
 import fs from 'node:fs';
-import AdmZip from 'adm-zip';
+import { openValidatedZip } from '../../security/archivePolicy';
 
 /**
  * Validates that a file is a valid ZIP archive.
  * @throws Error if file is not a valid ZIP
  */
 export const validateZipIntegrity = async (dest: string) => {
-  const stats = fs.statSync(dest);
+  const stats = await fs.promises.stat(dest);
   
   if (stats.size === 0) {
     throw new Error('Archive file is empty (0 bytes)');
   }
   
   try {
-    const zip = new AdmZip(dest);
-    zip.getEntries();
+    const zip = await openValidatedZip(dest, 'Downloaded archive');
+    try {
+      zip.getEntries();
+    } finally {
+      zip.close();
+    }
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : String(err);
     // Check if error is about missing ZIP signature (truncated download)
@@ -26,4 +30,3 @@ export const validateZipIntegrity = async (dest: string) => {
     throw new Error(`Invalid archive (${stats.size} bytes): ${errorMessage}`);
   }
 };
-

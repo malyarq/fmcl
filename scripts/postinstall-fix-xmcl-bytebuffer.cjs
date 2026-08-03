@@ -43,10 +43,38 @@ function patchBytebuffer() {
     return { ok: true, skipped: true, reason: 'conditional exports' };
   }
 
-  if (!changed) return { ok: true, skipped: true, reason: 'already patched' };
+  const validateExports = () => {
+    for (const [key, conditions] of Object.entries(exp)) {
+      if (!key.startsWith('.')) throw new Error(`invalid export key remains: ${key}`);
+      if (!conditions || typeof conditions !== 'object') continue;
+      for (const target of Object.values(conditions)) {
+        if (typeof target !== 'string' || !target.startsWith('./')) continue;
+        if (!fs.existsSync(path.resolve(path.dirname(pkgPath), target))) {
+          throw new Error(`export target does not exist: ${target}`);
+        }
+      }
+    }
+  };
+
+  if (!changed) {
+    validateExports();
+    return { ok: true, skipped: true, reason: 'already patched' };
+  }
 
   pkg.exports = exp;
-  fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+  const tempPath = `${pkgPath}.fmcl-patch-${process.pid}`;
+  const backupPath = `${pkgPath}.fmcl-backup-${process.pid}`;
+  fs.writeFileSync(tempPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
+  fs.renameSync(pkgPath, backupPath);
+  try {
+    fs.renameSync(tempPath, pkgPath);
+    fs.rmSync(backupPath, { force: true });
+  } catch (error) {
+    fs.renameSync(backupPath, pkgPath);
+    fs.rmSync(tempPath, { force: true });
+    throw error;
+  }
+  validateExports();
   return { ok: true, skipped: false };
 }
 
@@ -58,7 +86,6 @@ try {
     console.log(`[postinstall] @xmcl/bytebuffer exports: ${res.reason}`);
   }
 } catch (e) {
-  console.warn('[postinstall] Failed to patch @xmcl/bytebuffer exports:', e);
-  // Don't hard-fail install; the runtime error will be obvious otherwise.
+  console.error('[postinstall] Failed to patch @xmcl/bytebuffer exports:', e);
+  process.exitCode = 1;
 }
-

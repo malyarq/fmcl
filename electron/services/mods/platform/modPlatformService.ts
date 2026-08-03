@@ -1,6 +1,5 @@
 import path from 'node:path';
 import fs from 'fs-extra';
-import AdmZip from 'adm-zip';
 import { download } from '@xmcl/file-transfer';
 import { ModrinthV2Client } from '@xmcl/modrinth';
 import { CurseforgeV1Client, type File as CurseforgeFile, type Mod as CurseforgeMod } from '@xmcl/curseforge';
@@ -9,6 +8,7 @@ import { ensureDir } from './fsUtils';
 import { CF_SORT_POPULARITY, CF_SORT_LAST_UPDATED, CF_SORT_NAME, mapLoaderToCurseforge, mapLoaderToModrinth } from './loaderMapping';
 import { pickPrimaryModrinthFile } from './modrinthUtils';
 import { InstanceManifestManager } from '../../instances/manifestManager';
+import { openValidatedZip } from '../../../security/archivePolicy';
 import {
   type GuidedContentInstallIssue,
   type GuidedContentInstallIssueStatus,
@@ -112,21 +112,18 @@ export class ModPlatformService {
         return false;
       }
 
-      const data = await fs.readFile(filePath);
-      const zip = new AdmZip(data);
-      const mcmetaEntry = zip.getEntry('pack.mcmeta');
+      const zip = await openValidatedZip(filePath, 'Mod archive');
+      try {
+        const mcmetaEntry = zip.getEntry('pack.mcmeta');
+        if (!mcmetaEntry) return false;
 
-      if (!mcmetaEntry) {
-        return false;
-      }
-
-      const content = JSON.parse(zip.readAsText(mcmetaEntry)) as {
-        pack?: {
-          pack_format?: number;
+        const content = JSON.parse((await zip.getData(mcmetaEntry, 1024 * 1024)).toString('utf8')) as {
+          pack?: { pack_format?: number };
         };
-      };
-
-      return typeof content.pack?.pack_format === 'number';
+        return typeof content.pack?.pack_format === 'number';
+      } finally {
+        zip.close();
+      }
     } catch {
       return false;
     }
@@ -138,9 +135,12 @@ export class ModPlatformService {
         return false;
       }
 
-      const data = await fs.readFile(filePath);
-      const zip = new AdmZip(data);
-      return zip.getEntries().some((entry) => entry.entryName.startsWith('shaders/'));
+      const zip = await openValidatedZip(filePath, 'Mod archive');
+      try {
+        return zip.getEntries().some((entry) => entry.fileName.startsWith('shaders/'));
+      } finally {
+        zip.close();
+      }
     } catch {
       return false;
     }

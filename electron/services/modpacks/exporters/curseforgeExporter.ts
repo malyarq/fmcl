@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import AdmZip from 'adm-zip';
+import { SafeZipWriter } from '../../../security/zipWriter';
 import type { CurseForgeManifest } from '../../../../shared/types/modpack';
 import { generateManifestFromInstance } from './manifestGenerator';
 import type { ModPlatformService } from '../../mods/platform/modPlatformService';
@@ -47,10 +47,10 @@ export async function exportToCurseForge(
   };
 
   // Создать ZIP архив
-  const zip = new AdmZip();
+  const zip = new SafeZipWriter();
 
   // Добавить manifest.json
-  zip.addFile('manifest.json', Buffer.from(JSON.stringify(curseForgeManifest, null, 2)));
+  zip.addBuffer('manifest.json', Buffer.from(JSON.stringify(curseForgeManifest, null, 2)));
 
   // Добавить overrides (если есть)
   const overridesDir = path.join(modpackDir, manifest.overrides || 'overrides');
@@ -70,13 +70,13 @@ export async function exportToCurseForge(
   }
 
   // Сохранить ZIP
-  zip.writeZip(outputPath);
+  await zip.writeTo(outputPath);
 }
 
 /**
  * Рекурсивно добавить директорию в ZIP
  */
-function addDirectoryToZip(zip: AdmZip, dirPath: string, zipPath: string): void {
+function addDirectoryToZip(zip: SafeZipWriter, dirPath: string, zipPath: string): void {
   const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
   for (const entry of entries) {
@@ -86,8 +86,7 @@ function addDirectoryToZip(zip: AdmZip, dirPath: string, zipPath: string): void 
     if (entry.isDirectory()) {
       addDirectoryToZip(zip, fullPath, zipEntryPath);
     } else {
-      const content = fs.readFileSync(fullPath);
-      zip.addFile(zipEntryPath, content);
+      zip.addFile(zipEntryPath, fullPath);
     }
   }
 }

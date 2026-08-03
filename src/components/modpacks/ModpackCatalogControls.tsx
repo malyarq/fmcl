@@ -2,6 +2,18 @@ import React from 'react';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 
+// Secondary modpack tabs and add-content routes deliberately share these seams.
+// Keeping the layout tokens here prevents each route from inventing a slightly
+// different content width or search/filter arrangement.
+export const MODPACK_SECONDARY_CONTENT_WORKSPACE = {
+  host: 'mx-auto w-full max-w-6xl space-y-4',
+  controls: 'surface-card space-y-4 p-4',
+  searchRow: 'w-full',
+  filterRow: 'grid gap-3 sm:grid-cols-2 xl:grid-cols-3',
+  counter: 'surface-inline flex min-h-[5.75rem] flex-col items-center justify-center rounded-2xl px-3 py-3 text-center',
+  action: 'min-h-10 min-w-[8.5rem] justify-center',
+} as const;
+
 export interface ModpackCatalogControlItem {
   key: string;
   label: string;

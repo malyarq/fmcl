@@ -29,7 +29,6 @@ export class SelfUpdater {
 
         autoUpdater.on('update-available', (info) => {
             SelfUpdater.sendAll('app-updater:available', info);
-            autoUpdater.downloadUpdate();
         });
 
         autoUpdater.on('update-not-available', (info) => {

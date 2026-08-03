@@ -1,8 +1,8 @@
 import path from 'node:path';
 import fs from 'node:fs/promises';
-import AdmZip from 'adm-zip';
 import { assertChildName, resolvePathWithinRoot } from '../../security/pathGuards';
 import { resolveWorldPath, resolveWorldsDir } from '../instances/paths';
+import { SafeZipWriter } from '../../security/zipWriter';
 
 export interface WorldInfo {
     name: string;
@@ -14,6 +14,17 @@ export interface WorldInfo {
 }
 
 export class WorldsService {
+    private async addDirectoryToZip(zip: SafeZipWriter, sourceDir: string, prefix: string): Promise<void> {
+        const entries = await fs.readdir(sourceDir, { withFileTypes: true });
+        for (const entry of entries) {
+            if (entry.isSymbolicLink()) throw new Error(`World backup contains a symbolic link: ${entry.name}`);
+            const sourcePath = path.join(sourceDir, entry.name);
+            const entryPath = path.posix.join(prefix, entry.name);
+            if (entry.isDirectory()) await this.addDirectoryToZip(zip, sourcePath, entryPath);
+            else zip.addFile(entryPath, sourcePath);
+        }
+    }
+
     /**
      * Get the saves directory path for an instance.
      */
@@ -143,9 +154,9 @@ export class WorldsService {
         const backupName = `${safeFolderName}_backup_${timestamp}.zip`;
         const backupPath = resolvePathWithinRoot(savesDir, backupName, 'World backup path');
 
-        const zip = new AdmZip();
-        zip.addLocalFolder(worldPath, safeFolderName);
-        zip.writeZip(backupPath);
+        const zip = new SafeZipWriter();
+        await this.addDirectoryToZip(zip, worldPath, safeFolderName);
+        await zip.writeTo(backupPath);
 
         return backupPath;
     }

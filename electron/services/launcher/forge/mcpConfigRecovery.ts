@@ -1,7 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import AdmZip from 'adm-zip';
 import { Agent, interceptors } from 'undici';
 
 import { DownloadManager } from '../../download/downloadManager';
@@ -9,6 +8,7 @@ import type { DownloadProvider } from '../../mirrors/providers';
 import { orderCandidatesByScore } from '../../mirrors/scoring';
 import { DEFAULT_USER_AGENT } from '@shared/constants';
 import { downloadFileDirectly } from '../directDownload';
+import { openValidatedZip } from '../../../security/archivePolicy';
 
 async function computeFileSha1(filePath: string) {
   return new Promise<string>((resolve, reject) => {
@@ -137,8 +137,12 @@ export async function ensureForgeMcpConfig(options: {
       }
       
       // Validate ZIP
-      const zip = new AdmZip(tempDest);
-      zip.getEntries(); // Will throw if invalid
+      const zip = await openValidatedZip(tempDest, 'Forge installer archive');
+      try {
+        zip.getEntries(); // Will throw if invalid
+      } finally {
+        zip.close();
+      }
       
       // Validate SHA1
       const actualSha1 = await computeFileSha1(tempDest);
@@ -222,9 +226,12 @@ export async function ensureForgeMcpConfig(options: {
       }
 
       try {
-        const zip = new AdmZip(destination);
-        const entries = zip.getEntries();
-        onLog(`[Forge] ZIP validation passed (${entries.length} entries).`);
+        const zip = await openValidatedZip(destination, 'Forge library archive');
+        try {
+          onLog(`[Forge] ZIP validation passed (${zip.getEntries().length} entries).`);
+        } finally {
+          zip.close();
+        }
 
         const actualSha1 = await computeFileSha1(destination);
         if (actualSha1.toLowerCase() === target.sha1.toLowerCase()) {
@@ -298,4 +305,3 @@ export async function ensureForgeMcpConfig(options: {
     throw new Error(`Failed to download mcp_config from all sources: ${errorMsg}`);
   }
 }
-

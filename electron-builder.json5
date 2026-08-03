@@ -35,6 +35,8 @@
     }
   ],
   "mac": {
+    "hardenedRuntime": true,
+    "gatekeeperAssess": false,
     "target": [
       "dmg"
     ],

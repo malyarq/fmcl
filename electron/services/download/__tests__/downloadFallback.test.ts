@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import AdmZip from 'adm-zip';
+import { ZipFile } from 'yazl';
 import type { Dispatcher } from 'undici';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Mirror } from '@shared/types';
@@ -31,10 +31,17 @@ function createTempDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-download-fallback-'));
 }
 
-function createJarBuffer(): Buffer {
-  const zip = new AdmZip();
-  zip.addFile('mods/example.txt', Buffer.from('ok', 'utf8'));
-  return zip.toBuffer();
+function createJarBuffer(): Promise<Buffer> {
+  const zip = new ZipFile();
+  const chunks: Buffer[] = [];
+  const result = new Promise<Buffer>((resolve, reject) => {
+    zip.outputStream.on('data', (chunk: Buffer) => chunks.push(chunk));
+    zip.outputStream.on('error', reject);
+    zip.outputStream.on('end', () => resolve(Buffer.concat(chunks)));
+  });
+  zip.addBuffer(Buffer.from('ok', 'utf8'), 'mods/example.txt');
+  zip.end();
+  return result;
 }
 
 describe('RuntimeDownloadService mirror ordering', () => {
@@ -177,7 +184,7 @@ describe('DownloadManager fallback handling', () => {
       }
 
       fs.mkdirSync(path.dirname(params.destination), { recursive: true });
-      fs.writeFileSync(params.destination, createJarBuffer());
+      fs.writeFileSync(params.destination, await createJarBuffer());
     });
 
     await expect(
@@ -203,7 +210,7 @@ describe('DownloadManager fallback handling', () => {
         return;
       }
 
-      fs.writeFileSync(params.destination, createJarBuffer());
+      fs.writeFileSync(params.destination, await createJarBuffer());
     });
 
     await expect(

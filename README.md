@@ -4,7 +4,7 @@
 
 FriendLauncher is a desktop Minecraft launcher for people who move between vanilla play, modpacks, and multiplayer with friends. It combines local instance management, modpack browsing, content tools, and FriendTunnel P2P play in one Electron application.
 
-The current `v0.6.0` release has been checked against the browser-backed `manual-verification.html` seam and focused milestone proof routes for settings and guided content. The shipped record now covers restrained shell behavior, truthful modpack runtime state, bounded honest settings personalization, and guided resource-pack and shader flows with explicit fallback and recovery. The descriptions below reflect that verified shipped surface rather than stale milestone plans.
+The last published version is `v0.6.0`. The repository is currently being hardened for `v0.7.0`: security boundaries, reproducible builds, update consent, release automation, tests, and the modpack workspace are being repaired before new scope is declared release-ready.
 
 ## <a name="english"></a>English
 
@@ -17,7 +17,7 @@ The current `v0.6.0` release has been checked against the browser-backed `manual
 - Use FriendTunnel to host and join LAN-style multiplayer sessions over the internet without extra VPN tooling.
 - Track local statistics, change themes and accents, use custom backgrounds, and adjust the launcher layout for daily use.
 
-### `v0.6.0` Verified Highlights
+### `v0.6.0` Highlights
 
 - Shared shell surfaces now behave more like a native desktop product: macOS chrome stays native-first, critical shell routes use restrained identity, update urgency stays local to modpack surfaces, and reopen or restart restores truthful runtime state.
 - Modpack list, details, dependency, and creation flows now share a smaller config-first runtime story with compact controls, above-the-fold tab reachability, neutral healthy dependency states, and explicit async recovery.
@@ -28,13 +28,12 @@ The current `v0.6.0` release has been checked against the browser-backed `manual
 
 ### Development
 
-Use a current Node.js LTS release.
+Use Node.js 24 and npm 11. The repository pins the expected runtime in `.nvmrc` and `package.json`.
 
 ```bash
-npm install
-npm test
-npm run lint
-npx tsc --noEmit
+nvm use
+npm ci
+npm run verify
 npm run dev
 ```
 
@@ -44,11 +43,14 @@ Production build:
 npm run build
 ```
 
+`npm run release -- 0.7.0 --dry-run` runs the release preflight without changing Git. A normal release creates a local commit and tag; it never pushes unless `--push` is passed explicitly. GitHub Actions publishes macOS, Windows and Linux artifacts after the full matrix succeeds. Artifacts are unsigned by default, so macOS and Windows may show an unknown-developer warning; optional signing secrets can be added later.
+
 ### Project Docs
 
 - [docs/en/roadmap.md](docs/en/roadmap.md)
 - [docs/ru/roadmap.md](docs/ru/roadmap.md)
 - [docs/en/contracts-map.md](docs/en/contracts-map.md)
+- [docs/en/revival-plan-2026-08-03.md](docs/en/revival-plan-2026-08-03.md)
 - [docs/ru/contracts-map.md](docs/ru/contracts-map.md)
 
 ### Disclaimer
@@ -66,7 +68,7 @@ The project includes support for alternative authentication flows through `authl
 - FriendTunnel для LAN-подобной игры через интернет без отдельных VPN-инструментов.
 - Локальная статистика, темы и акцентные цвета, кастомные фоны и настройка вида лаунчера под повседневное использование.
 
-### Что Уже Проверено В `v0.6.0`
+### Основные изменения `v0.6.0`
 
 - Shared shell surface теперь ведут себя ближе к native desktop product: на macOS chrome остаётся native-first, критичные shell route используют сдержанную identity, update urgency остаётся локальной для modpack surface, а reopen/restart восстанавливает truthful runtime state.
 - List, details, dependency и create-flow для modpack теперь опираются на одну меньшую config-first runtime-модель с компактными controls, досягаемыми tab surface, нейтральным healthy dependency state и явным async recovery.
@@ -77,13 +79,12 @@ The project includes support for alternative authentication flows through `authl
 
 ### Разработка
 
-Используйте актуальную LTS-версию Node.js.
+Используйте Node.js 24 и npm 11. Ожидаемая версия закреплена в `.nvmrc` и `package.json`.
 
 ```bash
-npm install
-npm test
-npm run lint
-npx tsc --noEmit
+nvm use
+npm ci
+npm run verify
 npm run dev
 ```
 
@@ -93,12 +94,15 @@ npm run dev
 npm run build
 ```
 
+`npm run release -- 0.7.0 --dry-run` выполняет релизную проверку без изменений Git. Обычный запуск создаёт локальный коммит и тег, но никогда не пушит без явного `--push`. После успешной матрицы GitHub Actions публикует сборки для macOS, Windows и Linux. По умолчанию они не подписаны, поэтому ОС может показать предупреждение о неизвестном разработчике; при необходимости подпись можно подключить позже через secrets.
+
 ### Документация
 
 - [docs/ru/roadmap.md](docs/ru/roadmap.md)
 - [docs/en/roadmap.md](docs/en/roadmap.md)
 - [docs/ru/contracts-map.md](docs/ru/contracts-map.md)
 - [docs/en/contracts-map.md](docs/en/contracts-map.md)
+- [docs/ru/revival-plan-2026-08-03.md](docs/ru/revival-plan-2026-08-03.md)
 
 ### Дисклеймер
 

@@ -10,10 +10,9 @@ import { Button } from '../ui/Button';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { LazyImage } from '../ui/LazyImage';
 import { modpacksIPC } from '../../services/ipc/modpacksIPC';
-import { dialogIPC } from '../../services/ipc/dialogIPC';
 import { MINECRAFT_VERSIONS } from '../../utils/minecraftVersionsList';
 import { DEFAULT_MODPACK_BROWSER_STATE, normalizeModpackBrowserState, type ModpackBrowserState } from '../../features/modpacks/hooks/useModpackNavigation';
-import { ArrowLeft, FolderOpen, History, Import, Star } from 'lucide-react';
+import { ArrowLeft, FolderOpen, History, Star } from 'lucide-react';
 import { DegradedStateView } from '../layout/DegradedStateView';
 import { toDisplayErrorMessage } from '../../utils/displayError';
 import { ModpackCatalogControls } from './ModpackCatalogControls';
@@ -358,25 +357,6 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
     return tokens;
   }, [filterLoader, filterMCVersion, query, sortBy, t]);
 
-  const handleImport = async () => {
-    try {
-      const result = await dialogIPC.showOpenDialog({
-        title: t('modpacks.select_modpack_file') || 'Выберите файл модпака',
-        filters: [
-          { name: 'Modpack Files', extensions: ['mrpack', 'zip', 'curseforge'] },
-          { name: 'All Files', extensions: ['*'] },
-        ],
-        properties: ['openFile'],
-      });
-
-      if (result && !result.canceled && result.filePaths.length > 0) {
-        onNavigate({ type: 'importPreview', filePath: result.filePaths[0] });
-      }
-    } catch (err) {
-      console.error('Error opening file dialog:', err);
-    }
-  };
-
   const handleCardKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>, modpack: ModpackSearchResultItem) => {
     if (!isActivationKey(event.key)) {
       return;
@@ -555,16 +535,6 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center gap-2" data-testid="remote-modpack-primary-actions">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    geometry="catalog-primary"
-                    onClick={handleImport}
-                    className="min-h-10 flex-1 justify-center gap-2 px-4 sm:flex-none"
-                  >
-                    <Import className="h-4 w-4 shrink-0" />
-                    {t('modpacks.import') || 'Импорт'}
-                  </Button>
                   <Button
                     variant="secondary"
                     size="sm"
@@ -788,12 +758,6 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
               label={t('degraded.empty_label')}
               title={t('modpacks.results_summary_empty')}
               description={t('modpacks.browser_desc')}
-              footer={(
-                <Button variant="secondary" size="sm" onClick={() => void handleImport()}>
-                  <Import className="h-4 w-4" />
-                  {t('modpacks.import')}
-                </Button>
-              )}
             />
           )
         )}

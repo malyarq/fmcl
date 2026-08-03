@@ -1,22 +1,28 @@
-import type { RefObject } from 'react';
+import { lazy, Suspense, type RefObject } from 'react';
 import TitleBar from './TitleBar';
 import Sidebar from './Sidebar';
 import { UpdateNotification } from './UpdateNotification';
 
-import { ModpackRouter } from './modpacks/ModpackRouter';
 import type { UpdateInfo, UpdateStatus } from '../features/updater/hooks/useAppUpdater';
 import { useUIMode } from '../contexts/SettingsContext';
 import { SimplePlayDashboard } from './SimplePlayDashboard';
 import type { MCVersion } from '../services/versions/types';
 import type { VersionHint } from '../utils/minecraftVersions';
 
-// SettingsPage is imported directly to avoid loading delay
-import SettingsPage from './SettingsPage';
-import MultiplayerPage from './MultiplayerPage';
 import { cn } from '../utils/cn';
 import { useSettings } from '../contexts/SettingsContext';
 import type { LaunchStage } from '../features/launcher/services/launcherService';
 import { windowControlsIPC } from '../services/ipc/windowControlsIPC';
+
+const SettingsPage = lazy(() => import('./SettingsPage'));
+const MultiplayerPage = lazy(() => import('./MultiplayerPage'));
+const ModpackRouter = lazy(() =>
+  import('./modpacks/ModpackRouter').then((module) => ({ default: module.ModpackRouter })),
+);
+
+function RouteLoadingState() {
+  return <div role="status" aria-label="Loading" className="min-h-12 w-full animate-pulse bg-background/30" />;
+}
 
 export type AppLayoutProps = {
   theme: 'light' | 'dark';
@@ -24,6 +30,7 @@ export type AppLayoutProps = {
     status: UpdateStatus;
     info: UpdateInfo | null;
     onInstall: () => void;
+    onDownload: () => void;
   };
   modpackOnLaunch?: () => void | Promise<void>;
   overlays: {
@@ -107,7 +114,7 @@ export function AppLayout(props: AppLayoutProps) {
               data-shell-platform={shellContract}
               className="relative z-[90] flex shrink-0 flex-col"
             >
-              <UpdateNotification status={updates.status} updateInfo={updates.info} onInstall={updates.onInstall} />
+              <UpdateNotification status={updates.status} updateInfo={updates.info} onInstall={updates.onInstall} onDownload={updates.onDownload} />
             </div>
 
             <div
@@ -119,12 +126,13 @@ export function AppLayout(props: AppLayoutProps) {
                 shellContract === 'native-macos' ? 'pt-1' : 'pt-2',
               )}
             >
-              {overlays.showSettings && (
-                <SettingsPage onClose={overlays.onCloseSettings} />
-              )}
-              {overlays.showMultiplayer && (
-                <MultiplayerPage onBack={overlays.onBackFromMultiplayer} />
-              )}
+              <Suspense fallback={<RouteLoadingState />}>
+                {overlays.showSettings ? (
+                  <SettingsPage onClose={overlays.onCloseSettings} />
+                ) : overlays.showMultiplayer ? (
+                  <MultiplayerPage onBack={overlays.onBackFromMultiplayer} />
+                ) : null}
+              </Suspense>
 
               <div
                 data-testid="app-layout-split"
@@ -144,11 +152,13 @@ export function AppLayout(props: AppLayoutProps) {
                   className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background/56 backdrop-blur-sm transition-all duration-300"
                 >
                   <div key={uiMode} className="mode-switch-enter flex min-h-0 flex-1 flex-col">
-                    {uiMode === 'modpacks' ? (
-                      <ModpackRouter onLaunch={modpackOnLaunch ?? runtime.onLaunch} />
-                    ) : (
-                      <SimplePlayDashboard launch={launch} runtime={runtime} actions={actions} />
-                    )}
+                    <Suspense fallback={<RouteLoadingState />}>
+                      {uiMode === 'modpacks' ? (
+                        <ModpackRouter onLaunch={modpackOnLaunch ?? runtime.onLaunch} />
+                      ) : (
+                        <SimplePlayDashboard launch={launch} runtime={runtime} actions={actions} />
+                      )}
+                    </Suspense>
                   </div>
                 </div>
               </div>

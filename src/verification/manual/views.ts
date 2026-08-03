@@ -165,7 +165,7 @@ export const GENERAL_VIEWS: ManualVerificationViewMeta[] = [
     description: 'Phase 33 installed catalog proof for a compact header, minimal card metadata, and coherent primary actions.',
     group: 'general',
   },
-  { id: 'modpack-create', label: 'Create Wizard', description: 'Phase 35 create-wizard proof for a fixed action rail, runtime-aware failure explanations, and explicit post-commit recovery on the same surface.', group: 'general' },
+  { id: 'modpack-create', label: 'Create Wizard', description: 'Phase 36.1 create-wizard proof for a fixed action rail, runtime-aware failure explanations, and calm optional follow-up guidance after successful creation.', group: 'general' },
   {
     id: 'modpack-browser',
     label: 'Modpack Browser',

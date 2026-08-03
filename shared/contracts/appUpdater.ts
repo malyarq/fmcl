@@ -14,6 +14,7 @@ export interface AppUpdaterProgress {
 
 export interface AppUpdaterAPI {
   check: () => Promise<{ cancelled?: boolean } | null>;
+  download: () => Promise<unknown>;
   quitAndInstall: () => void;
   onStatus: (callback: (status: string) => void) => () => void;
   onAvailable: (callback: (info: AppUpdaterAvailableInfo) => void) => () => void;
@@ -22,4 +23,3 @@ export interface AppUpdaterAPI {
   onProgress: (callback: (progress: AppUpdaterProgress) => void) => () => void;
   onDownloaded: (callback: (info: { version?: string }) => void) => () => void;
 }
-

@@ -1,6 +1,5 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import AdmZip from 'adm-zip';
 import type {
     ResourcePackAcquisitionIssue,
     ResourcePackAcquisitionIssueStatus,
@@ -14,6 +13,7 @@ import {
     resolvePathWithinRoot,
 } from '../../security/pathGuards';
 import { resolveApprovedInstancePath, resolveResourcePacksDir } from '../instances/paths';
+import { openValidatedZip } from '../../security/archivePolicy';
 
 export class ResourcePacksService {
     private createAcquisitionIssue(
@@ -71,23 +71,22 @@ export class ResourcePacksService {
                     };
                 }
             } else if (filePath.endsWith('.zip')) {
-                // Read file asynchronously to avoid blocking event loop on I/O
-                const data = await fs.readFile(filePath);
-                const zip = new AdmZip(data);
+                const zip = await openValidatedZip(filePath, 'Resource pack archive');
+                try {
+                    const mcmetaEntry = zip.getEntry('pack.mcmeta');
+                    if (mcmetaEntry) {
+                        const content = JSON.parse((await zip.getData(mcmetaEntry, 1024 * 1024)).toString('utf8'));
+                        const iconEntry = zip.getEntry('pack.png');
+                        const icon = iconEntry ? await zip.getData(iconEntry, 16 * 1024 * 1024) : undefined;
 
-                const mcmetaEntry = zip.getEntry('pack.mcmeta');
-                if (mcmetaEntry) {
-                    const contentStr = zip.readAsText(mcmetaEntry);
-                    const content = JSON.parse(contentStr);
-
-                    const iconEntry = zip.getEntry('pack.png');
-                    const icon = iconEntry ? zip.readFile(iconEntry) : undefined;
-
-                    return {
-                        description: content.pack?.description,
-                        packFormat: content.pack?.pack_format || 0,
-                        icon: icon || undefined,
-                    };
+                        return {
+                            description: content.pack?.description,
+                            packFormat: content.pack?.pack_format || 0,
+                            icon,
+                        };
+                    }
+                } finally {
+                    zip.close();
                 }
             }
         } catch (e) {

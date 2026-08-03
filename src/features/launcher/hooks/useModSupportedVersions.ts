@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   getCachedModSupportedVersions,
   setCachedFabricSupportedVersions,
@@ -14,22 +14,96 @@ import {
   fetchOptiFineSupportedVersions,
 } from '../../../services/versions/versionApi';
 
+type RefreshedModVersions = {
+  forge?: string[];
+  fabric?: string[];
+  optifine?: string[];
+  neoforge?: string[];
+};
+
+let inFlightRefresh: Promise<RefreshedModVersions> | null = null;
+
+function refreshModSupportedVersions(): Promise<RefreshedModVersions> {
+  if (inFlightRefresh) {
+    console.log('[ModVersions] Joining the in-flight refresh');
+    return inFlightRefresh;
+  }
+
+  inFlightRefresh = (async () => {
+    console.log('[ModVersions] Fetching Forge, Fabric, OptiFine, and NeoForge supported versions...');
+    const startTime = Date.now();
+    const [forge, fabric, optiFine, neoForge] = await Promise.allSettled([
+      fetchForgeSupportedVersions(),
+      fetchFabricSupportedVersions(),
+      fetchOptiFineSupportedVersions(),
+      fetchNeoForgeSupportedVersions(),
+    ]);
+    const refreshed: RefreshedModVersions = {};
+
+    console.log(`[ModVersions] Fetch completed in ${Date.now() - startTime}ms`);
+    if (forge.status === 'fulfilled') {
+      refreshed.forge = forge.value ?? [];
+      setCachedForgeSupportedVersions(refreshed.forge);
+      console.log(`[ModVersions] Updated Forge versions: ${refreshed.forge.length} versions`);
+    } else {
+      console.error('[ModVersions] Failed to fetch Forge versions:', forge.reason);
+    }
+
+    if (fabric.status === 'fulfilled') {
+      refreshed.fabric = fabric.value ?? [];
+      setCachedFabricSupportedVersions(refreshed.fabric);
+      console.log(`[ModVersions] Updated Fabric versions: ${refreshed.fabric.length} versions`);
+    } else {
+      console.error('[ModVersions] Failed to fetch Fabric versions:', fabric.reason);
+    }
+
+    if (optiFine.status === 'fulfilled') {
+      refreshed.optifine = optiFine.value ?? [];
+      setCachedOptiFineSupportedVersions(refreshed.optifine);
+      console.log(`[ModVersions] Updated OptiFine versions: ${refreshed.optifine.length} versions`);
+    } else {
+      console.error('[ModVersions] Failed to fetch OptiFine versions:', optiFine.reason);
+    }
+
+    if (neoForge.status === 'fulfilled') {
+      refreshed.neoforge = neoForge.value ?? [];
+      setCachedNeoForgeSupportedVersions(refreshed.neoforge);
+      console.log(`[ModVersions] Updated NeoForge versions: ${refreshed.neoforge.length} versions`);
+      if (refreshed.neoforge.length > 0) {
+        console.log(
+          `[ModVersions] NeoForge supported versions: ${refreshed.neoforge.slice(0, 10).join(', ')}${
+            refreshed.neoforge.length > 10 ? '...' : ''
+          }`
+        );
+      } else {
+        console.warn('[ModVersions] NeoForge versions list is empty!');
+      }
+    } else {
+      console.error('[ModVersions] Failed to fetch NeoForge versions:', neoForge.reason);
+    }
+
+    if (Object.keys(refreshed).length > 0) {
+      touchModSupportedVersionsTimestamp();
+      console.log('[ModVersions] Cache updated successfully');
+    }
+    return refreshed;
+  })().finally(() => {
+    inFlightRefresh = null;
+  });
+
+  return inFlightRefresh;
+}
+
 export function useModSupportedVersions() {
   const [forgeVersions, setForgeVersions] = useState<string[]>([]);
   const [fabricVersions, setFabricVersions] = useState<string[]>([]);
   const [optiFineVersions, setOptiFineVersions] = useState<string[]>([]);
   const [neoForgeVersions, setNeoForgeVersions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const fetchingRef = useRef(false);
 
   useEffect(() => {
+    let active = true;
     const fetchModVersions = async () => {
-      // Prevent duplicate calls in React StrictMode
-      if (fetchingRef.current) {
-        console.log('[ModVersions] Already fetching, skipping duplicate call');
-        return;
-      }
-      fetchingRef.current = true;
       // First, load from cache immediately (even if old) to show buttons right away
       try {
         const cached = getCachedModSupportedVersions();
@@ -95,79 +169,21 @@ export function useModSupportedVersions() {
       console.log('[ModVersions] Cache expired or missing, refreshing in background...');
 
       try {
-        // Fetch all mod versions in parallel
-        console.log('[ModVersions] Fetching Forge, Fabric, OptiFine, and NeoForge supported versions...');
-        const startTime = Date.now();
-
-        const [forge, fabric, optiFine, neoForge] = await Promise.allSettled([
-          fetchForgeSupportedVersions(),
-          fetchFabricSupportedVersions(),
-          fetchOptiFineSupportedVersions(),
-          fetchNeoForgeSupportedVersions(),
-        ]);
-
-        const elapsed = Date.now() - startTime;
-        console.log(`[ModVersions] Fetch completed in ${elapsed}ms`);
-
-        if (forge.status === 'fulfilled') {
-          const value = forge.value ?? [];
-          setForgeVersions(value);
-          setCachedForgeSupportedVersions(value);
-          console.log(`[ModVersions] Updated Forge versions: ${value.length} versions`);
-        } else {
-          console.error('[ModVersions] Failed to fetch Forge versions:', forge.reason);
-        }
-
-        if (fabric.status === 'fulfilled') {
-          const value = fabric.value ?? [];
-          setFabricVersions(value);
-          setCachedFabricSupportedVersions(value);
-          console.log(`[ModVersions] Updated Fabric versions: ${value.length} versions`);
-        } else {
-          console.error('[ModVersions] Failed to fetch Fabric versions:', fabric.reason);
-        }
-
-        if (optiFine.status === 'fulfilled') {
-          const value = optiFine.value ?? [];
-          setOptiFineVersions(value);
-          setCachedOptiFineSupportedVersions(value);
-          console.log(`[ModVersions] Updated OptiFine versions: ${value.length} versions`);
-        } else {
-          console.error('[ModVersions] Failed to fetch OptiFine versions:', optiFine.reason);
-        }
-
-        if (neoForge.status === 'fulfilled') {
-          const versions = neoForge.value || [];
-          setNeoForgeVersions(versions);
-          setCachedNeoForgeSupportedVersions(versions);
-          console.log(`[ModVersions] Updated NeoForge versions: ${versions.length} versions`);
-          if (versions.length > 0) {
-            console.log(
-              `[ModVersions] NeoForge supported versions: ${versions.slice(0, 10).join(', ')}${
-                versions.length > 10 ? '...' : ''
-              }`
-            );
-          } else {
-            console.warn('[ModVersions] NeoForge versions list is empty!');
-          }
-        } else {
-          console.error('[ModVersions] Failed to fetch NeoForge versions:', neoForge.reason);
-          // Keep cache as-is on failure.
-        }
-
-        touchModSupportedVersionsTimestamp();
-        console.log('[ModVersions] Cache updated successfully');
+        const refreshed = await refreshModSupportedVersions();
+        if (!active) return;
+        if (refreshed.forge) setForgeVersions(refreshed.forge);
+        if (refreshed.fabric) setFabricVersions(refreshed.fabric);
+        if (refreshed.optifine) setOptiFineVersions(refreshed.optifine);
+        if (refreshed.neoforge) setNeoForgeVersions(refreshed.neoforge);
       } catch (err) {
         console.error('[ModVersions] Failed to refresh mod versions:', err);
-      } finally {
-        fetchingRef.current = false;
       }
     };
 
     void fetchModVersions();
 
     return () => {
-      fetchingRef.current = false;
+      active = false;
     };
   }, []);
 

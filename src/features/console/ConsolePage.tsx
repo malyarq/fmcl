@@ -35,6 +35,7 @@ export function ConsolePage() {
     const [autoScroll, setAutoScroll] = useState(true);
     const [filterLevel, setFilterLevel] = useState<('INFO' | 'WARN' | 'ERROR' | 'DEBUG')[]>(['INFO', 'WARN', 'ERROR', 'DEBUG']);
     const [searchQuery, setSearchQuery] = useState('');
+    const [feedback, setFeedback] = useState<{ message: string; error?: boolean } | null>(null);
     const logEndRef = useRef<HTMLDivElement>(null);
     const launchStageRef = useRef<LaunchStage>('idle');
 
@@ -92,7 +93,7 @@ export function ConsolePage() {
         const content = raw;
 
         return {
-            id: Math.random().toString(36).substr(2, 9),
+            id: crypto.randomUUID(),
             timestamp,
             level,
             content,
@@ -117,7 +118,7 @@ export function ConsolePage() {
 
         // Optimistically add command to log
         setLogs(prev => [...prev, {
-            id: Math.random().toString(36).substr(2, 9),
+            id: crypto.randomUUID(),
             timestamp: new Date().toLocaleTimeString(),
             level: 'INFO',
             content: `> ${textToSend}`,
@@ -192,20 +193,44 @@ export function ConsolePage() {
         }
     };
 
-    const copyLogs = () => {
-        navigator.clipboard.writeText(logs.map(l => l.raw).join('\n'));
+    const copyLogs = async () => {
+        try {
+            await navigator.clipboard.writeText(logs.map(l => l.raw).join('\n'));
+            setFeedback({ message: t('general.copied') });
+        } catch (error) {
+            setFeedback({ message: error instanceof Error ? error.message : String(error), error: true });
+        }
     };
 
     const clearLogs = () => {
         setLogs([]);
+        setFeedback({ message: t('console.cleared') });
+    };
+
+    const exportLogs = async () => {
+        try {
+            const content = logs.map(l => l.raw).join('\n');
+            const { canceled, filePath } = await dialogIPC.showSaveDialog({
+                title: t('console.export_title'),
+                defaultPath: 'latest.log',
+                filters: [{ name: t('console.log_files'), extensions: ['log', 'txt'] }]
+            });
+
+            if (!canceled && filePath) {
+                await dialogIPC.saveFile(filePath, content);
+                setFeedback({ message: t('console.exported') });
+            }
+        } catch (error) {
+            setFeedback({ message: error instanceof Error ? error.message : String(error), error: true });
+        }
     };
 
     return (
         <div className="h-screen w-screen flex flex-col bg-zinc-950 text-zinc-100 font-mono text-sm overflow-hidden">
             {/* Header / Toolbar */}
-            <div className="flex items-center justify-between px-4 py-2 bg-zinc-900 border-b border-zinc-800">
-                <div className="flex items-center gap-2">
-                    <span className="font-bold text-zinc-100">Console</span>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-zinc-900 border-b border-zinc-800">
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <span className="font-bold text-zinc-100">{t('console.title')}</span>
                     <div className="h-4 w-[1px] bg-zinc-700 mx-2" />
                     <div className="flex items-center gap-1 bg-zinc-800 rounded-md p-1">
                         <span className="text-zinc-400 ml-1 text-xs">🔍</span>
@@ -213,18 +238,21 @@ export function ConsolePage() {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search logs..."
+                            placeholder={t('console.search')}
+                            aria-label={t('console.search')}
                             className="bg-transparent border-none outline-none text-xs w-32 md:w-48 placeholder-zinc-500"
                         />
                     </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <div className="flex bg-zinc-800 rounded-md overflow-hidden">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                    <div className="flex bg-zinc-800 rounded-md overflow-hidden" role="group" aria-label={t('console.level_filters')}>
                         {(['INFO', 'WARN', 'ERROR', 'DEBUG'] as const).map(level => (
                             <button
+                                type="button"
                                 key={level}
                                 onClick={() => toggleFilter(level)}
+                                aria-pressed={filterLevel.includes(level)}
                                 className={cn(
                                     "px-2 py-1 text-xs transition-colors hover:bg-zinc-700",
                                     filterLevel.includes(level) ? "bg-zinc-700 text-zinc-100" : "text-zinc-500",
@@ -237,39 +265,27 @@ export function ConsolePage() {
                         ))}
                     </div>
                     <div className="h-4 w-[1px] bg-zinc-700 mx-1" />
-                    <button onClick={() => setAutoScroll(!autoScroll)} className={cn("p-1.5 rounded hover:bg-zinc-800 transition-colors", autoScroll && "bg-zinc-800 text-green-400")}>
-                        <span className="text-xs">Scroll</span>
+                    <button type="button" onClick={() => setAutoScroll(!autoScroll)} aria-pressed={autoScroll} className={cn("p-1.5 rounded hover:bg-zinc-800 transition-colors", autoScroll && "bg-zinc-800 text-green-400")}>
+                        <span className="text-xs">{t('console.auto_scroll')}</span>
                     </button>
-                    <button onClick={copyLogs} className="p-1.5 rounded hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-100">
-                        <span className="text-xs">Copy</span>
+                    <button type="button" onClick={() => void copyLogs()} disabled={logs.length === 0} className="p-1.5 rounded hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-zinc-100 disabled:opacity-40">
+                        <span className="text-xs">{t('console.copy')}</span>
                     </button>
-                    <button onClick={clearLogs} className="p-1.5 rounded hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-red-400">
-                        <span className="text-xs">Clear</span>
+                    <button type="button" onClick={clearLogs} disabled={logs.length === 0} className="p-1.5 rounded hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-red-400 disabled:opacity-40">
+                        <span className="text-xs">{t('console.clear')}</span>
                     </button>
                     <div className="h-4 w-[1px] bg-zinc-700 mx-1" />
-                    <button onClick={async () => {
-                        try {
-                            const content = logs.map(l => l.raw).join('\n');
-                            const { canceled, filePath } = await dialogIPC.showSaveDialog({
-                                title: 'Export Logs',
-                                defaultPath: 'latest.log',
-                                filters: [{ name: 'Log Files', extensions: ['log', 'txt'] }]
-                            });
-
-                            if (!canceled && filePath) {
-                                await window.api.ipcRenderer.invoke('app:saveFile', filePath, content);
-                            }
-                        } catch (err) {
-                            console.error('Failed to export logs:', err);
-                        }
-                    }} className="p-1.5 rounded hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-blue-400">
-                        <span className="text-xs">Export</span>
+                    <button type="button" onClick={() => void exportLogs()} disabled={logs.length === 0} className="p-1.5 rounded hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-blue-400 disabled:opacity-40">
+                        <span className="text-xs">{t('console.export')}</span>
                     </button>
                 </div>
             </div>
 
             {/* Logs Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-0.5 custom-scrollbar bg-zinc-950">
+                {filteredLogs.length === 0 && (
+                    <p className="py-10 text-center text-xs text-zinc-500">{t('console.no_logs')}</p>
+                )}
                 {filteredLogs.map((log) => (
                     <div key={log.id} className="flex gap-2 hover:bg-zinc-900/50 px-1 rounded">
                         <span className="text-zinc-600 shrink-0 select-none">[{log.timestamp}]</span>
@@ -284,11 +300,14 @@ export function ConsolePage() {
             <div className="p-4 bg-zinc-900 border-t border-zinc-800 relative">
                 {/* Suggestions Popover */}
                 {suggestions.length > 0 && (
-                    <div className="absolute bottom-full left-4 mb-2 bg-zinc-800 border border-zinc-700 rounded-md shadow-xl overflow-hidden min-w-[200px]">
+                    <div id="console-command-suggestions" role="listbox" className="absolute bottom-full left-4 mb-2 bg-zinc-800 border border-zinc-700 rounded-md shadow-xl overflow-hidden min-w-[200px]">
                         {suggestions.map((suggestion, index) => (
                             <button
+                                type="button"
                                 key={suggestion}
                                 onClick={() => applySuggestion(suggestion)}
+                                role="option"
+                                aria-selected={index === selectedSuggestion}
                                 className={cn(
                                     "w-full text-left px-3 py-1.5 text-xs font-mono transition-colors",
                                     index === selectedSuggestion
@@ -306,14 +325,21 @@ export function ConsolePage() {
                         value={input}
                         onChange={handleInputChange}
                         onKeyDown={handleKeyDown}
-                        placeholder="Type a command..."
+                        placeholder={t('console.command_placeholder')}
+                        aria-label={t('console.command_placeholder')}
+                        aria-autocomplete="list"
+                        aria-controls="console-command-suggestions"
+                        aria-expanded={suggestions.length > 0}
                         className="flex-1 bg-zinc-950 border-zinc-800 text-zinc-100 focus:ring-zinc-700 font-mono"
                         autoFocus
                     />
                     <Button onClick={() => handleSend()} variant="secondary" className="px-3" disabled={!input.trim()}>
-                        <span className="text-xs">Send</span>
+                        <span className="text-xs">{t('console.send')}</span>
                     </Button>
                 </div>
+                <p className={cn('mt-2 min-h-4 text-xs', feedback?.error ? 'text-red-400' : 'text-zinc-400')} role="status" aria-live="polite">
+                    {feedback?.message}
+                </p>
             </div>
         </div>
     );

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { CLASSIC_MODPACK_ID } from '../../../../shared/constants';
 import type { ModpackService } from '../../modpacks/modpackService';
+import { resolveApprovedInstancePath, resolveApprovedLauncherRootPath } from '../../instances/paths';
 
 export function resolveRootAndModpack(params: {
   modpacks: ModpackService;
@@ -14,7 +15,7 @@ export function resolveRootAndModpack(params: {
   const { modpacks, options } = params;
 
   // `rootPath` is the shared Minecraft "resource" location (assets/libraries/versions).
-  const rootPath = options.gamePath || modpacks.getDefaultRootPath();
+  const rootPath = resolveApprovedLauncherRootPath(options.gamePath || modpacks.getDefaultRootPath());
   modpacks.ensureXmclFolders(rootPath);
   modpacks.ensureModpacksMigrated(rootPath);
 
@@ -22,7 +23,18 @@ export function resolveRootAndModpack(params: {
   // This keeps modpacks isolated while still sharing the heavy runtime cache.
   let modpackPath = options.modpackPath?.trim() || '';
   let modpackId = options.modpackId?.trim() || '';
-  if (!modpackPath) {
+  if (modpackPath) {
+    const safeModpackPath = resolveApprovedInstancePath(modpackPath);
+    if (path.basename(path.dirname(safeModpackPath)) !== 'modpacks') {
+      throw new Error('Modpack path must point to a FriendLauncher modpack directory');
+    }
+    modpackId = modpackId || path.basename(safeModpackPath);
+    const expectedPath = resolveApprovedInstancePath(modpacks.getModpackDir(rootPath, modpackId));
+    if (safeModpackPath !== expectedPath) {
+      throw new Error('Modpack path does not match the selected launcher root and modpack id');
+    }
+    modpackPath = safeModpackPath;
+  } else {
     const selected = modpackId || modpacks.getSelectedModpackId(rootPath);
     modpackId = selected;
     // Persist selection when the caller explicitly passes modpackId. Skip for classic — hidden instance, not in index.
@@ -36,16 +48,11 @@ export function resolveRootAndModpack(params: {
     modpackPath = modpacks.getModpackDir(rootPath, selected);
   }
 
-  try {
-    fs.mkdirSync(modpackPath, { recursive: true });
-    fs.mkdirSync(path.join(modpackPath, 'mods'), { recursive: true });
-  } catch {
-    // ignore
-  }
+  fs.mkdirSync(modpackPath, { recursive: true });
+  fs.mkdirSync(path.join(modpackPath, 'mods'), { recursive: true });
 
   return { rootPath, modpackId, modpackPath };
 }
 
 // Legacy alias for backward compatibility
 export const resolveRootAndInstance = resolveRootAndModpack;
-

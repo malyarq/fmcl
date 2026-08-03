@@ -138,6 +138,7 @@ describe('ModpackBrowser degraded states', () => {
     const emptyHeading = await screen.findByRole('heading', { name: t('modpacks.results_summary_empty') });
     const emptyState = emptyHeading.closest('section');
     expect(emptyState).not.toBeNull();
-    expect(within(emptyState as HTMLElement).getByRole('button', { name: t('modpacks.import') })).toBeTruthy();
+    expect(within(emptyState as HTMLElement).queryByRole('button', { name: t('modpacks.import') })).toBeNull();
+    expect(screen.getByRole('button', { name: t('modpacks.history') })).toBeTruthy();
   });
 });

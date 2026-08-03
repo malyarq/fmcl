@@ -22,6 +22,7 @@ export interface UseAppUpdaterReturn {
   progress: UpdateProgress | null;
   error: string | null;
   checkForUpdates: () => Promise<void>;
+  downloadUpdate: () => Promise<void>;
   installUpdate: () => void;
 }
 
@@ -69,6 +70,18 @@ export function useAppUpdater(autoCheck: boolean = true): UseAppUpdaterReturn {
     appUpdaterIPC.quitAndInstall();
   }, [isAvailable]);
 
+  const downloadUpdate = useCallback(async () => {
+    if (!isAvailable) return;
+    setStatus('downloading');
+    setError(null);
+    try {
+      await appUpdaterIPC.download();
+    } catch (err) {
+      setStatus('error');
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  }, [isAvailable]);
+
   useEffect(() => {
     if (!isAvailable) return;
 
@@ -86,7 +99,6 @@ export function useAppUpdater(autoCheck: boolean = true): UseAppUpdaterReturn {
         releaseName: info.releaseName,
         releaseNotes: info.releaseNotes,
       });
-      // Backend auto-downloads updates, we just track the status here
     });
 
     const notAvailableUnsub = appUpdaterIPC.onNotAvailable(() => {
@@ -150,7 +162,7 @@ export function useAppUpdater(autoCheck: boolean = true): UseAppUpdaterReturn {
     progress,
     error,
     checkForUpdates,
+    downloadUpdate,
     installUpdate,
   };
 }
-

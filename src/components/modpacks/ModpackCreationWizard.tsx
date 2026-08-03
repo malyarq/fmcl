@@ -178,39 +178,50 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     );
   }, [minecraftPath, runtimeDependencies.useOptiFine]);
 
-  const createModpackForStep3 = useCallback(async (): Promise<{ id: string | null; postCommitIssue: boolean }> => {
+  const refreshCreatedModpack = useCallback(async (): Promise<boolean> => {
+    try {
+      await refresh();
+      return false;
+    } catch (error) {
+      console.error('Error refreshing created modpack:', error);
+      return true;
+    }
+  }, [refresh]);
+
+  const createModpackForStep3 = useCallback(async (): Promise<{ id: string | null; needsFollowUp: boolean }> => {
     const nameValidation = validateName(draft.name);
     if (nameValidation) {
-      return { id: null, postCommitIssue: false };
+      return { id: null, needsFollowUp: false };
     }
 
-    let committedId: string | null = null;
+    const result = await modpacksIPC.createLocal(
+      draft.name.trim(),
+      draft.version.trim(),
+      draft.minecraftVersion.trim(),
+      runtimeDependencies.modLoader,
+      minecraftPath,
+    );
+    const committedId = result?.id ?? null;
+    let needsFollowUp = false;
 
-    try {
-      const result = await modpacksIPC.createLocal(
-        draft.name.trim(),
-        draft.version.trim(),
-        draft.minecraftVersion.trim(),
-        runtimeDependencies.modLoader,
-        minecraftPath
-      );
-      committedId = result?.id ?? null;
-
-      if (result?.id && draft.description.trim()) {
-        await modpacksIPC.updateMetadata(result.id, { description: draft.description.trim() }, minecraftPath);
+    if (committedId && draft.description.trim()) {
+      try {
+        await modpacksIPC.updateMetadata(committedId, { description: draft.description.trim() }, minecraftPath);
+      } catch (error) {
+        console.error('Error saving created modpack metadata:', error);
+        needsFollowUp = true;
       }
-      if (result?.id) {
-        await persistCreatedGameSettings(result.id);
-      }
-
-      return { id: committedId, postCommitIssue: false };
-    } catch (error) {
-      if (committedId) {
-        return { id: committedId, postCommitIssue: true };
-      }
-
-      throw error;
     }
+    if (committedId) {
+      try {
+        await persistCreatedGameSettings(committedId);
+      } catch (error) {
+        console.error('Error saving created modpack game settings:', error);
+        needsFollowUp = true;
+      }
+    }
+
+    return { id: committedId, needsFollowUp };
   }, [
     draft.description,
     draft.minecraftVersion,
@@ -264,15 +275,15 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
       setError(null);
       setPostCommitNotice(null);
       try {
-        const { id, postCommitIssue } = await createModpackForStep3();
+        const { id, needsFollowUp } = await createModpackForStep3();
         if (id) {
           setStep3ModpackId(id);
-          await refresh();
+          const refreshNeedsFollowUp = await refreshCreatedModpack();
           setCurrentStep(3);
-          if (postCommitIssue) {
+          if (needsFollowUp || refreshNeedsFollowUp) {
             setPostCommitNotice(
               t('modpacks.create_post_commit_recovery') ||
-                'The modpack was created, but follow-up setup failed. You can finish now and adjust the pack later.',
+                'Created successfully. Some optional details can be updated later from this modpack.',
             );
           }
         } else {
@@ -326,41 +337,41 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     setNameError(null);
     setPostCommitNotice(null);
 
-    let committedId: string | null = null;
     try {
-      const result = await modpacksIPC.createLocal(
-        draft.name.trim(),
-        draft.version.trim(),
-        draft.minecraftVersion.trim(),
-        runtimeDependencies.modLoader,
-        minecraftPath
-      );
-      committedId = result?.id ?? null;
-
-      if (result?.id && draft.description.trim()) {
-        await modpacksIPC.updateMetadata(result.id, { description: draft.description.trim() }, minecraftPath);
-      }
-      if (result?.id) {
-        await persistCreatedGameSettings(result.id);
+      const { id, needsFollowUp } = await createModpackForStep3();
+      if (!id) {
+        setNameError(validateName(draft.name));
+        setCurrentStep(1);
+        return;
       }
 
-      localStorage.removeItem(DRAFT_STORAGE_KEY);
-      await refresh();
-      setDraft(getDefaultDraft());
-      setCurrentStep(1);
-      onCreated?.(result.id);
-    } catch (err) {
-      console.error('Error creating modpack:', err);
-      if (committedId) {
-        setStep3ModpackId(committedId);
-        await refresh();
+      if (needsFollowUp) {
+        setStep3ModpackId(id);
+        await refreshCreatedModpack();
         setCurrentStep(3);
         setPostCommitNotice(
           t('modpacks.create_post_commit_recovery') ||
-            'The modpack was created, but follow-up setup failed. You can finish now and adjust the pack later.',
+            'Created successfully. Some optional details can be updated later from this modpack.',
         );
         return;
       }
+
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+      const refreshNeedsFollowUp = await refreshCreatedModpack();
+      if (refreshNeedsFollowUp) {
+        setStep3ModpackId(id);
+        setCurrentStep(3);
+        setPostCommitNotice(
+          t('modpacks.create_post_commit_recovery') ||
+            'Created successfully. Some optional details can be updated later from this modpack.',
+        );
+        return;
+      }
+      setDraft(getDefaultDraft());
+      setCurrentStep(1);
+      onCreated?.(id);
+    } catch (err) {
+      console.error('Error creating modpack:', err);
       const errorMessage =
         getCreateRuntimeDependencyErrorMessage(runtimeDependencies, t) ??
         (t('modpacks.create_error') || 'Ошибка при создании модпака');
@@ -655,6 +666,8 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
                 <div
                   className="rounded-2xl border border-amber-500/35 bg-amber-500/12 px-4 py-3 text-sm text-foreground"
                   data-testid="modpack-creation-recovery"
+                  role="status"
+                  aria-live="polite"
                 >
                   {postCommitNotice}
                 </div>

@@ -104,6 +104,8 @@ describe('manual verification views', () => {
 
     expect(modpackCreate?.description).toContain('fixed action rail');
     expect(modpackCreate?.description).toContain('runtime-aware failure explanations');
+    expect(modpackCreate?.description).toContain('calm optional follow-up guidance');
+    expect(modpackCreate?.description.toLowerCase()).not.toContain('post-commit recovery');
     expect(modpackAdd?.description).toContain('fixed action rail');
     expect(modpackAdd?.description).toContain('itemized mixed-success recovery');
     expect(modpackAddModal?.description).toContain('locked exits during install');

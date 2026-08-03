@@ -4,9 +4,7 @@ import { BrandWordmark } from '../branding/BrandWordmark';
 import { Button } from '../ui/Button';
 import { cn } from '../../utils/cn';
 import type { UIMode } from '../../contexts/settings/types';
-
-export const SIDEBAR_COMPACT_CONTROL_CLASSNAME =
-  'transition-all duration-500 ease-out scale-100 translate-y-0 opacity-100';
+import { SIDEBAR_COMPACT_CONTROL_CLASSNAME } from './controlGeometry';
 
 export function SidebarHeader(props: {
   appVersion: string;

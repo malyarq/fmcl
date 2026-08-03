@@ -61,11 +61,14 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
         >
             <div className="flex flex-col gap-6">
                 {/* Mode Switcher */}
-                <div className="surface-soft flex rounded-lg p-1">
+                <div className="surface-soft flex rounded-lg p-1" role="tablist" aria-label={t('multiplayer.title')}>
                     {['host', 'join'].map((m) => (
                         <button
+                            type="button"
                             key={m}
                             onClick={() => setMode(m as 'host' | 'join')}
+                            role="tab"
+                            aria-selected={mode === m}
                             className={cn(
                                 "flex-1 py-2 text-sm font-bold uppercase rounded-md transition-all",
                                 mode === m
@@ -130,10 +133,12 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                                 </>
                             ) : (
                                 <div className="space-y-4">
-                                    <div
+                                    <button
+                                        type="button"
                                         onClick={() => copyToClipboard(roomCode)}
+                                        aria-label={t('multiplayer.click_copy')}
                                         className={cn(
-                                            "border rounded-xl p-4 text-center cursor-pointer hover:brightness-95 dark:hover:brightness-110 transition-all group",
+                                            "w-full border rounded-xl p-4 text-center cursor-pointer hover:brightness-95 dark:hover:brightness-110 transition-all group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[rgb(var(--accent-primary))]",
                                             getAccentStyles('soft-bg').className,
                                             getAccentStyles('soft-border').className
                                         )}
@@ -145,7 +150,7 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
                                         <p className={cn("font-bold mb-2 uppercase text-xs tracking-wider", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.room_active')}</p>
                                         <p className="font-mono text-sm break-all text-foreground group-hover:scale-105 transition-transform">{roomCode}</p>
                                         <p className={cn("text-[10px] mt-2 opacity-70", getAccentStyles('text').className)} style={getAccentStyles('text').style}>{t('multiplayer.click_copy')}</p>
-                                    </div>
+                                    </button>
                                     <Button variant="danger" onClick={stop} className="w-full">
                                         {t('multiplayer.stop')}
                                     </Button>

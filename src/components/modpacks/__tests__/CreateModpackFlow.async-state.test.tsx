@@ -138,7 +138,7 @@ describe('ModpackCreationWizard async state', () => {
     });
   });
 
-  it('treats metadata failure after create as post-commit recovery instead of a fake rollback', async () => {
+  it('keeps metadata failure after create as calm optional follow-up instead of a failed create', async () => {
     const onCreated = vi.fn();
     createLocalMock.mockResolvedValue({ id: 'pack-1' });
     updateMetadataMock.mockRejectedValue(new Error('metadata failed'));
@@ -154,6 +154,10 @@ describe('ModpackCreationWizard async state', () => {
       expect(screen.getByTestId('modpack-creation-recovery')).toBeTruthy();
     });
 
+    const followUpNotice = screen.getByTestId('modpack-creation-recovery');
+    expect(followUpNotice.textContent).toContain('Created successfully.');
+    expect(followUpNotice.textContent).toContain('optional details can be updated later');
+    expect(followUpNotice.getAttribute('role')).toBe('status');
     expect(screen.queryByText('Error creating modpack')).toBeNull();
     expect(screen.getByRole('button', { name: 'Finish' })).toBeTruthy();
     expect(refreshMock).toHaveBeenCalled();

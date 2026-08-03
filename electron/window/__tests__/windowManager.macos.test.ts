@@ -30,6 +30,13 @@ const mocked = vi.hoisted(() => {
   const browserWindowOptions: BrowserWindowOptions[] = [];
   const setWindowOpenHandler = vi.fn();
   const webContentsOn = vi.fn();
+  const webContentsOnce = vi.fn();
+  const setPermissionCheckHandler = vi.fn();
+  const setPermissionRequestHandler = vi.fn();
+  const webContentsSession = {
+    setPermissionCheckHandler,
+    setPermissionRequestHandler,
+  };
   const loadURL = vi.fn();
   const loadFile = vi.fn();
   const setIcon = vi.fn();
@@ -39,6 +46,9 @@ const mocked = vi.hoisted(() => {
     public readonly webContents = {
       setWindowOpenHandler,
       on: webContentsOn,
+      once: webContentsOnce,
+      isDestroyed: () => false,
+      session: webContentsSession,
     };
 
     public readonly loadURL = loadURL;
@@ -54,6 +64,9 @@ const mocked = vi.hoisted(() => {
     browserWindowOptions,
     setWindowOpenHandler,
     webContentsOn,
+    webContentsOnce,
+    setPermissionCheckHandler,
+    setPermissionRequestHandler,
     loadURL,
     loadFile,
     setIcon,
@@ -95,6 +108,9 @@ describe('createMainWindow macOS chrome contract', () => {
     mocked.browserWindowOptions.length = 0;
     mocked.setWindowOpenHandler.mockReset();
     mocked.webContentsOn.mockReset();
+    mocked.webContentsOnce.mockReset();
+    mocked.setPermissionCheckHandler.mockReset();
+    mocked.setPermissionRequestHandler.mockReset();
     mocked.loadURL.mockReset();
     mocked.loadFile.mockReset();
     mocked.setIcon.mockReset();
@@ -142,7 +158,7 @@ describe('createMainWindow macOS chrome contract', () => {
       title: 'FriendLauncher',
       webPreferences: {
         preload: '/preload.js',
-        sandbox: false,
+        sandbox: true,
         contextIsolation: true,
         nodeIntegration: false,
         nodeIntegrationInWorker: false,

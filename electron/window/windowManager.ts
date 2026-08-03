@@ -2,6 +2,7 @@ import { BrowserWindow, nativeImage } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { openExternalUrl } from '../security/externalUrls';
+import { registerTrustedRendererPermissions } from '../security/sessionPermissions';
 
 export type CreateMainWindowParams = {
   preloadPath: string;
@@ -126,10 +127,7 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
     title: 'FriendLauncher',
     webPreferences: {
       preload: preloadPath,
-      // Phase 1 keeps sandbox disabled until the preload surface is boot-verified under sandbox.
-      // Compensating controls stay enforced through context isolation, the IPC allowlist, and
-      // the shared external-link trust gates below.
-      sandbox: false,
+      sandbox: true,
       // Security posture: keep Node out of renderer, use preload + contextBridge only.
       contextIsolation: true,
       nodeIntegration: false,
@@ -145,6 +143,7 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
   });
 
   attachExternalNavigationGuards(win, allowedOrigins, 'Main window');
+  registerTrustedRendererPermissions(win.webContents.session, win.webContents);
 
   // Set window icon explicitly (for Windows taskbar)
   if (process.platform === 'win32') {
@@ -176,7 +175,7 @@ export function createConsoleWindow(params: CreateMainWindowParams): BrowserWind
     title: 'Debug Console',
     webPreferences: {
       preload: preloadPath,
-      sandbox: false,
+      sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
       nodeIntegrationInWorker: false,
@@ -192,6 +191,7 @@ export function createConsoleWindow(params: CreateMainWindowParams): BrowserWind
   });
 
   attachExternalNavigationGuards(win, allowedOrigins, 'Console window');
+  registerTrustedRendererPermissions(win.webContents.session, win.webContents);
 
   if (process.platform === 'win32') {
     win.setIcon(appIcon);

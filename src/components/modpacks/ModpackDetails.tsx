@@ -29,6 +29,7 @@ import { cn } from '../../utils/cn';
 import { ArrowLeft } from 'lucide-react';
 import { resolveModpackUpdateInfo, type ModpackUpdateInfo } from '../../features/modpacks/hooks/useModpackUpdates';
 import { buildModpackRuntimeSummary } from '../../features/modpacks/hooks/useModpackRuntimeSummary';
+import { MODPACK_SECONDARY_CONTENT_WORKSPACE } from './ModpackCatalogControls';
 
 interface ModpackDetailsProps {
   modpackId: string;
@@ -376,9 +377,13 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
                 </section>
 
                 <div
-                  className={cn('min-w-0', secondarySurfaceTab ? 'space-y-4' : 'surface-panel p-4 sm:p-5')}
+                  className={cn(
+                    'min-w-0',
+                    secondarySurfaceTab ? MODPACK_SECONDARY_CONTENT_WORKSPACE.host : 'surface-panel p-4 sm:p-5',
+                  )}
                   data-testid="modpack-details-content-host"
                   data-content-surface={secondarySurfaceTab ? 'secondary' : 'primary'}
+                  data-secondary-content-workspace={secondarySurfaceTab ? 'shared' : undefined}
                 >
                   {activeTab === 'info' && (
                     <ModpackDetailsInfoTab

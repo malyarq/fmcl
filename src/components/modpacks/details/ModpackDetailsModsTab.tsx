@@ -1,6 +1,7 @@
 import React from 'react';
 import { ExternalLink, Filter, PackagePlus, RefreshCw, Trash2 } from 'lucide-react';
 import { Button } from '../../ui/Button';
+import { DegradedStateView } from '../../layout/DegradedStateView';
 import { Input } from '../../ui/Input';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 import { Select } from '../../ui/Select';
@@ -14,6 +15,7 @@ import {
   type VersionRequirementDescriptor,
 } from '../../../utils/versionCheck';
 import { externalLinksIPC } from '../../../services/ipc/externalLinksIPC';
+import { MODPACK_SECONDARY_CONTENT_WORKSPACE } from '../ModpackCatalogControls';
 
 export type ModpackModEntry = ModEntry;
 type TranslateFn = (key: string, params?: Record<string, string | number>) => string;
@@ -239,7 +241,7 @@ export const ModpackDetailsModsTab: React.FC<ModpackDetailsModsTabProps> = ({
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-secondary-content-workspace="shared">
       <div className="surface-card space-y-4 p-4">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-2">
@@ -252,11 +254,24 @@ export const ModpackDetailsModsTab: React.FC<ModpackDetailsModsTabProps> = ({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" size="sm" onClick={onAddMod}>
+            <Button
+              variant="primary"
+              size="sm"
+              geometry="catalog-primary"
+              onClick={onAddMod}
+              className={MODPACK_SECONDARY_CONTENT_WORKSPACE.action}
+            >
               <PackagePlus className="h-4 w-4" />
               {t('modpacks.add_mod_btn')}
             </Button>
-            <Button onClick={onRefresh} variant="secondary" size="sm" disabled={loadingMods}>
+            <Button
+              onClick={onRefresh}
+              variant="secondary"
+              size="sm"
+              geometry="catalog-primary"
+              disabled={loadingMods}
+              className={MODPACK_SECONDARY_CONTENT_WORKSPACE.action}
+            >
               <RefreshCw className="h-4 w-4" />
               {t('modpacks.update')}
             </Button>
@@ -271,35 +286,39 @@ export const ModpackDetailsModsTab: React.FC<ModpackDetailsModsTabProps> = ({
             <Filter className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <span>{t('modpacks.mods_manage_hint')}</span>
           </div>
-          <div className="surface-inline rounded-2xl px-3 py-3">
+          <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.counter}>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{t('modpacks.enabled')}</p>
             <p className="mt-2 text-base font-semibold text-foreground">{enabledCount}</p>
           </div>
-          <div className="surface-inline rounded-2xl px-3 py-3">
+          <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.counter}>
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted">{t('modpacks.installed')}</p>
             <p className="mt-2 text-base font-semibold text-foreground">{mods.length}</p>
           </div>
         </div>
       </div>
 
-      <div className="surface-card grid gap-4 p-4 lg:grid-cols-[1fr_15rem]">
-        <Input
-          label={t('modpacks.search_mods')}
-          placeholder={t('modpacks.search_mods')}
-          value={modSearchQuery}
-          onChange={(event) => onModSearchQueryChange(event.target.value)}
-          className="w-full"
-        />
-        <Select
-          label={t('modpacks.filter_all_items')}
-          value={modFilterStatus}
-          onChange={(event) => onModFilterStatusChange(event.target.value as 'all' | 'enabled' | 'disabled')}
-          className="w-full"
-        >
-          <option value="all">{t('modpacks.filter_all_items')}</option>
-          <option value="enabled">{t('modpacks.filter_enabled')}</option>
-          <option value="disabled">{t('modpacks.filter_disabled')}</option>
-        </Select>
+      <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.controls} data-testid="mods-workspace-controls">
+        <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.searchRow}>
+          <Input
+            label={t('modpacks.search_mods')}
+            placeholder={t('modpacks.search_mods')}
+            value={modSearchQuery}
+            onChange={(event) => onModSearchQueryChange(event.target.value)}
+            className="w-full"
+          />
+        </div>
+        <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.filterRow}>
+          <Select
+            label={t('modpacks.filter_all_items')}
+            value={modFilterStatus}
+            onChange={(event) => onModFilterStatusChange(event.target.value as 'all' | 'enabled' | 'disabled')}
+            className="w-full"
+          >
+            <option value="all">{t('modpacks.filter_all_items')}</option>
+            <option value="enabled">{t('modpacks.filter_enabled')}</option>
+            <option value="disabled">{t('modpacks.filter_disabled')}</option>
+          </Select>
+        </div>
       </div>
 
       {loadingMods ? (
@@ -308,15 +327,21 @@ export const ModpackDetailsModsTab: React.FC<ModpackDetailsModsTabProps> = ({
           {t('modpacks.loading')}
         </div>
       ) : mods.length === 0 ? (
-        <div className="surface-muted flex flex-col items-center gap-2 p-8 text-center">
-          <p className="text-base font-semibold text-foreground">{t('modpacks.no_mods')}</p>
-          <p className="max-w-xl text-sm text-secondary">{t('modpacks.mods_empty_hint')}</p>
-        </div>
+        <DegradedStateView
+          layout="workspace"
+          variant="empty"
+          label={t('degraded.empty_label')}
+          title={t('modpacks.no_mods')}
+          description={t('modpacks.mods_empty_hint')}
+        />
       ) : filteredMods.length === 0 ? (
-        <div className="surface-muted flex flex-col items-center gap-2 p-8 text-center">
-          <p className="text-base font-semibold text-foreground">{t('modpacks.no_matching_mods')}</p>
-          <p className="max-w-xl text-sm text-secondary">{t('modpacks.mods_filter_hint')}</p>
-        </div>
+        <DegradedStateView
+          layout="workspace"
+          variant="zero-results"
+          label={t('degraded.zero_results_label')}
+          title={t('modpacks.no_matching_mods')}
+          description={t('modpacks.mods_filter_hint')}
+        />
       ) : (
         <div className="space-y-2">
           {filteredMods.map(renderModItem)}

@@ -1,6 +1,9 @@
 import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
+import { Readable, Transform } from 'node:stream'
+import { pipeline } from 'node:stream/promises'
+import { assertPublicHttpsUrl } from '../../security/remoteUrls'
 
 export interface ImageCacheState {
   entryCount: number
@@ -50,6 +53,7 @@ const DEFAULT_MAX_SIZE_BYTES = 256 * 1024 * 1024
 const MIN_MAX_SIZE_BYTES = 32 * 1024 * 1024
 const MAX_MAX_SIZE_BYTES = 2 * 1024 * 1024 * 1024
 const STALE_AFTER_MS = 7 * 24 * 60 * 60 * 1000
+const MAX_IMAGE_BYTES = 32 * 1024 * 1024
 
 export class ImageCacheService {
   private readonly cacheRoot: string
@@ -214,7 +218,7 @@ export class ImageCacheService {
     sourceUrl: string,
     existingEntry?: ImageCacheEntry,
   ): Promise<ImageCacheResolveResult> {
-    const response = await this.fetchImpl(sourceUrl)
+    const response = await this.fetchImpl(sourceUrl, { redirect: 'error' })
     if (!response.ok) {
       throw new Error(`Image download failed with status ${response.status}`)
     }
@@ -224,10 +228,10 @@ export class ImageCacheService {
       throw new Error(`Expected image response, received ${contentType || 'unknown content type'}`)
     }
 
-    const arrayBuffer = await response.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    if (buffer.length === 0) {
-      throw new Error('Image download returned an empty body')
+    if (!response.body) throw new Error('Image download returned an empty body')
+    const contentLength = response.headers.get('content-length')
+    if (contentLength !== null && Number(contentLength) > MAX_IMAGE_BYTES) {
+      throw new Error('Image download exceeds the per-image size limit')
     }
 
     const key = this.createKey(sourceUrl)
@@ -237,8 +241,29 @@ export class ImageCacheService {
     const tempPath = path.join(this.entriesRoot, `${fileName}.tmp-${Date.now()}`)
 
     fs.mkdirSync(this.entriesRoot, { recursive: true })
-    fs.writeFileSync(tempPath, buffer)
-    fs.renameSync(tempPath, finalPath)
+    let received = 0
+    const limiter = new Transform({
+      transform(chunk: Buffer, _encoding, callback) {
+        received += chunk.length
+        if (received > MAX_IMAGE_BYTES) {
+          callback(new Error('Image download exceeds the per-image size limit'))
+          return
+        }
+        callback(null, chunk)
+      },
+    })
+    try {
+      await pipeline(
+        Readable.fromWeb(response.body as never),
+        limiter,
+        fs.createWriteStream(tempPath, { flags: 'wx' }),
+      )
+      if (received === 0) throw new Error('Image download returned an empty body')
+      fs.renameSync(tempPath, finalPath)
+    } catch (error) {
+      fs.rmSync(tempPath, { force: true })
+      throw error
+    }
 
     if (existingEntry && existingEntry.fileName !== fileName) {
       const previousPath = this.getEntryPath(existingEntry)
@@ -252,7 +277,7 @@ export class ImageCacheService {
       key,
       url: sourceUrl,
       fileName,
-      sizeBytes: buffer.length,
+      sizeBytes: received,
       contentType,
       cachedAt: now,
       lastAccessedAt: now,
@@ -354,12 +379,7 @@ export class ImageCacheService {
   }
 
   private normalizeSourceUrl(sourceUrl: string): string {
-    const parsed = new URL(sourceUrl)
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new Error('Only http and https image URLs can be cached')
-    }
-
-    return parsed.toString()
+    return assertPublicHttpsUrl(sourceUrl, 'Image URL')
   }
 
   private resolveExtension(sourceUrl: string, contentType: string): string {

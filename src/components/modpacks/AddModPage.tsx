@@ -21,6 +21,7 @@ import type { ModpackConfig } from '../../contexts/instances/types';
 import { sanitizeUiText } from '../../utils/safeUiText';
 import { toDisplayErrorMessage } from '../../utils/displayError';
 import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
+import { MODPACK_SECONDARY_CONTENT_WORKSPACE } from './ModpackCatalogControls';
 import {
   buildModpackRuntimeSummary,
   getModpackRuntimeContextLabel,
@@ -883,7 +884,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
       </div>
 
       <div className="flex-1 min-h-0 p-6" data-testid="add-mod-page-body">
-        <div className="mx-auto flex h-full max-w-4xl min-h-0 flex-col gap-4">
+        <div className={cn('flex h-full min-h-0 flex-col', MODPACK_SECONDARY_CONTENT_WORKSPACE.host)} data-secondary-content-workspace="shared">
           {shaderGuidance && (
             <div
               className={cn(
@@ -930,12 +931,20 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
             </div>
           )}
 
-          {/* Filters */}
-          <div className="flex gap-2 flex-wrap">
+          <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.controls} data-testid="add-mod-workspace-controls">
+            <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.searchRow}>
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={getPlaceholder()}
+                className="w-full"
+              />
+            </div>
+            <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.filterRow}>
             <Select
               value={filterMCVersion}
               onChange={(e) => setFilterMCVersion(e.target.value)}
-              className="flex-1 min-w-[150px]"
+              className="w-full"
             >
               <option value="">{t('modpacks.filter_all') || 'Все версии MC'}</option>
               {MINECRAFT_VERSIONS.filter(v => v.type === 'release').map((v) => (
@@ -949,7 +958,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
               <Select
                 value={filterLoader}
                 onChange={(e) => setFilterLoader(e.target.value)}
-                className="flex-1 min-w-[150px]"
+                className="w-full"
               >
                 <option value="">{t('modpacks.filter_all_loaders') || 'Все модлоадеры'}</option>
                 <option value="forge">Forge</option>
@@ -961,21 +970,14 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
             <Select
               value={filterSort}
               onChange={(e) => setFilterSort(e.target.value as 'popularity' | 'date' | 'alphabetical')}
-              className="flex-1 min-w-[150px]"
+              className="w-full"
             >
               <option value="popularity">{t('modpacks.sort_popularity') || 'Популярность'}</option>
               <option value="date">{t('modpacks.sort_date') || 'Дата'}</option>
               <option value="alphabetical">{t('modpacks.sort_alphabetical') || 'По алфавиту'}</option>
             </Select>
+            </div>
           </div>
-
-          {/* Search */}
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={getPlaceholder()}
-            className="w-full"
-          />
 
           {localFallbackCopy && (
             <div
@@ -1092,6 +1094,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
 
             {!loading && searchError ? (
               <DegradedStateView
+                layout="workspace"
                 variant="error"
                 label={t('degraded.error_label')}
                 title={t('modpacks.add_mod_search_error_title') || 'Unable to search right now'}
@@ -1106,6 +1109,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
 
             {!loading && !searchError && searchResults.length === 0 ? (
               <DegradedStateView
+                layout="workspace"
                 variant={query.trim() ? 'zero-results' : 'empty'}
                 label={t(query.trim() ? 'degraded.zero_results_label' : 'degraded.empty_label')}
                 title={
