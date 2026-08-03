@@ -84,6 +84,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   const [checkedMods, setCheckedMods] = useState<Map<string, CheckedEntry>>(new Map());
   const [installing, setInstalling] = useState(false);
   const [modpackMetadata, setModpackMetadata] = useState<ModpackMetadata | null>(null);
+  const [filtersReadyFor, setFiltersReadyFor] = useState<string | null>(null);
   const [filterMCVersion, setFilterMCVersion] = useState<string>('');
   const [filterLoader, setFilterLoader] = useState<string>('');
   const [filterSort, setFilterSort] = useState<'popularity' | 'date' | 'alphabetical'>('popularity');
@@ -92,28 +93,39 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   const [flowNotice, setFlowNotice] = useState<{ tone: FlowNoticeTone; message: string } | null>(null);
   const resultsScrollRef = useRef<HTMLDivElement>(null);
   const searchRequestIdRef = useRef(0);
+  const metadataRequestIdRef = useRef(0);
   const PAGE_SIZE = 20;
+  const filterContextKey = [modpackId, minecraftPath, defaultMCVersion ?? '', defaultLoader ?? ''].join('\0');
 
   const effectiveLoader = filterLoader || defaultLoader || modpackMetadata?.modLoader?.type || '';
   const effectiveMCVersion = filterMCVersion || defaultMCVersion || modpackMetadata?.minecraftVersion || '';
 
   const loadModpackMetadataAndConfig = useCallback(async () => {
+    const requestId = metadataRequestIdRef.current + 1;
+    metadataRequestIdRef.current = requestId;
+    setFiltersReadyFor(null);
     try {
       const [metadata, config] = await Promise.all([
         modpacksIPC.getMetadata(modpackId, minecraftPath),
         modpacksIPC.getConfig(modpackId, minecraftPath),
       ]);
+      if (requestId !== metadataRequestIdRef.current) return;
       setModpackMetadata(metadata);
       const mcVersion = defaultMCVersion || config?.runtime?.minecraft || metadata?.minecraftVersion || '';
       const loader = defaultLoader || config?.runtime?.modLoader?.type || metadata?.modLoader?.type || '';
       setFilterMCVersion(mcVersion);
       setFilterLoader(loader);
     } catch (error) {
+      if (requestId !== metadataRequestIdRef.current) return;
       console.error('Error loading modpack metadata:', error);
       if (defaultMCVersion) setFilterMCVersion(defaultMCVersion);
       if (defaultLoader) setFilterLoader(defaultLoader);
+    } finally {
+      if (requestId === metadataRequestIdRef.current) {
+        setFiltersReadyFor(filterContextKey);
+      }
     }
-  }, [modpackId, minecraftPath, defaultMCVersion, defaultLoader]);
+  }, [modpackId, minecraftPath, defaultMCVersion, defaultLoader, filterContextKey]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -121,6 +133,8 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   }, [isOpen, loadModpackMetadataAndConfig]);
 
   const resetTransientState = useCallback(() => {
+    metadataRequestIdRef.current += 1;
+    setFiltersReadyFor(null);
     setQuery('');
     setSearchResults([]);
     setSearchError(null);
@@ -247,9 +261,9 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   }, [debouncedQuery, platform, effectiveMCVersion, effectiveLoader, filterSort, searchErrorDescription]);
 
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || filtersReadyFor !== filterContextKey) return;
     searchMods(0, false);
-  }, [isOpen, debouncedQuery, platform, filterMCVersion, filterLoader, filterSort, searchMods]);
+  }, [isOpen, filtersReadyFor, filterContextKey, debouncedQuery, platform, filterMCVersion, filterLoader, filterSort, searchMods]);
 
   useEffect(() => {
     setCheckedMods(new Map());

@@ -26,7 +26,7 @@ A ground-up rewrite is not justified. TypeScript, React and Electron match the p
 - [x] Gate CI on unit, lint, type, contracts, IPC, audit, build and macOS visual regression.
 - [x] Make release preparation clean-tree-first, injection-safe, dry-runnable and non-pushing by default.
 - [x] Build platforms independently and publish one release after the whole matrix succeeds.
-- [x] Publish unsigned Windows/macOS artifacts with an explicit release warning; use signing secrets when configured.
+- [x] Publish unsigned Windows/macOS artifacts with an explicit release warning; signing can be added later.
 - [ ] Optionally configure real certificates, Apple notarization and installed-artifact signature checks.
 - [ ] Publish SBOM, checksums and provenance attestations.
 - [ ] Smoke-test installed auto-update from the previous signed release.

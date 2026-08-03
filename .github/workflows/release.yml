@@ -52,6 +52,7 @@ jobs:
           echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
 
       - name: Update package.json version to match tag
+        shell: bash
         env:
           VERSION_NUMBER: ${{ steps.get_version.outputs.version_number }}
         run: npm version "$VERSION_NUMBER" --no-git-tag-version --allow-same-version
@@ -124,19 +125,16 @@ jobs:
           echo "Version: $VERSION (number: $VERSION_NUMBER)"
 
       - name: Update package.json version to match tag
+        shell: bash
         env:
           VERSION_NUMBER: ${{ steps.get_version.outputs.version_number }}
         run: npm version "$VERSION_NUMBER" --no-git-tag-version --allow-same-version
 
       - name: Build release artifacts
         env:
-          # Releases are intentionally unsigned unless optional signing secrets are configured.
+          # Releases are intentionally unsigned. Do not pass empty CSC_* variables:
+          # electron-builder interprets an empty CSC_LINK as a filesystem path.
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          CSC_LINK: ${{ matrix.os == 'macos-latest' && secrets.MACOS_CSC_LINK || matrix.os == 'windows-latest' && secrets.WINDOWS_CSC_LINK || '' }}
-          CSC_KEY_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.MACOS_CSC_KEY_PASSWORD || matrix.os == 'windows-latest' && secrets.WINDOWS_CSC_KEY_PASSWORD || '' }}
-          APPLE_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_ID || '' }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.os == 'macos-latest' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
-          APPLE_TEAM_ID: ${{ matrix.os == 'macos-latest' && secrets.APPLE_TEAM_ID || '' }}
         run: npm run build -- --publish never
 
       - name: Upload platform artifacts
@@ -147,7 +145,7 @@ jobs:
             release/${{ steps.get_version.outputs.version_number }}/*.dmg
             release/${{ steps.get_version.outputs.version_number }}/*.exe
             release/${{ steps.get_version.outputs.version_number }}/*.AppImage
-            release/${{ steps.get_version.outputs.version_number }}/*.yml
+            release/${{ steps.get_version.outputs.version_number }}/latest*.yml
             release/${{ steps.get_version.outputs.version_number }}/*.blockmap
           if-no-files-found: error
 

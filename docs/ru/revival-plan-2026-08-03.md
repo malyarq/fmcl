@@ -30,7 +30,7 @@
 - [x] Добавить macOS Chromium visual-regression job и выгрузку diff при падении.
 - [x] Переписать release script: clean tree до мутаций, SemVer, без shell interpolation и `git add -A`, dry-run, push только по флагу.
 - [x] Собирать платформы независимо, а GitHub Release создавать один раз после успешной матрицы.
-- [x] Публиковать неподписанные Windows/macOS artifacts с явным предупреждением в релизе; использовать signing secrets, когда они настроены.
+- [x] Публиковать неподписанные Windows/macOS artifacts с явным предупреждением в релизе; signing можно подключить позже.
 - [ ] При необходимости настроить реальные сертификаты, Apple notarization и проверку подписи установленных артефактов.
 - [ ] Добавить SBOM, checksum-файл и provenance/attestation для релизных файлов.
 - [ ] Проверять автообновление с предыдущей подписанной версии на staging release channel.
