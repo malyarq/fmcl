@@ -1,31 +1,19 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { ResourcePackAcquisitionResult } from '@shared/contracts/resourcePacks';
-import type { ShaderPackAcquisitionResult } from '@shared/contracts/shaders';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ModpackMetadata } from '@shared/types/modpack';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
-import { Button } from '../ui/Button';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
-import { Input } from '../ui/Input';
-import { Select } from '../ui/Select';
-import { Breadcrumbs } from '../ui/Breadcrumbs';
-import { LazyImage } from '../ui/LazyImage';
-import { DegradedStateView } from '../layout/DegradedStateView';
-import { cn } from '../../utils/cn';
-import { isGuidedContentInstallResult, modsIPC, type GuidedContentInstallIssueStatus } from '../../services/ipc/modsIPC';
-import { instanceModsIPC } from '../../services/ipc/instanceModsIPC';
 import {
   fetchModpackConfig,
   fetchModpackMetadata,
 } from '../../contexts/instances/services/instancesService';
-import { resourcePacksIPC } from '../../services/ipc/resourcePacksIPC';
-import { shadersIPC } from '../../services/ipc/shadersIPC';
-import { MINECRAFT_VERSIONS } from '../../utils/minecraftVersionsList';
-import type { ModpackMetadata } from '@shared/types/modpack';
 import type { ModpackConfig } from '../../contexts/instances/types';
-import { sanitizeUiText } from '../../utils/safeUiText';
-import { toDisplayErrorMessage } from '../../utils/displayError';
+import { ModContentAcquisition } from '../../features/content/components/ModContentAcquisition';
+import { ResourcePackContentAcquisition } from '../../features/content/components/ResourcePackContentAcquisition';
+import { ShaderContentAcquisition } from '../../features/content/components/ShaderContentAcquisition';
+import type { AcquisitionOutcome } from '../../features/content/contentAcquisitionTypes';
+import { useInstanceInvalidation } from '../../features/instances/hooks/useInstanceInvalidation';
+import { useInstanceSnapshot } from '../../features/instances/hooks/useInstanceSelectors';
 import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
-import { MODPACK_SECONDARY_CONTENT_WORKSPACE } from './ModpackCatalogControls';
 import {
   buildModpackRuntimeSummary,
   getModpackRuntimeContextLabel,
@@ -33,1133 +21,357 @@ import {
   getModpackShaderCapabilityLabel,
   getModpackShaderCapabilityTone,
 } from '../../features/modpacks/hooks/useModpackRuntimeSummary';
+import { cn } from '../../utils/cn';
+import { toDisplayErrorMessage } from '../../utils/displayError';
+import { Breadcrumbs } from '../ui/Breadcrumbs';
+import { Button } from '../ui/Button';
+import { LoadingSpinner } from '../ui/LoadingSpinner';
+import { DegradedStateView } from '../layout/DegradedStateView';
+import { MODPACK_SECONDARY_CONTENT_WORKSPACE } from './ModpackCatalogControls';
 
 interface AddModPageProps {
   modpackId: string;
   onBack: () => void;
+  onCommitted?: (outcome: AcquisitionOutcome) => void | Promise<void>;
   /** Type of content to search/install. Defaults to 'mod'. */
   contentType?: 'mod' | 'resourcepack' | 'shader';
 }
 
-interface ModSearchResult {
-  platform: 'curseforge' | 'modrinth';
-  projectId: string;
-  slug?: string;
+type ModRuntimeState =
+  | { status: 'loading' }
+  | { status: 'error'; error: unknown }
+  | { status: 'ready'; metadata: ModpackMetadata; config: ModpackConfig };
+
+function AddContentHeader({
+  title,
+  onBack,
+  busy,
+}: {
   title: string;
-  description?: string;
-  iconUrl?: string;
-  downloads?: number;
-}
+  onBack: () => void;
+  busy: boolean;
+}) {
+  const { t } = useSettings();
 
-interface ModVersion {
-  platform: 'curseforge' | 'modrinth';
-  versionId: string;
-  name: string;
-  versionNumber?: string;
-  mcVersions: string[];
-  loaders: string[];
-}
-
-type CheckedEntry = { mod: ModSearchResult; version: ModVersion } | 'loading';
-type FlowNoticeTone = 'warning' | 'error';
-type LocalImportResult = ResourcePackAcquisitionResult | ShaderPackAcquisitionResult;
-type GuidedContentType = 'resourcepack' | 'shader';
-type NonModRecoveryStatus = GuidedContentInstallIssueStatus;
-type ModRecoveryStatus = 'install-failure' | 'manifest-failure';
-
-interface NonModRecoveryIssue {
-  label: string;
-  status: NonModRecoveryStatus;
-}
-
-interface ModRecoveryIssue {
-  label: string;
-  status: ModRecoveryStatus;
-}
-
-function getSafeModVersionLabel(version: ModVersion, fallback: string) {
-  return sanitizeUiText(
-    version.name,
-    sanitizeUiText(version.versionNumber, sanitizeUiText(version.versionId, fallback)),
+  return (
+    <div className="flex flex-col gap-4 border-b border-zinc-200 bg-white/60 px-6 py-4 dark:border-zinc-700 dark:bg-zinc-900/40">
+      <Breadcrumbs items={[
+        { label: t('modpacks.title') || 'Modpacks', onClick: busy ? undefined : onBack },
+        { label: title, active: true },
+      ]} />
+      <div className="flex items-center gap-4">
+        <Button variant="secondary" size="sm" onClick={onBack} disabled={busy} className="shrink-0">
+          <span>←</span>
+          {t('general.back') || 'Back'}
+        </Button>
+        <h2 className="min-w-0 flex-1 truncate text-xl font-bold text-foreground">{title}</h2>
+      </div>
+    </div>
   );
 }
 
-function isGuidedContentType(contentType: AddModPageProps['contentType']): contentType is GuidedContentType {
-  return contentType === 'resourcepack' || contentType === 'shader';
+function RuntimeLoading() {
+  const { t } = useSettings();
+  return (
+    <div className="flex h-full items-center justify-center gap-3" role="status">
+      <LoadingSpinner size="lg" />
+      <span className="text-sm text-secondary">{t('modpacks.loading')}</span>
+    </div>
+  );
 }
 
-function formatRecoveryItems(labels: string[]): string {
-  return labels.join(', ');
-}
-
-export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, contentType = 'mod' }) => {
-  const { t, getAccentStyles } = useSettings();
+function ModAddPage({ modpackId, onBack, onCommitted }: AddModPageProps) {
+  const { t } = useSettings();
   const toast = useToast();
-  const [query, setQuery] = useState('');
-  const [platform, setPlatform] = useState<'curseforge' | 'modrinth'>('modrinth');
-  const [searchResults, setSearchResults] = useState<ModSearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [checkedMods, setCheckedMods] = useState<Map<string, CheckedEntry>>(new Map());
-  const [installing, setInstalling] = useState(false);
-  const [modpackMetadata, setModpackMetadata] = useState<ModpackMetadata | null>(null);
-  const [modpackConfig, setModpackConfig] = useState<ModpackConfig | null>(null);
-  const [filterMCVersion, setFilterMCVersion] = useState<string>('');
-  const [filterLoader, setFilterLoader] = useState<string>('');
-  const [filterSort, setFilterSort] = useState<'popularity' | 'date' | 'alphabetical'>('popularity');
-  const [total, setTotal] = useState(0);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [flowNotice, setFlowNotice] = useState<{ tone: FlowNoticeTone; message: string } | null>(null);
-  const [localImporting, setLocalImporting] = useState(false);
-  const resultsScrollRef = useRef<HTMLDivElement>(null);
-  const searchRequestIdRef = useRef(0);
-  const PAGE_SIZE = 20;
-  const { optiFineVersions } = useModSupportedVersions();
+  const [runtimeState, setRuntimeState] = useState<ModRuntimeState>({ status: 'loading' });
+  const [busy, setBusy] = useState(false);
+  const generationRef = useRef(0);
 
-  const effectiveLoader = contentType === 'mod' ? (filterLoader || modpackMetadata?.modLoader?.type || '') : '';
-  const effectiveMCVersion = filterMCVersion || modpackMetadata?.minecraftVersion || '';
-  const shouldPersistInstallToManifest = contentType === 'mod';
-  const supportsLocalFallback = contentType === 'resourcepack' || contentType === 'shader';
-  const isBusy = installing || localImporting;
-
-  const loadModpackMetadataAndConfig = useCallback(async () => {
+  const loadRuntime = useCallback(async () => {
+    const generation = ++generationRef.current;
+    setRuntimeState({ status: 'loading' });
     try {
       const [metadata, config] = await Promise.all([
         fetchModpackMetadata(modpackId),
         fetchModpackConfig(modpackId),
       ]);
-      setModpackMetadata(metadata);
-      setModpackConfig(config);
-      const mcVersion = config?.runtime?.minecraft || metadata?.minecraftVersion || '';
-      const loader = config?.runtime?.modLoader?.type || metadata?.modLoader?.type || '';
-      setFilterMCVersion(mcVersion);
-      setFilterLoader(loader);
+      if (generation !== generationRef.current) return;
+      setRuntimeState({ status: 'ready', metadata, config });
     } catch (error) {
-      console.error('Error loading modpack metadata:', error);
+      if (generation === generationRef.current) setRuntimeState({ status: 'error', error });
     }
   }, [modpackId]);
 
   useEffect(() => {
-    loadModpackMetadataAndConfig();
-  }, [loadModpackMetadataAndConfig]);
+    void Promise.resolve().then(loadRuntime);
+    return () => {
+      generationRef.current += 1;
+    };
+  }, [loadRuntime]);
 
-  const searchErrorDescription =
-    t('modpacks.add_mod_search_error_desc') || 'We could not load catalog results right now.';
+  const handleSuccess = useCallback(() => {
+    toast.success(t('modpacks.add_mod_success') || 'Mods added');
+    onBack();
+  }, [onBack, t, toast]);
+
+  const runtime = runtimeState.status === 'ready' ? {
+    instanceId: modpackId,
+    minecraftVersion: runtimeState.config.runtime.minecraft || runtimeState.metadata.minecraftVersion,
+    loader: runtimeState.config.runtime.modLoader?.type || runtimeState.metadata.modLoader?.type,
+  } : null;
+  const title = t('modpacks.add_mod_title') || 'Add mods';
+
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <AddContentHeader title={title} onBack={onBack} busy={busy} />
+      <div className="min-h-0 flex-1 p-6" data-testid="add-mod-page-body">
+        {runtimeState.status === 'loading' ? <RuntimeLoading /> : null}
+        {runtimeState.status === 'error' ? (
+          <DegradedStateView
+            variant="error"
+            layout="workspace"
+            title={t('modpacks.add_mod_runtime_error') || 'Unable to load this modpack'}
+            description={toDisplayErrorMessage(
+              runtimeState.error,
+              t('modpacks.add_mod_runtime_error_desc') || 'FMCL could not read the current Minecraft and modloader versions.',
+            )}
+            footer={<Button onClick={() => { void loadRuntime(); }}>{t('operations.retry') || 'Retry'}</Button>}
+          />
+        ) : null}
+        {runtime ? (
+          <ModContentAcquisition
+            runtime={runtime}
+            onCancel={onBack}
+            onCommitted={onCommitted}
+            onSuccess={handleSuccess}
+            onBusyChange={setBusy}
+            className={workspaceClassName}
+            resultsClassName={resultsClassName}
+            actionsClassName={actionsClassName}
+            testIds={contentTestIds}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ResourcePackAddPage({ modpackId, onBack, onCommitted }: AddModPageProps) {
+  const { t } = useSettings();
+  const toast = useToast();
+  const snapshot = useInstanceSnapshot(modpackId);
+  const { invalidateInstance } = useInstanceInvalidation();
+  const [busy, setBusy] = useState(false);
+
+  const handleCommitted = useCallback(async (outcome: AcquisitionOutcome) => {
+    await invalidateInstance(modpackId);
+    await onCommitted?.(outcome);
+  }, [invalidateInstance, modpackId, onCommitted]);
+
+  const handleSuccess = useCallback(() => {
+    toast.success(t('modpacks.resourcepack_add_success') || 'Resource packs added to this modpack.');
+    onBack();
+  }, [onBack, t, toast]);
+
+  const title = t('modpacks.add_resourcepack') || 'Add Resource Pack';
+
+  return (
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <AddContentHeader title={title} onBack={onBack} busy={busy} />
+      <div className="min-h-0 flex-1 p-6" data-testid="add-mod-page-body">
+        {snapshot.status === 'idle' || snapshot.status === 'loading' ? <RuntimeLoading /> : null}
+        {snapshot.status === 'error' ? (
+          <RuntimeFailure
+            testId="resourcepack-runtime-error"
+            variant="error"
+            title={t('modpacks.add_resourcepack_runtime_error') || 'Unable to load this modpack'}
+            description={toDisplayErrorMessage(
+              readCanonicalErrorMessage(snapshot.error),
+              t('modpacks.add_resourcepack_runtime_error_desc')
+                || 'FMCL could not read the canonical Minecraft version for this resource-pack install.',
+            )}
+            retry={() => invalidateInstance(modpackId)}
+          />
+        ) : null}
+        {snapshot.status === 'uninitialized' ? (
+          <RuntimeFailure
+            testId="resourcepack-runtime-unavailable"
+            variant="unavailable"
+            title={t('modpacks.add_resourcepack_runtime_unavailable') || 'This modpack is not initialized yet'}
+            description={t('modpacks.add_resourcepack_runtime_unavailable_desc')
+              || 'Initialize or refresh the modpack before adding resource packs.'}
+            retry={() => invalidateInstance(modpackId)}
+          />
+        ) : null}
+        {snapshot.status === 'ready' ? (
+          <ResourcePackContentAcquisition
+            runtime={{ instanceId: modpackId, minecraftVersion: snapshot.data.runtime.minecraft }}
+            onCancel={onBack}
+            onCommitted={handleCommitted}
+            onSuccess={handleSuccess}
+            onBusyChange={setBusy}
+            className={workspaceClassName}
+            resultsClassName={resultsClassName}
+            actionsClassName={actionsClassName}
+            testIds={localContentTestIds}
+          />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ShaderAddPage({ modpackId, onBack, onCommitted }: AddModPageProps) {
+  const { t } = useSettings();
+  const toast = useToast();
+  const snapshot = useInstanceSnapshot(modpackId);
+  const { invalidateInstance } = useInstanceInvalidation();
+  const { optiFineVersions } = useModSupportedVersions();
+  const [busy, setBusy] = useState(false);
+  const config = snapshot.status === 'ready' ? snapshot.data : null;
   const runtimeSummary = useMemo(
-    () =>
-      buildModpackRuntimeSummary({
-        config: modpackConfig,
-        metadata: modpackMetadata,
-        optiFineVersions: optiFineVersions.length > 0 ? optiFineVersions : undefined,
-      }),
-    [modpackConfig, modpackMetadata, optiFineVersions],
+    () => buildModpackRuntimeSummary({
+      config,
+      optiFineVersions: optiFineVersions.length > 0 ? optiFineVersions : undefined,
+    }),
+    [config, optiFineVersions],
   );
   const runtimeContextLabel = useMemo(
     () => getModpackRuntimeContextLabel(runtimeSummary, t),
     [runtimeSummary, t],
   );
-  const shaderGuidance = useMemo(() => {
-    if (contentType !== 'shader') {
-      return null;
-    }
-
-    return {
-      label: getModpackShaderCapabilityLabel(runtimeSummary.shaderCapability.status, t),
-      description: getModpackShaderCapabilityDescription(runtimeSummary, t),
-      tone: getModpackShaderCapabilityTone(runtimeSummary.shaderCapability.status),
-      title:
-        t('modpacks.shader_capability_heading')
-        || 'Shader runtime',
-      hint:
-        (t('modpacks.shader_capability_catalog_hint')
-          || 'Catalog metadata and downloaded archives are not compatibility guarantees on their own.')
-          .replace('{{runtime}}', runtimeContextLabel),
-    };
-  }, [contentType, runtimeContextLabel, runtimeSummary, t]);
-  const resourcePackScopeCopy = useMemo(() => {
-    if (contentType !== 'resourcepack') {
-      return null;
-    }
-
-    return {
-      title:
-        t('modpacks.resourcepack_scope_title')
-        || 'Instance-scoped resource packs',
-      description:
-        t('modpacks.resourcepack_scope_desc')
-        || 'Resource packs added here only affect this modpack. FMCL does not mark them compatible or incompatible for you.',
-    };
-  }, [contentType, t]);
-  const localFallbackCopy = useMemo(() => {
-    switch (contentType) {
-      case 'resourcepack':
-        return {
-          title: t('modpacks.resourcepack_local_fallback_title') || 'Have a local resource pack .zip already?',
-          description:
-            t('modpacks.resourcepack_local_fallback_desc')
-            || 'Import it straight into this modpack when browsing is not the right fit. This only affects the current instance.',
-          action: t('modpacks.guided_local_fallback_action') || 'Import local .zip',
-        };
-      case 'shader':
-        return {
-          title: t('modpacks.shader_local_fallback_title') || 'Have a local shader pack .zip already?',
-          description:
-            t('modpacks.shader_local_fallback_desc')
-            || 'Import it straight into this modpack when browsing is not the right fit. This only affects the current instance.',
-          action: t('modpacks.guided_local_fallback_action') || 'Import local .zip',
-        };
-      default:
-        return null;
-    }
-  }, [contentType, t]);
-
-  const buildNonModRecoveryNotice = useCallback((params: {
-    contentType: GuidedContentType;
-    issues: NonModRecoveryIssue[];
-    addedCount?: number;
-  }): { tone: FlowNoticeTone; message: string } | null => {
-    const { contentType: noticeContentType, issues, addedCount = 0 } = params;
-
-    if (issues.length === 0) {
-      return null;
-    }
-
-    const grouped = issues.reduce<Record<NonModRecoveryStatus, string[]>>((acc, issue) => {
-      acc[issue.status].push(issue.label);
-      return acc;
-    }, {
-      duplicate: [],
-      'invalid-archive': [],
-      'runtime-blocked': [],
-      failure: [],
-    });
-
-    const messageParts: string[] = [];
-    if (addedCount > 0) {
-      const partialIntroKey = noticeContentType === 'resourcepack'
-        ? 'modpacks.resourcepack_recovery_partial_intro'
-        : 'modpacks.shader_recovery_partial_intro';
-      const partialIntroFallback = noticeContentType === 'resourcepack'
-        ? 'Added {{added}} resource packs. The remaining issues stayed on this screen.'
-        : 'Added {{added}} shader packs. The remaining issues stayed on this screen.';
-
-      messageParts.push(
-        (t(partialIntroKey) || partialIntroFallback).replace('{{added}}', String(addedCount)),
-      );
-    }
-
-    if (grouped.duplicate.length > 0) {
-      const duplicateKey = noticeContentType === 'resourcepack'
-        ? 'modpacks.resourcepack_recovery_duplicate'
-        : 'modpacks.shader_recovery_duplicate';
-      const duplicateFallback = noticeContentType === 'resourcepack'
-        ? 'Already in this modpack: {{items}}. Review installed resource packs or choose a different pack.'
-        : 'Already in this modpack: {{items}}. Review installed shader packs or choose a different pack.';
-
-      messageParts.push(
-        (t(duplicateKey) || duplicateFallback).replace('{{items}}', formatRecoveryItems(grouped.duplicate)),
-      );
-    }
-
-    if (grouped['invalid-archive'].length > 0) {
-      const invalidKey = noticeContentType === 'resourcepack'
-        ? 'modpacks.resourcepack_recovery_invalid_archive'
-        : 'modpacks.shader_recovery_invalid_archive';
-      const invalidFallback = noticeContentType === 'resourcepack'
-        ? 'FMCL could not treat these files as valid resource packs: {{items}}. Try another version or another local .zip.'
-        : 'FMCL could not treat these files as valid shader packs: {{items}}. Try another version or another local .zip.';
-
-      messageParts.push(
-        (t(invalidKey) || invalidFallback).replace('{{items}}', formatRecoveryItems(grouped['invalid-archive'])),
-      );
-    }
-
-    if (grouped['runtime-blocked'].length > 0) {
-      const blockedKey = 'modpacks.shader_recovery_runtime_blocked';
-      const blockedFallback = 'FMCL kept these shader installs blocked for the current runtime: {{items}}. Review the shader runtime card above, then retry.';
-      messageParts.push(
-        (t(blockedKey) || blockedFallback).replace('{{items}}', formatRecoveryItems(grouped['runtime-blocked'])),
-      );
-    }
-
-    if (grouped.failure.length > 0) {
-      const failureKey = noticeContentType === 'resourcepack'
-        ? 'modpacks.resourcepack_recovery_failure'
-        : 'modpacks.shader_recovery_failure';
-      const failureFallback = noticeContentType === 'resourcepack'
-        ? 'FMCL could not add these resource packs right now: {{items}}. Retry from this screen or keep browsing.'
-        : 'FMCL could not add these shader packs right now: {{items}}. Retry from this screen or keep browsing.';
-
-      messageParts.push(
-        (t(failureKey) || failureFallback).replace('{{items}}', formatRecoveryItems(grouped.failure)),
-      );
-    }
-
-    if (messageParts.length === 0) {
-      return null;
-    }
-
-    const hasHardFailures = grouped['invalid-archive'].length > 0
-      || grouped['runtime-blocked'].length > 0
-      || grouped.failure.length > 0;
-
-    return {
-      tone: addedCount > 0 || !hasHardFailures ? 'warning' : 'error',
-      message: messageParts.join(' '),
-    };
-  }, [t]);
-
-  const getLocalImportNotice = useCallback((result: LocalImportResult): { tone: FlowNoticeTone; message: string } | null => {
-    if (!isGuidedContentType(contentType) || result.status === 'cancelled' || result.status === 'success') {
-      return null;
-    }
-
-    return buildNonModRecoveryNotice({
-      contentType,
-      issues: result.issues.map((issue) => ({
-        label: issue.fileName,
-        status: issue.status,
-      })),
-      addedCount: result.importedFileNames.length,
-    });
-  }, [buildNonModRecoveryNotice, contentType]);
-
-  const buildModRecoveryNotice = useCallback((params: {
-    issues: ModRecoveryIssue[];
-    addedCount?: number;
-  }): { tone: FlowNoticeTone; message: string } | null => {
-    const { issues, addedCount = 0 } = params;
-
-    if (issues.length === 0) {
-      return null;
-    }
-
-    const grouped = issues.reduce<Record<ModRecoveryStatus, string[]>>((acc, issue) => {
-      acc[issue.status].push(issue.label);
-      return acc;
-    }, {
-      'install-failure': [],
-      'manifest-failure': [],
-    });
-
-    const messageParts: string[] = [];
-
-    if (addedCount > 0) {
-      messageParts.push(
-        (t('modpacks.add_mod_recovery_partial_intro')
-          || 'Added {{added}} mods. The remaining picks stayed selected here so you can retry only the blocked ones.')
-          .replace('{{added}}', String(addedCount)),
-      );
-    }
-
-    if (grouped['install-failure'].length > 0) {
-      messageParts.push(
-        (t('modpacks.add_mod_recovery_install_failure')
-          || 'FMCL could not download or place these mods right now: {{items}}. Retry from this screen or keep browsing.')
-          .replace('{{items}}', formatRecoveryItems(grouped['install-failure'])),
-      );
-    }
-
-    if (grouped['manifest-failure'].length > 0) {
-      messageParts.push(
-        (t('modpacks.add_mod_recovery_manifest_failure')
-          || 'FMCL downloaded these mods but could not write them into this modpack manifest: {{items}}. Retry from this screen before leaving or inspect the manifest if it keeps failing.')
-          .replace('{{items}}', formatRecoveryItems(grouped['manifest-failure'])),
-      );
-    }
-
-    if (messageParts.length === 0) {
-      return null;
-    }
-
-    return {
-      tone: addedCount > 0 ? 'warning' : 'error',
-      message: messageParts.join(' '),
-    };
-  }, [t]);
-
-  const searchMods = useCallback(async (offset: number, append: boolean) => {
-    const requestId = searchRequestIdRef.current + 1;
-    searchRequestIdRef.current = requestId;
-
-    if (offset === 0) setLoading(true);
-    else setLoadingMore(true);
-    try {
-      if (!append) {
-        setSearchError(null);
-        setSearchResults([]);
-        setTotal(0);
-        setCheckedMods(new Map());
-        setFlowNotice(null);
-      }
-      const result = await modsIPC.searchMods({
-        platform,
-        query: query.trim() || '',
-        mcVersion: effectiveMCVersion || undefined,
-        loader: effectiveLoader || undefined,
-        sort: filterSort,
-        offset,
-        limit: PAGE_SIZE,
-        contentType,
-      });
-      if (requestId !== searchRequestIdRef.current) {
-        return;
-      }
-      const data = result as { items: ModSearchResult[]; total?: number };
-      setSearchResults((prev) => (append ? [...prev, ...(data.items || [])] : (data.items || [])));
-      setTotal(data.total ?? 0);
-    } catch (error) {
-      if (requestId !== searchRequestIdRef.current) {
-        return;
-      }
-      console.error('Error searching mods:', error);
-      if (!append) {
-        setSearchResults([]);
-        setTotal(0);
-        setSearchError(
-          toDisplayErrorMessage(
-            error,
-            searchErrorDescription,
-          ),
-        );
-      }
-    } finally {
-      if (requestId === searchRequestIdRef.current) {
-        setLoading(false);
-        setLoadingMore(false);
-      }
-    }
-  }, [query, platform, effectiveMCVersion, effectiveLoader, filterSort, contentType, searchErrorDescription]);
-
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      searchMods(0, false);
-    }, 500);
-    return () => clearTimeout(timeoutId);
-  }, [query, platform, filterMCVersion, filterLoader, filterSort, searchMods]);
-
-  useEffect(() => {
-    setCheckedMods(new Map());
-  }, [platform]);
-
-  useEffect(() => {
-    setFlowNotice(null);
-  }, [platform, filterMCVersion, filterLoader, filterSort, query]);
-
-  const visibleResultKeys = useMemo(
-    () => new Set(searchResults.map((mod) => `${mod.platform}:${mod.projectId}`)),
-    [searchResults],
-  );
-
-  const handleScroll = useCallback(() => {
-    const el = resultsScrollRef.current;
-    if (!el || loading || loadingMore) return;
-    const { scrollTop, scrollHeight, clientHeight } = el;
-    if (scrollTop + clientHeight >= scrollHeight - 100) {
-      const currentLen = searchResults.length;
-      if (currentLen < total) searchMods(currentLen, true);
-    }
-  }, [loading, loadingMore, searchResults.length, total, searchMods]);
-
-  useEffect(() => {
-    const el = resultsScrollRef.current;
-    if (!el || loading || loadingMore) return;
-    if (searchResults.length === 0 || searchResults.length >= total) return;
-
-    if (el.scrollHeight <= el.clientHeight + 48) {
-      void searchMods(searchResults.length, true);
-    }
-  }, [loading, loadingMore, searchResults.length, total, searchMods]);
-
-  const handleCheckChange = async (mod: ModSearchResult, checked: boolean) => {
-    const key = `${mod.platform}:${mod.projectId}`;
-    if (!checked) {
-      setCheckedMods((prev) => {
-        const next = new Map(prev);
-        next.delete(key);
-        return next;
-      });
-      return;
-    }
-    setCheckedMods((prev) => new Map(prev).set(key, 'loading'));
-    try {
-      const mcVersion = filterMCVersion || modpackMetadata?.minecraftVersion || undefined;
-      const loader = filterLoader || modpackMetadata?.modLoader?.type || undefined;
-      const versionsResult = await modsIPC.getModVersions({
-        platform: mod.platform,
-        projectId: mod.projectId,
-        mcVersion,
-        loader,
-      });
-      const versionsList = versionsResult as ModVersion[];
-      if (versionsList.length > 0) {
-        setCheckedMods((prev) => {
-          if (prev.get(key) !== 'loading') {
-            return prev;
-          }
-
-          return new Map(prev).set(key, { mod, version: versionsList[0] });
-        });
-      } else {
-        setCheckedMods((prev) => {
-          if (!prev.has(key)) {
-            return prev;
-          }
-          const next = new Map(prev);
-          next.delete(key);
-          return next;
-        });
-        toast.error(`${mod.title}: ${t('modpacks.no_versions') || 'Нет доступных версий'}`);
-      }
-    } catch {
-      setCheckedMods((prev) => {
-        if (!prev.has(key)) {
-          return prev;
-        }
-        const next = new Map(prev);
-        next.delete(key);
-        return next;
-      });
-      toast.error(`${mod.title}: ${t('modpacks.add_mod_error') || 'Ошибка'}`);
-    }
-  };
-
-  const readyToAdd = Array.from(checkedMods.entries()).flatMap(([key, value]) => {
-    if (!visibleResultKeys.has(key) || value === 'loading') {
-      return [];
-    }
-
-    return [{ key, entry: value }];
-  });
-  const hasLoading = Array.from(checkedMods.entries()).some(
-    ([key, value]) => visibleResultKeys.has(key) && value === 'loading',
-  );
-
-  const handleAddBulk = async () => {
-    if (readyToAdd.length === 0) return;
-    setInstalling(true);
-    setFlowNotice(null);
-    let added = 0;
-    let failed = 0;
-
-    if (isGuidedContentType(contentType)) {
-      const retainedSelections = new Map<string, CheckedEntry>();
-      const recoveryIssues: NonModRecoveryIssue[] = [];
-
-      try {
-        for (const { key, entry } of readyToAdd) {
-          const { mod, version } = entry;
-
-          if (contentType === 'shader' && runtimeSummary.shaderCapability.status === 'unsupported') {
-            failed++;
-            retainedSelections.set(key, entry);
-            recoveryIssues.push({
-              label: mod.title,
-              status: 'runtime-blocked',
-            });
-            continue;
-          }
-
-          try {
-            const installResult = await modsIPC.installModFile({
-              platform: mod.platform,
-              projectId: mod.projectId,
-              versionId: version.versionId,
-              instanceId: modpackId,
-              contentType,
-            });
-
-            if (isGuidedContentInstallResult(installResult) && installResult.status !== 'success') {
-              failed++;
-              retainedSelections.set(key, entry);
-              for (const issue of installResult.issues) {
-                recoveryIssues.push({
-                  label: mod.title,
-                  status: issue.status,
-                });
-              }
-              continue;
-            }
-
-            added++;
-          } catch {
-            failed++;
-            retainedSelections.set(key, entry);
-            recoveryIssues.push({
-              label: mod.title,
-              status: 'failure',
-            });
-          }
-        }
-
-        setCheckedMods(retainedSelections);
-
-        if (added > 0 && failed === 0) {
-          toast.success(
-            contentType === 'resourcepack'
-              ? (t('modpacks.resourcepack_add_success') || 'Resource packs added to this modpack.')
-              : (t('modpacks.shader_add_success') || 'Shader packs added to this modpack.'),
-          );
-          onBack();
-          return;
-        }
-
-        const notice = buildNonModRecoveryNotice({
-          contentType,
-          issues: recoveryIssues,
-          addedCount: added,
-        });
-
-        if (notice) {
-          setFlowNotice(notice);
-        }
-
-        if (failed > 0 && added === 0) {
-          toast.error(
-            contentType === 'resourcepack'
-              ? (t('modpacks.resourcepack_add_error') || 'Could not add the selected resource packs.')
-              : (t('modpacks.shader_add_error') || 'Could not add the selected shader packs.'),
-          );
-        }
-      } finally {
-        setInstalling(false);
-      }
-
-      return;
-    }
-
-    try {
-      const retainedSelections = new Map<string, CheckedEntry>();
-      const recoveryIssues: ModRecoveryIssue[] = [];
-
-      for (const { entry } of readyToAdd) {
-        const { mod, version } = entry;
-        let installedToInstance = false;
-        try {
-          await modsIPC.installModFile({
-            platform: mod.platform,
-            projectId: mod.projectId,
-            versionId: version.versionId,
-            instanceId: modpackId,
-            contentType,
-          });
-          installedToInstance = true;
-
-          if (shouldPersistInstallToManifest) {
-            await instanceModsIPC.register(modpackId, {
-              platform: mod.platform,
-              projectId: mod.projectId,
-              versionId: version.versionId,
-            });
-          }
-
-          added++;
-        } catch {
-          failed++;
-          const key = `${mod.platform}:${mod.projectId}`;
-          retainedSelections.set(key, entry);
-          recoveryIssues.push({
-            label: mod.title,
-            status: installedToInstance && shouldPersistInstallToManifest ? 'manifest-failure' : 'install-failure',
-          });
-        }
-      }
-
-      setCheckedMods(retainedSelections);
-
-      if (added > 0) {
-        if (failed === 0) {
-          toast.success(t('modpacks.add_mod') || 'Моды добавлены!');
-          setCheckedMods(new Map());
-        } else {
-          const notice = buildModRecoveryNotice({ issues: recoveryIssues, addedCount: added });
-          if (notice) {
-            setFlowNotice(notice);
-          }
-        }
-      }
-      if (added > 0 && failed === 0) {
-        onBack();
-      }
-      if (failed > 0 && added === 0) {
-        const notice = buildModRecoveryNotice({ issues: recoveryIssues });
-        if (notice) {
-          setFlowNotice(notice);
-        }
-        toast.error(t('modpacks.add_mod_error') || 'Ошибка при добавлении');
-      }
-    } finally {
-      setInstalling(false);
-    }
-  };
-
-  const handleLocalImport = useCallback(async () => {
-    if (!supportsLocalFallback || !localFallbackCopy) {
-      return;
-    }
-
-    setLocalImporting(true);
-    setFlowNotice(null);
-
-    try {
-      let result: LocalImportResult;
-      if (contentType === 'resourcepack') {
-        result = await resourcePacksIPC.add(modpackId);
-      } else {
-        result = await shadersIPC.add(modpackId);
-      }
-
-      if (result.status === 'success') {
-        toast.success(
-          contentType === 'resourcepack'
-            ? (t('modpacks.resourcepack_add_success') || 'Resource packs added to this modpack.')
-            : (t('modpacks.shader_add_success') || 'Shader packs added to this modpack.'),
-        );
-        onBack();
-        return;
-      }
-
-      const notice = getLocalImportNotice(result);
-      if (notice) {
-        setFlowNotice(notice);
-      }
-    } catch (error) {
-      console.error('Error importing local content fallback:', error);
-      setFlowNotice({
-        tone: 'error',
-        message:
-          toDisplayErrorMessage(
-            error,
-            t('modpacks.guided_local_open_error')
-            || 'FMCL could not open the local import picker for this modpack right now.',
-          ),
-      });
-    } finally {
-      setLocalImporting(false);
-    }
-  }, [contentType, getLocalImportNotice, localFallbackCopy, modpackId, onBack, supportsLocalFallback, t, toast]);
-
-  const unavailableVersionLabel = t('modpacks.version_unavailable') || 'Version unavailable';
-
-  const getTitle = () => {
-    switch (contentType) {
-      case 'resourcepack': return t('modpacks.add_resourcepack') || 'Добавить ресурспак';
-      case 'shader': return t('modpacks.add_shader') || 'Добавить шейдер';
-      default: return t('modpacks.add_mod') || 'Добавить мод';
-    }
-  };
-
-  const getPlaceholder = () => {
-    switch (contentType) {
-      case 'resourcepack': return t('modpacks.search_resourcepack_placeholder') || 'Поиск ресурспаков...';
-      case 'shader': return t('modpacks.search_shader_placeholder') || 'Поиск шейдеров...';
-      default: return t('modpacks.search_mod_placeholder') || 'Поиск модов...';
-    }
-  };
-
-  const getPrimaryActionLabel = () => {
-    switch (contentType) {
-      case 'resourcepack':
-        return readyToAdd.length > 0
-          ? `${t('modpacks.add_selected_resourcepacks') || 'Add selected resource packs'} (${readyToAdd.length})`
-          : t('modpacks.add_resourcepack') || 'Add Resource Pack';
-      case 'shader':
-        return readyToAdd.length > 0
-          ? `${t('modpacks.add_selected_shaders') || 'Add selected shaders'} (${readyToAdd.length})`
-          : t('modpacks.add_shader') || 'Add Shader';
-      default:
-        return readyToAdd.length > 0
-          ? `${t('modpacks.add_selected') || 'Добавить выбранные'} (${readyToAdd.length})`
-          : t('modpacks.add') || 'Добавить';
-    }
-  };
-
-  const getEmptyStateTitle = () => {
-    switch (contentType) {
-      case 'resourcepack':
-        return t('modpacks.add_resourcepack_empty_title') || 'Browse resource packs';
-      case 'shader':
-        return t('modpacks.add_shader_empty_title') || 'Browse shaders';
-      default:
-        return t('modpacks.add_mod_empty_title') || 'Search the catalog';
-    }
-  };
-
-  const getEmptyStateDescription = () => {
-    switch (contentType) {
-      case 'resourcepack':
-        return t('modpacks.add_resourcepack_empty_desc') || 'Search Modrinth or import a local .zip to add a resource pack to this modpack.';
-      case 'shader':
-        return t('modpacks.add_shader_empty_desc') || 'Search Modrinth or import a local .zip to add a shader pack to this modpack.';
-      default:
-        return t('modpacks.add_mod_empty_desc') || 'Use search and filters to find loader-compatible files for this modpack.';
-    }
-  };
-
-  const getNoResultsTitle = () => {
-    switch (contentType) {
-      case 'resourcepack':
-        return t('modpacks.no_resourcepack_results') || 'No resource packs matched the current filters';
-      case 'shader':
-        return t('modpacks.no_shader_results') || 'No shaders matched the current filters';
-      default:
-        return t('modpacks.no_mod_results') || 'No mods found for the current filters';
-    }
-  };
-
-  const getNoResultsDescription = () => {
-    switch (contentType) {
-      case 'resourcepack':
-        return t('modpacks.resourcepack_filter_hint') || 'Try a broader query, adjust filters, or import a local .zip below.';
-      case 'shader':
-        return t('modpacks.shader_filter_hint') || 'Try a broader query, adjust filters, or import a local .zip below.';
-      default:
-        return t('modpacks.mods_filter_hint') || 'Try a broader query or adjust the current filters.';
-    }
-  };
+  const guidance = useMemo(() => ({
+    status: runtimeSummary.shaderCapability.status,
+    tone: getModpackShaderCapabilityTone(runtimeSummary.shaderCapability.status),
+    title: t('modpacks.shader_capability_heading') || 'Shader runtime',
+    label: getModpackShaderCapabilityLabel(runtimeSummary.shaderCapability.status, t),
+    description: getModpackShaderCapabilityDescription(runtimeSummary, t),
+    hint: (t('modpacks.shader_capability_catalog_hint')
+      || 'Catalog metadata and downloaded archives are not compatibility guarantees on their own.')
+      .replace('{{runtime}}', runtimeContextLabel),
+  }), [runtimeContextLabel, runtimeSummary, t]);
+
+  const handleCommitted = useCallback(async (outcome: AcquisitionOutcome) => {
+    await invalidateInstance(modpackId);
+    await onCommitted?.(outcome);
+  }, [invalidateInstance, modpackId, onCommitted]);
+
+  const handleSuccess = useCallback(() => {
+    toast.success(t('modpacks.shader_add_success') || 'Shader packs added to this modpack.');
+    onBack();
+  }, [onBack, t, toast]);
+
+  const title = t('modpacks.add_shader') || 'Add Shader';
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
-      {/* Header with back button, title, platform tabs */}
-      <div className="flex flex-col border-b border-zinc-200 dark:border-zinc-700 bg-white/60 dark:bg-zinc-900/40 px-6 py-4 gap-4">
-        <Breadcrumbs
-          items={[
-            { label: t('modpacks.title') || 'Modpacks', onClick: isBusy ? undefined : onBack },
-            { label: getTitle(), active: true }
-          ]}
-        />
-        <div className="flex items-center gap-4">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onBack}
-            disabled={isBusy}
-            className="flex items-center gap-2 shrink-0"
-          >
-            <span>←</span>
-            {t('general.back') || 'Назад'}
-          </Button>
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-white shrink-0 flex-1">
-            {getTitle()}
-          </h2>
-          <div className="flex gap-2 shrink-0">
-            <button
-              onClick={() => {
-                setPlatform('curseforge');
-                setCheckedMods(new Map());
-              }}
-              disabled
-              className={cn(
-                "px-4 py-2 rounded-lg font-medium transition-colors text-sm",
-                "bg-zinc-200 text-zinc-500 dark:bg-zinc-700 dark:text-zinc-500",
-                "cursor-not-allowed opacity-60"
-              )}
-              title={t('modpacks.curseforge_wip') || 'CurseForge в разработке'}
-            >
-              {t('modpacks.platform_curseforge')} (WIP)
-            </button>
-            <button
-              onClick={() => {
-                setPlatform('modrinth');
-                setCheckedMods(new Map());
-              }}
-              className={cn(
-                "px-4 py-2 rounded-lg font-medium transition-colors text-sm",
-                platform === 'modrinth'
-                  ? cn("text-white", getAccentStyles('bg').className)
-                  : "bg-zinc-200 text-zinc-700 dark:bg-zinc-700 dark:text-zinc-300 hover:bg-zinc-300 dark:hover:bg-zinc-600"
-              )}
-              style={platform === 'modrinth' ? getAccentStyles('bg').style : undefined}
-            >
-              {t('modpacks.platform_modrinth')}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 min-h-0 p-6" data-testid="add-mod-page-body">
-        <div className={cn('flex h-full min-h-0 flex-col', MODPACK_SECONDARY_CONTENT_WORKSPACE.host)} data-secondary-content-workspace="shared">
-          {shaderGuidance && (
-            <div
-              className={cn(
-                'surface-inline space-y-3 rounded-2xl border p-4',
-                shaderGuidance.tone === 'positive' && 'border-emerald-500/30 bg-emerald-500/10',
-                shaderGuidance.tone === 'warning' && 'border-amber-500/35 bg-amber-500/12',
-                shaderGuidance.tone === 'error' && 'border-red-500/35 bg-red-500/12',
-                shaderGuidance.tone === 'neutral' && 'border-border/70 bg-card/72',
-              )}
-              data-testid="guided-content-shader-capability"
-              data-status={runtimeSummary.shaderCapability.status}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="kicker-label">
-                  {shaderGuidance.title}
-                </div>
-                <span
-                  className={cn(
-                    'rounded-full border px-2 py-0.5 text-xs font-medium',
-                    shaderGuidance.tone === 'positive' && 'border-emerald-500/30 bg-emerald-500/12 text-emerald-300',
-                    shaderGuidance.tone === 'warning' && 'border-amber-500/30 bg-amber-500/12 text-amber-200',
-                    shaderGuidance.tone === 'error' && 'border-red-500/30 bg-red-500/12 text-red-200',
-                    shaderGuidance.tone === 'neutral' && 'border-border/70 bg-background/70 text-secondary',
-                  )}
-                >
-                  {shaderGuidance.label}
-                </span>
-              </div>
-              <p className="text-sm text-foreground">{shaderGuidance.description}</p>
-              <p className="text-xs text-secondary">{shaderGuidance.hint}</p>
-            </div>
-          )}
-
-          {resourcePackScopeCopy && (
-            <div
-              className="surface-inline space-y-2 rounded-2xl border border-border/70 bg-card/72 p-4"
-              data-testid="guided-content-resourcepack-scope"
-            >
-              <div className="kicker-label">
-                {t('modpacks.tab_resourcepacks')}
-              </div>
-              <h3 className="text-sm font-semibold text-foreground">{resourcePackScopeCopy.title}</h3>
-              <p className="text-sm text-secondary">{resourcePackScopeCopy.description}</p>
-            </div>
-          )}
-
-          <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.controls} data-testid="add-mod-workspace-controls">
-            <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.searchRow}>
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder={getPlaceholder()}
-                className="w-full"
-              />
-            </div>
-            <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.filterRow}>
-            <Select
-              value={filterMCVersion}
-              onChange={(e) => setFilterMCVersion(e.target.value)}
-              className="w-full"
-            >
-              <option value="">{t('modpacks.filter_all') || 'Все версии MC'}</option>
-              {MINECRAFT_VERSIONS.filter(v => v.type === 'release').map((v) => (
-                <option key={v.id} value={v.id}>
-                  {v.id}
-                </option>
-              ))}
-            </Select>
-
-            {contentType === 'mod' && (
-              <Select
-                value={filterLoader}
-                onChange={(e) => setFilterLoader(e.target.value)}
-                className="w-full"
-              >
-                <option value="">{t('modpacks.filter_all_loaders') || 'Все модлоадеры'}</option>
-                <option value="forge">Forge</option>
-                <option value="fabric">Fabric</option>
-                <option value="neoforge">NeoForge</option>
-              </Select>
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <AddContentHeader title={title} onBack={onBack} busy={busy} />
+      <div className="min-h-0 flex-1 p-6" data-testid="add-mod-page-body">
+        {snapshot.status === 'idle' || snapshot.status === 'loading' ? <RuntimeLoading /> : null}
+        {snapshot.status === 'error' ? (
+          <RuntimeFailure
+            testId="shader-runtime-error"
+            variant="error"
+            title={t('modpacks.add_shader_runtime_error') || 'Unable to load this modpack'}
+            description={toDisplayErrorMessage(
+              readCanonicalErrorMessage(snapshot.error),
+              t('modpacks.add_shader_runtime_error_desc')
+                || 'FMCL could not verify the canonical runtime for this shader install.',
             )}
-
-            <Select
-              value={filterSort}
-              onChange={(e) => setFilterSort(e.target.value as 'popularity' | 'date' | 'alphabetical')}
-              className="w-full"
-            >
-              <option value="popularity">{t('modpacks.sort_popularity') || 'Популярность'}</option>
-              <option value="date">{t('modpacks.sort_date') || 'Дата'}</option>
-              <option value="alphabetical">{t('modpacks.sort_alphabetical') || 'По алфавиту'}</option>
-            </Select>
-            </div>
-          </div>
-
-          {localFallbackCopy && (
-            <div
-              className="surface-inline flex flex-col gap-3 rounded-2xl border border-dashed border-border/70 bg-background/60 p-4 sm:flex-row sm:items-center sm:justify-between"
-              data-testid="guided-content-local-fallback"
-            >
-              <div className="space-y-1">
-                <div className="kicker-label">
-                  {t('modpacks.guided_local_fallback_label') || 'Local .zip fallback'}
-                </div>
-                <h3 className="text-sm font-semibold text-foreground">{localFallbackCopy.title}</h3>
-                <p className="text-sm text-secondary">{localFallbackCopy.description}</p>
-              </div>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => void handleLocalImport()}
-                disabled={isBusy}
-                isLoading={localImporting}
-                className="sm:shrink-0"
-              >
-                {localFallbackCopy.action}
-              </Button>
-            </div>
-          )}
-
-          <div
-            ref={resultsScrollRef}
-            className="min-h-[18rem] flex-1 overflow-y-auto pr-1"
-            onScroll={handleScroll}
-            data-testid="add-mod-results-scroll"
-          >
-            {loading && (
-              <div className="flex flex-col items-center justify-center py-12 gap-3">
-                <LoadingSpinner size="lg" />
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  {t('modpacks.loading')}
-                </p>
-              </div>
-            )}
-
-            {!loading && !searchError && searchResults.length > 0 && (
-              <div
-                className="space-y-2"
-                data-testid="add-mod-results"
-              >
-                {searchResults.map((mod) => {
-                  const key = `${mod.platform}:${mod.projectId}`;
-                  const entry = checkedMods.get(key);
-                  const isChecked = entry !== undefined;
-                  const isLoading = entry === 'loading';
-                  const version = entry !== 'loading' && entry ? entry.version : null;
-                  return (
-                    <div
-                      key={key}
-                      className={cn(
-                        'p-3 border rounded-lg transition-colors flex gap-3 items-start',
-                        isChecked
-                          ? 'border-zinc-400 dark:border-zinc-500 bg-zinc-50 dark:bg-zinc-900/60'
-                          : 'border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900/50'
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        disabled={isLoading || isBusy}
-                        onChange={(e) => handleCheckChange(mod, e.target.checked)}
-                        onClick={(e) => e.stopPropagation()}
-                        className="mt-1 w-4 h-4 rounded border-zinc-300 dark:border-zinc-600 text-zinc-600 dark:text-zinc-400 focus:ring-2 focus:ring-zinc-500"
-                      />
-                      <LazyImage
-                        src={mod.iconUrl}
-                        alt={mod.title}
-                        className="w-12 h-12 rounded object-cover shrink-0"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-zinc-900 dark:text-white truncate">
-                          {mod.title}
-                        </h4>
-                        {version && (
-                          <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">
-                            {getSafeModVersionLabel(version, unavailableVersionLabel)} {version.mcVersions[0] && `(${version.mcVersions[0]})`}
-                          </p>
-                        )}
-                        {mod.description && !version && (
-                          <p className="text-xs text-zinc-600 dark:text-zinc-400 line-clamp-2 mt-1">
-                            {mod.description}
-                          </p>
-                        )}
-                        {mod.downloads !== undefined && (
-                          <p className="text-xs text-zinc-500 dark:text-zinc-500 mt-1">
-                            {t('modpacks.downloads')}: {mod.downloads.toLocaleString()}
-                          </p>
-                        )}
-                      </div>
-                      {isLoading && (
-                        <LoadingSpinner size="sm" className="shrink-0" />
-                      )}
-                    </div>
-                  );
-                })}
-                {loadingMore && (
-                  <div className="flex justify-center py-4">
-                    <LoadingSpinner size="md" />
-                  </div>
-                )}
-                {!loadingMore && searchResults.length > 0 && searchResults.length < total && (
-                  <p className="text-xs text-center text-zinc-500 dark:text-zinc-400 py-2">
-                    {t('modpacks.scroll_for_more') || 'Прокрутите вниз для загрузки'}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {!loading && searchError ? (
-              <DegradedStateView
-                layout="workspace"
-                variant="error"
-                label={t('degraded.error_label')}
-                title={t('modpacks.add_mod_search_error_title') || 'Unable to search right now'}
-                description={searchError}
-                footer={(
-                  <Button variant="secondary" size="sm" onClick={() => void searchMods(0, false)}>
-                    {t('modpacks.search_btn')}
-                  </Button>
-                )}
-              />
-            ) : null}
-
-            {!loading && !searchError && searchResults.length === 0 ? (
-              <DegradedStateView
-                layout="workspace"
-                variant={query.trim() ? 'zero-results' : 'empty'}
-                label={t(query.trim() ? 'degraded.zero_results_label' : 'degraded.empty_label')}
-                title={
-                  query.trim()
-                    ? getNoResultsTitle()
-                    : getEmptyStateTitle()
-                }
-                description={
-                  query.trim()
-                    ? getNoResultsDescription()
-                    : getEmptyStateDescription()
-                }
-              />
-            ) : null}
-          </div>
-
-          <div
-            className="surface-card shrink-0 space-y-3 p-4"
-            data-testid="add-mod-page-actions"
-          >
-            {flowNotice && (
-              <div
-                className={cn(
-                  'rounded-2xl border px-4 py-3 text-sm',
-                  flowNotice.tone === 'warning'
-                    ? 'border-amber-500/35 bg-amber-500/12 text-foreground'
-                    : 'border-red-500/35 bg-red-500/12 text-foreground',
-                )}
-                data-testid="add-mod-page-notice"
-                data-tone={flowNotice.tone}
-              >
-                {flowNotice.message}
-              </div>
-            )}
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Button
-                onClick={onBack}
-                variant="secondary"
-                disabled={isBusy}
-                className="w-full sm:flex-1"
-              >
-                {t('general.cancel')}
-              </Button>
-              <Button
-                onClick={handleAddBulk}
-                disabled={readyToAdd.length === 0 || isBusy || hasLoading}
-                className={cn("w-full text-white sm:flex-1", getAccentStyles('bg').className)}
-                style={getAccentStyles('bg').style}
-                isLoading={installing}
-              >
-                {installing ? t('modpacks.installing') : getPrimaryActionLabel()}
-              </Button>
-            </div>
-          </div>
-        </div>
+            retry={() => invalidateInstance(modpackId)}
+          />
+        ) : null}
+        {snapshot.status === 'uninitialized' ? (
+          <RuntimeFailure
+            testId="shader-runtime-unavailable"
+            variant="unavailable"
+            title={t('modpacks.add_shader_runtime_unavailable') || 'This modpack is not initialized yet'}
+            description={t('modpacks.add_shader_runtime_unavailable_desc')
+              || 'Initialize or refresh the modpack before adding shader packs.'}
+            retry={() => invalidateInstance(modpackId)}
+          />
+        ) : null}
+        {snapshot.status === 'ready' ? (
+          <ShaderContentAcquisition
+            runtime={{
+              instanceId: modpackId,
+              minecraftVersion: snapshot.data.runtime.minecraft,
+              shaderSupport: shaderSupport(runtimeSummary.shaderCapability.status),
+            }}
+            guidance={guidance}
+            onCancel={onBack}
+            onCommitted={handleCommitted}
+            onSuccess={handleSuccess}
+            onBusyChange={setBusy}
+            className={workspaceClassName}
+            resultsClassName={resultsClassName}
+            actionsClassName={actionsClassName}
+            testIds={localContentTestIds}
+          />
+        ) : null}
       </div>
     </div>
   );
+}
+
+function RuntimeFailure({
+  testId,
+  variant,
+  title,
+  description,
+  retry,
+}: {
+  testId: string;
+  variant: 'error' | 'unavailable';
+  title: string;
+  description: string;
+  retry: () => void | Promise<void>;
+}) {
+  const { t } = useSettings();
+  return (
+    <DegradedStateView
+      variant={variant}
+      layout="workspace"
+      testId={testId}
+      title={title}
+      description={description}
+      footer={<Button onClick={() => { void retry(); }}>{t('operations.retry') || 'Retry'}</Button>}
+    />
+  );
+}
+
+function readCanonicalErrorMessage(error: unknown) {
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message;
+  }
+  return error;
+}
+
+function shaderSupport(status: 'supported' | 'needs-setup' | 'unsupported' | 'unverified') {
+  if (status === 'supported' || status === 'unsupported') return status;
+  return 'unknown' as const;
+}
+
+const workspaceClassName = cn(
+  'flex h-full min-h-0 flex-col gap-4',
+  MODPACK_SECONDARY_CONTENT_WORKSPACE.host,
+);
+const resultsClassName = 'min-h-[18rem] flex-1 overflow-y-auto pr-1';
+const actionsClassName = 'surface-card shrink-0 space-y-3 p-4';
+const contentTestIds = {
+  resultsViewport: 'add-mod-results-scroll',
+  results: 'add-mod-results',
+  actions: 'add-mod-page-actions',
+  outcome: 'add-mod-page-notice',
+} as const;
+const localContentTestIds = {
+  ...contentTestIds,
+  localImport: 'guided-local-fallback-action',
+} as const;
+
+export const AddModPage: React.FC<AddModPageProps> = (props) => {
+  const contentType = props.contentType ?? 'mod';
+  if (contentType === 'mod') return <ModAddPage {...props} contentType="mod" />;
+  if (contentType === 'resourcepack') return <ResourcePackAddPage {...props} contentType="resourcepack" />;
+  return <ShaderAddPage {...props} contentType="shader" />;
 };

@@ -76,7 +76,7 @@ function refreshModSupportedVersions(): Promise<RefreshedModVersions> {
           }`
         );
       } else {
-        console.warn('[ModVersions] NeoForge versions list is empty!');
+        console.info('[ModVersions] NeoForge versions list is empty; NeoForge controls stay unavailable.');
       }
     } else {
       console.error('[ModVersions] Failed to fetch NeoForge versions:', neoForge.reason);

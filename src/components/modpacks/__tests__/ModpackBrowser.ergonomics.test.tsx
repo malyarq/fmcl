@@ -5,6 +5,10 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProviderCatalogAPI } from '@shared/contracts';
 import { ModpackBrowser } from '../ModpackBrowser';
+import routeSource from '../ModpackBrowser.tsx?raw';
+import controllerSource from '../browser/useModpackBrowserCatalog.ts?raw';
+import filtersSource from '../browser/ModpackBrowserFilters.tsx?raw';
+import resultsSource from '../browser/ModpackBrowserResults.tsx?raw';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { MEDIA_FALLBACK_PATH } from '../../../app/assets/branding';
@@ -80,6 +84,16 @@ describe('ModpackBrowser ergonomics', () => {
       limit: 12,
     });
     versionsMock.mockResolvedValue([]);
+  });
+
+  it('keeps the route as composition with focused query and presentation owners', () => {
+    expect(routeSource).toContain('useModpackBrowserCatalog');
+    expect(routeSource).toContain('ModpackBrowserFilters');
+    expect(routeSource).toContain('ModpackBrowserResults');
+    expect(routeSource).not.toContain('providerCatalogIPC');
+    expect(controllerSource).toContain('providerCatalogIPC');
+    expect(filtersSource).toContain('ModpackCatalogControls');
+    expect(resultsSource).toContain('DegradedStateView');
   });
 
   it('keeps unavailable provider state honest and exposes recent recall without leaving browse mode', async () => {

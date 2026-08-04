@@ -124,5 +124,6 @@ export type {
   OperationResult,
   OperationSnapshot,
   OperationStartRequest,
+  OperationStatus,
   OperationsAPI,
 } from './operations';

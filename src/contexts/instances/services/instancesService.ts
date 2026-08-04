@@ -1,4 +1,9 @@
-import type { InstanceConfigDto, InstanceMetadataDto, InstanceResult } from '@shared/contracts';
+import type {
+  InstanceConfigDto,
+  InstanceMetadataDto,
+  InstanceMetadataUpdate,
+  InstanceResult,
+} from '@shared/contracts';
 import { instancesIPC } from '../../../services/ipc/instancesIPC';
 import type { ModpackConfig, ModpackListItem } from '../types';
 import type { ModpackMetadata } from '@shared/types/modpack';
@@ -100,21 +105,38 @@ export async function fetchModpackMetadata(id: string): Promise<ModpackMetadata>
   return toModpackMetadata(snapshot.id, snapshot.name, snapshot.config, snapshot.metadata);
 }
 
-export async function listModpacks(): Promise<ModpackListItem[]> {
-  const response = valueOf(await instancesIPC.list());
-  if (response.status === 'uninitialized') return [];
+export async function updateModpackMetadata(
+  id: string,
+  metadata: InstanceMetadataUpdate,
+): Promise<void> {
+  valueOf(await instancesIPC.updateMetadata(id, metadata));
+}
 
-  return response.instances.map(({ id, name, selected }) => ({
+export interface InstanceCatalog {
+  instances: ModpackListItem[];
+  selectedId: string | null;
+}
+
+export async function fetchInstanceCatalog(): Promise<InstanceCatalog> {
+  const response = valueOf(await instancesIPC.list());
+  if (response.status === 'uninitialized') {
+    return { instances: [], selectedId: null };
+  }
+
+  const instances = response.instances.map(({ id, name, selected, summary }) => ({
     id,
     name,
     selected,
+    summary: {
+      minecraftVersion: summary.minecraftVersion,
+      ...(summary.modLoader === undefined ? {} : { modLoader: { ...summary.modLoader } }),
+    },
   }));
-}
 
-export async function getSelectedModpackId(): Promise<string | null> {
-  const response = valueOf(await instancesIPC.list());
-  if (response.status === 'uninitialized') return null;
-  return response.instances.find((instance) => instance.selected)?.id ?? null;
+  return {
+    instances,
+    selectedId: instances.find((instance) => instance.selected)?.id ?? null,
+  };
 }
 
 export async function setSelectedModpackId(id: string): Promise<void> {
@@ -137,15 +159,4 @@ export async function renameModpack(id: string, name: string): Promise<void> {
 
 export async function saveModpackConfig(config: ModpackConfig): Promise<void> {
   valueOf(await instancesIPC.config({ action: 'save', id: config.id, config: toInstanceConfig(config) }));
-}
-
-/** Reads canonical readiness and the selected snapshot without a renderer seed or root. */
-export async function bootstrapModpacksIfSupported(): Promise<{ selectedId: string; config: ModpackConfig } | null> {
-  const prepared = valueOf(await instancesIPC.prepare());
-  if (prepared.status === 'uninitialized') return null;
-
-  const selectedId = await getSelectedModpackId();
-  if (selectedId === null) return null;
-
-  return { selectedId, config: await fetchModpackConfig(selectedId) };
 }

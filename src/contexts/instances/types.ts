@@ -39,4 +39,8 @@ export interface ModpackListItem {
   id: string;
   name: string;
   selected: boolean;
+  summary: {
+    minecraftVersion: string;
+    modLoader?: { type: ModLoaderType; version?: string };
+  };
 }

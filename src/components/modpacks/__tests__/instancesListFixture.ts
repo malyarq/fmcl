@@ -11,10 +11,25 @@ type LegacyListFixture = Readonly<{
 /** Projects existing installed-list fixture data through the canonical instances capability. */
 export function instancesFromListFixture(load: () => Promise<LegacyListFixture[]>): InstancesAPI {
   let listed: LegacyListFixture[] = [];
+  let loaded = false;
+  let pending: Promise<void> | null = null;
+
+  const ensureListed = async () => {
+    if (loaded) return;
+    if (!pending) {
+      pending = load().then((items) => {
+        listed = items;
+        loaded = true;
+      }).finally(() => {
+        pending = null;
+      });
+    }
+    await pending;
+  };
 
   return {
     list: async () => {
-      listed = await load();
+      await ensureListed();
       return {
         ok: true,
         value: {
@@ -32,6 +47,7 @@ export function instancesFromListFixture(load: () => Promise<LegacyListFixture[]
       };
     },
     metadata: async ({ id }) => {
+      await ensureListed();
       const item = listed.find((candidate) => candidate.id === id);
       if (!item) return { ok: false, error: { code: 'INSTANCE_NOT_FOUND', message: 'missing fixture instance' } };
 

@@ -53,7 +53,9 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
   const currentStage = launchStage ?? (isLaunching ? 'launching' : 'idle');
   const actionLabel = getLaunchActionLabel(currentStage, t);
   const shouldPulseStatus = isLaunching && currentStage !== 'failed' && currentStage !== 'running';
-  const showForceRestart = Boolean(canForceRestart && !isCollapsed);
+  const showForceRestart = Boolean(
+    canForceRestart && !isCollapsed && launcherIPC.has('killAndRestart'),
+  );
   const isPrimary = priority === 'primary';
 
   return (
@@ -142,8 +144,7 @@ export const LaunchControls = React.memo(function LaunchControls(props: {
           <Button
             variant="danger"
             onClick={() => {
-              if (launcherIPC.has('killAndRestart')) launcherIPC.killAndRestart();
-              else window.location.reload();
+              void launcherIPC.killAndRestart();
             }}
             className="px-3"
             title={translateWithFallback(t, 'status.force_restart', 'Force restart')}

@@ -3,7 +3,7 @@ import { Button } from '../../../ui/Button';
 import { Input } from '../../../ui/Input';
 import { Select } from '../../../ui/Select';
 import { useToast } from '../../../../contexts/ToastContext';
-import type { ModpackConfig, ModpackListItem } from '../../../../contexts/ModpackContext';
+import type { ModpackConfig, ModpackListItem } from '../../../../contexts/instances/types';
 
 export function ModpackSection(props: {
   modpacks: ModpackListItem[];
@@ -32,7 +32,12 @@ export function ModpackSection(props: {
   const [renameModpackName, setRenameModpackName] = useState(() => modpackConfig?.name || '');
 
   const modpackOptions = useMemo(() => {
-    return (modpacks.length > 0 ? modpacks : [{ id: 'default', name: 'Default', path: '', selected: true }]) as ModpackListItem[];
+    return modpacks.length > 0 ? modpacks : [{
+      id: 'default',
+      name: 'Default',
+      selected: true,
+      summary: { minecraftVersion: '' },
+    }];
   }, [modpacks]);
 
   return (

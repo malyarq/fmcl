@@ -141,7 +141,7 @@ describe('SettingsPage launcher route', () => {
     render(<SettingsPage onClose={onCloseMock} initialTab="launcher" />);
 
     expect(screen.getByRole('tabpanel', { name: 'Launcher' })).toBeTruthy();
-    expect(screen.getByText('Launcher Runtime')).toBeTruthy();
+    expect(await screen.findByText('Launcher Runtime')).toBeTruthy();
     expect(screen.getByRole('switch', { name: 'Hide launcher while playing' })).toBeTruthy();
     expect(screen.getByRole('switch', { name: 'Developer console' })).toBeTruthy();
     expect(screen.getByRole('switch', { name: 'Enable Animations' })).toBeTruthy();

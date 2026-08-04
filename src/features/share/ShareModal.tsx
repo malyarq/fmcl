@@ -129,6 +129,17 @@ export function ShareModal({ isOpen, onClose, modpackId }: ShareModalProps) {
                             label={t('degraded.error_label')}
                             title={t('share.error_title')}
                             description={error}
+                            footer={(
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => {
+                                        setError(null);
+                                        setLoadedForId(null);
+                                    }}
+                                >
+                                    {t('operations.retry')}
+                                </Button>
+                            )}
                         />
                     ) : (
                         <div className="flex flex-col gap-3 sm:flex-row">

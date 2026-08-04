@@ -3,6 +3,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTranslator } from '../../contexts/settings/i18n'
+import mainSource from '../../main.tsx?raw'
 import ErrorBoundary from '../ErrorBoundary'
 
 function CrashOnRender({ error }: { error: Error }): null {
@@ -23,6 +24,7 @@ describe('ErrorBoundary recovery surface', () => {
 
   it('uses the runtime translator and hides raw crash internals by default outside providers', async () => {
     window.localStorage.setItem('settings_language', 'ru')
+    const restart = vi.fn().mockResolvedValue(undefined)
 
     const error = new Error('Cannot read properties of undefined (reading "map")')
     error.stack = [
@@ -32,7 +34,7 @@ describe('ErrorBoundary recovery surface', () => {
     ].join('\n')
 
     render(
-      <ErrorBoundary>
+      <ErrorBoundary mode="restart" onRestart={restart}>
         <CrashOnRender error={error} />
       </ErrorBoundary>,
     )
@@ -56,6 +58,9 @@ describe('ErrorBoundary recovery surface', () => {
     expect(toggleButton.getAttribute('data-variant')).toBe('ghost')
     expect(toggleButton.getAttribute('aria-expanded')).toBe('false')
 
+    fireEvent.click(restartButton)
+    await waitFor(() => expect(restart).toHaveBeenCalledTimes(1))
+
     fireEvent.click(toggleButton)
 
     await waitFor(() => {
@@ -76,7 +81,7 @@ describe('ErrorBoundary recovery surface', () => {
     ].join('\n')
 
     render(
-      <ErrorBoundary t={t}>
+      <ErrorBoundary mode="recover" onRecover={vi.fn()} t={t}>
         <CrashOnRender error={error} />
       </ErrorBoundary>,
     )
@@ -84,9 +89,46 @@ describe('ErrorBoundary recovery surface', () => {
     expect(await screen.findByRole('heading', { name: 'Something Went Wrong' })).toBeTruthy()
     expect(
       screen.getByText(
-        'FMCL ran into a problem and closed this screen. Restart the launcher to return to a clean session.',
+        'FMCL closed this screen after an unexpected problem. Recover it in place to keep your current route.',
       ),
     ).toBeTruthy()
     expect(screen.queryByText(/\$\{file\.jarVersion\}/)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Recover screen' })).toBeTruthy()
+  })
+
+  it('keeps a failed in-place recovery visible and redacts its native details by default', async () => {
+    const recover = vi.fn().mockRejectedValue(new Error('/Users/private/launcher state unavailable'))
+
+    render(
+      <ErrorBoundary mode="recover" onRecover={recover} t={createTranslator('en')}>
+        <CrashOnRender error={new Error('route failed')} />
+      </ErrorBoundary>,
+    )
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Recover screen' }))
+
+    const alert = await screen.findByTestId('fatal-recovery-error')
+    expect(alert.getAttribute('role')).toBe('alert')
+    expect(alert.textContent).toContain('FMCL could not recover this screen')
+    expect(alert.textContent).not.toContain('/Users/private')
+    expect(screen.getByRole('button', { name: 'Recover screen' })).toBeTruthy()
+  })
+
+  it('mounts the outer boundary with an explicit typed bootstrap restart and no browser reload', () => {
+    expect(mainSource).toContain('onRestart={restartAfterBootstrapFailure}')
+    expect(mainSource).toContain('cacheIPC.reload()')
+    expect(mainSource).not.toContain(['window', 'location', 'reload'].join('.'))
+  })
+
+  it('does not invent an action for an unowned boundary', async () => {
+    render(
+      <ErrorBoundary t={createTranslator('en')}>
+        <CrashOnRender error={new Error('unowned boundary')} />
+      </ErrorBoundary>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Something Went Wrong' })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Recover screen' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Restart Launcher' })).toBeNull()
   })
 })

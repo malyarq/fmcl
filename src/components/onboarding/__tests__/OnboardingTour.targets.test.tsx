@@ -36,12 +36,9 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   }),
 }))
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpack: () => ({
-    modpacks: [{ id: 'alpha' }],
-    selectedId: 'alpha',
-    effectiveModpackId: 'alpha',
-  }),
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceList: () => ({ status: 'ready', data: [{ id: 'alpha', name: 'Alpha', selected: true }] }),
+  useSelectedInstanceId: () => ({ status: 'ready', data: 'alpha' }),
 }))
 
 vi.mock('../../../features/launcher/services/launcherService', async (importOriginal) => ({

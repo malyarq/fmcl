@@ -21,20 +21,32 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   }),
 }));
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpack: () => ({
-    modpacks: [
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceList: () => ({
+    status: 'ready',
+    data: [
       {
         id: 'dense-pack',
         name: 'The Unreasonably Long Modpack Title That Used To Collapse The Details Header Under Desktop Pressure',
         path: '/instances/dense-pack',
       },
     ],
+  }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: vi.fn(),
+    invalidateInstances: (...args: unknown[]) => refreshMock(...args),
+  }),
+}));
+
+vi.mock('../../../contexts/instances/hooks/useInstanceCrudActions', () => ({
+  useInstanceCrudActions: () => ({
     select: (...args: unknown[]) => selectMock(...args),
     rename: vi.fn(),
     duplicate: vi.fn(),
     remove: vi.fn(),
-    refresh: (...args: unknown[]) => refreshMock(...args),
   }),
 }));
 

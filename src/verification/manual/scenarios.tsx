@@ -1,9 +1,11 @@
 import type { ProviderCatalogSearchResultItem, ProviderCatalogVersionDescriptor } from '@shared/contracts';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useEffectEvent, useMemo, useState } from 'react';
 import { SettingsProvider, useSettings } from '../../contexts/SettingsContext';
 import { ToastProvider } from '../../contexts/ToastContext';
 import { ConfirmProvider } from '../../contexts/ConfirmContext';
-import { ModpackProvider } from '../../contexts/ModpackContext';
+import { InstanceQueryProvider } from '../../features/instances/InstanceQueryProvider';
+import { ModpackNavigationProvider } from '../../features/modpacks/navigation/ModpackNavigationProvider';
+import { OperationRecoveryProvider } from '../../features/operations/recovery/OperationRecoveryProvider';
 import { createTranslator } from '../../contexts/settings/i18n';
 import type { UIMode } from '../../contexts/settings/types';
 import { APP_ICON_PATH, LAUNCHER_MARK_PATH, MEDIA_FALLBACK_PATH } from '../../app/assets/branding';
@@ -14,6 +16,7 @@ import { WelcomePage } from '../../components/onboarding/WelcomePage';
 import { OnboardingTour, type TourStep } from '../../components/onboarding/OnboardingTour';
 import { SimplePlayDashboard } from '../../components/SimplePlayDashboard';
 import { ModpackList } from '../../components/modpacks/ModpackList';
+import { ModpackRouter } from '../../components/modpacks/ModpackRouter';
 import { ModpackBrowser } from '../../components/modpacks/ModpackBrowser';
 import { ModpackDetails } from '../../components/modpacks/ModpackDetails';
 import { ModpackCreationWizard } from '../../components/modpacks/ModpackCreationWizard';
@@ -33,6 +36,7 @@ import { ShareModal } from '../../features/share/ShareModal';
 import { ScreenshotsTab } from '../../features/screenshots/components/ScreenshotsTab';
 import { MirrorsSettings } from '../../features/settings/mirrors/MirrorsSettings';
 import { StatisticsTab } from '../../features/settings/statistics/StatisticsTab';
+import { AppearanceTab } from '../../components/settings/tabs/AppearanceTab';
 import { ResourcePacksTab } from '../../components/modpacks/details/ResourcePacksTab';
 import { WorldDatapacksModal } from '../../components/modpacks/details/WorldDatapacksModal';
 import { cn } from '../../utils/cn';
@@ -57,9 +61,11 @@ interface ManualVerificationScenarioProps {
 function SettingsProviders(props: { children: React.ReactNode }) {
   return (
     <SettingsProvider>
-      <ToastProvider suppressToasts>
-        <ConfirmProvider>{props.children}</ConfirmProvider>
-      </ToastProvider>
+      <ModpackNavigationProvider>
+        <ToastProvider suppressToasts>
+          <ConfirmProvider>{props.children}</ConfirmProvider>
+        </ToastProvider>
+      </ModpackNavigationProvider>
     </SettingsProvider>
   );
 }
@@ -67,11 +73,15 @@ function SettingsProviders(props: { children: React.ReactNode }) {
 function ModpackProviders(props: { children: React.ReactNode }) {
   return (
     <SettingsProvider>
-      <ModpackProvider>
-        <ToastProvider suppressToasts>
-          <ConfirmProvider>{props.children}</ConfirmProvider>
-        </ToastProvider>
-      </ModpackProvider>
+      <InstanceQueryProvider>
+        <ModpackNavigationProvider>
+          <ToastProvider suppressToasts>
+            <ConfirmProvider>
+              <OperationRecoveryProvider>{props.children}</OperationRecoveryProvider>
+            </ConfirmProvider>
+          </ToastProvider>
+        </ModpackNavigationProvider>
+      </InstanceQueryProvider>
     </SettingsProvider>
   );
 }
@@ -110,7 +120,7 @@ const MANUAL_SIDEBAR_LAUNCH: SidebarLaunchModel = {
   versions: MANUAL_MC_VERSIONS,
   useForge: false,
   setUseForge: () => undefined,
-  useFabric: false,
+  useFabric: true,
   setUseFabric: () => undefined,
   useOptiFine: false,
   setUseOptiFine: () => undefined,
@@ -141,7 +151,7 @@ const MANUAL_SHELL_RUNTIME: SidebarRuntimeModel = {
 const MANUAL_DASHBOARD_LAUNCH = {
   version: '1.20.1',
   nickname: 'Steve',
-  loaderType: 'vanilla' as const,
+  loaderType: 'fabric' as const,
   ram: 6,
   isOffline: true,
 };
@@ -190,6 +200,9 @@ const MANUAL_ARCHIVE_INSPECTION = {
 
 function useReadyByText(onReady: (message: string) => void, needles: string[], message: string) {
   const readyKey = needles.join('|');
+  const containsEveryNeedle = useEffectEvent((text: string) => (
+    needles.every((needle) => text.includes(needle))
+  ));
 
   useEffect(() => {
     let cancelled = false;
@@ -201,7 +214,7 @@ function useReadyByText(onReady: (message: string) => void, needles: string[], m
       }
 
       const text = document.body.textContent ?? '';
-      const hasAllNeedles = needles.every((needle) => text.includes(needle));
+      const hasAllNeedles = containsEveryNeedle(text);
 
       if (hasAllNeedles) {
         onReady(message);
@@ -218,7 +231,7 @@ function useReadyByText(onReady: (message: string) => void, needles: string[], m
     return () => {
       cancelled = true;
     };
-  }, [message, needles, onReady, readyKey]);
+  }, [message, onReady, readyKey]);
 }
 
 function useReadyByChecks(
@@ -227,6 +240,7 @@ function useReadyByChecks(
   message: string,
 ) {
   const readyKey = checks.map((check) => check.id).join('|');
+  const everyCheckPasses = useEffectEvent(() => checks.every((check) => check.when()));
 
   useEffect(() => {
     let cancelled = false;
@@ -237,7 +251,7 @@ function useReadyByChecks(
         return;
       }
 
-      if (checks.every((check) => check.when())) {
+      if (everyCheckPasses()) {
         onReady(message);
         return;
       }
@@ -252,7 +266,7 @@ function useReadyByChecks(
     return () => {
       cancelled = true;
     };
-  }, [checks, message, onReady, readyKey]);
+  }, [message, onReady, readyKey]);
 }
 
 function matchesAssetSource(source: string | null, expected: string) {
@@ -267,6 +281,9 @@ function useReadyByTextAndImageSource(
   message: string,
 ) {
   const readyKey = `${needles.join('|')}::${expectedSrc}::${minimumImages}`;
+  const containsEveryImageProofNeedle = useEffectEvent((text: string) => (
+    needles.every((needle) => text.includes(needle))
+  ));
 
   useEffect(() => {
     let cancelled = false;
@@ -278,7 +295,7 @@ function useReadyByTextAndImageSource(
       }
 
       const text = document.body.textContent ?? '';
-      const hasAllNeedles = needles.every((needle) => text.includes(needle));
+      const hasAllNeedles = containsEveryImageProofNeedle(text);
       const matchingImages = Array.from(document.querySelectorAll<HTMLImageElement>('img')).filter((image) =>
         matchesAssetSource(image.getAttribute('src') ?? image.currentSrc, expectedSrc),
       );
@@ -298,7 +315,7 @@ function useReadyByTextAndImageSource(
     return () => {
       cancelled = true;
     };
-  }, [expectedSrc, message, minimumImages, needles, onReady, readyKey]);
+  }, [expectedSrc, message, minimumImages, onReady, readyKey]);
 }
 
 function findControlByLabel<T extends HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(labelNeedle: string): T | null {
@@ -407,36 +424,53 @@ function useGuidedActionNoticeReady(params: {
   const readyKey = `${actionNeedle}:${message}`;
 
   useEffect(() => {
-    let cancelled = false;
     let actionTriggered = false;
-    const deadline = Date.now() + 6_000;
+    let completed = false;
 
-    const tick = () => {
-      if (cancelled) {
-        return;
-      }
+    const inspect = () => {
+      if (completed) return;
 
       const notice = document.querySelector<HTMLElement>('[data-testid="add-mod-page-notice"]');
       if (notice) {
+        completed = true;
+        observer.disconnect();
+        window.clearInterval(interval);
+        window.clearTimeout(deadline);
         onReady(message);
         return;
       }
 
-      const actionButton = findButtonByText(actionNeedle);
+      const actionButton = document.querySelector<HTMLButtonElement>('[data-testid="guided-local-fallback-action"]')
+        ?? findButtonByText(actionNeedle);
       if (!actionTriggered && actionButton && !actionButton.disabled) {
-        actionButton.click();
         actionTriggered = true;
-      }
-
-      if (Date.now() < deadline) {
-        window.setTimeout(tick, 75);
+        window.setTimeout(() => {
+          if (completed) return;
+          if (actionButton.isConnected && !actionButton.disabled) {
+            actionButton.click();
+            return;
+          }
+          actionTriggered = false;
+          inspect();
+        }, 0);
       }
     };
 
-    tick();
+    const observer = new MutationObserver(inspect);
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    const interval = window.setInterval(inspect, 75);
+    const deadline = window.setTimeout(() => {
+      completed = true;
+      observer.disconnect();
+      window.clearInterval(interval);
+    }, 6_000);
+    inspect();
 
     return () => {
-      cancelled = true;
+      completed = true;
+      observer.disconnect();
+      window.clearInterval(interval);
+      window.clearTimeout(deadline);
     };
   }, [actionNeedle, message, onReady, readyKey]);
 }
@@ -556,6 +590,18 @@ function Phase35ProofCallout(props: { title: string; detail: string }) {
       <div className="kicker-label mb-2">Phase 35 async and guided trust proof</div>
       <h2 className="text-lg font-semibold text-foreground">{props.title}</h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary">{props.detail}</p>
+    </div>
+  );
+}
+
+function Phase41ProofCallout(props: { titleKey: string; detailKey: string }) {
+  const { t } = useSettings();
+
+  return (
+    <div className="surface-inline rounded-3xl p-4 sm:p-5" data-testid="phase41-proof-callout">
+      <div className="kicker-label mb-2">{t('phase41.proof_label')}</div>
+      <h2 className="text-lg font-semibold text-foreground">{t(props.titleKey)}</h2>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-secondary">{t(props.detailKey)}</p>
     </div>
   );
 }
@@ -788,8 +834,8 @@ function TourScenario({ onReady }: ManualVerificationScenarioProps) {
 function DashboardScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Vanilla', 'Play'],
-    'Phase 33 classic-truth proof rendered inside the real shell with short Vanilla wording and runtime labels that match the actual launch target.',
+    ['FriendLauncher', 'Fabric', 'Play'],
+    'Phase 33 classic-truth proof rendered inside the real shell with Fabric wording and runtime labels that match the canonical launch target.',
   );
 
   return (
@@ -797,7 +843,7 @@ function DashboardScenario({ onReady }: ManualVerificationScenarioProps) {
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
         <Phase33ProofCallout
           title="Classic runtime labels must stay truthful after cold start"
-          detail="Use this route to verify the short Vanilla label and visible Minecraft version reflect the actual launch target instead of drifting back to stale fallback state."
+          detail="Use this route to verify the Fabric label and visible Minecraft version reflect the canonical launch target instead of drifting back to stale fallback state."
         />
         <SimplePlayDashboard
           launch={MANUAL_DASHBOARD_LAUNCH}
@@ -812,7 +858,7 @@ function DashboardScenario({ onReady }: ManualVerificationScenarioProps) {
 function Phase24HomeCloseoutScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Vanilla', 'Play', 'v0.5.0 home closeout'],
+    ['FriendLauncher', 'Fabric', 'Play', 'v0.5.0 home closeout'],
     'Phase 24 home closeout rendered inside the real shell with deterministic launcher-home proof for final release review.',
   );
 
@@ -1245,7 +1291,7 @@ function ModpackDetailsScenario({ onReady }: ManualVerificationScenarioProps) {
 
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Runtime and dependency state', 'Update Available', 'Screenshots'],
+    ['FriendLauncher', 'Runtime and dependency state', 'Update available', 'Screenshots'],
     'Phase 34 modpack-details proof rendered inside the real shell with tab reachability, first-read runtime authority, and one shared content workspace contract.',
   );
 
@@ -1403,14 +1449,8 @@ function GuidedResourcePacksScenario({ onReady }: ManualVerificationScenarioProp
 }
 
 function GuidedResourcePacksRecoveryScenario({ onReady }: ManualVerificationScenarioProps) {
-  useReadyByText(
-    onReady,
-    ['Local fallback now proves recoverable resource-pack failure', 'Have a local resource pack .zip already?'],
-    'Phase 35 guided resource-pack fallback proof rendered with partial local-import recovery that stays on-surface.',
-  );
-
   useGuidedActionNoticeReady({
-    onReady: () => undefined,
+    onReady,
     actionNeedle: 'Import local .zip',
     message: 'Phase 35 guided resource-pack fallback proof rendered with partial local-import recovery that stays on-surface.',
   });
@@ -1455,7 +1495,7 @@ function GuidedShadersRecoveryScenario({ onReady }: ManualVerificationScenarioPr
     actionNeedle: 'Add selected shaders',
     expectedNeedles: [
       'Unsupported',
-      'FMCL kept these shader installs blocked for the current runtime: Photon Bloom Lite.',
+      'Photon Bloom Lite: This shader is blocked for the current runtime.',
       'Review the shader runtime card above, then retry.',
     ],
     message: 'Phase 35 guided shader recovery proof rendered with unsupported runtime guidance and retry-ready blocked install copy.',
@@ -1469,6 +1509,153 @@ function GuidedShadersRecoveryScenario({ onReady }: ManualVerificationScenarioPr
           detail="This proof auto-selects a shader fixture and triggers the guided install path under an unsupported runtime so reviewers can see the runtime card, retry-ready recovery copy, and unchanged action rail together."
         />
         <AddModPage modpackId="alpha" contentType="shader" onBack={() => undefined} />
+      </div>
+    </Phase19ShellFrame>
+  );
+}
+
+function Phase41OwnershipScenario({
+  language,
+  onReady,
+}: ManualVerificationScenarioProps & { language: 'en' | 'ru' }) {
+  const t = createTranslator(language);
+  useReadyByChecks(
+    onReady,
+    [
+      {
+        id: 'localized-ownership-copy',
+        when: () => (document.querySelector('[data-testid="phase41-ownership-proof"]')?.textContent ?? '')
+          .includes(t('phase41.ownership_title')),
+      },
+      {
+        id: 'canonical-sidebar-consumer',
+        when: () => document.querySelector('aside[data-instance-owner="canonical"]')
+          ?.getAttribute('data-selected-instance-id') === 'alpha',
+      },
+      {
+        id: 'canonical-route-consumer',
+        when: () => Boolean(document.querySelector('[data-testid="installed-modpack-actions-alpha"]')),
+      },
+    ],
+    `Phase 41 ${language.toUpperCase()} canonical ownership proof rendered with the real shell, route, and shared instance provider.`,
+  );
+
+  return (
+    <Phase19ShellFrame mode="modpacks" ownership="shell" language={language}>
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6" data-testid="phase41-ownership-proof">
+        <Phase41ProofCallout titleKey="phase41.ownership_title" detailKey="phase41.ownership_desc" />
+        <div className="min-h-0 flex-1 overflow-hidden rounded-3xl border border-border/70 bg-card/40">
+          <ModpackRouter />
+        </div>
+      </div>
+    </Phase19ShellFrame>
+  );
+}
+
+function Phase41RecoveryScenario({
+  language,
+  onReady,
+}: ManualVerificationScenarioProps & { language: 'en' | 'ru' }) {
+  const t = createTranslator(language);
+  useReadyByChecks(
+    onReady,
+    [
+      {
+        id: 'localized-recovery-copy',
+        when: () => (document.querySelector('[data-testid="phase41-recovery-proof"]')?.textContent ?? '')
+          .includes(t('phase41.recovery_title')),
+      },
+      {
+        id: 'recovered-record',
+        when: () => (document.querySelector('[data-testid="operation-recovery-inbox"]')?.textContent ?? '')
+          .includes(t('operations.recovery_inbox_recovered')),
+      },
+      {
+        id: 'recovery-required-record',
+        when: () => (document.querySelector('[data-testid="operation-recovery-inbox"]')?.textContent ?? '')
+          .includes(t('operations.recovery_inbox_required')),
+      },
+    ],
+    `Phase 41 ${language.toUpperCase()} production recovery proof rendered with recovered and recovery-required journal records.`,
+  );
+
+  return (
+    <Phase19ShellFrame mode="modpacks" ownership="shell" language={language}>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 sm:p-6" data-testid="phase41-recovery-proof">
+        <Phase41ProofCallout titleKey="phase41.recovery_title" detailKey="phase41.recovery_desc" />
+        <div className="mt-4 min-h-0 flex-1 overflow-hidden rounded-3xl border border-border/70 bg-card/40">
+          <ModpackList onNavigate={() => undefined} onCreateWizard={() => undefined} />
+        </div>
+      </div>
+    </Phase19ShellFrame>
+  );
+}
+
+function Phase41SurfacesScenario({
+  language,
+  onReady,
+}: ManualVerificationScenarioProps & { language: 'en' | 'ru' }) {
+  const t = createTranslator(language);
+  useReadyByChecks(
+    onReady,
+    [
+      {
+        id: 'localized-surfaces-copy',
+        when: () => (document.querySelector('[data-testid="phase41-surfaces-proof"]')?.textContent ?? '')
+          .includes(t('phase41.surfaces_title')),
+      },
+      { id: 'appearance-surface', when: () => Boolean(document.querySelector('[data-testid="appearance-primary-grid"]')) },
+      { id: 'details-surface', when: () => Boolean(document.querySelector('[data-testid="modpack-details-hero"]')) },
+      { id: 'content-surface', when: () => Boolean(document.querySelector('[data-testid="add-mod-page-body"]')) },
+    ],
+    `Phase 41 ${language.toUpperCase()} split-surface proof rendered with real Appearance, Details, and content acquisition components.`,
+  );
+
+  return (
+    <Phase19ShellFrame mode="modpacks" ownership="route" language={language}>
+      <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6" data-testid="phase41-surfaces-proof">
+        <Phase41ProofCallout titleKey="phase41.surfaces_title" detailKey="phase41.surfaces_desc" />
+
+        <section className="surface-panel min-w-0 space-y-4 rounded-3xl p-4 sm:p-5" data-testid="phase41-appearance-surface">
+          <h3 className="text-base font-semibold text-foreground">{t('phase41.surface_appearance')}</h3>
+          <AppearanceTab embedded />
+        </section>
+
+        <section className="surface-panel min-h-[48rem] min-w-0 space-y-4 overflow-hidden rounded-3xl p-4 sm:p-5" data-testid="phase41-details-surface">
+          <h3 className="text-base font-semibold text-foreground">{t('phase41.surface_details')}</h3>
+          <div className="flex min-h-[42rem] min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70">
+            <ModpackDetails modpackId="alpha" onBack={() => undefined} onNavigate={() => undefined} />
+          </div>
+        </section>
+
+        <section className="surface-panel min-h-[48rem] min-w-0 space-y-4 overflow-hidden rounded-3xl p-4 sm:p-5" data-testid="phase41-content-surface">
+          <h3 className="text-base font-semibold text-foreground">{t('phase41.surface_content')}</h3>
+          <div className="flex min-h-[42rem] min-w-0 flex-col overflow-hidden rounded-2xl border border-border/70">
+            <AddModPage modpackId="alpha" contentType="resourcepack" onBack={() => undefined} />
+          </div>
+        </section>
+      </div>
+    </Phase19ShellFrame>
+  );
+}
+
+function OperationRecoveryScenario({ onReady }: ManualVerificationScenarioProps) {
+  useReadyByText(
+    onReady,
+    ['Operation recovery', 'Recovered after restart', 'Needs manual attention', 'Export authorization cannot be replayed'],
+    'Phase 41 startup recovery inbox rendered from production ownership with distinct recovered and manual-attention records and no generic replay action.',
+  );
+
+  return (
+    <Phase19ShellFrame mode="modpacks" ownership="shell">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 sm:p-6">
+        <Phase35ProofCallout
+          title="Recovered work stays visible outside its original route"
+          detail="The production provider reads journal recovery once, refreshes canonical instance state only for a proven durable commit, and leaves uncertain recovery available for explicit inspection or dismissal."
+        />
+        <div className="mt-4 min-h-0 flex-1 overflow-hidden">
+          <ModpackList onNavigate={() => undefined} onCreateWizard={() => undefined} />
+        </div>
       </div>
     </Phase19ShellFrame>
   );
@@ -1844,6 +2031,30 @@ function ContentScenario({ onReady }: ManualVerificationScenarioProps) {
 export function ManualVerificationScenarios(props: { view: ManualVerificationView; onReady: (message: string) => void }) {
   const scenarioProps = { onReady: props.onReady };
 
+  if (props.view === 'phase-41-ownership-en') {
+    return <Phase41OwnershipScenario {...scenarioProps} language="en" />;
+  }
+
+  if (props.view === 'phase-41-ownership-ru') {
+    return <Phase41OwnershipScenario {...scenarioProps} language="ru" />;
+  }
+
+  if (props.view === 'phase-41-recovery-en') {
+    return <Phase41RecoveryScenario {...scenarioProps} language="en" />;
+  }
+
+  if (props.view === 'phase-41-recovery-ru') {
+    return <Phase41RecoveryScenario {...scenarioProps} language="ru" />;
+  }
+
+  if (props.view === 'phase-41-surfaces-en') {
+    return <Phase41SurfacesScenario {...scenarioProps} language="en" />;
+  }
+
+  if (props.view === 'phase-41-surfaces-ru') {
+    return <Phase41SurfacesScenario {...scenarioProps} language="ru" />;
+  }
+
   if (props.view === 'welcome') {
     return <WelcomeScenario {...scenarioProps} />;
   }
@@ -1974,6 +2185,10 @@ export function ManualVerificationScenarios(props: { view: ManualVerificationVie
 
   if (props.view === 'guided-shaders-recovery') {
     return <GuidedShadersRecoveryScenario {...scenarioProps} />;
+  }
+
+  if (props.view === 'operation-recovery') {
+    return <OperationRecoveryScenario {...scenarioProps} />;
   }
 
   if (props.view === 'modpack-install') {

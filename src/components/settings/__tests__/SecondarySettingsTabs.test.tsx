@@ -99,19 +99,19 @@ describe('SettingsPage secondary utility routes', () => {
     onCloseMock.mockReset();
   });
 
-  it('switches between lower-traffic settings utilities without restoring route-level helper copy', () => {
+  it('switches between lower-traffic settings utilities without restoring route-level helper copy', async () => {
     render(<SettingsPage onClose={onCloseMock} />);
     const header = screen.getByTestId('settings-shell-header');
 
     fireEvent.click(screen.getByRole('tab', { name: 'Downloads' }));
     expect(screen.getByRole('tab', { name: 'Downloads' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tabpanel', { name: 'Downloads' })).toBeTruthy();
-    expect(screen.getByText('Downloads utility surface')).toBeTruthy();
+    expect(await screen.findByText('Downloads utility surface')).toBeTruthy();
     expect(within(header).queryByText('Tune mirrors, concurrency, and connection limits for a stable download pipeline.')).toBeNull();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Launcher' }));
     expect(screen.getByRole('tabpanel', { name: 'Launcher' })).toBeTruthy();
-    expect(screen.getByText('Launcher utility surface')).toBeTruthy();
+    expect(await screen.findByText('Launcher utility surface')).toBeTruthy();
     expect(within(header).queryByText('Manage runtime behavior, update checks, and persistent launcher caches from one place.')).toBeNull();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Storage' }));
@@ -121,7 +121,7 @@ describe('SettingsPage secondary utility routes', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Statistics' }));
     expect(screen.getByRole('tabpanel', { name: 'Statistics' })).toBeTruthy();
-    expect(screen.getByText('Statistics utility surface')).toBeTruthy();
+    expect(await screen.findByText('Statistics utility surface')).toBeTruthy();
     expect(within(header).queryByText('Review launches, play time, and local usage trends before exporting the current snapshot.')).toBeNull();
   });
 });

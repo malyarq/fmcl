@@ -4,15 +4,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModpackList } from '../ModpackList';
 import { createTranslator } from '../../../contexts/settings/i18n';
+import modpackListSource from '../ModpackList.tsx?raw';
 
 const listMock = vi.fn();
 const metadataMock = vi.fn();
 const selectMock = vi.fn();
 const refreshMock = vi.fn();
 const onNavigateMock = vi.fn();
-const startOperationMock = vi.fn();
-const subscribeOperationMock = vi.fn();
-const releaseShareSubscriptionMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 const t = createTranslator('en');
@@ -29,15 +27,43 @@ let modpackItemsState: Array<{
   };
 }> = [];
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpackListContext: () => ({
-    modpacks: modpackItemsState.map(({ id, name }) => ({ id, name })),
-    selectedId: selectedIdState,
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceList: () => ({
+    status: 'ready',
+    data: modpackItemsState.map(({ id, name, selected, metadata }) => ({
+      id,
+      name,
+      selected,
+      summary: {
+        minecraftVersion: metadata.minecraftVersion,
+        modLoader: metadata.modLoader,
+      },
+    })),
+  }),
+  useSelectedInstanceId: () => ({ status: 'ready', data: selectedIdState }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: vi.fn(),
+    invalidateInstances: (...args: unknown[]) => refreshMock(...args),
+  }),
+}));
+
+vi.mock('../../../contexts/instances/hooks/useInstanceCrudActions', () => ({
+  useInstanceCrudActions: () => ({
     select: (...args: unknown[]) => selectMock(...args),
     remove: vi.fn(),
     rename: vi.fn(),
     duplicate: vi.fn(),
-    refresh: (...args: unknown[]) => refreshMock(...args),
+    duplicateOperation: null,
+    duplicateOperationError: null,
+    cancelDuplicate: vi.fn(),
+    retryDuplicate: vi.fn(),
+    deleteOperation: null,
+    deleteOperationError: null,
+    cancelDelete: vi.fn(),
+    retryDelete: vi.fn(),
   }),
 }));
 
@@ -75,20 +101,13 @@ vi.mock('../../../services/ipc/instancesIPC', () => ({
   },
 }));
 
-vi.mock('../../../services/ipc/operationsIPC', () => ({
-  operationsIPC: {
-    start: (...args: unknown[]) => startOperationMock(...args),
-    subscribe: (...args: unknown[]) => subscribeOperationMock(...args),
-  },
-}));
-
 vi.mock('../../../features/share/ShareModal', () => ({
   ShareModal: () => null,
 }));
 
 vi.mock('../../../features/share/ImportShareModal', () => ({
-  ImportShareModal: ({ isOpen, onImport }: { isOpen: boolean; onImport: (code: string) => Promise<void> }) => (
-    isOpen ? <button type="button" onClick={() => { void onImport('H4s='); }}>Submit share import</button> : null
+  ImportShareModal: ({ isOpen, onCommitted }: { isOpen: boolean; onCommitted: () => Promise<void> }) => (
+    isOpen ? <button type="button" onClick={() => { void onCommitted(); }}>Commit share import</button> : null
   ),
 }));
 
@@ -120,9 +139,6 @@ describe('ModpackList interactions', () => {
     selectMock.mockReset();
     refreshMock.mockReset();
     onNavigateMock.mockReset();
-    startOperationMock.mockReset();
-    subscribeOperationMock.mockReset();
-    releaseShareSubscriptionMock.mockReset();
     toastSuccessMock.mockReset();
     toastErrorMock.mockReset();
 
@@ -152,24 +168,17 @@ describe('ModpackList interactions', () => {
         updatedAt: '2026-04-20T00:00:00.000Z',
       },
     }));
-    startOperationMock.mockResolvedValue({
-      id: 'share-operation',
-      kind: 'import-share',
-      status: 'queued',
-      phase: 'started',
-      progress: { completed: 0, total: 1 },
-      createdAt: '2026-08-04T00:00:00.000Z',
-      updatedAt: '2026-08-04T00:00:00.000Z',
-    });
   });
 
-  it('allows selecting a modpack card from the keyboard', async () => {
+  it('uses a native button for card activation and selects the modpack once', async () => {
     renderList();
 
     const cardButton = await screen.findByRole('button', { name: 'Alpha Pack' });
-    fireEvent.keyDown(cardButton, { key: 'Enter' });
+    expect(cardButton.tagName).toBe('BUTTON');
+    fireEvent.click(cardButton);
 
     await waitFor(() => {
+      expect(selectMock).toHaveBeenCalledTimes(1);
       expect(selectMock).toHaveBeenCalledWith('alpha');
     });
   });
@@ -260,6 +269,25 @@ describe('ModpackList interactions', () => {
     });
   });
 
+  it('closes the keyboard menu with Escape and restores focus to its card activator', async () => {
+    renderList();
+
+    const cardActivator = await screen.findByRole('button', { name: 'Alpha Pack' });
+    cardActivator.focus();
+    fireEvent.keyDown(cardActivator, { key: 'ContextMenu', code: 'ContextMenu' });
+
+    await waitFor(() => {
+      expect(screen.getByRole('menuitem', { name: 'Open details' })).toBe(document.activeElement);
+    });
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(document.getElementById('modpack-actions-menu-alpha')).toBeNull();
+      expect(document.activeElement).toBe(cardActivator);
+    });
+  });
+
   it('prioritizes opening details while keeping activation as a fast secondary action', async () => {
     modpackItemsState = [buildModpackItem('Alpha Pack With Dense Action Footer')];
     renderList();
@@ -286,44 +314,17 @@ describe('ModpackList interactions', () => {
     expect((screen.getByRole('button', { name: 'Active now: Alpha Pack With Dense Action Footer' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it('releases the share-import subscription and ignores terminal snapshots after unmount', async () => {
-    let listener: ((snapshot: Record<string, unknown>) => void) | undefined;
-    subscribeOperationMock.mockImplementation(async (_id: string, nextListener: (snapshot: Record<string, unknown>) => void) => {
-      listener = nextListener;
-      return releaseShareSubscriptionMock;
-    });
-    const view = renderList();
-
+  it('invalidates canonical instances after share publication without page-local completion effects', async () => {
+    renderList();
     fireEvent.click(await screen.findByRole('button', { name: 'Import from Code' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Submit share import' }));
-    await waitFor(() => expect(subscribeOperationMock).toHaveBeenCalledWith('share-operation', expect.any(Function)));
+    fireEvent.click(screen.getByRole('button', { name: 'Commit share import' }));
 
-    view.unmount();
-    expect(releaseShareSubscriptionMock).toHaveBeenCalledOnce();
-    listener?.({
-      id: 'share-operation',
-      status: 'succeeded',
-      result: { status: 'succeeded', instanceId: 'imported' },
-    });
-
-    expect(refreshMock).not.toHaveBeenCalled();
+    await waitFor(() => expect(refreshMock).toHaveBeenCalledTimes(1));
     expect(toastSuccessMock).not.toHaveBeenCalled();
     expect(toastErrorMock).not.toHaveBeenCalled();
   });
 
-  it('releases a deferred share-import subscription that resolves after unmount', async () => {
-    let resolveSubscribe: ((release: () => void) => void) | undefined;
-    subscribeOperationMock.mockImplementation(async () => await new Promise<() => void>((resolve) => {
-      resolveSubscribe = resolve;
-    }));
-    const view = renderList();
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Import from Code' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Submit share import' }));
-    await waitFor(() => expect(subscribeOperationMock).toHaveBeenCalled());
-
-    view.unmount();
-    resolveSubscribe?.(releaseShareSubscriptionMock);
-    await waitFor(() => expect(releaseShareSubscriptionMock).toHaveBeenCalledOnce());
+  it('owns no operation subscription or reload fallback in the list surface', () => {
+    expect(modpackListSource).not.toMatch(/operationsIPC|\.subscribe\s*\(|location\.reload|window\.location/);
   });
 });

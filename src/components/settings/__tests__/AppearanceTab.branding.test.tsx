@@ -14,6 +14,7 @@ describe('AppearanceTab brand contract', () => {
     )
 
     expect(screen.queryByTestId('appearance-brand-system-card')).toBeNull()
+    expect(screen.getByTestId('appearance-branding').getAttribute('data-appearance-owner')).toBe('branding')
     expect(screen.getByLabelText('Theme Presets')).toBeTruthy()
     expect(
       screen.getByText(/Choose the base shell mood of the launcher, then fine-tune accent and background behavior below/i),

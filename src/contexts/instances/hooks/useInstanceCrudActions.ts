@@ -1,49 +1,50 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Dispatch, SetStateAction } from 'react';
-import type { OperationSnapshot } from '@shared/contracts';
-import type { ModpackConfig } from '../types';
+import { useCallback, useEffect, useRef } from 'react';
+import type { MutableRefObject } from 'react';
 import {
   createModpack as createModpackSvc,
-  fetchModpackConfig,
   renameModpack as renameModpackSvc,
   setSelectedModpackId,
 } from '../services/instancesService';
-import { operationsIPC } from '../../../services/ipc/operationsIPC';
+import {
+  useOperationSession,
+  type OperationTerminalEvent,
+} from '../../../features/operations/hooks/useOperationSession';
+
+type PendingOperation = {
+  resolve: (event: OperationTerminalEvent | null) => void;
+  reject: (error: unknown) => void;
+};
+
+function settlePending(
+  pendingRef: MutableRefObject<PendingOperation | null>,
+  event: OperationTerminalEvent | null,
+  error?: unknown,
+) {
+  const pending = pendingRef.current;
+  pendingRef.current = null;
+  if (!pending) return;
+  if (error !== undefined) pending.reject(error);
+  else pending.resolve(event);
+}
 
 export function useInstanceCrudActions(params: {
-  selectedId: string;
-  setSelectedId: (id: string) => void;
-  setConfig: Dispatch<SetStateAction<ModpackConfig | null>>;
-  refresh: () => Promise<void>;
-  loadSelected: () => Promise<void>;
+  invalidateInstances: () => Promise<void>;
 }) {
-  const { selectedId, setSelectedId, setConfig, refresh, loadSelected } = params;
-  const [duplicateOperation, setDuplicateOperation] = useState<OperationSnapshot | null>(null);
-  const [deleteOperation, setDeleteOperation] = useState<OperationSnapshot | null>(null);
-  const unsubscribeDuplicateRef = useRef<(() => void) | null>(null);
-  const unsubscribeDeleteRef = useRef<(() => void) | null>(null);
-  const isMountedRef = useRef(true);
+  const { invalidateInstances } = params;
+  const duplicatePendingRef = useRef<PendingOperation | null>(null);
+  const deletePendingRef = useRef<PendingOperation | null>(null);
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      unsubscribeDuplicateRef.current?.();
-      unsubscribeDuplicateRef.current = null;
-      unsubscribeDeleteRef.current?.();
-      unsubscribeDeleteRef.current = null;
-    };
+  useEffect(() => () => {
+    settlePending(duplicatePendingRef, null);
+    settlePending(deletePendingRef, null);
   }, []);
 
   const select = useCallback(
     async (id: string) => {
       await setSelectedModpackId(id);
-      setSelectedId(id);
-      const cfg = await fetchModpackConfig(id);
-      setConfig(cfg);
-      await refresh();
+      await invalidateInstances();
     },
-    [refresh, setConfig, setSelectedId]
+    [invalidateInstances],
   );
 
   const create = useCallback(
@@ -52,149 +53,89 @@ export function useInstanceCrudActions(params: {
       if (created?.id) {
         await select(created.id);
       } else {
-        await refresh();
-        await loadSelected();
+        await invalidateInstances();
       }
     },
-    [loadSelected, refresh, select]
+    [invalidateInstances, select],
   );
 
   const rename = useCallback(
     async (id: string, name: string) => {
       await renameModpackSvc(id, name);
-      await refresh();
-      if (id === selectedId) {
-        const cfg = await fetchModpackConfig(id);
-        setConfig(cfg);
-      }
+      await invalidateInstances();
     },
-    [refresh, selectedId, setConfig]
+    [invalidateInstances],
   );
 
-  const duplicate = useCallback(
-    async (sourceId: string, name?: string) => {
-      const started = await operationsIPC.start({ kind: 'duplicate', sourceId, name });
-      setDuplicateOperation(started);
+  const handleDuplicateCommit = useCallback(async ({ classification }: OperationTerminalEvent) => {
+    if (classification.selectableInstanceId) {
+      await select(classification.selectableInstanceId);
+    } else if (classification.shouldInvalidateInstances) {
+      await invalidateInstances();
+    }
+  }, [invalidateInstances, select]);
 
-      await new Promise<void>((resolve, reject) => {
-        let terminal: OperationSnapshot | null = null;
-        let released = false;
-        let unsubscribe: (() => void) | null = null;
-        let completed = false;
+  const duplicateSession = useOperationSession({
+    onCommitted: handleDuplicateCommit,
+    onTerminal: (event) => settlePending(duplicatePendingRef, event),
+    onError: (error) => settlePending(duplicatePendingRef, null, error),
+  });
 
-        const release = () => {
-          if (released) return;
-          released = true;
-          unsubscribe?.();
-          if (unsubscribeDuplicateRef.current === release) unsubscribeDuplicateRef.current = null;
-        };
-
-        const complete = async (snapshot: OperationSnapshot) => {
-          if (completed) return;
-          completed = true;
-          release();
-          try {
-            if (hasPublishedDuplicate(snapshot)) await select(snapshot.result.instanceId);
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
-        };
-
-        const onSnapshot = (snapshot: OperationSnapshot) => {
-          setDuplicateOperation(snapshot);
-          if (!isTerminal(snapshot)) return;
-          terminal = snapshot;
-          if (unsubscribe) void complete(snapshot);
-        };
-
-        void operationsIPC.subscribe(started.id, onSnapshot).then((nextUnsubscribe) => {
-          unsubscribe = nextUnsubscribe;
-          if (!isMountedRef.current) {
-            nextUnsubscribe();
-            return;
-          }
-          unsubscribeDuplicateRef.current?.();
-          unsubscribeDuplicateRef.current = release;
-          if (terminal) void complete(terminal);
-        }, reject);
-      });
+  const deleteSession = useOperationSession({
+    onCommitted: async ({ classification }) => {
+      if (classification.shouldInvalidateInstances) await invalidateInstances();
     },
-    [select]
-  );
+    onTerminal: (event) => settlePending(deletePendingRef, event),
+    onError: (error) => settlePending(deletePendingRef, null, error),
+  });
+  const {
+    isActive: isDuplicateActive,
+    isStarting: isDuplicateStarting,
+    start: startDuplicate,
+  } = duplicateSession;
+  const {
+    isActive: isDeleteActive,
+    isStarting: isDeleteStarting,
+    start: startDelete,
+  } = deleteSession;
 
-  const remove = useCallback(
-    async (id: string) => {
-      const started = await operationsIPC.start({ kind: 'delete', instanceId: id });
-      setDeleteOperation(started);
+  const duplicate = useCallback(async (sourceId: string, name?: string) => {
+    if (duplicatePendingRef.current || isDuplicateActive || isDuplicateStarting) {
+      throw new Error('A duplicate operation is already active');
+    }
 
-      await new Promise<void>((resolve, reject) => {
-        let terminal: OperationSnapshot | null = null;
-        let released = false;
-        let unsubscribe: (() => void) | null = null;
-        let completed = false;
-        const release = () => {
-          if (released) return;
-          released = true;
-          unsubscribe?.();
-          if (unsubscribeDeleteRef.current === release) unsubscribeDeleteRef.current = null;
-        };
-        const complete = async (snapshot: OperationSnapshot) => {
-          if (completed) return;
-          completed = true;
-          release();
-          try {
-            if (hasCommittedDelete(snapshot)) {
-              await refresh();
-              await loadSelected();
-            }
-            resolve();
-          } catch (error) {
-            reject(error);
-          }
-        };
-        const onSnapshot = (snapshot: OperationSnapshot) => {
-          setDeleteOperation(snapshot);
-          if (!isTerminal(snapshot)) return;
-          terminal = snapshot;
-          if (unsubscribe) void complete(snapshot);
-        };
-        void operationsIPC.subscribe(started.id, onSnapshot).then((nextUnsubscribe) => {
-          unsubscribe = nextUnsubscribe;
-          if (!isMountedRef.current) {
-            nextUnsubscribe();
-            return;
-          }
-          unsubscribeDeleteRef.current?.();
-          unsubscribeDeleteRef.current = release;
-          if (terminal) void complete(terminal);
-        }, reject);
-      });
-    },
-    [loadSelected, refresh]
-  );
+    const terminal = new Promise<OperationTerminalEvent | null>((resolve, reject) => {
+      duplicatePendingRef.current = { resolve, reject };
+    });
+    await startDuplicate({ kind: 'duplicate', sourceId, name });
+    return await terminal;
+  }, [isDuplicateActive, isDuplicateStarting, startDuplicate]);
 
-  return { select, create, rename, duplicate, duplicateOperation, remove, deleteOperation };
-}
+  const remove = useCallback(async (id: string) => {
+    if (deletePendingRef.current || isDeleteActive || isDeleteStarting) {
+      throw new Error('A delete operation is already active');
+    }
 
-function hasPublishedDuplicate(snapshot: OperationSnapshot): snapshot is OperationSnapshot & {
-  status: 'succeeded' | 'recovered';
-  result: { status: 'succeeded' | 'recovered'; instanceId: string };
-} {
-  return (snapshot.status === 'succeeded' || snapshot.status === 'recovered')
-    && snapshot.result?.status === snapshot.status
-    && 'instanceId' in snapshot.result
-    && Boolean(snapshot.result.instanceId);
-}
+    const terminal = new Promise<OperationTerminalEvent | null>((resolve, reject) => {
+      deletePendingRef.current = { resolve, reject };
+    });
+    await startDelete({ kind: 'delete', instanceId: id });
+    return await terminal;
+  }, [isDeleteActive, isDeleteStarting, startDelete]);
 
-function hasCommittedDelete(snapshot: OperationSnapshot): snapshot is OperationSnapshot & {
-  status: 'succeeded' | 'recovered';
-  result: { status: 'succeeded' | 'recovered'; instanceId?: string };
-} {
-  return (snapshot.status === 'succeeded' || snapshot.status === 'recovered')
-    && snapshot.result?.status === snapshot.status;
-}
-
-function isTerminal(snapshot: OperationSnapshot): boolean {
-  return ['succeeded', 'recovered', 'degraded', 'cancelled', 'failed', 'recovery-required'].includes(snapshot.status);
+  return {
+    select,
+    create,
+    rename,
+    duplicate,
+    duplicateOperation: duplicateSession.snapshot,
+    duplicateOperationError: duplicateSession.error,
+    cancelDuplicate: duplicateSession.cancel,
+    retryDuplicate: duplicateSession.retry,
+    remove,
+    deleteOperation: deleteSession.snapshot,
+    deleteOperationError: deleteSession.error,
+    cancelDelete: deleteSession.cancel,
+    retryDelete: deleteSession.retry,
+  };
 }

@@ -33,9 +33,10 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   }),
 }));
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpack: () => ({
-    refresh: refreshMock,
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: vi.fn(),
+    invalidateInstances: refreshMock,
   }),
 }));
 
@@ -56,6 +57,13 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
 vi.mock('../../../services/ipc/instancesIPC', () => ({
   instancesIPC: {
     create: (...args: unknown[]) => createMock(...args),
+  },
+}));
+
+vi.mock('../../../services/ipc/instanceModsIPC', () => ({
+  instanceModsIPC: {
+    list: (...args: unknown[]) => getModsMock(...args),
+    remove: vi.fn(),
   },
 }));
 

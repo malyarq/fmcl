@@ -66,17 +66,58 @@ Main process отвечает за lifecycle, окна, нативные диа�
 
 | Домен | Канонический владелец в main process | Владелец в renderer |
 | --- | --- | --- |
-| Lifecycle инстансов и выбранное состояние | `electron/domains/instances/instanceApplication.ts` с `electron/infrastructure/instances/jsonControlPlaneStore.ts` | `src/contexts/instances/`, экраны модпаков |
-| Transactional import, export, install, update, duplicate, delete | `electron/services/operations/operationRunner.ts` и operation adapters | `src/services/ipc/operationsIPC.ts` и соответствующие features |
-| Файлы модов и регистрация manifest | `electron/services/mods/instanceModContentService.ts`, `manifestContentInstaller.ts` | экраны контента и `instanceModsIPC.ts` |
+| Lifecycle инстансов и выбранное состояние | `electron/domains/instances/instanceApplication.ts` с `electron/infrastructure/instances/jsonControlPlaneStore.ts` | `src/features/instances/InstanceQueryProvider.tsx` и сфокусированные selector, invalidation и command hooks |
+| Transactional import, export, install, update, duplicate, delete | `electron/services/operations/operationRunner.ts` и operation adapters | `src/features/operations/`, `operationsIPC.ts` и feature, которая запускает операцию |
+| Файлы модов и регистрация manifest | `electron/services/mods/instanceModContentService.ts`, `manifestContentInstaller.ts` | типизированные content adapters в `src/features/content/` и instance-scoped поверхности деталей |
 | Запуск и Java | `electron/services/launcher/`, `electron/services/java/`, внедрённые instance/launch ports | `src/features/launcher/`, `src/components/SimplePlayDashboard.tsx` |
-| Каталог и установка контента провайдеров | `electron/services/mods/platform/` и provider operation adapters | каталог и семантические wrappers |
+| Каталог и установка контента провайдеров | `electron/services/mods/platform/` и provider operation adapters | `useModpackBrowserCatalog`, типизированные content adapters и семантические IPC wrappers |
 | Аккаунты | `electron/services/account/` | `src/features/accounts/` |
 | Мультиплеер | `electron/services/network/` | `src/features/multiplayer/` |
 | Обновления | `electron/services/updater/` | `src/features/updater/` |
 | Ресурспаки, шейдеры, миры, датапаки, скриншоты | узкие services и проверяемые handlers в `electron/services/` и `electron/ipc/handlers/` | modpack detail/content features |
 
 Разделения на базовый instance store и унаследованный modpack facade больше нет. `InstanceApplication` — единственный публичный владелец control-plane чтений и команд. Семантические services зависят от его портов и добавляют только собственное поведение для контента.
+
+## Владение workflow в renderer
+
+```mermaid
+flowchart TD
+  AP["AppProviders"] --> IQ["InstanceQueryProvider\nодно каноническое query-хранилище"]
+  IQ --> IS["Сфокусированные selectors и команды"]
+  IS --> SH["Sidebar и launcher shell"]
+  IS --> ML["Список установленных сборок"]
+  IS --> MD["Details и Classic"]
+  AP --> OR["OperationRecoveryProvider"]
+  OR --> RI["Inbox восстановления при запуске"]
+  NAV["ModpackNavigationProvider"] --> ER["AppRecoveryBoundary без reload"]
+  ER --> ROUTER["AppLayout и ModpackRouter"]
+  FLOW["Feature-владелец изменения"] --> SESSION["useOperationSession"]
+  SESSION --> POLICY["operationTerminalPolicy"]
+  POLICY --> INV["Каноническая invalidation и честная презентация"]
+  CONTENT["Routed, modal и Classic вход контента"] --> ADAPTER["Adapter модов, ресурспаков или шейдеров"]
+  ADAPTER --> STATE["useContentAcquisitionState"]
+  STATE --> SURFACE["ContentAcquisitionSurface"]
+```
+
+### Каноническое состояние инстансов
+
+`AppProviders` монтирует ровно один `InstanceQueryProvider`. Его store делает один запрос каталога и публикует список инстансов и выбранный ID из одного ответа. Snapshots по ID удерживаются только пока есть потребители; параллельные чтения и invalidation объединяются, устаревшие поколения игнорируются, а записи конфигурации сериализуются по инстансу до канонической invalidation.
+
+Shell, список установленных сборок, Details, Classic, Settings и launch-код читают сфокусированные selectors из `src/features/instances/hooks/`. Команды проходят через семантические services в `src/contexts/instances/services/` и возвращаются к тому же provider через явную invalidation. `ModpackContext`, aggregate compatibility hook, локального store выбранного инстанса и запасного list cache нет.
+
+### Операции и восстановление
+
+Каждая feature изменения владеет своим вызовом `useOperationSession`; hook отвечает за освобождение subscription, отмену, порядок terminal callbacks, reset и явный retry. `operationTerminalPolicy.ts` — единственный классификатор устойчивого commit, канонической invalidation и presentation success. Degraded-результат после commit может инвалидировать состояние, но не может выбрать инстанс, закрыть поверхность или заявить об успехе.
+
+`OperationRecoveryProvider` один раз монтируется внутри query provider. Он принимает только внутренне согласованные sanitised recovered-записи, инвалидирует committed-операцию не более одного раза и даёт inspect, dismiss и безопасную навигацию. Он не восстанавливает скрытые входные данные и не повторяет операцию общим retry. Использованный archive reference и истёкшее разрешение native save требуют нового действия пользователя.
+
+`ModpackNavigationProvider` расположен выше `AppRecoveryBoundary`, поэтому маршрут и back history переживают восстановление на месте. Feature boundary обновляет канонические инстансы и recovery inbox без перезагрузки renderer. Полный reload renderer может запросить только provider-free bootstrap boundary после невосстановимой bootstrap-ошибки.
+
+### Границы контента и поверхностей
+
+Моды, ресурспаки и шейдеры используют общие `useContentAcquisitionState` и `ContentAcquisitionSurface`, но сохраняют типизированные adapters для реальной семантики provider, runtime, локального файла, manifest и retry. Partial commit оставляет только неуспешные логические элементы. Уже записанный файл не скачивается повторно только из-за ошибки последующей invalidation или регистрации manifest.
+
+Список установленных сборок, browser, creation, Classic, Appearance и Details разделены на controller/state и render-focused модули. Постоянные владельцы навигации и settings остаются вне `Suspense`. List, Details, Appearance и Storage загружаются сразу; опциональные маршруты модпаков и тяжёлые вкладки Downloads, Launcher, Accounts и Statistics загружаются лениво только там, где границу оправдали production bundle measurements. Каждый fallback — подписанный polite status, который не подменяет состояние маршрута.
 
 ## Каноническое устойчивое состояние
 

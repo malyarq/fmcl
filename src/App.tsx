@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { ErrorBoundaryWrapper } from './components/ErrorBoundaryWrapper';
 import { useAppIcon } from './app/hooks/useAppIcon';
 import { useAppOverlays } from './app/hooks/useAppOverlays';
 import { useLaunchHandler } from './app/hooks/useLaunchHandler';
 import { useOnboarding } from './app/hooks/useOnboarding';
-import { useModpack } from './contexts/ModpackContext';
+import { useInstanceNetworkModeSync } from './contexts/instances/hooks/useInstanceNetworkModeSync';
 import { getInstanceRamGb } from './contexts/instances/utils/memory';
 import { useSettings } from './contexts/SettingsContext';
 import { useLauncherState } from './features/launcher/hooks/useLauncherState';
@@ -16,13 +16,20 @@ import { useVersions } from './features/launcher/hooks/useVersions';
 import { getVersionHint } from './utils/minecraftVersions';
 import { WelcomePage } from './components/onboarding/WelcomePage';
 import { OnboardingTour, type TourStep } from './components/onboarding/OnboardingTour';
+import { useInstanceInvalidation } from './features/instances/hooks/useInstanceInvalidation';
+import { useEffectiveInstance } from './features/instances/hooks/useEffectiveInstance';
+import { ModpackNavigationProvider } from './features/modpacks/navigation/ModpackNavigationProvider';
+import { useOperationRecovery } from './features/operations/recovery/OperationRecoveryContext';
 
 import { ConsoleWindow } from './components/ConsoleWindow';
 
 export const APP_STARTUP_PENDING_TEST_ID = 'app-startup-pending';
 
 function MainApp() {
-  const { config: modpackConfig, isReady: modpackReady } = useModpack();
+  const effectiveInstance = useEffectiveInstance();
+  const modpackConfig = effectiveInstance.status === 'ready' ? effectiveInstance.data.snapshot : null;
+  const modpackReady = modpackConfig !== null;
+  useInstanceNetworkModeSync(modpackConfig?.networkMode);
   const { showSettings, showMultiplayer, openSettings, closeSettings, openMultiplayer, closeMultiplayer } = useAppOverlays();
   const { iconPath } = useAppIcon();
   const {
@@ -253,8 +260,20 @@ function AppRoot() {
 
 export default function App() {
   return (
-    <ErrorBoundaryWrapper>
-      <AppRoot />
-    </ErrorBoundaryWrapper>
+    <ModpackNavigationProvider>
+      <AppRecoveryBoundary>
+        <AppRoot />
+      </AppRecoveryBoundary>
+    </ModpackNavigationProvider>
   );
+}
+
+export function AppRecoveryBoundary({ children }: { children: ReactNode }) {
+  const { invalidateInstances } = useInstanceInvalidation();
+  const { refreshInbox } = useOperationRecovery();
+  const recover = useCallback(async () => {
+    await Promise.all([invalidateInstances(), refreshInbox()]);
+  }, [invalidateInstances, refreshInbox]);
+
+  return <ErrorBoundaryWrapper onRecover={recover}>{children}</ErrorBoundaryWrapper>;
 }

@@ -103,7 +103,9 @@ describe('ModpackBrowser history flow', () => {
       expect(onStateChange).toHaveBeenCalledWith(expect.objectContaining({ showHistory: true }));
     });
 
-    fireEvent.click(screen.getByText('CurseForge Pack'));
+    const historyCard = screen.getByRole('button', { name: 'CurseForge Pack' });
+    expect(historyCard.tagName).toBe('BUTTON');
+    fireEvent.click(historyCard);
 
     await waitFor(() => {
       expect(versionsMock).toHaveBeenCalledWith({ platform: 'curseforge', projectId: '42' });

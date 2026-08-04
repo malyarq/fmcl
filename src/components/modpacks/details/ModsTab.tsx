@@ -246,9 +246,7 @@ export function ModsTab({
                     modpackId={instanceId}
                     isOpen={showAddModModal}
                     onClose={() => setShowAddModModal(false)}
-                    onAdded={() => {
-                        void loadMods();
-                    }}
+                    onAdded={loadMods}
                     defaultMCVersion={defaultMCVersion}
                     defaultLoader={defaultLoader}
                 />

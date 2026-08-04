@@ -110,7 +110,7 @@ describe('SettingsPage downloads route', () => {
     render(<SettingsPage onClose={onCloseMock} initialTab="downloads" />);
 
     expect(screen.getByRole('tabpanel', { name: 'Downloads' })).toBeTruthy();
-    expect(screen.getByText('Mirrors embedded')).toBeTruthy();
+    expect(await screen.findByText('Mirrors embedded')).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Downloads' })).toBeNull();
     expect(screen.getByRole('switch', { name: 'Auto Threads' })).toBeTruthy();
     expect(screen.getByDisplayValue('8')).toBeTruthy();

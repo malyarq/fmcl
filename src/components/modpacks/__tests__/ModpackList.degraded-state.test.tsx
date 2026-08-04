@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OperationSnapshot } from '@shared/contracts';
 import { ModpackList } from '../ModpackList';
@@ -10,23 +10,43 @@ import { instancesFromListFixture } from './instancesListFixture';
 const instancesListFixtureMock = vi.fn();
 const selectMock = vi.fn();
 const refreshMock = vi.fn();
-const loadSelectedMock = vi.fn();
-const startMock = vi.fn();
-const subscribeMock = vi.fn();
-const unsubscribeMock = vi.fn();
+const removeMock = vi.fn();
 const confirmMock = vi.fn();
 const t = createTranslator('en');
+let deleteOperationState: OperationSnapshot | null = null;
+let canonicalInstanceListState = [{
+  id: 'alpha',
+  name: 'Alpha Pack',
+  selected: false,
+  summary: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' as const } },
+}];
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpackListContext: () => ({
-    modpacks: [{ id: 'alpha', name: 'Alpha Pack' }],
-    selectedId: '',
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceList: () => ({ status: 'ready', data: canonicalInstanceListState }),
+  useSelectedInstanceId: () => ({ status: 'ready', data: '' }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: vi.fn(),
+    invalidateInstances: (...args: unknown[]) => refreshMock(...args),
+  }),
+}));
+
+vi.mock('../../../contexts/instances/hooks/useInstanceCrudActions', () => ({
+  useInstanceCrudActions: () => ({
     select: (...args: unknown[]) => selectMock(...args),
-    remove: vi.fn(),
+    remove: (...args: unknown[]) => removeMock(...args),
     rename: vi.fn(),
     duplicate: vi.fn(),
-    refresh: (...args: unknown[]) => refreshMock(...args),
-    loadSelected: (...args: unknown[]) => loadSelectedMock(...args),
+    duplicateOperation: null,
+    duplicateOperationError: null,
+    cancelDuplicate: vi.fn(),
+    retryDuplicate: vi.fn(),
+    deleteOperation: deleteOperationState,
+    deleteOperationError: null,
+    cancelDelete: vi.fn(),
+    retryDelete: vi.fn(),
   }),
 }));
 
@@ -57,13 +77,6 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/operationsIPC', () => ({
-  operationsIPC: {
-    start: (...args: unknown[]) => startMock(...args),
-    subscribe: (...args: unknown[]) => subscribeMock(...args),
-  },
-}));
-
 vi.mock('../../../features/share/ShareModal', () => ({
   ShareModal: () => null,
 }));
@@ -87,15 +100,18 @@ describe('ModpackList degraded states', () => {
     instancesListFixtureMock.mockReset();
     selectMock.mockReset();
     refreshMock.mockReset();
-    loadSelectedMock.mockReset();
-    startMock.mockReset();
-    subscribeMock.mockReset();
-    unsubscribeMock.mockReset();
+    removeMock.mockReset().mockResolvedValue(undefined);
     confirmMock.mockReset();
+    deleteOperationState = null;
+    canonicalInstanceListState = [{
+      id: 'alpha',
+      name: 'Alpha Pack',
+      selected: false,
+      summary: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } },
+    }];
 
     selectMock.mockResolvedValue(undefined);
     refreshMock.mockResolvedValue(undefined);
-    loadSelectedMock.mockResolvedValue(undefined);
     confirmMock.mockResolvedValue(true);
   });
 
@@ -166,6 +182,7 @@ describe('ModpackList degraded states', () => {
 
   it('shows a calm empty state with a route-owned browser action when no packs are installed', async () => {
     instancesListFixtureMock.mockResolvedValue([]);
+    canonicalInstanceListState = [];
 
     const { onNavigate } = renderList();
 
@@ -178,59 +195,35 @@ describe('ModpackList degraded states', () => {
     expect(onNavigate).toHaveBeenCalledWith({ type: 'browser' });
   });
 
+  it('delegates confirmed deletion to the focused CRUD controller', async () => {
+    instancesListFixtureMock.mockResolvedValue([alphaPack]);
+
+    renderList();
+    expect(await screen.findByText('Alpha Pack')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /more actions: alpha pack/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: t('modpacks.delete') }));
+
+    await waitFor(() => expect(removeMock).toHaveBeenCalledWith('alpha'));
+    expect(refreshMock).not.toHaveBeenCalled();
+  });
+
   it.each(['running', 'cancelling', 'cancelled', 'failed', 'degraded', 'recovered', 'succeeded'] as const)(
-    'renders delete operation %s without optimistic removal or false success',
+    'renders controller-owned delete operation %s without optimistic removal or false success',
     async (status) => {
-      let listener: ((snapshot: OperationSnapshot) => void) | undefined;
       instancesListFixtureMock.mockResolvedValue([alphaPack]);
-      startMock.mockResolvedValue(deleteSnapshot('queued'));
-      subscribeMock.mockImplementation(async (_id: string, nextListener: (snapshot: OperationSnapshot) => void) => {
-        listener = nextListener;
-        return unsubscribeMock;
-      });
+      deleteOperationState = deleteSnapshot(status);
 
       renderList();
       expect(await screen.findByText('Alpha Pack')).toBeTruthy();
-      fireEvent.click(screen.getByRole('button', { name: /more actions: alpha pack/i }));
-      fireEvent.click(screen.getByRole('menuitem', { name: t('modpacks.delete') }));
-
-      await waitFor(() => expect(startMock).toHaveBeenCalledWith({ kind: 'delete', instanceId: 'alpha' }));
-      await waitFor(() => expect(listener).toBeTypeOf('function'));
-      act(() => listener?.(deleteSnapshot(status)));
 
       expect(screen.getByTestId('delete-operation-status').getAttribute('data-operation-status')).toBe(status);
       expect(screen.getByText('Alpha Pack')).toBeTruthy();
-      if (status === 'succeeded' || status === 'recovered') {
-        await waitFor(() => expect(refreshMock).toHaveBeenCalledTimes(1));
-      } else {
-        expect(refreshMock).not.toHaveBeenCalled();
-      }
+      expect(refreshMock).not.toHaveBeenCalled();
       if (['cancelled', 'failed', 'degraded', 'recovery-required'].includes(status)) {
         expect(screen.getByText('Alpha Pack')).toBeTruthy();
       }
     },
   );
-
-  it('unsubscribes exactly once after a delete terminal snapshot', async () => {
-    let listener: ((snapshot: OperationSnapshot) => void) | undefined;
-    instancesListFixtureMock.mockResolvedValue([alphaPack]);
-    startMock.mockResolvedValue(deleteSnapshot('queued'));
-    subscribeMock.mockImplementation(async (_id: string, nextListener: (snapshot: OperationSnapshot) => void) => {
-      listener = nextListener;
-      return unsubscribeMock;
-    });
-
-    const { unmount } = renderList();
-    expect(await screen.findByText('Alpha Pack')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: /more actions: alpha pack/i }));
-    fireEvent.click(screen.getByRole('menuitem', { name: t('modpacks.delete') }));
-    await waitFor(() => expect(listener).toBeTypeOf('function'));
-    act(() => listener?.(deleteSnapshot('failed')));
-
-    await waitFor(() => expect(unsubscribeMock).toHaveBeenCalledTimes(1));
-    unmount();
-    expect(unsubscribeMock).toHaveBeenCalledTimes(1);
-  });
 });
 
 const alphaPack = {

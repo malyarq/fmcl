@@ -1,9 +1,8 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
-import { CreateModpackModal } from '../CreateModpackModal';
 import { ModpackCreationWizard } from '../ModpackCreationWizard';
 
 const createMock = vi.fn();
@@ -35,9 +34,10 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   }),
 }));
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpack: () => ({
-    refresh: refreshMock,
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: vi.fn(),
+    invalidateInstances: refreshMock,
   }),
 }));
 
@@ -85,7 +85,7 @@ vi.mock('../details', () => ({
   ModpackDetailsModsTab: () => <div>Mods step</div>,
 }));
 
-describe('Create-modpack dependency truth', () => {
+describe('Create wizard dependency truth', () => {
   beforeEach(() => {
     currentLanguage = 'en';
     mockMatchMedia();
@@ -94,46 +94,6 @@ describe('Create-modpack dependency truth', () => {
     refreshMock.mockReset();
     createMock.mockResolvedValue({ ok: true, value: { status: 'committed', selectedId: 'pack-1', instances: [] } });
     refreshMock.mockResolvedValue(undefined);
-  });
-
-  it('keeps modal summary aligned with the dependency data persisted on create', async () => {
-    render(
-      <CreateModpackModal
-        isOpen
-        onClose={vi.fn()}
-      />,
-    );
-
-    fireEvent.change(screen.getByLabelText('Modpack name'), { target: { value: 'Alpha Pack' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Forge' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Enable OptiFine' }));
-
-    const summary = screen.getByTestId('modpack-dependency-summary');
-    const summaryQueries = within(summary);
-    expect(summary).toBeTruthy();
-    expect(summaryQueries.getByText('Runtime dependencies')).toBeTruthy();
-    expect(screen.getByTestId('modpack-dependency-count').textContent).toBe('3');
-    expect(screen.getByTestId('modpack-dependency-status').getAttribute('data-tone')).toBe('healthy');
-    expect(summaryQueries.getByText('Minecraft Version')).toBeTruthy();
-    expect(summaryQueries.getByText('1.20.1')).toBeTruthy();
-    expect(summaryQueries.getByText('Forge')).toBeTruthy();
-    expect(summaryQueries.getByText('Modloader Version')).toBeTruthy();
-    expect(summaryQueries.getByText('Unverified')).toBeTruthy();
-    expect(summaryQueries.getByText('OptiFine')).toBeTruthy();
-    expect(screen.queryByTestId('modpack-dependency-warnings')).toBeNull();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
-
-    await waitFor(() => {
-      expect(createMock).toHaveBeenCalledWith({
-        name: 'Alpha Pack',
-        source: { source: 'local', version: '1.0.0' },
-        config: {
-          runtime: { minecraftVersion: '1.20.1', modLoader: { type: 'forge', version: undefined } },
-          game: { useOptiFine: true },
-        },
-      });
-    });
   });
 
   it('shows the wizard step-two summary with the same selected runtime dependency truth', () => {

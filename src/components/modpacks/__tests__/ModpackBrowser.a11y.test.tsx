@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ComponentProps } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ProviderCatalogAPI } from '@shared/contracts';
 import { ModpackBrowser } from '../ModpackBrowser';
@@ -85,6 +85,7 @@ describe('ModpackBrowser accessibility', () => {
     await screen.findByRole('textbox', { name: t('modpacks.search_placeholder') || 'Enter modpack name...' });
 
     const resultButton = await screen.findByRole('button', { name: 'Alpha Pack' });
+    expect(resultButton.tagName).toBe('BUTTON');
     const favoriteButton = screen.getByRole('button', { name: 'Add to favorites: Alpha Pack' });
     screen.getByRole('button', { name: 'History' });
     expect(favoriteButton.getAttribute('aria-pressed')).toBe('false');
@@ -95,7 +96,7 @@ describe('ModpackBrowser accessibility', () => {
       expect(screen.getByRole('button', { name: 'Remove from favorites: Alpha Pack' }).getAttribute('aria-pressed')).toBe('true');
     });
 
-    fireEvent.keyDown(resultButton, { key: 'Enter' });
+    fireEvent.click(resultButton);
 
     await waitFor(() => {
       expect(versionsMock).toHaveBeenCalledWith({ platform: 'modrinth', projectId: 'alpha-pack' });
@@ -104,5 +105,48 @@ describe('ModpackBrowser accessibility', () => {
       type: 'install',
       modpack: expect.objectContaining({ title: 'Alpha Pack' }),
     }));
+  });
+
+  it('ignores a stale search response after a newer query has completed', async () => {
+    let resolveOld: ((value: Awaited<ReturnType<ProviderCatalogAPI['search']>>) => void) | undefined;
+    let resolveNew: ((value: Awaited<ReturnType<ProviderCatalogAPI['search']>>) => void) | undefined;
+    searchMock.mockImplementation(({ query }) => new Promise((resolve) => {
+      if (query === 'old') resolveOld = resolve;
+      if (query === 'new') resolveNew = resolve;
+    }));
+
+    renderBrowser({
+      initialState: { ...DEFAULT_MODPACK_BROWSER_STATE, query: 'old' },
+    });
+    await waitFor(() => expect(resolveOld).toBeTypeOf('function'));
+
+    fireEvent.change(screen.getByRole('textbox', { name: t('modpacks.search_placeholder') }), {
+      target: { value: 'new' },
+    });
+    await waitFor(() => expect(resolveNew).toBeTypeOf('function'));
+
+    await act(async () => {
+      resolveNew?.({
+        items: [{ platform: 'modrinth', projectId: 'new-pack', title: 'New Pack' }],
+        total: 1,
+        offset: 0,
+        limit: 12,
+      });
+    });
+    expect(await screen.findByText('New Pack')).toBeTruthy();
+
+    await act(async () => {
+      resolveOld?.({
+        items: [{ platform: 'modrinth', projectId: 'old-pack', title: 'Old Pack' }],
+        total: 1,
+        offset: 0,
+        limit: 12,
+      });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('New Pack')).toBeTruthy();
+      expect(screen.queryByText('Old Pack')).toBeNull();
+    });
   });
 });

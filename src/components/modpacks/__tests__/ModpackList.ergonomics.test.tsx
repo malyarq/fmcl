@@ -3,6 +3,10 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModpackList } from '../ModpackList';
+import routeSource from '../ModpackList.tsx?raw';
+import controllerSource from '../list/useInstalledModpackCatalog.ts?raw';
+import menuSource from '../list/InstalledModpackContextMenu.tsx?raw';
+import serviceSource from '../../../features/modpacks/services/installedModpackCatalogService.ts?raw';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { MEDIA_FALLBACK_PATH } from '../../../app/assets/branding';
 import { instancesFromListFixture } from './instancesListFixture';
@@ -13,15 +17,29 @@ const selectMock = vi.fn();
 const refreshMock = vi.fn();
 const t = createTranslator('en');
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpackListContext: () => ({
-    modpacks: [{ id: 'alpha', name: 'Alpha Pack' }],
-    selectedId: '',
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceList: () => ({ status: 'ready', data: [{
+    id: 'alpha',
+    name: 'Alpha Pack',
+    selected: false,
+    summary: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } },
+  }] }),
+  useSelectedInstanceId: () => ({ status: 'ready', data: '' }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: vi.fn(),
+    invalidateInstances: (...args: unknown[]) => refreshMock(...args),
+  }),
+}));
+
+vi.mock('../../../contexts/instances/hooks/useInstanceCrudActions', () => ({
+  useInstanceCrudActions: () => ({
     select: (...args: unknown[]) => selectMock(...args),
     remove: vi.fn(),
     rename: vi.fn(),
     duplicate: vi.fn(),
-    refresh: (...args: unknown[]) => refreshMock(...args),
   }),
 }));
 
@@ -93,6 +111,20 @@ describe('ModpackList ergonomics', () => {
         },
       },
     ]);
+  });
+
+  it('keeps the route as composition while focused catalog owners hold behavior', () => {
+    expect(routeSource).toContain('useInstalledModpackCatalog');
+    expect(routeSource).toContain('InstalledModpackCatalog');
+    expect(routeSource).toContain('InstalledModpackContextMenu');
+    expect(routeSource).not.toContain('instancesIPC');
+    expect(routeSource).not.toContain('AnchoredRect');
+    expect(controllerSource).toContain('loadInstalledModpackCatalog');
+    expect(controllerSource).not.toContain('instancesIPC');
+    expect(controllerSource).not.toContain('archiveInspectionIPC');
+    expect(serviceSource).toContain('instancesIPC');
+    expect(menuSource).toContain('AnchoredOverlay');
+    expect(menuSource).toContain('requestAnimationFrame');
   });
 
   it('keeps installed catalog controls grouped and card metadata labeled at sidebar widths', async () => {

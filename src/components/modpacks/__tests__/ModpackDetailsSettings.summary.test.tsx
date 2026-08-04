@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
-import type { ModpackConfig } from '../../../contexts/ModpackContext';
+import type { ModpackConfig } from '../../../contexts/instances/types';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { buildModpackRuntimeSummary } from '../../../features/modpacks/hooks/useModpackRuntimeSummary';
 import { ModpackDetailsHeader } from '../details/ModpackDetailsHeader';
@@ -98,7 +98,6 @@ function SettingsHarness() {
         setters={{
           setMemoryGb: vi.fn(async () => undefined),
           setMinMemoryGb: vi.fn(async () => undefined),
-          setJavaPath: vi.fn(async () => undefined),
           setVmOptions: vi.fn(async () => undefined),
           setGameExtraArgs: vi.fn(async () => undefined),
           setGameResolution: vi.fn(async () => undefined),

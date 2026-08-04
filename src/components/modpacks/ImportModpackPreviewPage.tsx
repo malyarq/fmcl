@@ -1,13 +1,13 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../ui/Button';
 import { DegradedStateView } from '../layout/DegradedStateView';
 import { cn } from '../../utils/cn';
 import type { ArchiveManifestMetadata } from '@shared/contracts/archiveInspection';
-import { useModpackListContext } from '../../contexts/ModpackContext';
-import { ImportOperationStatus } from './ImportOperationStatus';
-import { isPublished, useArchiveImportOperation } from './useArchiveImportOperation';
+import { useInstanceInvalidation } from '../../features/instances/hooks/useInstanceInvalidation';
+import { useOperationSession } from '../../features/operations/hooks/useOperationSession';
+import { OperationStatusView } from '../../features/operations/components/OperationStatusView';
 
 interface ImportModpackPreviewPageProps {
   archiveRef: string;
@@ -22,22 +22,22 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
 }) => {
   const { t, getAccentStyles, formatNumber } = useSettings();
   const toast = useToast();
-  const { refresh } = useModpackListContext();
-  const publishedToastRef = useRef<string | null>(null);
-  const onPublished = useCallback(async () => {
-    await refresh();
-  }, [refresh]);
-  const { operation, error: operationError, isActive: importing, start } = useArchiveImportOperation({ archiveRef, onPublished });
+  const { invalidateInstances } = useInstanceInvalidation();
+  const operation = useOperationSession({
+    onCommitted: async ({ classification }) => {
+      if (classification.shouldInvalidateInstances) await invalidateInstances();
+    },
+    onTerminal: ({ classification }) => {
+      if (classification.isPresentationSuccess) {
+        toast.success(t('modpacks.import_success') || 'Modpack imported successfully!');
+      }
+    },
+  });
+  const importing = operation.isStarting || operation.isActive;
 
   const handleImport = async () => {
-    await start();
+    await operation.start({ kind: 'import', archiveRef });
   };
-
-  useEffect(() => {
-    if (!operation || !isPublished(operation) || publishedToastRef.current === operation.id) return;
-    publishedToastRef.current = operation.id;
-    toast.success(t('modpacks.import_success') || 'Modpack imported successfully!');
-  }, [operation, t, toast]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -74,7 +74,15 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
             />
           ) : inspection.manifest ? (
             <>
-              <ImportOperationStatus operation={operation} error={operationError} t={t} />
+              <OperationStatusView
+                snapshot={operation.snapshot}
+                classification={operation.classification}
+                error={operation.error}
+                errorFallback={t('modpacks.import_error') || 'Import failed'}
+                onCancel={operation.cancel}
+                t={t}
+                testId="import-operation-status"
+              />
               <div className="surface-soft p-4">
                 <h3 className="mb-4 text-lg font-bold text-foreground">
                   {inspection.manifest.name || t('modpacks.import_preview') || 'Import preview'}
@@ -166,6 +174,7 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
                   className={cn("flex-1 text-[rgb(var(--accent-content))]", getAccentStyles('bg').className)}
                   style={getAccentStyles('bg').style}
                   isLoading={importing}
+                  disabled={importing || Boolean(operation.snapshot) || Boolean(operation.error)}
                 >
                   {t('modpacks.import') || 'Импортировать'}
                 </Button>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useState } from 'react';
 import { useSettings } from '../contexts/SettingsContext';
 import { useAppUpdater } from '../features/updater/hooks/useAppUpdater';
 import { Modal } from './ui/Modal';
@@ -11,19 +11,30 @@ import {
     type SettingsTabId,
 } from './settings/settingsTabs';
 
-// Import all tabs directly to avoid loading delay when switching tabs
 import { AppearanceTab } from './settings/tabs/AppearanceTab';
-import { DownloadsTab } from './settings/tabs/DownloadsTab';
-import { LauncherTab } from './settings/tabs/LauncherTab';
-import { UpdateModal } from './UpdateModal';
 import { StorageSettings } from './settings/tabs/StorageTab';
+import { UpdateModal } from './UpdateModal';
 import { storageMaintenanceIPC } from '../services/ipc/storageMaintenanceIPC';
-import { AccountsPage } from '../features/accounts/AccountsPage';
-import { StatisticsTab } from '../features/settings/statistics/StatisticsTab';
+
+const DownloadsTab = lazy(() => import('./settings/tabs/DownloadsTab').then((module) => ({ default: module.DownloadsTab })));
+const LauncherTab = lazy(() => import('./settings/tabs/LauncherTab').then((module) => ({ default: module.LauncherTab })));
+const AccountsPage = lazy(() => import('../features/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })));
+const StatisticsTab = lazy(() => import('../features/settings/statistics/StatisticsTab').then((module) => ({ default: module.StatisticsTab })));
 
 interface SettingsPageProps {
     onClose: () => void;
     initialTab?: SettingsTabId;
+}
+
+function SettingsTabLoadingState() {
+    return (
+        <div
+            role="status"
+            aria-label="Loading"
+            aria-live="polite"
+            className="min-h-12 w-full animate-pulse bg-background/30"
+        />
+    );
 }
 
 // Settings modal for appearance and launcher preferences.
@@ -161,7 +172,9 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
                     tabIndex={0}
                     className="settings-route-panel min-h-[22rem] outline-none p-4 sm:p-5"
                 >
-                    {renderActiveTab()}
+                    <Suspense fallback={<SettingsTabLoadingState />}>
+                        {renderActiveTab()}
+                    </Suspense>
                 </div>
             </div>
 

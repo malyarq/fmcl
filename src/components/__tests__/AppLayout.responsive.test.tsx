@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { APP_ICON_PATH } from '../../app/assets/branding';
 import {
@@ -13,6 +13,17 @@ import {
 const uiModeState = { value: 'simple' as 'simple' | 'modpacks' };
 const settingsState = { sidebarPosition: 'left' as 'left' | 'right' };
 const shellContractState = { value: 'renderer-controls' as 'renderer-controls' | 'native-macos' };
+const modpackRouterModuleGate = vi.hoisted(() => {
+  let releaseModule: () => void = () => undefined;
+  const pendingModule = new Promise<void>((resolve) => {
+    releaseModule = resolve;
+  });
+
+  return {
+    pendingModule,
+    releaseModule: () => releaseModule(),
+  };
+});
 
 vi.mock('../../contexts/SettingsContext', () => ({
   useUIMode: () => ({
@@ -46,9 +57,10 @@ vi.mock('../UpdateNotification', () => ({
   UpdateNotification: () => <div>Update notification</div>,
 }));
 
-vi.mock('../modpacks/ModpackRouter', () => ({
-  ModpackRouter: () => <div>Modpack router</div>,
-}));
+vi.mock('../modpacks/ModpackRouter', async () => {
+  await modpackRouterModuleGate.pendingModule;
+  return { ModpackRouter: () => <div>Modpack router</div> };
+});
 
 vi.mock('../SimplePlayDashboard', () => ({
   SimplePlayDashboard: () => <div>Simple play dashboard</div>,
@@ -178,6 +190,10 @@ describe('AppLayout responsive shell', () => {
     expect(screen.getByTestId('app-layout-split').className).toContain('flex-row-reverse');
     expect(safeArea.contains(await screen.findByText('Settings page'))).toBe(true);
     expect(screen.queryByText('Multiplayer page')).toBeNull();
+    expect(screen.getAllByRole('status', { name: 'Loading' })).toHaveLength(1);
+
+    await act(async () => modpackRouterModuleGate.releaseModule());
+
     expect(safeArea.contains(await screen.findByText('Modpack router'))).toBe(true);
     expect(screen.getByText('Settings page')).toBeTruthy();
     expect(screen.queryByText('Multiplayer page')).toBeNull();

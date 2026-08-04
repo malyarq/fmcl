@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useModpack } from '../../../contexts/ModpackContext';
 import { fetchModpackMetadata } from '../../../contexts/instances/services/instancesService';
+import { useInstanceList } from '../../instances/hooks/useInstanceSelectors';
 import { providerCatalogIPC } from '../../../services/ipc/providerCatalogIPC';
 import type { ProviderCatalogVersionDescriptor } from '@shared/contracts';
 import type { ModpackMetadata } from '@shared/types/modpack';
@@ -61,7 +61,7 @@ export async function resolveModpackUpdateInfo(
 }
 
 export async function resolveInstalledModpackUpdates(
-  modpacks: ModpackUpdateTarget[],
+  modpacks: readonly ModpackUpdateTarget[],
 ): Promise<ModpackUpdateInfo[]> {
   const results = await Promise.all(
     modpacks.map(async (modpack) => {
@@ -78,7 +78,8 @@ export async function resolveInstalledModpackUpdates(
 }
 
 export function useModpackUpdates(autoCheck = false) {
-  const { modpacks } = useModpack();
+  const listQuery = useInstanceList();
+  const modpacks = listQuery.status === 'ready' ? listQuery.data : [];
   const [updates, setUpdates] = useState<ModpackUpdateInfo[]>([]);
   const [checking, setChecking] = useState(false);
 

@@ -1,42 +1,38 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
+import type { ModpackMetadata } from '@shared/types/modpack';
+import { ArrowLeft } from 'lucide-react';
 import { useSettings } from '../../contexts/SettingsContext';
+import { cn } from '../../utils/cn';
+import { ScreenshotsTab } from '../../features/screenshots/components/ScreenshotsTab';
 import { Breadcrumbs } from '../ui/Breadcrumbs';
-import { useModpack } from '../../contexts/ModpackContext';
-import { useToast } from '../../contexts/ToastContext';
-import { useConfirm } from '../../contexts/ConfirmContext';
 import { Button } from '../ui/Button';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { ModpackUpdateModal } from './ModpackUpdateModal';
-import { instanceModsIPC } from '../../services/ipc/instanceModsIPC';
-import { instancesIPC } from '../../services/ipc/instancesIPC';
-import { fetchModpackMetadata } from '../../contexts/instances/services/instancesService';
-import type { ModpackMetadata } from '@shared/types/modpack';
-import { useModpackDetailsConfig } from '../../features/modpacks/hooks/useModpackDetailsConfig';
+import { MODPACK_SECONDARY_CONTENT_WORKSPACE } from './ModpackCatalogControls';
 import {
-  ModpackDetailsHeader,
   ModpackDetailsInfoTab,
   ModpackDetailsModsTab,
   ModpackDetailsSettingsTab,
-  ModpackDetailsActions,
   ResourcePacksTab,
   ShadersTab,
   WorldsTab,
   type ModpackDetailsTab,
   type ModpackModEntry,
 } from './details';
-import { ScreenshotsTab } from '../../features/screenshots/components/ScreenshotsTab';
-import { useVersions } from '../../features/launcher/hooks/useVersions';
-import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
-import { cn } from '../../utils/cn';
-import { ArrowLeft } from 'lucide-react';
-import { resolveModpackUpdateInfo, type ModpackUpdateInfo } from '../../features/modpacks/hooks/useModpackUpdates';
-import { buildModpackRuntimeSummary } from '../../features/modpacks/hooks/useModpackRuntimeSummary';
-import { MODPACK_SECONDARY_CONTENT_WORKSPACE } from './ModpackCatalogControls';
+import { ModpackDetailsOperationNotices } from './details/ModpackDetailsActionBar';
+import { ModpackDetailsOverview } from './details/ModpackDetailsOverview';
+import { useModpackDetailsController } from './details/useModpackDetailsController';
+import { useModpackDetailsModsController } from './details/useModpackDetailsModsController';
 
 interface ModpackDetailsProps {
   modpackId: string;
   onBack: () => void;
-  onNavigate: (view: { type: 'addMod'; modpackId: string } | { type: 'addResourcePack'; modpackId: string } | { type: 'addShader'; modpackId: string } | { type: 'export'; modpackId: string }) => void;
+  onNavigate: (view:
+    | { type: 'addMod'; modpackId: string }
+    | { type: 'addResourcePack'; modpackId: string }
+    | { type: 'addShader'; modpackId: string }
+    | { type: 'export'; modpackId: string }
+  ) => void;
   onLaunch?: () => void | Promise<void>;
   onMetadataUpdated?: (metadata: ModpackMetadata) => void;
   initialTab?: ModpackDetailsTab;
@@ -59,258 +55,40 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
   hydrateFromIpc = true,
 }) => {
   const { t, getAccentStyles, getAccentHex } = useSettings();
-  const { modpacks, select, rename, duplicate, remove, refresh } = useModpack();
-  const toast = useToast();
-  const confirm = useConfirm();
-
-  const [metadata, setMetadata] = useState<ModpackMetadata | null>(initialMetadata ?? null);
-  const [loading, setLoading] = useState(initialMetadata ? false : true);
   const [activeTab, setActiveTab] = useState<ModpackDetailsTab>(initialTab);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
-  const [availableUpdate, setAvailableUpdate] = useState<ModpackUpdateInfo | null>(null);
-  const [mods, setMods] = useState<ModpackModEntry[]>(initialMods ?? []);
-  const [loadingMods, setLoadingMods] = useState(false);
-  const [modSearchQuery, setModSearchQuery] = useState('');
-  const [modFilterStatus, setModFilterStatus] = useState<'all' | 'enabled' | 'disabled'>('all');
-  const [descriptionDraft, setDescriptionDraft] = useState('');
-
-  const { effectiveConfig, loadModpackConfig, setters } = useModpackDetailsConfig({ modpackId });
-  const { versions } = useVersions();
-  const { forgeVersions, fabricVersions, neoForgeVersions, optiFineVersions } = useModSupportedVersions();
-
-  const modpack = modpacks.find((m) => m.id === modpackId);
-  const runtimeSummary = React.useMemo(
-    () =>
-      buildModpackRuntimeSummary({
-        config: effectiveConfig,
-        metadata,
-        optiFineVersions: optiFineVersions.length > 0 ? optiFineVersions : undefined,
-      }),
-    [effectiveConfig, metadata, optiFineVersions],
-  );
-
-  const loaderType = runtimeSummary.modLoader?.type;
-  const hasModloader = !!loaderType && loaderType !== 'vanilla';
-  const secondarySurfaceTab =
-    activeTab === 'mods' ||
-    activeTab === 'resourcepacks' ||
-    activeTab === 'shaders' ||
-    activeTab === 'worlds' ||
-    activeTab === 'screenshots' ||
-    activeTab === 'settings';
+  const controller = useModpackDetailsController({
+    hydrateFromIpc,
+    initialMetadata,
+    modpackId,
+    onBack,
+    onLaunch,
+    onMetadataUpdated,
+  });
+  const { modpack, metadataState, overview } = controller;
+  const loaderType = overview.runtimeSummary.modLoader?.type;
+  const hasModloader = Boolean(loaderType && loaderType !== 'vanilla');
+  const selectedTab = !hasModloader && activeTab === 'mods' ? 'info' : activeTab;
+  const loadConfig = controller.config.load;
+  const modsController = useModpackDetailsModsController({
+    activeTab: selectedTab,
+    hydrateFromIpc,
+    initialMods,
+    modpackId,
+  });
+  const secondarySurfaceTab = [
+    'mods',
+    'resourcepacks',
+    'shaders',
+    'worlds',
+    'screenshots',
+    'settings',
+  ].includes(selectedTab);
 
   useEffect(() => {
-    loadModpackConfig();
-  }, [loadModpackConfig]);
-
-  useEffect(() => {
-    if (!hasModloader && activeTab === 'mods') setActiveTab('info');
-  }, [hasModloader, activeTab]);
-
-  useEffect(() => {
-    if (activeTab === 'settings') loadModpackConfig();
-  }, [activeTab, loadModpackConfig]);
-
-  const loadDetails = useCallback(async () => {
-    if (!hydrateFromIpc) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const meta = await fetchModpackMetadata(modpackId);
-      setMetadata(meta);
-      setDescriptionDraft(meta.description || '');
-      try {
-        const update = await resolveModpackUpdateInfo(
-          { id: modpackId, name: modpack?.name ?? modpackId, metadata: meta },
-        );
-        setAvailableUpdate(update);
-      } catch (error) {
-        console.error('Error checking for updates:', error);
-        setAvailableUpdate(null);
-      }
-    } catch (error) {
-      console.error('Error loading modpack details:', error);
-      setMetadata(null);
-      setAvailableUpdate(null);
-    } finally {
-      setLoading(false);
-    }
-  }, [hydrateFromIpc, modpack?.name, modpackId]);
-
-  useEffect(() => {
-    if (!modpackId || !hydrateFromIpc) return;
-    loadDetails();
-  }, [hydrateFromIpc, modpackId, loadDetails]);
-
-  const loadMods = useCallback(async () => {
-    if (activeTab !== 'mods') return;
-    if (!hydrateFromIpc) {
-      setLoadingMods(false);
-      return;
-    }
-    setLoadingMods(true);
-    try {
-      const modsList = await instanceModsIPC.list(modpackId);
-      const modsWithStatus: ModpackModEntry[] = modsList.map((mod) => ({
-        ...mod,
-        enabled: !mod.file.name.endsWith('.disabled'),
-      }));
-      setMods(modsWithStatus);
-    } catch (error) {
-      console.error('Error loading mods:', error);
-      setMods([]);
-    } finally {
-      setLoadingMods(false);
-    }
-  }, [activeTab, hydrateFromIpc, modpackId]);
-
-  useEffect(() => {
-    if (activeTab === 'mods') {
-      loadMods();
-    }
-  }, [activeTab, loadMods]);
-
-  const handleSaveDescription = async () => {
-    if (!modpackId) return;
-    try {
-      const result = await instancesIPC.updateMetadata(modpackId, {
-        description: descriptionDraft.trim() || null,
-      });
-      if (!result.ok) throw new Error(result.error.message);
-      const updated = await fetchModpackMetadata(modpackId);
-      setMetadata(updated);
-      onMetadataUpdated?.(updated);
-      await refresh();
-    } catch (error) {
-      console.error('Error updating modpack description:', error);
-      toast.error(t('modpacks.update_error') || 'Ошибка при обновлении описания модпака');
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!modpack) return;
-    const confirmText =
-      t('modpacks.delete_confirm')?.replace('{{name}}', modpack.name) ||
-      `Удалить модпак "${modpack.name}"?`;
-    const confirmed = await confirm.confirm({
-      title: t('modpacks.delete') || 'Удалить модпак',
-      message: confirmText,
-      variant: 'danger',
-      confirmText: t('modpacks.delete') || 'Удалить',
-      cancelText: t('general.cancel') || 'Отмена',
-    });
-    if (confirmed) {
-      await remove(modpackId);
-      await refresh();
-      onBack();
-    }
-  };
-
-  const handleRename = async () => {
-    if (!modpack) return;
-
-    const nextName = await confirm.prompt({
-      title: t('modpacks.rename') || 'Переименовать',
-      message: t('modpacks.rename_prompt') || 'Введите новое название:',
-      confirmText: t('modpacks.rename') || 'Переименовать',
-      cancelText: t('general.cancel') || 'Отмена',
-      input: {
-        initialValue: modpack.name,
-        placeholder: modpack.name,
-        requireNonEmpty: true,
-      },
-    });
-    const newName = nextName?.trim();
-
-    if (newName && newName !== modpack.name) {
-      try {
-        await rename(modpackId, newName);
-        await loadDetails();
-      } catch (error) {
-        console.error('Error renaming modpack:', error);
-        toast.error(t('modpacks.rename_error') || 'Ошибка при переименовании');
-      }
-    }
-  };
-
-  const handleDuplicate = async () => {
-    if (!modpack) return;
-
-    const suggestedName = `${modpack.name} - Copy`;
-    const nextName = await confirm.prompt({
-      title: t('modpacks.duplicate') || 'Дублировать',
-      message: t('modpacks.duplicate_prompt') || 'Введите название копии:',
-      confirmText: t('modpacks.duplicate') || 'Дублировать',
-      cancelText: t('general.cancel') || 'Отмена',
-      input: {
-        initialValue: suggestedName,
-        placeholder: suggestedName,
-        requireNonEmpty: true,
-      },
-    });
-    const newName = nextName?.trim();
-
-    if (!newName) {
-      return;
-    }
-
-    try {
-      await duplicate(modpackId, newName);
-    } catch (error) {
-      console.error('Error duplicating modpack:', error);
-      toast.error(t('modpacks.duplicate_error') || 'Ошибка при дублировании модпака');
-    }
-  };
-
-  const handleRemoveMod = async (mod: ModpackModEntry) => {
-    const confirmed = await confirm.confirm({
-      title: t('modpacks.remove') || 'Удалить мод',
-      message:
-        t('modpacks.remove_mod_confirm')?.replace('{{name}}', mod.name) || `Удалить мод "${mod.name}"?`,
-      variant: 'danger',
-      confirmText: t('modpacks.remove') || 'Удалить',
-      cancelText: t('general.cancel') || 'Отмена',
-    });
-    if (confirmed) {
-      try {
-        await instanceModsIPC.remove(modpackId, mod.file.name);
-        await loadMods();
-      } catch (error) {
-        console.error('Error removing mod:', error);
-        toast.error(t('modpacks.remove_mod_error') || 'Ошибка при удалении мода');
-      }
-    }
-  };
-
-  const handleModToggle = async (mod: ModpackModEntry) => {
-    const enabled = !(mod.enabled ?? true);
-    setMods((prev) =>
-      prev.map((m) => (m.id === mod.id ? { ...m, enabled } : m))
-    );
-    try {
-      await instanceModsIPC.setEnabled(modpackId, mod.file.name, enabled);
-    } catch (error) {
-      setMods((prev) =>
-        prev.map((m) => (m.id === mod.id ? { ...m, enabled: !enabled } : m))
-      );
-      console.error('Error toggling mod:', error);
-      toast.error(t('modpacks.mod_toggle_error') || 'Ошибка при переключении мода');
-    }
-  };
+    if (selectedTab === 'settings') void loadConfig();
+  }, [loadConfig, selectedTab]);
 
   if (!modpack) return null;
-
-  const updateVersionLabel = availableUpdate
-    ? availableUpdate.latestVersion.versionNumber || availableUpdate.latestVersion.name || availableUpdate.latestVersion.versionId
-    : null;
-  const updateVersionSummary = availableUpdate && updateVersionLabel
-    ? (t('modpacks.update_version_summary') || '{{current}} → {{latest}}')
-      .replace('{{current}}', availableUpdate.currentVersion)
-      .replace('{{latest}}', updateVersionLabel)
-    : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -326,168 +104,175 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
             ]}
           />
           <Button variant="secondary" size="sm" onClick={onBack} className="flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            {t('general.back') || 'Назад'}
+            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
+            {t('general.back') || 'Back'}
           </Button>
         </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-12 gap-3">
+        {metadataState.status === 'loading' ? (
+          <div
+            className="flex flex-col items-center justify-center gap-3 py-12"
+            data-testid="modpack-details-loading"
+            role="status"
+            aria-live="polite"
+          >
             <LoadingSpinner size="lg" />
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{t('modpacks.loading')}</p>
+            <p className="text-sm text-secondary">{t('modpacks.loading')}</p>
+          </div>
+        ) : metadataState.status === 'error' ? (
+          <div
+            className="m-6 rounded-2xl border border-red-500/25 bg-red-500/8 p-5"
+            data-testid="modpack-details-load-error"
+            role="alert"
+          >
+            <h2 className="text-lg font-semibold text-foreground">
+              {t('modpacks.details_load_error_title') || 'Modpack details are unavailable'}
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-secondary">
+              {t('modpacks.details_load_error_desc') || 'FMCL could not read this modpack metadata.'}
+            </p>
+            <Button variant="secondary" size="sm" onClick={() => { void controller.retryDetails(); }} className="mt-4">
+              {t('modpacks.retry_details') || 'Retry details'}
+            </Button>
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+            <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
               <div className="flex min-h-full flex-col gap-6 p-6 pb-8">
-                <section
-                  className="surface-card grid gap-3 overflow-hidden p-4 sm:p-5 lg:grid-cols-[minmax(0,1fr)_15rem] lg:items-start"
-                  data-testid="modpack-details-hero"
-                >
-                  <ModpackDetailsHeader
-                    modpackName={modpack.name}
-                    metadata={metadata}
-                    runtimeSummary={runtimeSummary}
-                    activeTab={activeTab}
-                    onTabChange={setActiveTab}
-                    t={t}
-                    getAccentStyles={getAccentStyles}
-                    getAccentHex={getAccentHex}
-                  />
-
-                  <ModpackDetailsActions
-                    onLaunch={async () => {
-                      await select(modpackId);
-                      onBack();
-                      // Defer launch to next tick so ModpackContext has time to update config
-                      if (onLaunch) setTimeout(() => onLaunch(), 0);
-                    }}
-                    hasUpdate={!!availableUpdate}
-                    onShowUpdate={() => setShowUpdateModal(true)}
-                    updateVersionSummary={updateVersionSummary}
-                    onRename={handleRename}
-                    onDuplicate={handleDuplicate}
-                    onExport={() => onNavigate({ type: 'export', modpackId })}
-                    canDelete={modpacks.length > 1}
-                    onDelete={handleDelete}
-                    t={t}
-                    getAccentStyles={getAccentStyles}
-                  />
-                </section>
+                <ModpackDetailsOperationNotices
+                  {...controller.operationNotices}
+                  t={t}
+                />
+                <ModpackDetailsOverview
+                  header={{
+                    modpackName: modpack.name,
+                    metadata: overview.metadata,
+                    runtimeSummary: overview.runtimeSummary,
+                    activeTab: selectedTab,
+                    onTabChange: setActiveTab,
+                    t,
+                    getAccentStyles,
+                    getAccentHex,
+                  }}
+                  actions={{
+                    canDelete: controller.actions.canDelete,
+                    getAccentStyles,
+                    onDelete: controller.actions.delete,
+                    onDuplicate: controller.actions.duplicate,
+                    onExport: () => onNavigate({ type: 'export', modpackId }),
+                    onLaunch: controller.actions.launch,
+                    onRename: controller.actions.rename,
+                    onRetryUpdate: controller.retryUpdate,
+                    onShowUpdate: controller.actions.showUpdate,
+                    t,
+                    updateState: controller.updateState,
+                    updateVersionSummary: controller.actions.updateVersionSummary,
+                  }}
+                />
 
                 <div
                   className={cn(
                     'min-w-0',
-                    secondarySurfaceTab ? MODPACK_SECONDARY_CONTENT_WORKSPACE.host : 'surface-panel p-4 sm:p-5',
+                    secondarySurfaceTab
+                      ? MODPACK_SECONDARY_CONTENT_WORKSPACE.host
+                      : 'surface-panel p-4 sm:p-5',
                   )}
                   data-testid="modpack-details-content-host"
                   data-content-surface={secondarySurfaceTab ? 'secondary' : 'primary'}
                   data-secondary-content-workspace={secondarySurfaceTab ? 'shared' : undefined}
                 >
-                  {activeTab === 'info' && (
+                  {selectedTab === 'info' && (
                     <ModpackDetailsInfoTab
-                      descriptionDraft={descriptionDraft}
-                      onDescriptionChange={setDescriptionDraft}
-                      onSaveDescription={handleSaveDescription}
-                      metadata={metadata}
-                      runtimeSummary={runtimeSummary}
+                      descriptionDraft={controller.description.draft}
+                      onDescriptionChange={controller.description.setDraft}
+                      onSaveDescription={controller.description.save}
+                      metadata={overview.metadata}
+                      runtimeSummary={overview.runtimeSummary}
                       t={t}
                     />
                   )}
 
-                  {activeTab === 'mods' && hasModloader && (
+                  {selectedTab === 'mods' && hasModloader && (
                     <ModpackDetailsModsTab
-                      mods={mods}
-                      loadingMods={loadingMods}
+                      mods={modsController.mods}
+                      loadingMods={modsController.loading}
                       initialExpandedModId={initialExpandedModId}
-                      modSearchQuery={modSearchQuery}
-                      onModSearchQueryChange={setModSearchQuery}
-                      modFilterStatus={modFilterStatus}
-                      onModFilterStatusChange={setModFilterStatus}
+                      modSearchQuery={modsController.searchQuery}
+                      onModSearchQueryChange={modsController.setSearchQuery}
+                      modFilterStatus={modsController.filterStatus}
+                      onModFilterStatusChange={modsController.setFilterStatus}
                       onAddMod={() => onNavigate({ type: 'addMod', modpackId })}
-                      onRemoveMod={handleRemoveMod}
-                      onModToggle={handleModToggle}
-                      onRefresh={loadMods}
+                      onRemoveMod={modsController.remove}
+                      onModToggle={modsController.toggle}
+                      onRefresh={modsController.load}
                       runtimeContext={{
-                        minecraft: runtimeSummary.minecraftVersion || undefined,
-                        modLoader: runtimeSummary.modLoader,
+                        minecraft: overview.runtimeSummary.minecraftVersion || undefined,
+                        modLoader: overview.runtimeSummary.modLoader,
                       }}
                       t={t}
                       getAccentStyles={getAccentStyles}
                     />
                   )}
 
-                  {activeTab === 'resourcepacks' && modpack && (
+                  {selectedTab === 'resourcepacks' && (
                     <ResourcePacksTab
                       instanceId={modpackId}
-                      onUpdate={refresh}
+                      onUpdate={controller.config.load}
                       onAddResourcePack={() => onNavigate({ type: 'addResourcePack', modpackId })}
                     />
                   )}
 
-                  {activeTab === 'shaders' && modpack && (
+                  {selectedTab === 'shaders' && (
                     <ShadersTab
                       instanceId={modpackId}
-                      runtimeSummary={runtimeSummary}
-                      onUpdate={refresh}
+                      runtimeSummary={overview.runtimeSummary}
+                      onUpdate={controller.config.load}
                       onAddShader={() => onNavigate({ type: 'addShader', modpackId })}
                     />
                   )}
 
-                  {activeTab === 'worlds' && modpack && (
+                  {selectedTab === 'worlds' && (
                     <WorldsTab
                       instanceId={modpackId}
-                      mcVersion={runtimeSummary.minecraftVersion || undefined}
-                      onUpdate={refresh}
+                      mcVersion={overview.runtimeSummary.minecraftVersion || undefined}
+                      onUpdate={controller.config.load}
                     />
                   )}
 
-                  {activeTab === 'screenshots' && modpack && (
-                    <ScreenshotsTab
-                      instanceId={modpackId}
-                    />
-                  )}
+                  {selectedTab === 'screenshots' && <ScreenshotsTab instanceId={modpackId} />}
 
-                  {activeTab === 'settings' && (
+                  {selectedTab === 'settings' && (
                     <ModpackDetailsSettingsTab
-                      effectiveConfig={effectiveConfig}
-                      runtimeSummary={runtimeSummary}
-                      setters={setters}
-                      versions={versions}
-                      forgeVersions={forgeVersions}
-                      fabricVersions={fabricVersions}
-                      neoForgeVersions={neoForgeVersions}
-                      optiFineVersions={optiFineVersions}
-                      onRefresh={async () => {
-                        await refresh();
-                        await loadModpackConfig();
-                      }}
+                      effectiveConfig={controller.config.effectiveConfig}
+                      runtimeSummary={overview.runtimeSummary}
+                      setters={controller.config.setters}
+                      versions={controller.catalogs.versions}
+                      forgeVersions={controller.catalogs.forgeVersions}
+                      fabricVersions={controller.catalogs.fabricVersions}
+                      neoForgeVersions={controller.catalogs.neoForgeVersions}
+                      optiFineVersions={controller.catalogs.optiFineVersions}
+                      onRefresh={controller.config.load}
                       t={t}
                       getAccentStyles={getAccentStyles}
                     />
                   )}
                 </div>
-
               </div>
             </div>
           </div>
         )}
 
-        {showUpdateModal && availableUpdate && (
+        {controller.updateDialog.isOpen && controller.updateDialog.availableUpdate && (
           <ModpackUpdateModal
             modpackId={modpackId}
-            sourceId={availableUpdate.sourceId}
-            source={availableUpdate.source}
-            currentVersion={availableUpdate.currentVersion}
-            isOpen={showUpdateModal}
-            onClose={() => setShowUpdateModal(false)}
-            onUpdated={async () => {
-              await refresh();
-              await loadDetails();
-              setShowUpdateModal(false);
-            }}
+            sourceId={controller.updateDialog.availableUpdate.sourceId}
+            source={controller.updateDialog.availableUpdate.source}
+            currentVersion={controller.updateDialog.availableUpdate.currentVersion}
+            isOpen={controller.updateDialog.isOpen}
+            onClose={controller.updateDialog.close}
+            onUpdated={controller.updateDialog.updated}
           />
         )}
       </div>

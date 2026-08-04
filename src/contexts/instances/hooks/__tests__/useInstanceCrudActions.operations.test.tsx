@@ -1,10 +1,9 @@
 // @vitest-environment jsdom
 
 import { act, renderHook, waitFor } from '@testing-library/react';
-import type { Dispatch, SetStateAction } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { OperationResult, OperationSnapshot } from '@shared/contracts';
-import type { ModpackConfig } from '../../types';
+import type { OperationTerminalEvent } from '../../../../features/operations/hooks/useOperationSession';
 import ipcChannels from '../../../../../shared/contracts/ipcChannels.ts?raw';
 import instanceImporterService from '../../../../../electron/services/instances/importer/InstanceImporterService.ts?raw';
 import instancesIPC from '../../../../services/ipc/instancesIPC.ts?raw';
@@ -21,6 +20,7 @@ const mocked = vi.hoisted(() => ({
   select: vi.fn(),
   start: vi.fn(),
   subscribe: vi.fn(),
+  cancel: vi.fn(),
 }));
 
 vi.mock('../../../../services/ipc/instancesIPC', () => ({
@@ -40,6 +40,7 @@ vi.mock('../../../../services/ipc/operationsIPC', () => ({
   operationsIPC: {
     start: mocked.start,
     subscribe: mocked.subscribe,
+    cancel: mocked.cancel,
   },
 }));
 
@@ -62,7 +63,6 @@ describe('useInstanceCrudActions duplicate operation', () => {
     snapshot('cancelled', { status: 'cancelled' }),
     snapshot('failed', { status: 'failed', code: 'COPY_FAILED', message: 'Copy failed' }),
     snapshot('degraded', { status: 'degraded', missing: ['optional-item'] }),
-    snapshot('recovered', { status: 'recovered' }),
   ])('keeps the typed %s duplicate state in place without optimistic selection or reload', async (nextSnapshot) => {
     const { result, refresh, loadSelected } = renderActions();
     let listener: ((value: OperationSnapshot) => void) | undefined;
@@ -72,7 +72,7 @@ describe('useInstanceCrudActions duplicate operation', () => {
       return vi.fn();
     });
 
-    let operation: Promise<void> | undefined;
+    let operation: Promise<OperationTerminalEvent | null> | undefined;
     act(() => {
       operation = result.current.duplicate('source-pack', 'Copy');
     });
@@ -97,6 +97,27 @@ describe('useInstanceCrudActions duplicate operation', () => {
     expect(loadSelected).not.toHaveBeenCalled();
   });
 
+  it('invalidates but does not select a recovered duplicate without a selectable instance ID', async () => {
+    const { result, refresh } = renderActions();
+    let listener: ((value: OperationSnapshot) => void) | undefined;
+    mocked.start.mockResolvedValue(started);
+    mocked.subscribe.mockImplementation(async (_operationId: string, nextListener: (value: OperationSnapshot) => void) => {
+      listener = nextListener;
+      return vi.fn();
+    });
+
+    let operation: Promise<OperationTerminalEvent | null> | undefined;
+    act(() => { operation = result.current.duplicate('source-pack', 'Copy'); });
+    await waitFor(() => expect(listener).toBeTypeOf('function'));
+    await act(async () => {
+      listener?.(snapshot('recovered', { status: 'recovered' }));
+      await operation;
+    });
+
+    expect(mocked.select).not.toHaveBeenCalled();
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
   it.each(['succeeded', 'recovered'] as const)('keeps %s feedback and selects its published instance value', async (status) => {
     const { result } = renderActions();
     let listener: ((value: OperationSnapshot) => void) | undefined;
@@ -106,7 +127,7 @@ describe('useInstanceCrudActions duplicate operation', () => {
       return vi.fn();
     });
 
-    let operation: Promise<void> | undefined;
+    let operation: Promise<OperationTerminalEvent | null> | undefined;
     act(() => {
       operation = result.current.duplicate('source-pack', 'Copy');
     });
@@ -183,23 +204,34 @@ describe('useInstanceCrudActions delete operation', () => {
       return vi.fn();
     });
 
-    let operation: Promise<void> | undefined;
+    let operation: Promise<OperationTerminalEvent | null> | undefined;
+    let completion: OperationTerminalEvent | null | undefined;
     act(() => { operation = result.current.remove('source-pack'); });
     await waitFor(() => expect(mocked.start).toHaveBeenCalledWith({ kind: 'delete', instanceId: 'source-pack' }));
-    await act(async () => { listener?.(nextSnapshot); if (isTerminal(nextSnapshot)) await operation; });
+    await act(async () => {
+      listener?.(nextSnapshot);
+      if (isTerminal(nextSnapshot)) completion = await operation;
+    });
 
     expect((result.current as HookResult).deleteOperation).toEqual(nextSnapshot);
     if (nextSnapshot.status === 'succeeded' || nextSnapshot.status === 'recovered') {
       expect(refresh).toHaveBeenCalledTimes(1);
       expect(loadSelected).toHaveBeenCalledTimes(1);
+      expect(completion?.classification.mayCloseSurface).toBe(true);
     } else {
       expect(refresh).not.toHaveBeenCalled();
       expect(loadSelected).not.toHaveBeenCalled();
+      if (isTerminal(nextSnapshot)) expect(completion?.classification.mayCloseSurface).toBe(false);
     }
   });
 
   it('has no legacy delete chain outside the operation adapter', () => {
     expect(findLegacyDeleteReferences()).toEqual([]);
+  });
+
+  it('delegates all operation subscription ownership to the shared session', () => {
+    expect(crudActions).toContain('useOperationSession');
+    expect(crudActions).not.toMatch(/operationsIPC|\.subscribe\s*\(/);
   });
 
   it('uses the exact delete operation unsubscribe once when the hook unmounts', async () => {
@@ -217,15 +249,9 @@ describe('useInstanceCrudActions delete operation', () => {
 });
 
 function renderActions() {
-  const refresh = vi.fn().mockResolvedValue(undefined);
-  const loadSelected = vi.fn().mockResolvedValue(undefined);
-  const setConfig = vi.fn() as unknown as Dispatch<SetStateAction<ModpackConfig | null>>;
+  const invalidateInstances = vi.fn().mockResolvedValue(undefined);
   const { result, unmount } = renderHook(() => useInstanceCrudActions({
-    selectedId: 'source-pack',
-    setSelectedId: vi.fn(),
-    setConfig,
-    refresh,
-    loadSelected,
+    invalidateInstances,
   }));
 
   mocked.select.mockResolvedValue({ ok: true, value: { status: 'committed', selectedId: 'published-pack', instances: [] } });
@@ -240,7 +266,12 @@ function renderActions() {
     },
   });
 
-  return { result, unmount, refresh, loadSelected };
+  return {
+    result,
+    unmount,
+    refresh: invalidateInstances,
+    loadSelected: invalidateInstances,
+  };
 }
 
 function snapshot(status: OperationSnapshot['status'], result?: OperationResult): OperationSnapshot {

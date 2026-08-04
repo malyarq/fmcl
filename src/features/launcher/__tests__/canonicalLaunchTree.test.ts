@@ -15,19 +15,25 @@ import {
 } from '../services/launcherService';
 
 const mocked = vi.hoisted(() => ({
-  setRuntimeMinecraft: vi.fn(),
-  setRuntimeLoader: vi.fn(),
-  patchConfig: vi.fn(),
+  setRuntimeMinecraft: vi.fn().mockResolvedValue(undefined),
+  setRuntimeLoader: vi.fn().mockResolvedValue(undefined),
+  patchConfig: vi.fn().mockResolvedValue(undefined),
   config: {
     runtime: { minecraft: '1.20.1', modLoader: { type: 'forge' as const } },
     game: { useOptiFine: true },
   },
 }));
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpack: () => ({
-    config: mocked.config,
-    isReady: true,
+vi.mock('../../instances/hooks/useEffectiveInstance', () => ({
+  useEffectiveInstance: () => ({
+    status: 'ready',
+    data: { id: 'alpha', snapshot: mocked.config },
+  }),
+}));
+
+vi.mock('../../instances/hooks/useInstanceConfigCommands', () => ({
+  dispatchInstanceConfigCommand: (command: Promise<void>) => { void command; },
+  useInstanceConfigCommands: () => ({
     setRuntimeMinecraft: mocked.setRuntimeMinecraft,
     setRuntimeLoader: mocked.setRuntimeLoader,
     patchConfig: mocked.patchConfig,

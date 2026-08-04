@@ -34,18 +34,30 @@ vi.mock('../../../hooks/useDebounce', () => ({
   useDebounce: <T,>(value: T) => value,
 }));
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpackListContext: () => ({
-    modpacks: [
-      { id: 'alpha', name: 'Dense Alpha Pack' },
-      { id: 'beta', name: 'Secondary Archive Pack with Old Save Compatibility' },
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceList: () => ({
+    status: 'ready',
+    data: [
+      { id: 'alpha', name: 'Dense Alpha Pack for Fourteen Players and Three Runtime Profiles', selected: false, summary: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } } },
+      { id: 'beta', name: 'Secondary Archive Pack with Old Save Compatibility', selected: true, summary: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } } },
     ],
-    selectedId: selectedIdState,
+  }),
+  useSelectedInstanceId: () => ({ status: 'ready', data: selectedIdState }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: vi.fn(),
+    invalidateInstances: (...args: unknown[]) => refreshMock(...args),
+  }),
+}));
+
+vi.mock('../../../contexts/instances/hooks/useInstanceCrudActions', () => ({
+  useInstanceCrudActions: () => ({
     select: (...args: unknown[]) => selectMock(...args),
     remove: vi.fn(),
     rename: vi.fn(),
     duplicate: vi.fn(),
-    refresh: (...args: unknown[]) => refreshMock(...args),
   }),
 }));
 

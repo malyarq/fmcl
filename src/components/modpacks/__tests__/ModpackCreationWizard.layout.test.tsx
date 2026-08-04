@@ -32,9 +32,10 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   }),
 }));
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpack: () => ({
-    refresh: refreshMock,
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: vi.fn(),
+    invalidateInstances: refreshMock,
   }),
 }));
 
@@ -92,11 +93,22 @@ describe('ModpackCreationWizard flow layout', () => {
     refreshMock.mockResolvedValue(undefined);
   });
 
-  it('keeps creation control-plane writes on instancesIPC', async () => {
-    const source = await readFile(`${process.cwd()}/src/components/modpacks/ModpackCreationWizard.tsx`, 'utf8');
+  it('keeps draft, canonical create, runtime and content ownership in focused modules', async () => {
+    const [wizardSource, draftSource, runtimeSource, contentSource] = await Promise.all([
+      readFile(`${process.cwd()}/src/components/modpacks/ModpackCreationWizard.tsx`, 'utf8'),
+      readFile(`${process.cwd()}/src/features/modpacks/hooks/useModpackCreationDraft.ts`, 'utf8'),
+      readFile(`${process.cwd()}/src/components/modpacks/create/CreationRuntimeStep.tsx`, 'utf8'),
+      readFile(`${process.cwd()}/src/components/modpacks/create/CreationContentStep.tsx`, 'utf8'),
+    ]);
 
-    expect(source).toMatch(/instancesIPC\.create/);
-    expect(source).toMatch(/instanceModsIPC\.(list|remove)/);
+    expect(wizardSource).not.toMatch(/localStorage|instancesIPC|instanceModsIPC|AddModModal/);
+    expect(wizardSource).toMatch(/useModpackCreationDraft/);
+    expect(draftSource).toMatch(/localStorage/);
+    expect(draftSource).toMatch(/instancesIPC\.create/);
+    expect(runtimeSource).toMatch(/ModloaderSection/);
+    expect(contentSource).toMatch(/AddModModal/);
+    expect(contentSource).toMatch(/instanceModsIPC\.(list|remove)/);
+    expect(contentSource).not.toMatch(/defaultMCVersion|defaultLoader/);
   });
 
   it('keeps the wizard action block inside the main content flow as a card section', () => {

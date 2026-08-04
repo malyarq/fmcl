@@ -1,15 +1,16 @@
 // @vitest-environment jsdom
 
-import { readFile } from 'node:fs/promises';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OperationSnapshot } from '@shared/contracts';
 import { InstallModpackPage } from '../InstallModpackPage';
+import installPageSource from '../InstallModpackPage.tsx?raw';
 
 const startMock = vi.fn();
 const subscribeMock = vi.fn();
 const cancelMock = vi.fn();
 const setSelectedMock = vi.fn();
+const invalidateInstancesMock = vi.fn();
 const successMock = vi.fn();
 let listener: ((snapshot: OperationSnapshot) => void) | undefined;
 let unsubscribeMock: ReturnType<typeof vi.fn>;
@@ -32,6 +33,10 @@ vi.mock('../../../contexts/ToastContext', () => ({
 
 vi.mock('../../../services/ipc/instancesIPC', () => ({
   instancesIPC: { select: (...args: unknown[]) => setSelectedMock(...args) },
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({ invalidateInstances: invalidateInstancesMock }),
 }));
 
 vi.mock('../../../services/ipc/operationsIPC', () => ({
@@ -62,11 +67,13 @@ function snapshot(status: OperationSnapshot['status']): OperationSnapshot {
       : status === 'recovered'
         ? { status: 'recovered', instanceId: 'installed-pack' }
         : status === 'degraded'
-          ? { status: 'degraded', missing: [{ path: 'mods/optional.jar', reason: 'not found' }] }
+          ? { status: 'degraded', instanceId: 'installed-pack', missing: [{ path: 'mods/optional.jar', reason: 'not found' }] }
           : status === 'cancelled'
             ? { status: 'cancelled' }
             : status === 'failed'
               ? { status: 'failed', code: 'download-failed', message: 'Download failed' }
+              : status === 'recovery-required'
+                ? { status: 'recovery-required', message: 'Recovery requires attention' }
               : undefined,
   };
 }
@@ -93,21 +100,17 @@ describe('InstallModpackPage provider operations', () => {
     });
     cancelMock.mockReset().mockResolvedValue({ cancelled: true });
     setSelectedMock.mockReset().mockResolvedValue({ ok: true });
+    invalidateInstancesMock.mockReset().mockResolvedValue(undefined);
     successMock.mockReset();
   });
 
   afterEach(() => vi.useRealTimers());
 
-  it('keeps install completion selection on the canonical instances boundary', async () => {
-    const [page, modal] = await Promise.all([
-      readFile(`${process.cwd()}/src/components/modpacks/InstallModpackPage.tsx`, 'utf8'),
-      readFile(`${process.cwd()}/src/components/modpacks/InstallModpackModal.tsx`, 'utf8'),
-    ]);
-
-    for (const source of [page, modal]) {
-      expect(source).toMatch(/instancesIPC\.select/);
-      expect(source).not.toMatch(/operationsIPC\.select/);
-    }
+  it('keeps install completion on the shared session and canonical instances boundary', () => {
+    expect(installPageSource).toMatch(/useOperationSession/);
+    expect(installPageSource).toMatch(/instancesIPC\.select/);
+    expect(installPageSource).toMatch(/invalidateInstances/);
+    expect(installPageSource).not.toMatch(/useProviderInstallOperation|operationsIPC|\.subscribe\s*\(|location\.reload/);
   });
 
   it('keeps one operation id, renders truthful terminal states, and unsubscribes once', async () => {
@@ -126,12 +129,13 @@ describe('InstallModpackPage provider operations', () => {
 
     expect(successMock).not.toHaveBeenCalled();
     expect(setSelectedMock).not.toHaveBeenCalled();
+    expect(invalidateInstancesMock).not.toHaveBeenCalled();
     expect(unsubscribeMock).toHaveBeenCalledTimes(1);
     unmount();
     expect(unsubscribeMock).toHaveBeenCalledTimes(1);
   });
 
-  it.each(['cancelled', 'degraded', 'recovered', 'succeeded'] as const)(
+  it.each(['cancelled', 'degraded', 'recovery-required', 'recovered', 'succeeded'] as const)(
     'renders %s without reporting a false success',
     async (status) => {
       renderPage();
@@ -140,11 +144,17 @@ describe('InstallModpackPage provider operations', () => {
       act(() => listener?.(snapshot(status)));
 
       expect(screen.getByTestId('provider-install-operation').getAttribute('data-operation-status')).toBe(status);
-      if (status === 'cancelled' || status === 'degraded') {
+      if (status === 'cancelled' || status === 'degraded' || status === 'recovery-required') {
         expect(successMock).not.toHaveBeenCalled();
         expect(setSelectedMock).not.toHaveBeenCalled();
+        if (status === 'degraded') {
+          await waitFor(() => expect(invalidateInstancesMock).toHaveBeenCalledTimes(1));
+        } else {
+          expect(invalidateInstancesMock).not.toHaveBeenCalled();
+        }
       } else {
         await waitFor(() => expect(setSelectedMock).toHaveBeenCalledWith({ id: 'installed-pack' }));
+        expect(invalidateInstancesMock).toHaveBeenCalledTimes(1);
       }
     },
   );

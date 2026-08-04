@@ -21,7 +21,14 @@ const ModpackRouter = lazy(() =>
 );
 
 function RouteLoadingState() {
-  return <div role="status" aria-label="Loading" className="min-h-12 w-full animate-pulse bg-background/30" />;
+  return (
+    <div
+      role="status"
+      aria-label="Loading"
+      aria-live="polite"
+      className="min-h-12 w-full animate-pulse bg-background/30"
+    />
+  );
 }
 
 export type AppLayoutProps = {

@@ -1,18 +1,20 @@
 import type { ReactNode } from 'react';
 import { SettingsProvider } from '../contexts/SettingsContext';
-import { ModpackProvider } from '../contexts/ModpackContext';
 import { ToastProvider } from '../contexts/ToastContext';
 import { ConfirmProvider } from '../contexts/ConfirmContext';
+import { InstanceQueryProvider } from '../features/instances/InstanceQueryProvider';
+import { OperationRecoveryProvider } from '../features/operations/recovery/OperationRecoveryProvider';
 
 export function AppProviders(props: { children: ReactNode }) {
   return (
     <SettingsProvider>
-      <ModpackProvider>
+      <InstanceQueryProvider>
         <ToastProvider>
-          <ConfirmProvider>{props.children}</ConfirmProvider>
+          <ConfirmProvider>
+            <OperationRecoveryProvider>{props.children}</OperationRecoveryProvider>
+          </ConfirmProvider>
         </ToastProvider>
-      </ModpackProvider>
+      </InstanceQueryProvider>
     </SettingsProvider>
   );
 }
-

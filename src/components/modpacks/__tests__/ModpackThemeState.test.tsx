@@ -46,18 +46,30 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   }),
 }));
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpackListContext: () => ({
-    modpacks: [
-      { id: 'alpha', name: 'Alpha Pack' },
-      { id: 'beta', name: 'Beta Pack' },
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceList: () => ({
+    status: 'ready',
+    data: [
+      { id: 'alpha', name: 'Alpha Pack', selected: true, summary: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } } },
+      { id: 'beta', name: 'Beta Pack', selected: false, summary: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } } },
     ],
-    selectedId: selectedIdState,
+  }),
+  useSelectedInstanceId: () => ({ status: 'ready', data: selectedIdState }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: vi.fn(),
+    invalidateInstances: (...args: unknown[]) => refreshMock(...args),
+  }),
+}));
+
+vi.mock('../../../contexts/instances/hooks/useInstanceCrudActions', () => ({
+  useInstanceCrudActions: () => ({
     select: (...args: unknown[]) => selectMock(...args),
     remove: vi.fn(),
     rename: vi.fn(),
     duplicate: vi.fn(),
-    refresh: (...args: unknown[]) => refreshMock(...args),
   }),
 }));
 

@@ -10,6 +10,8 @@ const searchModsMock = vi.fn();
 const getModVersionsMock = vi.fn();
 const getMetadataMock = vi.fn();
 const getConfigMock = vi.fn();
+const invalidateInstanceMock = vi.fn();
+const snapshotMock = vi.fn();
 const t = createTranslator('en');
 const marketplaceFramingPattern = /\b(marketplace|wishlist|store|storefront)\b/i;
 
@@ -45,6 +47,24 @@ vi.mock('../../../contexts/ToastContext', () => ({
   }),
 }));
 
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceSnapshot: () => ({
+    status: 'ready',
+    data: {
+      id: 'alpha',
+      name: 'Alpha Pack',
+      runtime: { minecraft: '1.20.1', modLoader: { type: 'fabric' } },
+    },
+  }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: invalidateInstanceMock,
+    invalidateInstances: vi.fn(),
+  }),
+}));
+
 vi.mock('../../../hooks/useDebounce', () => ({
   useDebounce: <T,>(value: T) => value,
 }));
@@ -57,6 +77,15 @@ vi.mock('../../../services/ipc/modsIPC', () => ({
   },
 }));
 
+vi.mock('../../../contexts/instances/services/instancesService', () => ({
+  fetchModpackMetadata: (...args: unknown[]) => getMetadataMock(...args),
+  fetchModpackConfig: (...args: unknown[]) => getConfigMock(...args),
+}));
+
+vi.mock('../../../services/ipc/instancesIPC', () => ({
+  instancesIPC: { snapshot: (...args: unknown[]) => snapshotMock(...args) },
+}));
+
 describe('Add-mod placeholder truth', () => {
   beforeEach(() => {
     mockMatchMedia();
@@ -64,6 +93,9 @@ describe('Add-mod placeholder truth', () => {
     getModVersionsMock.mockReset();
     getMetadataMock.mockReset();
     getConfigMock.mockReset();
+    invalidateInstanceMock.mockReset();
+    invalidateInstanceMock.mockResolvedValue(undefined);
+    snapshotMock.mockReset();
 
     getMetadataMock.mockResolvedValue({
       id: 'alpha',
@@ -80,6 +112,16 @@ describe('Add-mod placeholder truth', () => {
       runtime: {
         minecraft: '1.20.1',
         modLoader: { type: 'fabric' },
+      },
+    });
+    snapshotMock.mockResolvedValue({
+      ok: true,
+      value: {
+        id: 'alpha',
+        name: 'Alpha Pack',
+        metadata: { source: 'local', createdAt: '2026-04-13T00:00:00.000Z', updatedAt: '2026-04-13T00:00:00.000Z' },
+        config: { runtime: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } } },
+        summary: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } },
       },
     });
   });
@@ -123,8 +165,7 @@ describe('Add-mod placeholder truth', () => {
     await waitFor(() => {
       expect(
         within(results).getByText((_, element) => (
-          element?.tagName === 'P'
-          && (element.textContent ?? '').includes('1.2.0 (1.20.1)')
+          (element?.textContent ?? '') === '1.2.0 (1.20.1)'
         )),
       ).toBeTruthy();
     });

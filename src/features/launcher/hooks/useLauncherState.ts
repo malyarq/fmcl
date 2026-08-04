@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { RefObject } from 'react';
-import { useModpack } from '../../../contexts/ModpackContext';
 import type { ModLoaderType } from '../../../contexts/instances/types';
+import {
+  dispatchInstanceConfigCommand,
+  useInstanceConfigCommands,
+} from '../../instances/hooks/useInstanceConfigCommands';
+import { useEffectiveInstance } from '../../instances/hooks/useEffectiveInstance';
 import {
   computeLaunchVersion,
   isLoaderSupported,
@@ -24,13 +28,11 @@ export function useLauncherState(params: LauncherVersionInventory) {
   const { forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions } = params;
   const [nickname, setNickname] = useState(loadPlayerNickname);
   const [isOffline, setIsOffline] = useState(() => !navigator.onLine);
-  const {
-    config: instanceConfig,
-    isReady,
-    setRuntimeMinecraft,
-    setRuntimeLoader,
-    patchConfig,
-  } = useModpack();
+  const effectiveInstance = useEffectiveInstance();
+  const isReady = effectiveInstance.status === 'ready';
+  const instanceConfig = isReady ? effectiveInstance.data.snapshot : null;
+  const commands = useInstanceConfigCommands(isReady ? effectiveInstance.data.id : null);
+  const { setRuntimeMinecraft, setRuntimeLoader, patchConfig } = commands;
 
   useEffect(() => savePlayerNickname(nickname), [nickname]);
 
@@ -52,26 +54,36 @@ export function useLauncherState(params: LauncherVersionInventory) {
   const useNeoForge = loaderType === 'neoforge';
   const useOptiFine = Boolean(instanceConfig?.game?.useOptiFine);
 
-  const setVersion = useCallback((next: string) => setRuntimeMinecraft(next), [setRuntimeMinecraft]);
-  const setUseForge = useCallback((enabled: boolean) => setRuntimeLoader(enabled ? 'forge' : 'vanilla'), [setRuntimeLoader]);
-  const setUseFabric = useCallback((enabled: boolean) => setRuntimeLoader(enabled ? 'fabric' : 'vanilla'), [setRuntimeLoader]);
-  const setUseNeoForge = useCallback((enabled: boolean) => setRuntimeLoader(enabled ? 'neoforge' : 'vanilla'), [setRuntimeLoader]);
+  const setVersion = useCallback((next: string) => {
+    dispatchInstanceConfigCommand(setRuntimeMinecraft(next));
+  }, [setRuntimeMinecraft]);
+  const setUseForge = useCallback((enabled: boolean) => {
+    dispatchInstanceConfigCommand(setRuntimeLoader(enabled ? 'forge' : 'vanilla'));
+  }, [setRuntimeLoader]);
+  const setUseFabric = useCallback((enabled: boolean) => {
+    dispatchInstanceConfigCommand(setRuntimeLoader(enabled ? 'fabric' : 'vanilla'));
+  }, [setRuntimeLoader]);
+  const setUseNeoForge = useCallback((enabled: boolean) => {
+    dispatchInstanceConfigCommand(setRuntimeLoader(enabled ? 'neoforge' : 'vanilla'));
+  }, [setRuntimeLoader]);
   const setLoader = useCallback((loader: Exclude<LoaderType, 'quilt'>) => {
-    setRuntimeLoader(loader as ModLoaderType);
+    dispatchInstanceConfigCommand(setRuntimeLoader(loader as ModLoaderType));
   }, [setRuntimeLoader]);
   const setUseOptiFine = useCallback((enabled: boolean) => {
     if (!instanceConfig) return;
-    patchConfig({
+    dispatchInstanceConfigCommand(patchConfig({
       game: {
         ...(instanceConfig.game ?? {}),
         useOptiFine: enabled,
       },
-    });
+    }));
   }, [instanceConfig, patchConfig]);
 
   useEffect(() => {
     if (!isLoaderSupported({ loaderType, mcVersion: version, forgeVersions, fabricVersions, neoForgeVersions })) {
-      const timeout = window.setTimeout(() => setRuntimeLoader('vanilla'), 0);
+      const timeout = window.setTimeout(() => {
+        dispatchInstanceConfigCommand(setRuntimeLoader('vanilla'));
+      }, 0);
       return () => window.clearTimeout(timeout);
     }
   }, [fabricVersions, forgeVersions, loaderType, neoForgeVersions, setRuntimeLoader, version]);

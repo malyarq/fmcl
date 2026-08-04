@@ -1,13 +1,27 @@
 // @vitest-environment jsdom
 
 import type { ComponentProps } from 'react';
+import { readFile } from 'node:fs/promises';
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SimplePlayDashboard } from '../SimplePlayDashboard';
 import { APP_ICON_PATH } from '../../app/assets/branding';
+import { ModpackNavigationProvider } from '../../features/modpacks/navigation/ModpackNavigationProvider';
 
 const setModeMock = vi.fn();
-const snapshotMock = vi.fn();
+const invalidateInstanceMock = vi.fn();
+let effectiveInstanceState: {
+  status: 'ready';
+  data: {
+    id: string;
+    snapshot: {
+      id: string;
+      name: string;
+      runtime: { minecraft: string; modLoader?: { type: 'fabric'; version?: string } };
+      memory?: { maxMb: number };
+    };
+  };
+};
 
 vi.mock('../../contexts/SettingsContext', () => ({
   useSettings: () => ({
@@ -45,13 +59,14 @@ vi.mock('../../contexts/SettingsContext', () => ({
   }),
 }));
 
-vi.mock('../../contexts/ModpackContext', () => ({
-  useModpack: () => ({
-    effectiveModpackId: 'classic-pack',
-    config: { runtime: { minecraft: '1.20.1' } },
+vi.mock('../../features/instances/hooks/useEffectiveInstance', () => ({
+  useEffectiveInstance: () => effectiveInstanceState,
+}));
+
+vi.mock('../../features/instances/hooks/useInstanceConfigCommands', () => ({
+  useInstanceConfigCommands: () => ({
     setMemoryGb: vi.fn(),
     setMinMemoryGb: vi.fn(),
-    setJavaPath: vi.fn(),
     setVmOptions: vi.fn(),
     setGameExtraArgs: vi.fn(),
     setGameResolution: vi.fn(),
@@ -59,10 +74,17 @@ vi.mock('../../contexts/ModpackContext', () => ({
   }),
 }));
 
-vi.mock('../../services/ipc/instancesIPC', () => ({
-  instancesIPC: {
-    snapshot: (...args: unknown[]) => snapshotMock(...args),
-  },
+vi.mock('../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: (...args: unknown[]) => invalidateInstanceMock(...args),
+    invalidateInstances: vi.fn(),
+  }),
+}));
+
+vi.mock('../../features/launcher/hooks/useModSupportedVersions', () => ({
+  useModSupportedVersions: () => ({
+    forgeVersions: [], fabricVersions: [], neoForgeVersions: [], optiFineVersions: [], isLoading: false,
+  }),
 }));
 
 vi.mock('../../services/ipc/resourcePacksIPC', () => ({
@@ -99,30 +121,36 @@ vi.mock('../modpacks/details/WorldsTab', () => ({
   WorldsTab: () => <div>Worlds tab</div>,
 }));
 
-function renderDashboard(runtimeOverrides: Partial<ComponentProps<typeof SimplePlayDashboard>['runtime']> = {}) {
+function renderDashboard(
+  runtimeOverrides: Partial<ComponentProps<typeof SimplePlayDashboard>['runtime']> = {},
+  launchOverrides: Partial<ComponentProps<typeof SimplePlayDashboard>['launch']> = {},
+) {
   return render(
-    <SimplePlayDashboard
-      launch={{
-        version: '1.20.1',
-        nickname: 'Steve',
-        loaderType: 'fabric',
-        ram: 6,
-        isOffline: true,
-      }}
-      runtime={{
-        isLaunching: false,
-        progress: 0,
-        launchStage: 'idle',
-        statusText: '',
-        statusDetail: '',
-        onLaunch: vi.fn(),
-        ...runtimeOverrides,
-      }}
-      actions={{
-        onShowMultiplayer: vi.fn(),
-        onShowSettings: vi.fn(),
-      }}
-    />,
+    <ModpackNavigationProvider>
+      <SimplePlayDashboard
+        launch={{
+          version: '1.20.1',
+          nickname: 'Steve',
+          loaderType: 'fabric',
+          ram: 6,
+          isOffline: true,
+          ...launchOverrides,
+        }}
+        runtime={{
+          isLaunching: false,
+          progress: 0,
+          launchStage: 'idle',
+          statusText: '',
+          statusDetail: '',
+          onLaunch: vi.fn(),
+          ...runtimeOverrides,
+        }}
+        actions={{
+          onShowMultiplayer: vi.fn(),
+          onShowSettings: vi.fn(),
+        }}
+      />
+    </ModpackNavigationProvider>,
   );
 }
 
@@ -130,26 +158,20 @@ describe('SimplePlayDashboard launch-state seam', () => {
   beforeEach(() => {
     localStorage.clear();
     setModeMock.mockReset();
-    snapshotMock.mockReset();
-    snapshotMock.mockResolvedValue({
-      ok: true,
-      value: {
+    invalidateInstanceMock.mockReset();
+    invalidateInstanceMock.mockResolvedValue(undefined);
+    effectiveInstanceState = {
+      status: 'ready',
+      data: {
         id: 'classic-pack',
-        name: 'Classic Pack',
-        metadata: {
-          source: 'local',
-          createdAt: '2026-04-14T00:00:00.000Z',
-          updatedAt: '2026-04-14T00:00:00.000Z',
-        },
-        config: {
-          runtime: { minecraftVersion: '1.20.1' },
-        },
-        summary: {
-          minecraftVersion: '1.20.1',
-          modLoader: { type: 'fabric' },
+        snapshot: {
+          id: 'classic-pack',
+          name: 'Classic Pack',
+          runtime: { minecraft: '1.20.1', modLoader: { type: 'fabric', version: '0.16.9' } },
+          memory: { maxMb: 6144 },
         },
       },
-    });
+    };
     window.matchMedia = vi.fn().mockImplementation(() => ({
       matches: false,
       addEventListener: vi.fn(),
@@ -157,6 +179,24 @@ describe('SimplePlayDashboard launch-state seam', () => {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     })) as typeof window.matchMedia;
+  });
+
+  it('keeps canonical controller ownership in the route and focused behavior in child surfaces', async () => {
+    const [dashboard, hero, launchRail, advanced, content] = await Promise.all([
+      readFile(`${process.cwd()}/src/components/SimplePlayDashboard.tsx`, 'utf8'),
+      readFile(`${process.cwd()}/src/components/simple-play/ClassicHero.tsx`, 'utf8'),
+      readFile(`${process.cwd()}/src/components/simple-play/ClassicLaunchRail.tsx`, 'utf8'),
+      readFile(`${process.cwd()}/src/components/simple-play/ClassicAdvancedSettings.tsx`, 'utf8'),
+      readFile(`${process.cwd()}/src/components/simple-play/ClassicContentTabs.tsx`, 'utf8'),
+    ]);
+
+    expect(dashboard).toMatch(/useEffectiveInstance/);
+    expect(dashboard).toMatch(/useInstanceConfigCommands/);
+    expect(dashboard).not.toMatch(/useModpack\(\)|instancesIPC|metadata/);
+    expect(hero).toMatch(/dashboard-launcher-mark/);
+    expect(launchRail).toMatch(/ProgressBar/);
+    expect(advanced).toMatch(/GameTab/);
+    expect(content).toMatch(/ModsTab/);
   });
 
   it('shows waiting-stage progress and disables route actions while the launcher is busy', () => {
@@ -194,7 +234,11 @@ describe('SimplePlayDashboard launch-state seam', () => {
   });
 
   it('keeps the classic surface oriented around pack context with only the restrained app icon', async () => {
-    const { container } = renderDashboard();
+    const { container } = renderDashboard({}, {
+      version: '1.12.2',
+      loaderType: 'vanilla',
+      ram: 2,
+    });
 
     const heroImage = await screen.findByTestId('dashboard-launcher-mark');
     expect(heroImage.getAttribute('data-brand-role')).toBe('app-icon');
@@ -203,12 +247,12 @@ describe('SimplePlayDashboard launch-state seam', () => {
     expect(container.querySelector('[data-brand-wordmark]')).toBeNull();
     expect(screen.getByText('Classic Pack')).toBeTruthy();
     expect(screen.queryByText('1.12.2')).toBeNull();
-    expect(screen.getAllByText('Fabric').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Fabric/).length).toBeGreaterThan(0);
     expect(screen.queryByText('Vanilla')).toBeNull();
     expect(screen.getByText('Use the sidebar to choose your version, nickname, and launch settings before you play.')).toBeTruthy();
     expect(screen.queryByTestId('app-update-notification')).toBeNull();
     expect(screen.queryByText('Review update')).toBeNull();
     expect(screen.queryByText('Launcher update available')).toBeNull();
-    expect(snapshotMock).toHaveBeenCalledWith({ id: 'classic-pack' });
+    expect(screen.getByText('6 GB')).toBeTruthy();
   });
 });

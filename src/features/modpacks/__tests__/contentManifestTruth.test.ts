@@ -12,6 +12,7 @@ const installModFileMock = vi.fn();
 const getMetadataMock = vi.fn();
 const getConfigMock = vi.fn();
 const registerModMock = vi.fn();
+const invalidateInstanceMock = vi.fn();
 
 function mockMatchMedia() {
   Object.defineProperty(window, 'matchMedia', {
@@ -63,6 +64,24 @@ vi.mock('../../../contexts/ToastContext', () => ({
   }),
 }));
 
+vi.mock('../../instances/hooks/useInstanceSelectors', () => ({
+  useInstanceSnapshot: () => ({
+    status: 'ready',
+    data: {
+      id: 'alpha',
+      name: 'Alpha Pack',
+      runtime: { minecraft: '1.20.1', modLoader: { type: 'fabric' } },
+    },
+  }),
+}));
+
+vi.mock('../../instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: invalidateInstanceMock,
+    invalidateInstances: vi.fn(),
+  }),
+}));
+
 vi.mock('../../../services/ipc/modsIPC', () => ({
   modsIPC: {
     searchMods: (...args: unknown[]) => searchModsMock(...args),
@@ -92,6 +111,8 @@ describe('guided content manifest truth', () => {
     getMetadataMock.mockReset();
     getConfigMock.mockReset();
     registerModMock.mockReset();
+    invalidateInstanceMock.mockReset();
+    invalidateInstanceMock.mockResolvedValue(undefined);
 
     searchModsMock.mockResolvedValue({
       items: [

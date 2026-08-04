@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ModpackConfig } from '../../../contexts/ModpackContext';
+import type { ModpackConfig } from '../../../contexts/instances/types';
 import { formatArgs, parseArgs } from '../utils/argParser';
 import { RuntimeSection } from './game/RuntimeSection';
 import { ResolutionSection } from './game/ResolutionSection';

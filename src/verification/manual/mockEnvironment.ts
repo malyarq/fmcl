@@ -38,6 +38,13 @@ const PHASE_24_LOCALE_EN_VIEW = 'phase-24-locale-en';
 const PHASE_24_LOCALE_RU_VIEW = 'phase-24-locale-ru';
 const GUIDED_RESOURCEPACKS_RECOVERY_VIEW = 'guided-resourcepacks-recovery';
 const GUIDED_SHADERS_RECOVERY_VIEW = 'guided-shaders-recovery';
+const OPERATION_RECOVERY_VIEW = 'operation-recovery';
+const PHASE_41_OWNERSHIP_EN_VIEW = 'phase-41-ownership-en';
+const PHASE_41_OWNERSHIP_RU_VIEW = 'phase-41-ownership-ru';
+const PHASE_41_RECOVERY_EN_VIEW = 'phase-41-recovery-en';
+const PHASE_41_RECOVERY_RU_VIEW = 'phase-41-recovery-ru';
+const PHASE_41_SURFACES_EN_VIEW = 'phase-41-surfaces-en';
+const PHASE_41_SURFACES_RU_VIEW = 'phase-41-surfaces-ru';
 
 const PHASE_21_DETAIL_VIEWS = new Set([PHASE_21_DETAILS_DENSITY_VIEW, PHASE_21_RUNTIME_EDIT_VIEW]);
 const PHASE_24_CLOSEOUT_VIEWS = new Set([
@@ -58,6 +65,28 @@ const PHASE_24_BROWSER_PROOF_VIEWS = new Set([
   PHASE_24_MODPACKS_CLOSEOUT_VIEW,
   PHASE_24_LOCALE_EN_VIEW,
   PHASE_24_LOCALE_RU_VIEW,
+]);
+const PHASE_41_PROOF_VIEWS = new Set([
+  PHASE_41_OWNERSHIP_EN_VIEW,
+  PHASE_41_OWNERSHIP_RU_VIEW,
+  PHASE_41_RECOVERY_EN_VIEW,
+  PHASE_41_RECOVERY_RU_VIEW,
+  PHASE_41_SURFACES_EN_VIEW,
+  PHASE_41_SURFACES_RU_VIEW,
+]);
+const PHASE_41_RU_VIEWS = new Set([
+  PHASE_41_OWNERSHIP_RU_VIEW,
+  PHASE_41_RECOVERY_RU_VIEW,
+  PHASE_41_SURFACES_RU_VIEW,
+]);
+const RECOVERY_PROOF_VIEWS = new Set([
+  OPERATION_RECOVERY_VIEW,
+  PHASE_41_RECOVERY_EN_VIEW,
+  PHASE_41_RECOVERY_RU_VIEW,
+]);
+const OWNERSHIP_PROOF_VIEWS = new Set([
+  PHASE_41_OWNERSHIP_EN_VIEW,
+  PHASE_41_OWNERSHIP_RU_VIEW,
 ]);
 
 const FIXTURE_NOW_MS = Date.parse('2026-04-19T12:00:00.000Z');
@@ -113,6 +142,22 @@ const baseConfigs: Record<string, ModpackConfig> = {
     createdAt: '2026-04-01T10:00:00.000Z',
     updatedAt: '2026-04-13T08:30:00.000Z',
   },
+  beta: {
+    id: 'beta',
+    name: 'Beta Pack',
+    runtime: {
+      minecraft: '1.21.1',
+      modLoader: { type: 'neoforge', version: '21.1.84' },
+    },
+    memory: { maxMb: 4096, minMb: 2048 },
+    game: {
+      resolution: { width: 1280, height: 720, fullscreen: false },
+      extraArgs: [],
+    },
+    networkMode: 'xmcl_lan',
+    createdAt: '2026-04-02T10:00:00.000Z',
+    updatedAt: '2026-04-14T08:30:00.000Z',
+  },
 };
 
 const baseMetadata: Record<string, ModpackMetadata> = {
@@ -143,6 +188,19 @@ const baseMetadata: Record<string, ModpackMetadata> = {
     author: 'FMCL',
     createdAt: '2026-04-01T10:00:00.000Z',
     updatedAt: '2026-04-13T08:30:00.000Z',
+  },
+  beta: {
+    id: 'beta',
+    name: 'Beta Pack',
+    version: '2.0.0',
+    source: 'local',
+    minecraftVersion: '1.21.1',
+    modLoader: { type: 'neoforge', version: '21.1.84' },
+    iconUrl: ICON_PATH,
+    description: 'Secondary instance fixture for canonical multi-consumer selection proof.',
+    author: 'FMCL',
+    createdAt: '2026-04-02T10:00:00.000Z',
+    updatedAt: '2026-04-14T08:30:00.000Z',
   },
 };
 
@@ -503,6 +561,21 @@ function createShaderAcquisitionResult(): ShaderPackAcquisitionResult {
 }
 
 const modpackVersions: ProviderCatalogVersionDescriptor[] = [
+  {
+    platform: 'modrinth',
+    versionId: 'alpha-pack-1.5.0',
+    name: 'Alpha Pack 1.5.0',
+    versionNumber: '1.5.0',
+    mcVersions: ['1.20.1'],
+    loaders: ['fabric'],
+    changelog: 'Exercises the details update notice and review action in live verification.',
+    files: [
+      {
+        url: 'https://example.invalid/alpha-pack-1.5.0.mrpack',
+        filename: 'alpha-pack-1.5.0.mrpack',
+      },
+    ],
+  },
   {
     platform: 'modrinth',
     versionId: 'alpha-pack-1.4.2',
@@ -902,11 +975,15 @@ function getConfigsForView(view: string): Record<string, ModpackConfig> {
 
 function createState(view: string): ManualState {
   const configs = getConfigsForView(view);
+  const modpacks = [structuredClone(configs.alpha), structuredClone(configs.classic)];
+  if (OWNERSHIP_PROOF_VIEWS.has(view)) {
+    modpacks.push(structuredClone(configs.beta));
+  }
 
   return {
     selectedModpackId: 'alpha',
     selectedAccountId: 'account-1',
-    modpacks: [structuredClone(configs.alpha), structuredClone(configs.classic)],
+    modpacks,
     metadata: getMetadataForView(view),
     accounts: structuredClone(baseAccounts),
   };
@@ -1037,7 +1114,7 @@ export function seedManualVerificationStorage(view: string) {
   const isPhase24LocaleRu = view === PHASE_24_LOCALE_RU_VIEW;
   const seededBrowserResults = getBrowserResultsForView(view);
 
-  localStorage.setItem('settings_language', isPhase17Polish || isPhase22LocaleRu || isPhase24LocaleRu ? 'ru' : 'en');
+  localStorage.setItem('settings_language', isPhase17Polish || isPhase22LocaleRu || isPhase24LocaleRu || PHASE_41_RU_VIEWS.has(view) ? 'ru' : 'en');
   localStorage.setItem('settings_theme', isPhase22ThemeLight || isPhase24ThemeLight ? 'light' : 'dark');
   if (isPhase17Polish || isPhase22ThemeDark || isPhase24ThemeDark) {
     localStorage.setItem('settings_themePresetId', 'forest');
@@ -1045,7 +1122,7 @@ export function seedManualVerificationStorage(view: string) {
     localStorage.removeItem('settings_themePresetId');
   }
   localStorage.setItem('settings_accentColor', isPhase22ThemeLight || isPhase24ThemeLight ? 'rose' : 'emerald');
-  localStorage.setItem('settings_disableAnimations', PHASE_24_CLOSEOUT_VIEWS.has(view) ? 'true' : 'false');
+  localStorage.setItem('settings_disableAnimations', PHASE_24_CLOSEOUT_VIEWS.has(view) || PHASE_41_PROOF_VIEWS.has(view) ? 'true' : 'false');
   localStorage.setItem('settings_minecraftPath', '/mock/.minecraft');
   localStorage.setItem('settings_uiMode', simpleViews.has(view) ? 'simple' : 'modpacks');
   localStorage.setItem('simple_play_welcome_dismissed', 'false');
@@ -1411,6 +1488,16 @@ export function installManualVerificationEnvironment() {
     closeConsole: () => Promise.resolve(),
   };
 
+  const javaRuntime = {
+    scan: async () => [{
+      id: 'manual-java-21',
+      version: '21.0.6',
+      majorVersion: 21,
+      arch: 'arm64',
+    }],
+    select: async () => ({ status: 'selected' as const }),
+  };
+
   let nextOperationId = 0;
   const archiveReferences = new Map<string, number>();
   const archiveInspection = {
@@ -1421,6 +1508,31 @@ export function installManualVerificationEnvironment() {
     },
   };
   const operationSnapshots = new Map<string, Record<string, unknown>>();
+  if (RECOVERY_PROOF_VIEWS.has(view)) {
+    operationSnapshots.set('manual-recovered-install', {
+      id: 'manual-recovered-install',
+      kind: 'install-modrinth',
+      status: 'recovered',
+      phase: 'completed',
+      progress: { completed: 1, total: 1 },
+      createdAt: '2026-04-19T10:00:00.000Z',
+      updatedAt: '2026-04-19T10:05:00.000Z',
+      result: { status: 'recovered', instanceId: 'alpha' },
+    });
+    operationSnapshots.set('manual-export-recovery', {
+      id: 'manual-export-recovery',
+      kind: 'export',
+      status: 'recovery-required',
+      phase: 'recovery-required',
+      progress: { completed: 0, total: 1 },
+      createdAt: '2026-04-19T09:00:00.000Z',
+      updatedAt: '2026-04-19T09:02:00.000Z',
+      result: {
+        status: 'recovery-required',
+        message: 'The previous export destination cannot be reused safely.',
+      },
+    });
+  }
   const operations = {
     start: async (request: { kind: string; instanceId?: string; archiveRef?: string }) => {
       if (request.kind === 'import') {
@@ -1454,7 +1566,9 @@ export function installManualVerificationEnvironment() {
       return snapshot;
     },
     get: async (operationId: string) => operationSnapshots.get(operationId) ?? null,
-    listRecovered: async () => [],
+    listRecovered: async () => [...operationSnapshots.values()].filter((snapshot) => (
+      snapshot.status === 'recovered' || snapshot.status === 'recovery-required'
+    )),
     cancel: async () => ({ cancelled: false }),
     subscribe: async (operationId: string, listener: (snapshot: unknown) => void) => {
       const snapshot = operationSnapshots.get(operationId);
@@ -1476,6 +1590,7 @@ export function installManualVerificationEnvironment() {
     mirrors: mirrorsApi,
     share: shareApi,
     windowControls,
+    javaRuntime,
     resourcePacks: resourcePacksApi,
     shaders: shadersApi,
     dialogs: dialogsApi,

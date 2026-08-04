@@ -2,11 +2,8 @@
 
 import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ImportModpackPreviewModal } from '../ImportModpackPreviewModal';
 import { ImportModpackPreviewPage } from '../ImportModpackPreviewPage';
-import { InstallModpackModal } from '../InstallModpackModal';
 import type { ModpackManifest } from '@shared/types/modpack';
-import type { ProviderCatalogSearchResultItem, ProviderCatalogVersionDescriptor } from '@shared/contracts';
 
 const refreshMock = vi.fn();
 
@@ -58,10 +55,8 @@ vi.mock('../../../contexts/ToastContext', () => ({
   }),
 }));
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpackListContext: () => ({
-    refresh: refreshMock,
-  }),
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({ invalidateInstances: refreshMock }),
 }));
 
 const manifest: ModpackManifest = {
@@ -76,25 +71,6 @@ const manifest: ModpackManifest = {
   files: [{ projectID: 1, fileID: 2, required: true }],
 };
 const inspection = { format: 'modrinth' as const, manifest };
-
-const modpack: ProviderCatalogSearchResultItem = {
-  platform: 'modrinth',
-  projectId: 'alpha-pack',
-  title: 'Alpha Pack',
-  description: 'A contrast-safe modpack surface.',
-  iconUrl: 'https://example.test/icon.png',
-};
-
-const versions: ProviderCatalogVersionDescriptor[] = [
-  {
-    platform: 'modrinth',
-    versionId: 'version-1',
-    name: 'Release 1',
-    mcVersions: ['1.20.1'],
-    loaders: ['fabric'],
-    files: [],
-  },
-];
 
 function mockMatchMedia() {
   Object.defineProperty(window, 'matchMedia', {
@@ -119,23 +95,6 @@ describe('Modpack import theme seams', () => {
     mockMatchMedia();
   });
 
-  it('renders the preview modal with semantic metadata surfaces and accent-content actions', async () => {
-    render(
-      <ImportModpackPreviewModal
-        archiveRef="archive-ref"
-        inspection={inspection}
-        isOpen
-        onClose={vi.fn()}
-        onImport={vi.fn()}
-      />,
-    );
-
-    expect(await screen.findByText('Alpha Pack')).toBeTruthy();
-    expect(screen.getByText('Alpha Pack').closest('.surface-soft')).toBeTruthy();
-    expect(screen.getByText('Version').className).toContain('helper-text');
-    expect(screen.getByRole('button', { name: 'Import' }).className).toContain('text-[rgb(var(--accent-content))]');
-  });
-
   it('renders the full preview page with semantic header and readable metadata card', async () => {
     render(<ImportModpackPreviewPage archiveRef="archive-ref" inspection={inspection} onBack={vi.fn()} />);
 
@@ -147,20 +106,4 @@ describe('Modpack import theme seams', () => {
     expect(screen.getByRole('button', { name: 'Import' }).className).toContain('text-[rgb(var(--accent-content))]');
   });
 
-  it('renders the install modal with semantic cards and the shared secondary action styling', () => {
-    render(
-      <InstallModpackModal
-        isOpen
-        onClose={vi.fn()}
-        modpack={modpack}
-        versions={versions}
-        platform="modrinth"
-      />,
-    );
-
-    expect(screen.getByText('Alpha Pack').closest('.surface-soft')).toBeTruthy();
-    expect(screen.getByText('Minecraft Version').closest('.surface-soft')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Cancel' }).className).toContain('bg-card/82');
-    expect(screen.getByRole('button', { name: 'Install' }).className).toContain('text-[rgb(var(--accent-content))]');
-  });
 });

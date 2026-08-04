@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../ui/Button';
@@ -7,8 +7,8 @@ import { Breadcrumbs } from '../ui/Breadcrumbs';
 import { instancesIPC } from '../../services/ipc/instancesIPC';
 import { dialogIPC } from '../../services/ipc/dialogIPC';
 import { ArrowLeft } from 'lucide-react';
-import { ArchiveExportOperationStatus } from './ArchiveExportOperationStatus';
-import { isArchiveExportSuccessful, useArchiveExportOperation } from './useArchiveExportOperation';
+import { useOperationSession } from '../../features/operations/hooks/useOperationSession';
+import { OperationStatusView } from '../../features/operations/components/OperationStatusView';
 
 interface ExportModpackPageProps {
   modpackId: string;
@@ -23,21 +23,20 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({ modpackId,
   const [modpackName, setModpackName] = useState('');
   const [format, setFormat] = useState<ExportFormat>('multimc');
   const [dialogError, setDialogError] = useState<unknown>(null);
-  const completedRef = useRef<string | null>(null);
-  const { operation, error, isActive, start } = useArchiveExportOperation();
+  const operation = useOperationSession({
+    onTerminal: ({ classification }) => {
+      if (!classification.isPresentationSuccess) return;
+      toast.success(t('modpacks.export_success') || 'Модпак успешно экспортирован!');
+      onBack();
+    },
+  });
+  const isActive = operation.isStarting || operation.isActive;
 
   useEffect(() => {
     void instancesIPC.snapshot({ id: modpackId })
       .then((snapshotResult) => setModpackName(snapshotResult.ok ? snapshotResult.value.name : ''))
       .catch((nextError) => console.error('Error loading modpack name:', nextError));
   }, [modpackId]);
-
-  useEffect(() => {
-    if (!operation || !isArchiveExportSuccessful(operation) || completedRef.current === operation.id) return;
-    completedRef.current = operation.id;
-    toast.success(t('modpacks.export_success') || 'Модпак успешно экспортирован!');
-    onBack();
-  }, [onBack, operation, t, toast]);
 
   const getDefaultFileName = () => `${modpackName || 'modpack'}.zip`;
 
@@ -54,7 +53,7 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({ modpackId,
       });
       if (result.canceled || !result.filePath) return;
 
-      await start({
+      await operation.start({
         kind: 'export',
         instanceId: modpackId,
         format,
@@ -114,7 +113,17 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({ modpackId,
               </div>
             ))}
           </div>
-          <ArchiveExportOperationStatus operation={operation} error={error ?? dialogError} t={t} />
+          <OperationStatusView
+            snapshot={operation.snapshot}
+            classification={operation.classification}
+            error={operation.error ?? dialogError}
+            errorFallback={t('modpacks.export_error') || 'Export failed'}
+            onCancel={operation.cancel}
+            onRetry={handleExport}
+            onReset={operation.reset}
+            t={t}
+            testId="export-operation-status"
+          />
           <div className="surface-inline flex gap-2 pt-4">
             <Button variant="primary" onClick={() => void handleExport()} disabled={isActive} className="flex-1" style={getAccentStyles('bg').style} isLoading={isActive}>
               {isActive ? t('modpacks.exporting') || 'Экспорт...' : t('modpacks.export')}

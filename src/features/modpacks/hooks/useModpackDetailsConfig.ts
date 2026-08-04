@@ -1,42 +1,26 @@
-import React, { useCallback, useState } from 'react';
-import { useModpack, type ModpackConfig, type ModLoaderType } from '../../../contexts/ModpackContext';
-import { fetchModpackConfig } from '../../../contexts/instances/services/instancesService';
-import {
-  withModpackMemoryGb,
-  withModpackMinMemoryGb,
-  withModpackJavaPath,
-  withRuntimeMinecraft,
-  withVmOptions,
-  withGameExtraArgs,
-  withGameResolution,
-  withAutoConnectServer,
-} from '../../../contexts/instances/utils/configPatching';
+import { useCallback, useMemo } from 'react';
+import type { ModpackConfig, ModLoaderType } from '../../../contexts/instances/types';
+import { useInstanceConfigCommands } from '../../instances/hooks/useInstanceConfigCommands';
+import { useInstanceInvalidation } from '../../instances/hooks/useInstanceInvalidation';
+import { useInstanceSnapshot } from '../../instances/hooks/useInstanceSelectors';
 
 function buildUpdatedRuntimeConfig(
   currentConfig: ModpackConfig,
   loader: ModLoaderType,
 ): ModpackConfig {
   const previousLoaderType = currentConfig.runtime.modLoader?.type ?? 'vanilla';
-  const nextModLoader =
-    previousLoaderType === loader
-      ? currentConfig.runtime.modLoader ?? { type: loader }
-      : loader === 'vanilla'
-        ? { type: 'vanilla' as const }
-        : { type: loader };
+  const nextModLoader = previousLoaderType === loader
+    ? currentConfig.runtime.modLoader ?? { type: loader }
+    : loader === 'vanilla'
+      ? { type: 'vanilla' as const }
+      : { type: loader };
 
   return {
     ...currentConfig,
-    runtime: {
-      ...currentConfig.runtime,
-      modLoader: nextModLoader,
-    },
-    game:
-      loader === 'forge'
-        ? currentConfig.game
-        : {
-            ...(currentConfig.game ?? {}),
-            useOptiFine: false,
-          },
+    runtime: { ...currentConfig.runtime, modLoader: nextModLoader },
+    game: loader === 'forge'
+      ? currentConfig.game
+      : { ...(currentConfig.game ?? {}), useOptiFine: false },
   };
 }
 
@@ -47,12 +31,11 @@ export interface UseModpackDetailsConfigParams {
 export interface ModpackDetailsConfigSetters {
   setMemoryGb: (gb: number) => Promise<void>;
   setMinMemoryGb: (gb: number) => Promise<void>;
-  setJavaPath: (path: string) => Promise<void>;
   setVmOptions: (options: string[]) => Promise<void>;
   setGameExtraArgs: (args: string[]) => Promise<void>;
   setGameResolution: (resolution?: { width?: number; height?: number; fullscreen?: boolean }) => Promise<void>;
   setAutoConnectServer: (server?: { host: string; port: number }) => Promise<void>;
-  setRuntimeMinecraft: (mc: string) => Promise<void>;
+  setRuntimeMinecraft: (minecraft: string) => Promise<void>;
   setRuntimeLoader: (loader: ModLoaderType) => Promise<void>;
   setUseOptiFine: (enabled: boolean) => Promise<void>;
 }
@@ -60,197 +43,51 @@ export interface ModpackDetailsConfigSetters {
 export interface UseModpackDetailsConfigResult {
   effectiveConfig: ModpackConfig | null;
   modpackConfig: ModpackConfig | null;
-  setModpackConfig: React.Dispatch<React.SetStateAction<ModpackConfig | null>>;
   loadModpackConfig: () => Promise<void>;
   setters: ModpackDetailsConfigSetters;
 }
 
-/**
- * Хук для работы с конфигом модпака на странице деталей.
- * Для выбранного модпака использует контекст; для остальных — локальный config + saveConfig.
- */
+/** ID-keyed detail projection over the singleton instance owner. */
 export function useModpackDetailsConfig({
   modpackId,
 }: UseModpackDetailsConfigParams): UseModpackDetailsConfigResult {
-  const {
-    selectedId,
-    config,
-    setMemoryGb: ctxSetMemoryGb,
-    setMinMemoryGb: ctxSetMinMemoryGb,
-    setJavaPath: ctxSetJavaPath,
-    setVmOptions: ctxSetVmOptions,
-    setGameExtraArgs: ctxSetGameExtraArgs,
-    setGameResolution: ctxSetGameResolution,
-    setAutoConnectServer: ctxSetAutoConnectServer,
-    setRuntimeMinecraft: ctxSetRuntimeMinecraft,
-    patchConfig,
-    saveConfig,
-  } = useModpack();
+  const query = useInstanceSnapshot(modpackId);
+  const commands = useInstanceConfigCommands(modpackId);
+  const { invalidateInstance } = useInstanceInvalidation();
+  const effectiveConfig = query.status === 'ready' ? query.data : null;
 
-  const [modpackConfig, setModpackConfig] = useState<ModpackConfig | null>(null);
-  const isSelectedModpack = selectedId === modpackId;
-  const effectiveConfig = isSelectedModpack ? config : modpackConfig;
-
-  const loadModpackConfig = useCallback(async () => {
-    try {
-      const cfg = await fetchModpackConfig(modpackId);
-      setModpackConfig(cfg);
-    } catch (error) {
-      console.error('Error loading modpack config:', error);
-    }
-  }, [modpackId]);
-
-  const setMemoryGb = useCallback(
-    async (gb: number) => {
-      if (isSelectedModpack) {
-        ctxSetMemoryGb(gb);
-      } else if (modpackConfig) {
-        const updated = withModpackMemoryGb(modpackConfig, gb);
-        setModpackConfig(updated);
-        await saveConfig(updated);
-      }
-    },
-    [isSelectedModpack, modpackConfig, ctxSetMemoryGb, saveConfig]
+  const loadModpackConfig = useCallback(
+    () => invalidateInstance(modpackId),
+    [invalidateInstance, modpackId],
   );
 
-  const setMinMemoryGb = useCallback(
-    async (gb: number) => {
-      if (isSelectedModpack) {
-        ctxSetMinMemoryGb(gb);
-      } else if (modpackConfig) {
-        const updated = withModpackMinMemoryGb(modpackConfig, gb);
-        setModpackConfig(updated);
-        await saveConfig(updated);
-      }
-    },
-    [isSelectedModpack, modpackConfig, ctxSetMinMemoryGb, saveConfig]
-  );
+  const setRuntimeLoader = useCallback(async (loader: ModLoaderType) => {
+    if (!effectiveConfig) return;
+    await commands.saveConfig(buildUpdatedRuntimeConfig(effectiveConfig, loader));
+  }, [commands, effectiveConfig]);
 
-  const setJavaPath = useCallback(
-    async (path: string) => {
-      if (isSelectedModpack) {
-        ctxSetJavaPath(path);
-      } else if (modpackConfig) {
-        const updated = withModpackJavaPath(modpackConfig, path);
-        setModpackConfig(updated);
-        await saveConfig(updated);
-      }
-    },
-    [isSelectedModpack, modpackConfig, ctxSetJavaPath, saveConfig]
-  );
+  const setUseOptiFine = useCallback(async (enabled: boolean) => {
+    if (!effectiveConfig) return;
+    await commands.patchConfig({
+      game: { ...(effectiveConfig.game ?? {}), useOptiFine: enabled },
+    });
+  }, [commands, effectiveConfig]);
 
-  const setVmOptions = useCallback(
-    async (options: string[]) => {
-      if (isSelectedModpack) {
-        ctxSetVmOptions(options);
-      } else if (modpackConfig) {
-        const updated = withVmOptions(modpackConfig, options);
-        setModpackConfig(updated);
-        await saveConfig(updated);
-      }
-    },
-    [isSelectedModpack, modpackConfig, ctxSetVmOptions, saveConfig]
-  );
-
-  const setGameExtraArgs = useCallback(
-    async (args: string[]) => {
-      if (isSelectedModpack) {
-        ctxSetGameExtraArgs(args);
-      } else if (modpackConfig) {
-        const updated = withGameExtraArgs(modpackConfig, args);
-        setModpackConfig(updated);
-        await saveConfig(updated);
-      }
-    },
-    [isSelectedModpack, modpackConfig, ctxSetGameExtraArgs, saveConfig]
-  );
-
-  const setGameResolution = useCallback(
-    async (resolution?: { width?: number; height?: number; fullscreen?: boolean }) => {
-      if (isSelectedModpack) {
-        ctxSetGameResolution(resolution);
-      } else if (modpackConfig) {
-        const updated = withGameResolution(modpackConfig, resolution);
-        setModpackConfig(updated);
-        await saveConfig(updated);
-      }
-    },
-    [isSelectedModpack, modpackConfig, ctxSetGameResolution, saveConfig]
-  );
-
-  const setAutoConnectServer = useCallback(
-    async (server?: { host: string; port: number }) => {
-      if (isSelectedModpack) {
-        ctxSetAutoConnectServer(server);
-      } else if (modpackConfig) {
-        const updated = withAutoConnectServer(modpackConfig, server);
-        setModpackConfig(updated);
-        await saveConfig(updated);
-      }
-    },
-    [isSelectedModpack, modpackConfig, ctxSetAutoConnectServer, saveConfig]
-  );
-
-  const setRuntimeMinecraft = useCallback(
-    async (mc: string) => {
-      if (isSelectedModpack) {
-        ctxSetRuntimeMinecraft(mc);
-      } else if (modpackConfig) {
-        const updated = withRuntimeMinecraft(modpackConfig, mc);
-        setModpackConfig(updated);
-        await saveConfig(updated);
-      }
-    },
-    [isSelectedModpack, modpackConfig, ctxSetRuntimeMinecraft, saveConfig]
-  );
-
-  const setRuntimeLoader = useCallback(
-    async (loader: ModLoaderType) => {
-      if (isSelectedModpack && config) {
-        const updated = buildUpdatedRuntimeConfig(config, loader);
-        await saveConfig(updated);
-      } else if (modpackConfig) {
-        const updated = buildUpdatedRuntimeConfig(modpackConfig, loader);
-        setModpackConfig(updated);
-        await saveConfig(updated);
-      }
-    },
-    [config, isSelectedModpack, modpackConfig, saveConfig]
-  );
-
-  const setUseOptiFine = useCallback(
-    async (enabled: boolean) => {
-      if (isSelectedModpack && config) {
-        patchConfig({ game: { ...(config.game ?? {}), useOptiFine: enabled } });
-      } else if (modpackConfig) {
-        const updated: ModpackConfig = {
-          ...modpackConfig,
-          game: { ...(modpackConfig.game ?? {}), useOptiFine: enabled },
-        };
-        setModpackConfig(updated);
-        await saveConfig(updated);
-      }
-    },
-    [isSelectedModpack, config, modpackConfig, patchConfig, saveConfig]
-  );
-
-  const setters: ModpackDetailsConfigSetters = {
-    setMemoryGb,
-    setMinMemoryGb,
-    setJavaPath,
-    setVmOptions,
-    setGameExtraArgs,
-    setGameResolution,
-    setAutoConnectServer,
-    setRuntimeMinecraft,
+  const setters = useMemo<ModpackDetailsConfigSetters>(() => ({
+    setMemoryGb: commands.setMemoryGb,
+    setMinMemoryGb: commands.setMinMemoryGb,
+    setVmOptions: commands.setVmOptions,
+    setGameExtraArgs: commands.setGameExtraArgs,
+    setGameResolution: commands.setGameResolution,
+    setAutoConnectServer: commands.setAutoConnectServer,
+    setRuntimeMinecraft: commands.setRuntimeMinecraft,
     setRuntimeLoader,
     setUseOptiFine,
-  };
+  }), [commands, setRuntimeLoader, setUseOptiFine]);
 
   return {
     effectiveConfig,
-    modpackConfig,
-    setModpackConfig,
+    modpackConfig: effectiveConfig,
     loadModpackConfig,
     setters,
   };

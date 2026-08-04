@@ -16,6 +16,7 @@ Checksums detect corruption or asset replacement only when users compare them wi
 
 - CurseForge browsing is disabled in official builds because the API key and distribution contract are not configured for public binaries. Import/export of local CurseForge archives remains available.
 - Long operations share one cancellable, journaled lifecycle, but interrupted network transfers do not resume byte-for-byte after restart.
+- The recovery inbox does not expose a generic retry for hidden or already-consumed input. A recovery-required import or export may need a fresh archive selection or save destination from the user.
 - Archive export recovery deliberately stops at `recovery-required` after a restart. The launcher preserves the external output and private staging artifacts, but does not rename or delete them after the one-time native save authorization has expired; manual verification is required.
 - Real Microsoft authentication is not implemented; supported profiles are offline or compatible third-party Yggdrasil providers.
 - LAN discovery and UPnP depend on the local network and router and cannot be guaranteed by the launcher.
@@ -24,7 +25,7 @@ Checksums detect corruption or asset replacement only when users compare them wi
 
 - Some renderer IPC wrappers still contain defensive availability checks even though `window.api` is now the only preload surface; these can be simplified as their owning features are refactored.
 - The XMCL bytebuffer compatibility correction is applied by a validated postinstall script. It should be replaced by an upstream fix or a managed package patch.
-- Visual regression baselines are owned on macOS Chromium only.
+- Deterministic renderer proof and visual regression baselines run on macOS Chromium only; they do not establish native-dialog, window-manager, or graphics-driver behavior on other platforms.
 - Full Minecraft installation, real routers, installed updates, and OS signing/notarization still require manual platform smoke tests.
 
 ## Not bugs

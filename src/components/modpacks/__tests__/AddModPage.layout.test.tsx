@@ -4,10 +4,15 @@ import { act, render, screen } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { AddModPage } from '../AddModPage';
+import pageSource from '../AddModPage.tsx?raw';
+import modalSource from '../AddModModal.tsx?raw';
+import modSurfaceSource from '../../../features/content/components/ModContentAcquisition.tsx?raw';
+import routerSource from '../ModpackRouter.tsx?raw';
 
 const searchModsMock = vi.fn();
 const getMetadataMock = vi.fn();
 const getConfigMock = vi.fn();
+const invalidateInstanceMock = vi.fn();
 
 vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
@@ -21,6 +26,24 @@ vi.mock('../../../contexts/ToastContext', () => ({
   useToast: () => ({
     success: vi.fn(),
     error: vi.fn(),
+  }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceSnapshot: () => ({
+    status: 'ready',
+    data: {
+      id: 'alpha',
+      name: 'Alpha Pack',
+      runtime: { minecraft: '1.20.1', modLoader: { type: 'fabric' } },
+    },
+  }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: invalidateInstanceMock,
+    invalidateInstances: vi.fn(),
   }),
 }));
 
@@ -53,6 +76,8 @@ describe('AddModPage flow layout', () => {
     searchModsMock.mockReset();
     getMetadataMock.mockReset();
     getConfigMock.mockReset();
+    invalidateInstanceMock.mockReset();
+    invalidateInstanceMock.mockResolvedValue(undefined);
 
     searchModsMock.mockResolvedValue({
       items: [
@@ -88,6 +113,15 @@ describe('AddModPage flow layout', () => {
     vi.useRealTimers();
   });
 
+  it('routes page and modal mod acquisition through one adapter-backed surface', () => {
+    expect(pageSource).toMatch(/ModContentAcquisition/);
+    expect(modalSource).toMatch(/ModContentAcquisition/);
+    expect(modSurfaceSource).toMatch(/createRendererModContentAcquisitionAdapter/);
+    expect(modSurfaceSource).not.toMatch(/modsIPC|instanceModsIPC|installModFile|getModVersions/);
+    expect(modalSource).not.toMatch(/modsIPC|instanceModsIPC|installModFile|getModVersions/);
+    expect(routerSource).toMatch(/useInstanceInvalidation/);
+  });
+
   it('keeps the action rail outside the results viewport so streaming results cannot bury it', async () => {
     render(<AddModPage modpackId="alpha" onBack={vi.fn()} />);
 
@@ -111,8 +145,9 @@ describe('AddModPage flow layout', () => {
     expect(resultsScroll.contains(actions)).toBe(false);
     expect(pageBody.contains(actions)).toBe(true);
     expect(controls.className).toContain('surface-card');
-    expect(controls.firstElementChild?.querySelector('input')).toBeTruthy();
-    expect(controls.lastElementChild?.className).toContain('sm:grid-cols-2');
+    expect(screen.getByRole('searchbox', { name: 'Search' })).toBeTruthy();
+    expect(controls.querySelectorAll('select')).toHaveLength(3);
+    expect(controls.querySelector('.sm\\:grid-cols-3')).toBeTruthy();
   });
 
   it('keeps guided resource-pack browsing instance-scoped without modloader filters', async () => {
@@ -126,9 +161,9 @@ describe('AddModPage flow layout', () => {
     expect(searchModsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         contentType: 'resourcepack',
-        loader: undefined,
       }),
     );
+    expect(searchModsMock.mock.calls[0]?.[0]).not.toHaveProperty('loader');
     expect(screen.getByRole('heading', { name: 'Add Resource Pack' })).toBeTruthy();
     expect(screen.getByPlaceholderText('Search resource packs...')).toBeTruthy();
     expect(screen.getByTestId('guided-content-resourcepack-scope').textContent).toContain('Resource packs added here only affect this modpack');

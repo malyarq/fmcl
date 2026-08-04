@@ -3,13 +3,14 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OperationSnapshot } from '@shared/contracts';
-import { ExportModpackModal } from '../ExportModpackModal';
 import { ExportModpackPage } from '../ExportModpackPage';
+import exportPageSource from '../ExportModpackPage.tsx?raw';
 
 const snapshotMock = vi.fn();
 const showSaveDialogMock = vi.fn();
 const startMock = vi.fn();
 const subscribeMock = vi.fn();
+const cancelMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 
@@ -58,6 +59,7 @@ vi.mock('../../../services/ipc/operationsIPC', () => ({
   operationsIPC: {
     start: (...args: unknown[]) => startMock(...args),
     subscribe: (...args: unknown[]) => subscribeMock(...args),
+    cancel: (...args: unknown[]) => cancelMock(...args),
   },
 }));
 
@@ -68,8 +70,10 @@ function snapshot(status: OperationSnapshot['status']): OperationSnapshot {
       ? { status, instanceId: 'alpha' }
       : status === 'degraded'
         ? { status, missing: ['optional-item'] }
-        : status === 'failed'
+      : status === 'failed'
           ? { status, code: 'EXPORT_FAILED', message: 'Operation failed' }
+          : status === 'recovery-required'
+            ? { status, message: 'Choose a new destination and retry' }
           : status === 'cancelled'
             ? { status }
             : undefined;
@@ -122,6 +126,7 @@ describe('ExportModpack operation state', () => {
     showSaveDialogMock.mockReset().mockResolvedValue({ canceled: false, filePath: '/exports/alpha.zip' });
     startMock.mockReset().mockResolvedValue(snapshot('queued'));
     subscribeMock.mockReset();
+    cancelMock.mockReset().mockResolvedValue({ cancelled: true });
     toastSuccessMock.mockReset();
     toastErrorMock.mockReset();
     Object.defineProperty(window, 'matchMedia', {
@@ -148,7 +153,7 @@ describe('ExportModpack operation state', () => {
     expect(subscribeMock).not.toHaveBeenCalled();
   });
 
-  it.each(['running', 'cancelling', 'cancelled', 'failed', 'degraded', 'recovered', 'succeeded'] as const)(
+  it.each(['running', 'cancelling', 'cancelled', 'failed', 'degraded', 'recovery-required', 'recovered', 'succeeded'] as const)(
     'renders the truthful %s export state without optimistic success',
     async (status) => {
       const unsubscribe = vi.fn();
@@ -160,7 +165,7 @@ describe('ExportModpack operation state', () => {
       expect(toastSuccessMock).not.toHaveBeenCalled();
       await act(async () => listener(snapshot(status)));
 
-      expect((await screen.findByTestId('export-operation-status')).textContent).toContain(status);
+      expect((await screen.findByTestId('export-operation-status')).getAttribute('data-operation-status')).toBe(status);
       if (status === 'succeeded' || status === 'recovered') {
         expect(toastSuccessMock).toHaveBeenCalledOnce();
         expect(onBack).toHaveBeenCalledOnce();
@@ -183,26 +188,31 @@ describe('ExportModpack operation state', () => {
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
 
-  it('keeps the modal open after a failed operation and closes it only after a recovered export', async () => {
+  it('opens a fresh native dialog instead of reusing one-time output authorization on retry', async () => {
     const unsubscribe = vi.fn();
     subscribeMock.mockResolvedValue(unsubscribe);
-    const onClose = vi.fn();
-    const onExported = vi.fn();
-    render(<ExportModpackModal modpackId="alpha" modpackName="Alpha Pack" isOpen onClose={onClose} onExported={onExported} />);
+    showSaveDialogMock
+      .mockResolvedValueOnce({ canceled: false, filePath: '/exports/first.zip' })
+      .mockResolvedValueOnce({ canceled: false, filePath: '/exports/second.zip' });
+    render(<ExportModpackPage modpackId="alpha" onBack={vi.fn()} />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Export' }));
     await waitFor(() => expect(startMock).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'export',
-      outputPath: '/exports/alpha.zip',
+      outputPath: '/exports/first.zip',
     })));
     const listener = subscribeMock.mock.calls[0][1] as (next: OperationSnapshot) => void;
-    await act(async () => listener(snapshot('failed')));
-    expect(onClose).not.toHaveBeenCalled();
-    expect(onExported).not.toHaveBeenCalled();
+    await act(async () => listener(snapshot('recovery-required')));
 
-    await act(async () => listener(snapshot('recovered')));
-    expect(onClose).toHaveBeenCalledOnce();
-    expect(onExported).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    await waitFor(() => expect(showSaveDialogMock).toHaveBeenCalledTimes(2));
+    expect(startMock).toHaveBeenLastCalledWith(expect.objectContaining({ outputPath: '/exports/second.zip' }));
     expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
+  it('contains no page-specific archive lifecycle, subscription or reload fallback', () => {
+    expect(exportPageSource).toContain('useOperationSession');
+    expect(exportPageSource).not.toMatch(/useArchiveExportOperation|operationsIPC|\.subscribe\s*\(|location\.reload/);
   });
 });

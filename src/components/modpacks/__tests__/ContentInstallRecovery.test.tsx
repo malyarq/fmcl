@@ -12,10 +12,12 @@ const getMetadataMock = vi.fn();
 const getConfigMock = vi.fn();
 const resourcePackAddMock = vi.fn();
 const shaderAddMock = vi.fn();
+const invalidateInstanceMock = vi.fn();
 const registerModMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 const marketplaceFramingPattern = /\b(marketplace|wishlist|store|storefront)\b/i;
+let instanceState: unknown;
 
 function mockMatchMedia() {
   Object.defineProperty(window, 'matchMedia', {
@@ -46,6 +48,17 @@ vi.mock('../../../contexts/ToastContext', () => ({
   useToast: () => ({
     success: (...args: unknown[]) => toastSuccessMock(...args),
     error: (...args: unknown[]) => toastErrorMock(...args),
+  }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceSnapshot: () => instanceState,
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: invalidateInstanceMock,
+    invalidateInstances: vi.fn(),
   }),
 }));
 
@@ -107,9 +120,19 @@ describe('content install recovery', () => {
     getConfigMock.mockReset();
     resourcePackAddMock.mockReset();
     shaderAddMock.mockReset();
+    invalidateInstanceMock.mockReset();
+    invalidateInstanceMock.mockResolvedValue(undefined);
     registerModMock.mockReset();
     toastSuccessMock.mockReset();
     toastErrorMock.mockReset();
+    instanceState = {
+      status: 'ready',
+      data: {
+        id: 'alpha',
+        name: 'Alpha Pack',
+        runtime: { minecraft: '1.20.1', modLoader: { type: 'fabric' } },
+      },
+    };
 
     searchModsMock.mockResolvedValue({ items: [], total: 0 });
     getMetadataMock.mockResolvedValue({
@@ -241,17 +264,20 @@ describe('content install recovery', () => {
         loaders: [],
       },
     ]);
-    getConfigMock.mockResolvedValueOnce({
-      id: 'alpha',
-      name: 'Alpha Pack',
-      runtime: {
-        minecraft: '1.20.1',
-        modLoader: { type: 'fabric', version: '0.16.9' },
+    instanceState = {
+      status: 'ready',
+      data: {
+        id: 'alpha',
+        name: 'Alpha Pack',
+        runtime: {
+          minecraft: '1.20.1',
+          modLoader: { type: 'fabric', version: '0.16.9' },
+        },
+        game: {
+          useOptiFine: true,
+        },
       },
-      game: {
-        useOptiFine: true,
-      },
-    });
+    };
 
     render(<AddModPage modpackId="alpha" onBack={vi.fn()} contentType="shader" />);
 

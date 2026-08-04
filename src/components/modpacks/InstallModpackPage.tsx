@@ -8,12 +8,9 @@ import { cn } from '../../utils/cn';
 import type { ProviderCatalogSearchResultItem, ProviderCatalogVersionDescriptor } from '@shared/contracts';
 import { instancesIPC } from '../../services/ipc/instancesIPC';
 import { ArrowLeft } from 'lucide-react';
-import { ProviderInstallOperationState } from './ProviderInstallOperationState';
-import {
-  hasPublishedProviderInstance,
-  isProviderInstallTerminal,
-  useProviderInstallOperation,
-} from './useProviderInstallOperation';
+import { useInstanceInvalidation } from '../../features/instances/hooks/useInstanceInvalidation';
+import { useOperationSession } from '../../features/operations/hooks/useOperationSession';
+import { OperationStatusView } from '../../features/operations/components/OperationStatusView';
 
 interface InstallModpackPageProps {
   modpack: ProviderCatalogSearchResultItem;
@@ -33,27 +30,38 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
   const [selectedVersion, setSelectedVersion] = useState<ProviderCatalogVersionDescriptor | null>(
     versions[0] || null
   );
-  const { operation, error, isActive, start, cancel } = useProviderInstallOperation();
-  const completedOperationRef = useRef<string | null>(null);
+  const { invalidateInstances } = useInstanceInvalidation();
+  const closeTimerRef = useRef<number | null>(null);
+  const operation = useOperationSession({
+    onCommitted: async ({ classification }) => {
+      if (classification.selectableInstanceId) {
+        const selection = await instancesIPC.select({ id: classification.selectableInstanceId });
+        if (!selection.ok) throw new Error(selection.error.message);
+      }
+      if (classification.shouldInvalidateInstances) await invalidateInstances();
+    },
+    onTerminal: ({ classification }) => {
+      if (!classification.isPresentationSuccess) return;
+      toast.success(t('modpacks.install_success'));
+      closeTimerRef.current = window.setTimeout(onBack, 1200);
+    },
+  });
+  const isActive = operation.isStarting || operation.isActive;
+  const terminalStatus = operation.snapshot?.status;
+  const mayRetry = terminalStatus === 'failed' || terminalStatus === 'cancelled';
+  const startBlocked = Boolean(operation.classification?.isTerminal && !mayRetry);
 
   useEffect(() => {
-    if (!operation || !isProviderInstallTerminal(operation) || completedOperationRef.current === operation.id) return;
-    completedOperationRef.current = operation.id;
-
-    if (!hasPublishedProviderInstance(operation) || operation.status === 'degraded') return;
-
-    void instancesIPC.select({ id: operation.result.instanceId }).catch((nextError) => {
-      console.warn('Failed to select modpack:', nextError);
-    });
-    toast.success(t('modpacks.install_success'));
-    window.setTimeout(onBack, 1200);
-  }, [onBack, operation, t, toast]);
+    return () => {
+      if (closeTimerRef.current !== null) window.clearTimeout(closeTimerRef.current);
+    };
+  }, []);
 
   const handleInstall = async () => {
     if (!selectedVersion) return;
 
     if (platform === 'curseforge') {
-      await start({
+      await operation.start({
         kind: 'install-curseforge',
         projectId: Number(modpack.projectId),
         fileId: Number(selectedVersion.versionId),
@@ -61,12 +69,12 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
       return;
     }
 
-    await start({ kind: 'install-modrinth', projectId: modpack.projectId, versionId: selectedVersion.versionId });
+    await operation.start({ kind: 'install-modrinth', projectId: modpack.projectId, versionId: selectedVersion.versionId });
   };
 
   const handleCancelOrBack = () => {
     if (isActive) {
-      void cancel();
+      void operation.cancel();
       return;
     }
     onBack();
@@ -81,7 +89,7 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
             size="sm"
             onClick={handleCancelOrBack}
             className="flex items-center gap-2"
-            disabled={operation?.status === 'cancelling'}
+            disabled={operation.snapshot?.status === 'cancelling'}
           >
             <ArrowLeft className="h-4 w-4" />
             {t('general.back') || 'Назад'}
@@ -154,27 +162,30 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
             </div>
           ) : null) as React.ReactNode}
 
-          {operation && <ProviderInstallOperationState operation={operation} t={t} />}
-
-          {error ? (
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-3">
-              <p className="text-sm text-red-700 dark:text-red-300">{error instanceof Error ? error.message : t('modpacks.install_error')}</p>
-            </div>
-          ) : null}
+          <OperationStatusView
+            snapshot={operation.snapshot}
+            classification={operation.classification}
+            error={operation.error}
+            errorFallback={t('modpacks.install_error')}
+            onCancel={operation.cancel}
+            onRetry={mayRetry ? operation.retry : undefined}
+            t={t}
+            testId="provider-install-operation"
+          />
 
           {/* Action Buttons */}
           <div className="surface-inline flex gap-3 pt-2">
             <Button
               onClick={handleCancelOrBack}
               variant="secondary"
-              disabled={operation?.status === 'cancelling'}
+              disabled={operation.snapshot?.status === 'cancelling'}
               className="flex-1"
             >
               {t('general.cancel')}
             </Button>
             <Button
               onClick={isActive ? handleCancelOrBack : handleInstall}
-              disabled={!selectedVersion || operation?.status === 'cancelling'}
+              disabled={!selectedVersion || operation.snapshot?.status === 'cancelling' || startBlocked}
               className={cn("flex-1 text-white", getAccentStyles('bg').className)}
               style={getAccentStyles('bg').style}
             >

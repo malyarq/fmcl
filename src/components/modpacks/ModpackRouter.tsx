@@ -1,29 +1,46 @@
-import React, { memo, useCallback, useEffect, useState } from 'react';
+import React, { lazy, memo, Suspense, useCallback, useEffect } from 'react';
 import {
-  consumeQueuedInitialModpackView,
   DEFAULT_MODPACK_BROWSER_STATE,
-  useModpackNavigation,
 } from '../../features/modpacks/hooks/useModpackNavigation';
+import { usePersistentModpackNavigation } from '../../features/modpacks/navigation/ModpackNavigationContext';
 import { ModpackList } from './ModpackList';
-import { ModpackBrowser } from './ModpackBrowser';
 import { ModpackDetails } from './ModpackDetails';
-import { AddModPage } from './AddModPage';
-import { ExportModpackPage } from './ExportModpackPage';
-import { InstallModpackPage } from './InstallModpackPage';
-import { ImportModpackPreviewPage } from './ImportModpackPreviewPage';
-import { ModpackCreationWizard } from './ModpackCreationWizard';
 import {
   getPrimaryActionOwnershipForView,
   setModpackPrimaryActionOwnership,
 } from './primaryActionOwnership';
+import { useInstanceInvalidation } from '../../features/instances/hooks/useInstanceInvalidation';
+
+const ModpackBrowser = lazy(() => import('./ModpackBrowser').then((module) => ({ default: module.ModpackBrowser })));
+const ModpackCreationWizard = lazy(() => import('./ModpackCreationWizard').then((module) => ({ default: module.ModpackCreationWizard })));
+const AddModPage = lazy(() => import('./AddModPage').then((module) => ({ default: module.AddModPage })));
+const ExportModpackPage = lazy(() => import('./ExportModpackPage').then((module) => ({ default: module.ExportModpackPage })));
+const InstallModpackPage = lazy(() => import('./InstallModpackPage').then((module) => ({ default: module.InstallModpackPage })));
+const ImportModpackPreviewPage = lazy(() => import('./ImportModpackPreviewPage').then((module) => ({ default: module.ImportModpackPreviewPage })));
 
 interface ModpackRouterProps {
   onLaunch?: () => void | Promise<void>;
 }
 
+function RoutedAddModPage({ modpackId, onBack }: { modpackId: string; onBack: () => void }) {
+  const { invalidateInstance } = useInstanceInvalidation();
+  const handleCommitted = useCallback(() => invalidateInstance(modpackId), [invalidateInstance, modpackId]);
+  return <AddModPage modpackId={modpackId} onBack={onBack} onCommitted={handleCommitted} />;
+}
+
+function ModpackRouteLoadingState() {
+  return (
+    <div
+      role="status"
+      aria-label="Loading"
+      aria-live="polite"
+      className="min-h-12 w-full flex-1 animate-pulse bg-background/30"
+    />
+  );
+}
+
 const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
-  const [initialView] = useState(() => consumeQueuedInitialModpackView() ?? { type: 'list' as const });
-  const { view, goBack, navigate, replace } = useModpackNavigation(initialView);
+  const { view, goBack, navigate, replace } = usePersistentModpackNavigation();
   const handleCreateWizard = useCallback(() => navigate({ type: 'create' }), [navigate]);
   const handleOpenBrowser = useCallback(() => {
     navigate({ type: 'browser', state: DEFAULT_MODPACK_BROWSER_STATE });
@@ -41,8 +58,8 @@ const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
     setModpackPrimaryActionOwnership('shell');
   }, []);
 
-  // Render based on current view
-  switch (view.type) {
+  const renderRoute = () => {
+    switch (view.type) {
     case 'list':
       return (
         <ModpackList
@@ -92,7 +109,7 @@ const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
 
     case 'addMod':
       return (
-        <AddModPage
+        <RoutedAddModPage
           modpackId={view.modpackId}
           onBack={goBack}
         />
@@ -157,7 +174,14 @@ const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
           onCreateWizard={handleCreateWizard}
         />
       );
-  }
+    }
+  };
+
+  return (
+    <Suspense fallback={<ModpackRouteLoadingState />}>
+      {renderRoute()}
+    </Suspense>
+  );
 };
 
 // Memo: skip re-renders when parent re-renders unless onLaunch changed.

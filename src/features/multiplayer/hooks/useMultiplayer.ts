@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { useModpack } from '../../../contexts/ModpackContext';
+import { useEffectiveInstance } from '../../instances/hooks/useEffectiveInstance';
+import {
+  dispatchInstanceConfigCommand,
+  useInstanceConfigCommands,
+} from '../../instances/hooks/useInstanceConfigCommands';
 import { hostRoom, isNetworkAvailable, joinRoom, stopSession } from '../services/multiplayerService';
 import {
   loadHostPort,
@@ -46,7 +50,11 @@ export type UseMultiplayerResult = {
 
 export function useMultiplayer(): UseMultiplayerResult {
   const { t } = useSettings();
-  const { config: modpackConfig, patchConfig, setNetworkMode: setModpackNetworkMode } = useModpack();
+  const effectiveInstance = useEffectiveInstance();
+  const modpackConfig = effectiveInstance.status === 'ready' ? effectiveInstance.data.snapshot : null;
+  const commands = useInstanceConfigCommands(
+    effectiveInstance.status === 'ready' ? effectiveInstance.data.id : null,
+  );
 
   const [mode, setMode] = useState<Mode>(() => loadMode());
 
@@ -112,7 +120,7 @@ export function useMultiplayer(): UseMultiplayerResult {
     try {
       const hostPort = parseInt(port) || 25565;
       // Bind host port to selected modpack config.
-      patchConfig({ server: { host: 'localhost', port: hostPort } });
+      await commands.patchConfig({ server: { host: 'localhost', port: hostPort } });
       const code = await hostRoom(hostPort);
       setRoomCode(code);
       setMappedPort(null);
@@ -137,7 +145,7 @@ export function useMultiplayer(): UseMultiplayerResult {
       setMappedPort(localPort);
       setRoomCode('');
       // Bind resulting tunnel endpoint to selected modpack config for convenience.
-      patchConfig({ server: { host: 'localhost', port: localPort } });
+      await commands.patchConfig({ server: { host: 'localhost', port: localPort } });
       setStatus(`${t('multiplayer.tunnel_established')} localhost:${localPort}`);
     } catch (e) {
       const errorMessage = e instanceof Error ? e.message : String(e);
@@ -155,7 +163,7 @@ export function useMultiplayer(): UseMultiplayerResult {
   };
 
   const setNetworkMode = (next: NetworkMode) => {
-    setModpackNetworkMode(next);
+    dispatchInstanceConfigCommand(commands.setNetworkMode(next));
   };
 
   return {
@@ -177,4 +185,3 @@ export function useMultiplayer(): UseMultiplayerResult {
     copyToClipboard,
   };
 }
-

@@ -28,12 +28,9 @@ vi.mock('../../contexts/SettingsContext', () => ({
   }),
 }));
 
-vi.mock('../../contexts/ModpackContext', () => ({
-  useModpack: () => ({
-    modpacks: [{ id: 'classic-pack' }],
-    selectedId: 'classic-pack',
-    effectiveModpackId: 'classic-pack',
-  }),
+vi.mock('../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceList: () => ({ status: 'ready', data: [{ id: 'classic-pack', name: 'Classic', selected: true }] }),
+  useSelectedInstanceId: () => ({ status: 'ready', data: 'classic-pack' }),
 }));
 
 vi.mock('../../features/launcher/services/launcherService', async (importOriginal) => ({

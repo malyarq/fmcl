@@ -66,17 +66,58 @@ Do not create a second copy of a cross-process payload type in renderer or main 
 
 | Domain | Canonical main-process owner | Renderer owner |
 | --- | --- | --- |
-| Instance lifecycle and selected state | `electron/domains/instances/instanceApplication.ts`, backed by `electron/infrastructure/instances/jsonControlPlaneStore.ts` | `src/contexts/instances/`, modpack screens |
-| Transactional import, export, install, update, duplicate, delete | `electron/services/operations/operationRunner.ts` and operation adapters | `src/services/ipc/operationsIPC.ts` plus owning features |
-| Instance mod files and manifest registration | `electron/services/mods/instanceModContentService.ts`, `manifestContentInstaller.ts` | modpack content screens and `instanceModsIPC.ts` |
+| Instance lifecycle and selected state | `electron/domains/instances/instanceApplication.ts`, backed by `electron/infrastructure/instances/jsonControlPlaneStore.ts` | `src/features/instances/InstanceQueryProvider.tsx` plus focused selector, invalidation, and command hooks |
+| Transactional import, export, install, update, duplicate, delete | `electron/services/operations/operationRunner.ts` and operation adapters | `src/features/operations/`, `operationsIPC.ts`, and the feature that starts the operation |
+| Instance mod files and manifest registration | `electron/services/mods/instanceModContentService.ts`, `manifestContentInstaller.ts` | typed content adapters under `src/features/content/` and instance-scoped detail surfaces |
 | Launch and Java | `electron/services/launcher/`, `electron/services/java/`, injected instance/launch ports | `src/features/launcher/`, `src/components/SimplePlayDashboard.tsx` |
-| Provider catalog and installs | `electron/services/mods/platform/` and provider operation adapters | catalog features and semantic wrappers |
+| Provider catalog and installs | `electron/services/mods/platform/` and provider operation adapters | `useModpackBrowserCatalog`, typed content adapters, and semantic IPC wrappers |
 | Accounts | `electron/services/account/` | `src/features/accounts/` |
 | Multiplayer | `electron/services/network/` | `src/features/multiplayer/` |
 | Updates | `electron/services/updater/` | `src/features/updater/` |
 | Resource packs, shaders, worlds, datapacks, screenshots | narrow services and validated handlers under `electron/services/` and `electron/ipc/handlers/` | modpack detail/content features |
 
 There is no base instance store plus inherited modpack facade. `InstanceApplication` is the single public owner of instance control-plane reads and commands. Semantic services depend on its ports and add only their own content behavior.
+
+## Renderer workflow ownership
+
+```mermaid
+flowchart TD
+  AP["AppProviders"] --> IQ["InstanceQueryProvider\none canonical query store"]
+  IQ --> IS["Focused selectors and commands"]
+  IS --> SH["Sidebar and launcher shell"]
+  IS --> ML["Installed list"]
+  IS --> MD["Details and Classic"]
+  AP --> OR["OperationRecoveryProvider"]
+  OR --> RI["Startup recovery inbox"]
+  NAV["ModpackNavigationProvider"] --> ER["In-place AppRecoveryBoundary"]
+  ER --> ROUTER["AppLayout and ModpackRouter"]
+  FLOW["Owning mutation feature"] --> SESSION["useOperationSession"]
+  SESSION --> POLICY["operationTerminalPolicy"]
+  POLICY --> INV["Canonical invalidation and truthful presentation"]
+  CONTENT["Routed, modal, and Classic content entry"] --> ADAPTER["Mod/resource-pack/shader adapter"]
+  ADAPTER --> STATE["useContentAcquisitionState"]
+  STATE --> SURFACE["ContentAcquisitionSurface"]
+```
+
+### Canonical instance state
+
+`AppProviders` mounts exactly one `InstanceQueryProvider`. Its store makes one catalog request and publishes the instance list and selected ID from the same response. ID-keyed snapshots are retained only while consumed; concurrent reads and invalidations are coalesced, stale generations are ignored, and configuration writes are serialized per instance before canonical invalidation.
+
+Shell, installed list, Details, Classic, Settings, and launch code read focused selectors from `src/features/instances/hooks/`. Commands cross semantic services in `src/contexts/instances/services/` and return to the same provider through explicit invalidation. There is no `ModpackContext`, aggregate compatibility hook, local selected-instance store, or fallback list cache.
+
+### Operations and recovery
+
+Each mutation feature owns its call to `useOperationSession`; the hook owns subscription release, cancellation, terminal callback ordering, reset, and explicit retry. `operationTerminalPolicy.ts` is the single classifier for durable commit, canonical invalidation, and presentation success. A degraded committed result may invalidate state, but it cannot select an instance, close the surface, or claim success.
+
+`OperationRecoveryProvider` mounts once inside the query provider. It accepts only internally consistent sanitized recovered records, invalidates a committed operation at most once, and exposes inspection, dismissal, and safe navigation. It never reconstructs hidden input or generically replays an operation. Consumed archive references and expired native save authorization require a new user action.
+
+`ModpackNavigationProvider` is mounted above `AppRecoveryBoundary`, so route and back history survive in-place recovery. The feature boundary refreshes canonical instances and the recovery inbox without reloading the renderer. Only the provider-free bootstrap boundary may request a full renderer reload after an unrecoverable bootstrap failure.
+
+### Content and surface boundaries
+
+Mods, resource packs, and shaders share `useContentAcquisitionState` and `ContentAcquisitionSurface`, but each keeps a typed adapter for its real provider, runtime, local-file, manifest, and retry semantics. Partial commits retain only failed logical selections. A committed file is never downloaded again merely because follow-up invalidation or manifest registration failed.
+
+Installed list, browser, creation, Classic, Appearance, and Details are split into controller/state and render-focused modules. Persistent navigation and settings owners stay outside `Suspense`. List, Details, Appearance, and Storage remain eager; optional modpack routes and the heavy Downloads, Launcher, Accounts, and Statistics settings tabs are lazy only where production bundle measurements justified the boundary. Every fallback is a labelled polite status and does not replace route state.
 
 ## Canonical durable state
 

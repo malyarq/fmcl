@@ -88,6 +88,19 @@ describe('LaunchControls launch-state seam', () => {
     expect(killAndRestartMock).toHaveBeenCalledTimes(1);
   });
 
+  it('does not offer a renderer reload when process restart capability is unavailable', () => {
+    hasMock.mockReturnValue(false);
+
+    renderLaunchControls({
+      isLaunching: true,
+      launchStage: 'waiting',
+      canForceRestart: true,
+    });
+
+    expect(screen.queryByRole('button', { name: /Force restart/i })).toBeNull();
+    expect(killAndRestartMock).not.toHaveBeenCalled();
+  });
+
   it('keeps failure feedback visible while returning the main action to Play', () => {
     renderLaunchControls({
       isLaunching: false,

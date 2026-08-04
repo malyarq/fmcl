@@ -54,8 +54,6 @@ export type ModpackView =
   | { type: 'importPreview'; archiveRef: string; inspection: ArchiveManifestMetadata }
   | { type: 'create' };
 
-let queuedInitialModpackView: ModpackView | null = null;
-
 function normalizeView(view: ModpackView): ModpackView {
   if (view.type !== 'browser') {
     return view;
@@ -65,16 +63,6 @@ function normalizeView(view: ModpackView): ModpackView {
     type: 'browser',
     state: normalizeModpackBrowserState(view.state),
   };
-}
-
-export function queueInitialModpackView(view: ModpackView) {
-  queuedInitialModpackView = normalizeView(view);
-}
-
-export function consumeQueuedInitialModpackView() {
-  const nextView = queuedInitialModpackView;
-  queuedInitialModpackView = null;
-  return nextView;
 }
 
 export function useModpackNavigation(initialView: ModpackView = { type: 'list' }) {

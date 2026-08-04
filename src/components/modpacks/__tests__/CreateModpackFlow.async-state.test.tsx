@@ -44,9 +44,10 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   }),
 }));
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpack: () => ({
-    refresh: refreshMock,
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: vi.fn(),
+    invalidateInstances: refreshMock,
   }),
 }));
 
@@ -67,6 +68,13 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
 vi.mock('../../../services/ipc/instancesIPC', () => ({
   instancesIPC: {
     create: (...args: unknown[]) => createMock(...args),
+  },
+}));
+
+vi.mock('../../../services/ipc/instanceModsIPC', () => ({
+  instanceModsIPC: {
+    list: (...args: unknown[]) => getModsMock(...args),
+    remove: vi.fn(),
   },
 }));
 
@@ -129,6 +137,114 @@ describe('ModpackCreationWizard async state', () => {
       deferred.resolve({ ok: true, value: { status: 'committed', selectedId: 'pack-1', instances: [] } });
       await deferred.promise;
     });
+  });
+
+  it('restores a valid user draft without rewriting it on mount and discards it only on request', () => {
+    const storedDraft = JSON.stringify({
+      name: 'Restored Pack',
+      description: 'Keep my work',
+      version: '2.0.0',
+      minecraftVersion: '1.19.4',
+      useForge: false,
+      useFabric: true,
+      useNeoForge: false,
+      useOptiFine: false,
+    });
+    localStorage.setItem('modpack_creation_draft', storedDraft);
+
+    render(<ModpackCreationWizard onBack={vi.fn()} />);
+
+    expect(screen.getByLabelText('Modpack name')).toHaveProperty('value', 'Restored Pack');
+    expect(screen.getByLabelText('Description')).toHaveProperty('value', 'Keep my work');
+    expect(screen.getByTestId('modpack-creation-draft-restored').textContent).toContain('Draft restored');
+    expect(localStorage.getItem('modpack_creation_draft')).toBe(storedDraft);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Discard draft' }));
+
+    expect(screen.getByLabelText('Modpack name')).toHaveProperty('value', '');
+    expect(localStorage.getItem('modpack_creation_draft')).toBeNull();
+  });
+
+  it('keeps a corrupt stored draft untouched until explicit recovery', () => {
+    const corruptDraft = '{"name":42,"useFabric":"yes"}';
+    localStorage.setItem('modpack_creation_draft', corruptDraft);
+
+    render(<ModpackCreationWizard onBack={vi.fn()} />);
+
+    expect(screen.getByTestId('modpack-creation-draft-recovery').getAttribute('role')).toBe('alert');
+    expect(screen.getByText('Saved draft cannot be restored')).toBeTruthy();
+    expect(screen.queryByLabelText('Modpack name')).toBeNull();
+    expect(localStorage.getItem('modpack_creation_draft')).toBe(corruptDraft);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Discard invalid draft' }));
+
+    expect(screen.getByLabelText('Modpack name')).toHaveProperty('value', '');
+    expect(localStorage.getItem('modpack_creation_draft')).toBeNull();
+  });
+
+  it('coalesces duplicate create submissions onto one canonical command', async () => {
+    const deferred = createDeferred<{ ok: true; value: { status: 'committed'; selectedId: string; instances: [] } }>();
+    createMock.mockReturnValue(deferred.promise);
+
+    render(<ModpackCreationWizard onBack={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText('Modpack name'), { target: { value: 'One Pack' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    const submit = screen.getByRole('button', { name: 'Next' });
+    submit.click();
+    submit.click();
+
+    expect(createMock).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      deferred.resolve({ ok: true, value: { status: 'committed', selectedId: 'pack-1', instances: [] } });
+      await deferred.promise;
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Finish' })).toBeTruthy();
+    });
+    expect(refreshMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('button', { name: /^Back$/ })).toBeNull();
+  });
+
+  it('finishes a committed create at most once under duplicate activation', async () => {
+    const onCreated = vi.fn();
+    render(<ModpackCreationWizard onBack={vi.fn()} onCreated={onCreated} />);
+
+    fireEvent.change(screen.getByLabelText('Modpack name'), { target: { value: 'Finish Once' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const finish = await screen.findByRole('button', { name: 'Finish' });
+    finish.click();
+    finish.click();
+
+    await waitFor(() => {
+      expect(onCreated).toHaveBeenCalledTimes(1);
+    });
+    expect(onCreated).toHaveBeenCalledWith('pack-1');
+    expect(createMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps post-create content read failures visible and retryable on the current step', async () => {
+    getModsMock.mockRejectedValueOnce(new Error('manifest unavailable')).mockResolvedValueOnce([]);
+    render(<ModpackCreationWizard onBack={vi.fn()} />);
+
+    fireEvent.change(screen.getByLabelText('Modpack name'), { target: { value: 'Visible Recovery' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+
+    const recovery = await screen.findByTestId('modpack-creation-content-load-error');
+    expect(recovery.getAttribute('role')).toBe('alert');
+    expect(recovery.textContent).toContain('manifest unavailable');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Mods step')).toBeTruthy();
+    });
+    expect(getModsMock).toHaveBeenCalledTimes(2);
   });
 
   it('keeps refresh failure after a committed create as calm optional follow-up', async () => {

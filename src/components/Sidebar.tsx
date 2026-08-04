@@ -1,8 +1,9 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Globe2, Settings2 } from 'lucide-react';
 import pkg from '../../package.json';
+import { CLASSIC_MODPACK_ID } from '../../shared/constants';
 import { useSettings, useUIMode } from '../contexts/SettingsContext';
-import { useModpack } from '../contexts/ModpackContext';
+import { useInstanceList, useSelectedInstanceId } from '../features/instances/hooks/useInstanceSelectors';
 import { formatLastLaunch, loadRecentLaunch } from '../features/launcher/services/launcherService';
 import type { MCVersion } from '../services/versions/types';
 import type { VersionHint } from '../utils/minecraftVersions';
@@ -91,7 +92,11 @@ const Sidebar = ({
 }: SidebarProps) => {
     const { getAccentStyles, getAccentHex, t, compactMode, sidebarPosition } = useSettings();
     const { uiMode, setMode } = useUIMode();
-    const { modpacks, selectedId, effectiveModpackId } = useModpack();
+    const listQuery = useInstanceList();
+    const selectedQuery = useSelectedInstanceId();
+    const modpacks = listQuery.status === 'ready' ? listQuery.data : [];
+    const selectedId = selectedQuery.status === 'ready' ? selectedQuery.data : '';
+    const effectiveModpackId = uiMode === 'simple' ? CLASSIC_MODPACK_ID : selectedId;
     const modpackPrimaryActionOwnership = useModpackPrimaryActionOwnership();
     const recentLaunch = useMemo(() => loadRecentLaunch(effectiveModpackId), [effectiveModpackId]);
     const sidebarContentId = 'launcher-sidebar-content';
@@ -127,6 +132,8 @@ const Sidebar = ({
     return (
         <aside
             aria-label="FriendLauncher sidebar"
+            data-instance-owner="canonical"
+            data-selected-instance-id={effectiveModpackId}
             className={cn(
             'relative z-10 flex h-full min-w-0 shrink-0 flex-col border-r border-border bg-sidebar/86 shadow-[0_24px_80px_rgba(0,0,0,0.16)] backdrop-blur-xl transition-all duration-300 ease-out',
             isCollapsed ? "w-14 p-2 sm:w-16 sm:p-2.5" : expandedWidthClass,

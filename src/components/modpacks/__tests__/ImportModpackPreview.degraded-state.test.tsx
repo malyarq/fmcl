@@ -2,9 +2,9 @@
 
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ImportModpackPreviewModal } from '../ImportModpackPreviewModal';
 import { ImportModpackPreviewPage } from '../ImportModpackPreviewPage';
 import type { OperationSnapshot } from '@shared/contracts';
+import importPageSource from '../ImportModpackPreviewPage.tsx?raw';
 
 const refreshMock = vi.fn();
 const toastSuccessMock = vi.fn();
@@ -44,8 +44,8 @@ vi.mock('../../../contexts/ToastContext', () => ({
   useToast: () => ({ success: toastSuccessMock, error: toastErrorMock }),
 }));
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpackListContext: () => ({ refresh: refreshMock }),
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({ invalidateInstances: refreshMock }),
 }));
 
 vi.mock('../../../services/ipc/operationsIPC', () => ({
@@ -61,7 +61,7 @@ function snapshot(status: OperationSnapshot['status']): OperationSnapshot {
     : status === 'recovered'
       ? { status, instanceId: 'alpha' }
       : status === 'degraded'
-        ? { status, missing: ['optional-item'] }
+        ? { status, instanceId: 'alpha', missing: ['optional-item'] }
         : status === 'failed'
           ? { status, code: 'IMPORT_FAILED', message: 'Operation failed' }
           : status === 'recovery-required'
@@ -122,10 +122,11 @@ describe('ImportModpackPreview operation state', () => {
       const listener = await startImport();
       await act(async () => listener(snapshot(status)));
 
-      expect((await screen.findByTestId('import-operation-status')).textContent).toContain(status);
-      if (status === 'succeeded' || status === 'recovered') {
+      expect((await screen.findByTestId('import-operation-status')).getAttribute('data-operation-status')).toBe(status);
+      if (status === 'succeeded' || status === 'recovered' || status === 'degraded') {
         await waitFor(() => expect(refreshMock).toHaveBeenCalledOnce());
-        expect(toastSuccessMock).toHaveBeenCalledOnce();
+        if (status === 'succeeded' || status === 'recovered') expect(toastSuccessMock).toHaveBeenCalledOnce();
+        else expect(toastSuccessMock).not.toHaveBeenCalled();
       } else {
         expect(refreshMock).not.toHaveBeenCalled();
         expect(toastSuccessMock).not.toHaveBeenCalled();
@@ -147,31 +148,10 @@ describe('ImportModpackPreview operation state', () => {
     expect(unsubscribe).toHaveBeenCalledOnce();
   });
 
-  it('releases the modal listener on close and never treats a failed import as successful', async () => {
-    const unsubscribe = vi.fn();
-    subscribeMock.mockResolvedValue(unsubscribe);
-    const onClose = vi.fn();
-    const onImport = vi.fn();
-    const rendered = render(
-      <ImportModpackPreviewModal
-        archiveRef="archive-ref"
-        inspection={inspection}
-        isOpen
-        onClose={onClose}
-        onImport={onImport}
-      />,
-    );
-
-    await screen.findByText('Alpha Pack');
-    const listener = await startImport();
-    await act(async () => listener(snapshot('failed')));
-    rendered.unmount();
-
-    expect(onClose).not.toHaveBeenCalled();
-    expect(onImport).not.toHaveBeenCalled();
-    expect(refreshMock).not.toHaveBeenCalled();
-    expect(toastSuccessMock).not.toHaveBeenCalled();
-    expect(unsubscribe).toHaveBeenCalledOnce();
+  it('contains no page-specific archive lifecycle or reload fallback', () => {
+    expect(importPageSource).toContain('useOperationSession');
+    expect(importPageSource).not.toMatch(/useArchiveImportOperation|operationsIPC|\.subscribe\s*\(|location\.reload/);
+    expect(importPageSource).not.toMatch(/operation\.(retry|reset)/);
   });
 
 });

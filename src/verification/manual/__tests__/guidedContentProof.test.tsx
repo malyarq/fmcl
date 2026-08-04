@@ -113,7 +113,7 @@ describe('guided manual verification proof', () => {
 
     expect(capability.getAttribute('data-status')).toBe('unsupported');
     expect(notice.textContent ?? '').toContain(
-      'FMCL kept these shader installs blocked for the current runtime: Photon Bloom Lite.',
+      'Photon Bloom Lite: This shader is blocked for the current runtime.',
     );
     expect(notice.textContent ?? '').toContain('Review the shader runtime card above, then retry.');
     expect(getGuidedSurfaceText()).not.toMatch(marketplaceFramingPattern);

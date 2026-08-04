@@ -5,7 +5,7 @@ import { GameTab } from '../../settings/tabs/GameTab';
 import { ModloaderSection } from '../../sidebar/ModloaderSection';
 import { ModpackDependencySummary } from '../../sidebar/ModpackDependencySummary';
 import { OptifineToggle } from '../../sidebar/OptifineToggle';
-import type { ModpackConfig } from '../../../contexts/ModpackContext';
+import type { ModpackConfig } from '../../../contexts/instances/types';
 import type { ModpackDetailsConfigSetters } from '../../../features/modpacks/hooks/useModpackDetailsConfig';
 import type { ModpackRuntimeSummary } from '../../../features/modpacks/hooks/useModpackRuntimeSummary';
 

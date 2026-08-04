@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { RefObject } from 'react';
 import { useSettings } from '../../../contexts/SettingsContext';
-import { useModpack } from '../../../contexts/ModpackContext';
+import { useEffectiveInstance } from '../../instances/hooks/useEffectiveInstance';
 import { launcherIPC } from '../../../services/ipc/launcherIPC';
 import { useLauncherProcessState } from './useLauncherState';
 import { useLauncherIPC } from './useLauncherIPC';
@@ -43,7 +43,9 @@ export interface UseLauncherResult {
 export const useLauncher = (): UseLauncherResult => {
   const state = useLauncherProcessState();
   const { t, autoDownloadThreads, downloadThreads, maxSockets } = useSettings();
-  const { effectiveModpackId: instanceId, config: modpackConfig } = useModpack();
+  const effectiveInstance = useEffectiveInstance();
+  const instanceId = effectiveInstance.status === 'ready' ? effectiveInstance.data.id : '';
+  const modpackConfig = effectiveInstance.status === 'ready' ? effectiveInstance.data.snapshot : null;
 
   useLauncherIPC({
     t,

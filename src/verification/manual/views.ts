@@ -7,6 +7,12 @@ export type ManualVerificationView =
   | 'phase-24-theme-light'
   | 'phase-24-locale-en'
   | 'phase-24-locale-ru'
+  | 'phase-41-ownership-en'
+  | 'phase-41-ownership-ru'
+  | 'phase-41-recovery-en'
+  | 'phase-41-recovery-ru'
+  | 'phase-41-surfaces-en'
+  | 'phase-41-surfaces-ru'
   | 'welcome'
   | 'tour'
   | 'dashboard'
@@ -33,6 +39,7 @@ export type ManualVerificationView =
   | 'guided-resourcepacks-recovery'
   | 'guided-shaders'
   | 'guided-shaders-recovery'
+  | 'operation-recovery'
   | 'modpack-install'
   | 'modpack-import-preview'
   | 'modpack-add-modal'
@@ -143,12 +150,72 @@ export const CLOSEOUT_VIEWS: ManualVerificationViewMeta[] = [
 ];
 
 export const GENERAL_VIEWS: ManualVerificationViewMeta[] = [
+  {
+    id: 'phase-41-ownership-en',
+    label: 'Phase 41 Ownership EN',
+    description: 'English real-route proof that the shell and installed catalog share one canonical instance owner.',
+    group: 'general',
+    screenshot: true,
+    viewport: 'wide',
+    language: 'en',
+    forbidText: ['/Users/', 'node_modules', 'renderWithHooks'],
+  },
+  {
+    id: 'phase-41-ownership-ru',
+    label: 'Phase 41 Ownership RU',
+    description: 'Russian pair for the canonical shell and route instance-ownership proof.',
+    group: 'general',
+    screenshot: true,
+    viewport: 'wide',
+    language: 'ru',
+    forbidText: ['/Users/', 'node_modules', 'renderWithHooks'],
+  },
+  {
+    id: 'phase-41-recovery-en',
+    label: 'Phase 41 Recovery EN',
+    description: 'English production-owned startup recovery proof with recovered and recovery-required journal records.',
+    group: 'general',
+    screenshot: true,
+    viewport: 'wide',
+    language: 'en',
+    forbidText: ['/Users/', 'node_modules', 'renderWithHooks'],
+  },
+  {
+    id: 'phase-41-recovery-ru',
+    label: 'Phase 41 Recovery RU',
+    description: 'Russian pair for production-owned recovered and manual-attention journal records.',
+    group: 'general',
+    screenshot: true,
+    viewport: 'wide',
+    language: 'ru',
+    forbidText: ['/Users/', 'node_modules', 'renderWithHooks'],
+  },
+  {
+    id: 'phase-41-surfaces-en',
+    label: 'Phase 41 Surfaces EN',
+    description: 'English narrow-first proof for the real split Appearance, Details, and content-acquisition surfaces.',
+    group: 'general',
+    screenshot: true,
+    viewport: 'desktop',
+    language: 'en',
+    forbidText: ['/Users/', 'node_modules', 'renderWithHooks'],
+  },
+  {
+    id: 'phase-41-surfaces-ru',
+    label: 'Phase 41 Surfaces RU',
+    description: 'Russian pair for keyboard-reachable split Appearance, Details, and content-acquisition surfaces.',
+    group: 'general',
+    screenshot: true,
+    viewport: 'desktop',
+    language: 'ru',
+    forbidText: ['/Users/', 'node_modules', 'renderWithHooks'],
+  },
   { id: 'welcome', label: 'Welcome', description: 'First-run welcome overlay.', group: 'general' },
   { id: 'tour', label: 'Tour', description: 'Onboarding spotlight with stable targets.', group: 'general' },
   {
     id: 'dashboard',
     label: 'Launcher Home',
-    description: 'Phase 33 classic runtime truth proof for short Vanilla wording and cold-start labels that must match the actual launch target.',
+    description: 'Phase 33 classic runtime truth proof for Fabric wording and cold-start labels that must match the canonical launch target.',
     group: 'general',
   },
   {
@@ -202,6 +269,12 @@ export const GENERAL_VIEWS: ManualVerificationViewMeta[] = [
     id: 'guided-shaders-recovery',
     label: 'Guided Shader Recovery',
     description: 'Phase 35 guided shader recovery proof with unsupported-runtime guidance and retry-ready blocked install state.',
+    group: 'general',
+  },
+  {
+    id: 'operation-recovery',
+    label: 'Operation Recovery',
+    description: 'Production-mounted startup recovery inbox with recovered and recovery-required journal records, safe inspect/dismiss actions, and no generic replay.',
     group: 'general',
   },
   { id: 'modpack-install', label: 'Install', description: 'Shell-integrated install-route proof for route-owned CTA hierarchy.', group: 'general' },

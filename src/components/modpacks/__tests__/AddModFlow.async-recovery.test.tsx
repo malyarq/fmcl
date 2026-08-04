@@ -199,8 +199,11 @@ describe('Add-mod async recovery', () => {
       ]),
     );
     installModFileMock
-      .mockImplementationOnce(() => installDeferred.promise)
-      .mockResolvedValueOnce(undefined);
+      .mockImplementationOnce(async () => {
+        await installDeferred.promise;
+        return { status: 'success', issues: [] };
+      })
+      .mockResolvedValueOnce({ status: 'success', issues: [] });
     registerModMock
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('manifest write failed'));
@@ -252,7 +255,7 @@ describe('Add-mod async recovery', () => {
     expect(actionRail.contains(notice)).toBe(true);
     expect(notice.getAttribute('data-tone')).toBe('warning');
     expect(notice.textContent).toContain('Iris');
-    expect(notice.textContent).toContain('write them into this modpack manifest');
+    expect(notice.textContent).toContain('manifest entry could not be saved');
     expect(screen.getByRole('button', { name: 'Add selected (1)' })).toHaveProperty('disabled', false);
     expect(onBack).not.toHaveBeenCalled();
   });

@@ -2,11 +2,11 @@
 
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SimplePlayDashboard } from '../../SimplePlayDashboard';
 import { ModpackDetails } from '../ModpackDetails';
 import { ModpackRouter } from '../ModpackRouter';
-import { consumeQueuedInitialModpackView } from '../../../features/modpacks/hooks/useModpackNavigation';
+import { ModpackNavigationProvider } from '../../../features/modpacks/navigation/ModpackNavigationProvider';
 
 const setModeMock = vi.fn();
 const loadModpackConfigMock = vi.fn();
@@ -76,33 +76,56 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   }),
 }));
 
-vi.mock('../../../contexts/ModpackContext', () => ({
-  useModpack: () => ({
-    effectiveModpackId: 'classic',
-    selectedId: 'alpha',
-    config: {
-      name: 'Classic Pack',
-      runtime: {
-        minecraft: '1.20.1',
-        modLoader: { type: 'fabric', version: '0.16.9' },
+vi.mock('../../../features/instances/hooks/useEffectiveInstance', () => ({
+  useEffectiveInstance: () => ({
+    status: 'ready',
+    data: {
+      id: 'classic',
+      snapshot: {
+        id: 'classic',
+        name: 'Classic Pack',
+        runtime: {
+          minecraft: '1.20.1',
+          modLoader: { type: 'fabric', version: '0.16.9' },
+        },
+        memory: { maxMb: 4096 },
       },
     },
+  }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceConfigCommands', () => ({
+  useInstanceConfigCommands: () => ({
     setMemoryGb: vi.fn(),
     setMinMemoryGb: vi.fn(),
-    setJavaPath: vi.fn(),
     setVmOptions: vi.fn(),
     setGameExtraArgs: vi.fn(),
     setGameResolution: vi.fn(),
     setAutoConnectServer: vi.fn(),
-    modpacks: [
+  }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({ invalidateInstance: vi.fn(), invalidateInstances: vi.fn() }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceList: () => ({
+    status: 'ready',
+    data: [
       { id: 'classic', name: 'Classic Pack', selected: false },
       { id: 'alpha', name: 'Alpha Pack', selected: true },
     ],
+  }),
+  useSelectedInstanceId: () => ({ status: 'ready', data: 'alpha' }),
+}));
+
+vi.mock('../../../contexts/instances/hooks/useInstanceCrudActions', () => ({
+  useInstanceCrudActions: () => ({
     select: vi.fn(),
     rename: vi.fn(),
     duplicate: vi.fn(),
     remove: vi.fn(),
-    refresh: vi.fn(),
   }),
 }));
 
@@ -257,7 +280,6 @@ vi.mock('../../../features/screenshots/components/ScreenshotsTab', () => ({
 
 describe('guided content entry', () => {
   beforeEach(() => {
-    consumeQueuedInitialModpackView();
     localStorage.clear();
     mockMatchMedia();
     setModeMock.mockReset();
@@ -265,29 +287,27 @@ describe('guided content entry', () => {
     loadModpackConfigMock.mockResolvedValue(undefined);
   });
 
-  afterEach(() => {
-    consumeQueuedInitialModpackView();
-  });
-
   it('routes simple-dashboard resource-pack entry into the same guided browser route', async () => {
-    render(
-      <SimplePlayDashboard
-        launch={{
-          version: '1.20.1',
-          nickname: 'Steve',
-          loaderType: 'fabric',
-          ram: 6,
-          isOffline: true,
-        }}
-        runtime={{
-          isLaunching: false,
-          onLaunch: vi.fn(),
-        }}
-        actions={{
-          onShowMultiplayer: vi.fn(),
-          onShowSettings: vi.fn(),
-        }}
-      />,
+    const view = render(
+      <ModpackNavigationProvider>
+        <SimplePlayDashboard
+          launch={{
+            version: '1.20.1',
+            nickname: 'Steve',
+            loaderType: 'fabric',
+            ram: 6,
+            isOffline: true,
+          }}
+          runtime={{
+            isLaunching: false,
+            onLaunch: vi.fn(),
+          }}
+          actions={{
+            onShowMultiplayer: vi.fn(),
+            onShowSettings: vi.fn(),
+          }}
+        />
+      </ModpackNavigationProvider>,
     );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Resource Packs' }));
@@ -295,31 +315,33 @@ describe('guided content entry', () => {
 
     expect(setModeMock).toHaveBeenCalledWith('modpacks');
 
-    render(<ModpackRouter />);
+    view.rerender(<ModpackNavigationProvider><ModpackRouter /></ModpackNavigationProvider>);
 
     expect(await screen.findByText('guided:resourcepack:classic')).toBeTruthy();
     expect(screen.queryByText('Modpack browser')).toBeNull();
   });
 
   it('routes simple-dashboard shader entry into the same guided browser route', async () => {
-    render(
-      <SimplePlayDashboard
-        launch={{
-          version: '1.20.1',
-          nickname: 'Steve',
-          loaderType: 'fabric',
-          ram: 6,
-          isOffline: true,
-        }}
-        runtime={{
-          isLaunching: false,
-          onLaunch: vi.fn(),
-        }}
-        actions={{
-          onShowMultiplayer: vi.fn(),
-          onShowSettings: vi.fn(),
-        }}
-      />,
+    const view = render(
+      <ModpackNavigationProvider>
+        <SimplePlayDashboard
+          launch={{
+            version: '1.20.1',
+            nickname: 'Steve',
+            loaderType: 'fabric',
+            ram: 6,
+            isOffline: true,
+          }}
+          runtime={{
+            isLaunching: false,
+            onLaunch: vi.fn(),
+          }}
+          actions={{
+            onShowMultiplayer: vi.fn(),
+            onShowSettings: vi.fn(),
+          }}
+        />
+      </ModpackNavigationProvider>,
     );
 
     fireEvent.click(screen.getByRole('tab', { name: 'Shaders' }));
@@ -327,7 +349,7 @@ describe('guided content entry', () => {
 
     expect(setModeMock).toHaveBeenCalledWith('modpacks');
 
-    render(<ModpackRouter />);
+    view.rerender(<ModpackNavigationProvider><ModpackRouter /></ModpackNavigationProvider>);
 
     expect(await screen.findByText('guided:shader:classic')).toBeTruthy();
     expect(screen.queryByText('Modpack browser')).toBeNull();

@@ -137,7 +137,7 @@ describe('SettingsPage launcher i18n', () => {
   it('renders moved launcher-side runtime controls in Russian without leaking raw keys', async () => {
     const { container } = render(<SettingsPage onClose={vi.fn()} initialTab="launcher" />);
 
-    expect(screen.getByText('Поведение лаунчера')).toBeTruthy();
+    expect(await screen.findByText('Поведение лаунчера')).toBeTruthy();
     expect(screen.getByRole('switch', { name: 'Включить анимации' })).toBeTruthy();
     expect(screen.getByRole('switch', { name: 'Компактный режим' })).toBeTruthy();
     expect(screen.getByText('Положение сайдбара')).toBeTruthy();

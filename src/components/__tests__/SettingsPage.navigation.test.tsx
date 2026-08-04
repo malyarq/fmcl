@@ -98,27 +98,29 @@ describe('SettingsPage navigation', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Downloads' }))
     expect(await screen.findByRole('tabpanel', { name: 'Downloads' })).toBeTruthy()
-    expect(screen.getByText('Downloads tab')).toBeTruthy()
+    expect(screen.getAllByRole('status', { name: 'Loading' })).toHaveLength(1)
+    expect(await screen.findByText('Downloads tab')).toBeTruthy()
+    expect(screen.queryByRole('status', { name: 'Loading' })).toBeNull()
     expect(within(header).queryByText('Tune mirrors, concurrency, and connection limits for a stable download pipeline.')).toBeNull()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Launcher' }))
     expect(await screen.findByRole('tabpanel', { name: 'Launcher' })).toBeTruthy()
-    expect(screen.getByText('Launcher tab')).toBeTruthy()
+    expect(await screen.findByText('Launcher tab')).toBeTruthy()
     expect(within(header).queryByText('Manage runtime behavior, update checks, and persistent launcher caches from one place.')).toBeNull()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Storage' }))
     expect(await screen.findByRole('tabpanel', { name: 'Storage' })).toBeTruthy()
-    expect(screen.getByText('Storage tab')).toBeTruthy()
+    expect(await screen.findByText('Storage tab')).toBeTruthy()
     expect(within(header).queryByText('Review shared content usage and run cleanup without digging through extra utility panels.')).toBeNull()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Accounts' }))
     expect(await screen.findByRole('tabpanel', { name: 'Accounts' })).toBeTruthy()
-    expect(screen.getByText('Accounts tab')).toBeTruthy()
+    expect(await screen.findByText('Accounts tab')).toBeTruthy()
     expect(within(header).queryByText('Keep your launch-ready accounts, provider access, and skin tools in one place.')).toBeNull()
 
     fireEvent.click(screen.getByRole('tab', { name: 'Statistics' }))
     expect(await screen.findByRole('tabpanel', { name: 'Statistics' })).toBeTruthy()
-    expect(screen.getByText('Statistics tab')).toBeTruthy()
+    expect(await screen.findByText('Statistics tab')).toBeTruthy()
     expect(within(header).queryByText('Keep the most useful launch and play-time trends visible without opening extra sections.')).toBeNull()
 
     expect(container.textContent).not.toContain('settings.tab_storage')

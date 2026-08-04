@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../ui/Button';
@@ -10,12 +10,9 @@ import { providerCatalogIPC } from '../../services/ipc/providerCatalogIPC';
 import type { ProviderCatalogVersionDescriptor } from '@shared/contracts';
 import { toDisplayErrorMessage } from '../../utils/displayError';
 import { isSuspiciousUiText, sanitizeUiText } from '../../utils/safeUiText';
-import { ProviderInstallOperationState } from './ProviderInstallOperationState';
-import {
-  isPublishedProviderInstall,
-  isProviderInstallTerminal,
-  useProviderInstallOperation,
-} from './useProviderInstallOperation';
+import { useInstanceInvalidation } from '../../features/instances/hooks/useInstanceInvalidation';
+import { useOperationSession } from '../../features/operations/hooks/useOperationSession';
+import { OperationStatusView } from '../../features/operations/components/OperationStatusView';
 
 interface ModpackUpdateModalProps {
   modpackId: string;
@@ -66,16 +63,22 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
   const [selectedVersion, setSelectedVersion] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const { operation, error: operationError, isActive, start, cancel } = useProviderInstallOperation(isOpen);
-  const completedOperationRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!operation || !isProviderInstallTerminal(operation) || completedOperationRef.current === operation.id) return;
-    completedOperationRef.current = operation.id;
-    if (!isPublishedProviderInstall(operation)) return;
-    onUpdated?.();
-    onClose();
-  }, [onClose, onUpdated, operation]);
+  const { invalidateInstances } = useInstanceInvalidation();
+  const operation = useOperationSession({
+    enabled: isOpen,
+    onCommitted: async ({ classification }) => {
+      if (classification.shouldInvalidateInstances) await invalidateInstances();
+    },
+    onTerminal: ({ classification }) => {
+      if (!classification.isPresentationSuccess) return;
+      onUpdated?.();
+      onClose();
+    },
+  });
+  const isActive = operation.isStarting || operation.isActive;
+  const terminalStatus = operation.snapshot?.status;
+  const mayRetry = terminalStatus === 'failed' || terminalStatus === 'cancelled';
+  const startBlocked = Boolean(operation.classification?.isTerminal && !mayRetry);
 
   const loadVersions = useCallback(async () => {
     setLoading(true);
@@ -117,7 +120,7 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
         toast.error(t('modpacks.update_error') || 'Ошибка при обновлении модпака');
         return;
       }
-      await start({
+      await operation.start({
         kind: 'install-curseforge',
         projectId: Number(sourceId),
         fileId: version.fileId,
@@ -126,7 +129,7 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
       return;
     }
 
-    await start({
+    await operation.start({
       kind: 'install-modrinth',
       projectId: sourceId,
       versionId: selectedVersion,
@@ -141,7 +144,7 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
   const unavailableVersionLabel = t('modpacks.version_unavailable') || 'Version unavailable';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={t('modpacks.review_update_title') || 'Review modpack update'}>
+    <Modal isOpen={isOpen} onClose={onClose} closeDisabled={isActive} title={t('modpacks.review_update_title') || 'Review modpack update'}>
       <div className="space-y-4" data-testid="modpack-update-modal" data-update-scope="modpack-local">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -184,6 +187,7 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
                 value={selectedVersion}
                 onChange={(e) => setSelectedVersion(e.target.value)}
                 className="w-full"
+                disabled={isActive || startBlocked}
               >
                 {versions.map((version) => (
                   <option key={version.versionId} value={version.versionId}>
@@ -225,22 +229,25 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
               </div>
             )}
 
-            {operation && <ProviderInstallOperationState operation={operation} t={t} />}
-
-            {operationError && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3" role="alert">
-                {operationError instanceof Error ? operationError.message : t('modpacks.update_error')}
-              </div>
-            )}
+            <OperationStatusView
+              snapshot={operation.snapshot}
+              classification={operation.classification}
+              error={operation.error}
+              errorFallback={t('modpacks.update_error')}
+              onCancel={operation.cancel}
+              onRetry={mayRetry ? operation.retry : undefined}
+              t={t}
+              testId="provider-update-operation"
+            />
 
             <div className="flex gap-2 pt-4 border-t border-zinc-200 dark:border-zinc-700">
               <Button
                 variant="primary"
                 onClick={() => {
-                  if (isActive) void cancel();
+                  if (isActive) void operation.cancel();
                   else void handleUpdate();
                 }}
-                disabled={!selectedVersion || operation?.status === 'cancelling'}
+                disabled={!selectedVersion || operation.snapshot?.status === 'cancelling' || startBlocked}
                 className="flex-1"
                 style={getAccentStyles('bg').style}
                 isLoading={isActive}
@@ -250,10 +257,10 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
               <Button
                 variant="secondary"
                 onClick={() => {
-                  if (isActive) void cancel();
+                  if (isActive) void operation.cancel();
                   else onClose();
                 }}
-                disabled={operation?.status === 'cancelling'}
+                disabled={operation.snapshot?.status === 'cancelling'}
               >
                 {t('general.cancel')}
               </Button>

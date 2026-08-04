@@ -36,6 +36,8 @@ describe('AppearanceTab preset contract', () => {
   it('stores the preset identity and applies its runtime colors immediately', async () => {
     renderAppearanceTab();
 
+    expect(screen.getByTestId('appearance-presets').getAttribute('data-appearance-owner')).toBe('presets');
+
     fireEvent.change(getPresetSelect(), { target: { value: 'forest' } });
 
     await waitFor(() => {

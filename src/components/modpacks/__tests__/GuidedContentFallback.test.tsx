@@ -13,6 +13,7 @@ const resourcePackAddMock = vi.fn();
 const shaderAddMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
+const invalidateInstanceMock = vi.fn();
 const marketplaceFramingPattern = /\b(marketplace|wishlist|store|storefront)\b/i;
 
 function mockMatchMedia() {
@@ -43,6 +44,24 @@ vi.mock('../../../contexts/ToastContext', () => ({
   useToast: () => ({
     success: (...args: unknown[]) => toastSuccessMock(...args),
     error: (...args: unknown[]) => toastErrorMock(...args),
+  }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceSelectors', () => ({
+  useInstanceSnapshot: () => ({
+    status: 'ready',
+    data: {
+      id: 'alpha',
+      name: 'Alpha Pack',
+      runtime: { minecraft: '1.20.1', modLoader: { type: 'fabric' } },
+    },
+  }),
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({
+    invalidateInstance: invalidateInstanceMock,
+    invalidateInstances: vi.fn(),
   }),
 }));
 
@@ -89,6 +108,8 @@ describe('guided content fallback', () => {
     shaderAddMock.mockReset();
     toastSuccessMock.mockReset();
     toastErrorMock.mockReset();
+    invalidateInstanceMock.mockReset();
+    invalidateInstanceMock.mockResolvedValue(undefined);
 
     searchModsMock.mockResolvedValue({ items: [], total: 0 });
     getMetadataMock.mockResolvedValue({
@@ -161,7 +182,7 @@ describe('guided content fallback', () => {
     expect(shaderAddMock).toHaveBeenCalledWith('alpha');
     expect(resourcePackAddMock).not.toHaveBeenCalled();
     expect(notice.getAttribute('data-tone')).toBe('error');
-    expect(notice.textContent).toContain('FMCL could not treat these files as valid shader packs');
+    expect(notice.textContent).toContain('FMCL could not treat this file as a valid shader pack');
     expect(notice.textContent).toContain('bad-shader.zip');
     expect(onBack).not.toHaveBeenCalled();
     expect(toastSuccessMock).not.toHaveBeenCalled();

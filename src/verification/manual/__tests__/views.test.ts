@@ -20,7 +20,7 @@ describe('manual verification views', () => {
 
     expect(dashboard).toBeTruthy();
     expect(dashboard?.description).toContain('classic runtime truth');
-    expect(dashboard?.description).toContain('actual launch target');
+    expect(dashboard?.description).toContain('canonical launch target');
     expect(dashboard?.description.toLowerCase()).not.toContain('one shell-owned play cta');
 
     expect(modpackList).toBeTruthy();
@@ -87,9 +87,11 @@ describe('manual verification views', () => {
     expect(isManualVerificationView('settings-appearance')).toBe(true);
     expect(isManualVerificationView('guided-resourcepacks')).toBe(true);
     expect(isManualVerificationView('guided-shaders-recovery')).toBe(true);
+    expect(isManualVerificationView('operation-recovery')).toBe(true);
     expect(isManualVerificationView('missing-view')).toBe(false);
     expect(getManualVerificationView('settings-appearance')).toBe('settings-appearance');
     expect(getManualVerificationView('guided-shaders')).toBe('guided-shaders');
+    expect(getManualVerificationView('operation-recovery')).toBe('operation-recovery');
     expect(getManualVerificationView('missing-view')).toBe('overview');
   });
 
@@ -122,5 +124,11 @@ describe('manual verification views', () => {
     expect(guidedResourcePackRecovery?.description).not.toMatch(marketplaceFramingPattern);
     expect(guidedShaders?.description).not.toMatch(marketplaceFramingPattern);
     expect(guidedShaderRecovery?.description).not.toMatch(marketplaceFramingPattern);
+  });
+
+  it('registers the production startup recovery proof route', () => {
+    const recovery = CORE_VIEWS.find((view) => view.id === 'operation-recovery');
+    expect(recovery?.description).toContain('Production-mounted startup recovery inbox');
+    expect(recovery?.description).toContain('no generic replay');
   });
 });

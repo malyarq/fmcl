@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../../../ui/Button';
 import { Select } from '../../../ui/Select';
 import { cn } from '../../../../utils/cn';
-import type { ModpackConfig } from '../../../../contexts/ModpackContext';
+import type { ModpackConfig } from '../../../../contexts/instances/types';
 import { javaRuntimeIPC } from '../../../../services/ipc/javaRuntimeIPC';
 import type { JavaRuntimeInstallationDto } from '@shared/contracts';
 

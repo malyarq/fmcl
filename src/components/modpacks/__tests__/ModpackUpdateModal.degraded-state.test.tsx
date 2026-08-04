@@ -6,11 +6,14 @@ import { act, fireEvent, waitFor } from '@testing-library/react';
 import type { OperationSnapshot } from '@shared/contracts';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { ModpackUpdateModal } from '../ModpackUpdateModal';
+import updateModalSource from '../ModpackUpdateModal.tsx?raw';
 
 const getModrinthVersionsMock = vi.fn();
 const getCurseForgeVersionsMock = vi.fn();
 const startMock = vi.fn();
 const subscribeMock = vi.fn();
+const cancelMock = vi.fn();
+const invalidateInstancesMock = vi.fn();
 let operationListener: ((snapshot: OperationSnapshot) => void) | undefined;
 const t = createTranslator('en');
 
@@ -44,8 +47,12 @@ vi.mock('../../../services/ipc/operationsIPC', () => ({
   operationsIPC: {
     start: (...args: unknown[]) => startMock(...args),
     subscribe: (...args: unknown[]) => subscribeMock(...args),
-    cancel: vi.fn(),
+    cancel: (...args: unknown[]) => cancelMock(...args),
   },
+}));
+
+vi.mock('../../../features/instances/hooks/useInstanceInvalidation', () => ({
+  useInstanceInvalidation: () => ({ invalidateInstances: invalidateInstancesMock }),
 }));
 
 const queuedUpdate: OperationSnapshot = {
@@ -95,6 +102,8 @@ describe('ModpackUpdateModal degraded states', () => {
       operationListener = listener;
       return vi.fn();
     });
+    cancelMock.mockReset().mockResolvedValue({ cancelled: true });
+    invalidateInstancesMock.mockReset().mockResolvedValue(undefined);
     mockMatchMedia();
   });
 
@@ -164,7 +173,7 @@ describe('ModpackUpdateModal degraded states', () => {
     expect(screen.queryByText('Launcher update available')).toBeNull();
   });
 
-  it('refreshes and closes only after a published degraded update snapshot', async () => {
+  it('invalidates but keeps the modal open after a committed degraded update', async () => {
     getModrinthVersionsMock.mockResolvedValue([updateVersion]);
     const onClose = vi.fn();
     const onUpdated = vi.fn();
@@ -192,11 +201,13 @@ describe('ModpackUpdateModal degraded states', () => {
       ...queuedUpdate,
       status: 'degraded',
       phase: 'completed',
-      result: { status: 'degraded', missing: [{ path: 'mods/optional.jar', reason: 'not found' }] },
+      result: { status: 'degraded', instanceId: 'alpha', missing: [{ path: 'mods/optional.jar', reason: 'not found' }] },
     }));
 
-    await waitFor(() => expect(onUpdated).toHaveBeenCalledTimes(1));
-    expect(onClose).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(invalidateInstancesMock).toHaveBeenCalledTimes(1));
+    expect(screen.getByTestId('provider-update-operation').getAttribute('data-presentation-success')).toBe('false');
+    expect(onUpdated).not.toHaveBeenCalled();
+    expect(onClose).not.toHaveBeenCalled();
   });
 
   it('does not refresh or close after a failed provider update', async () => {
@@ -226,5 +237,41 @@ describe('ModpackUpdateModal degraded states', () => {
 
     expect(onUpdated).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+    expect(invalidateInstancesMock).not.toHaveBeenCalled();
+  });
+
+  it.each(['succeeded', 'recovered'] as const)('invalidates and closes after a %s update', async (status) => {
+    getModrinthVersionsMock.mockResolvedValue([updateVersion]);
+    const onClose = vi.fn();
+    const onUpdated = vi.fn();
+
+    render(
+      <ModpackUpdateModal
+        modpackId="alpha"
+        sourceId="alpha-pack"
+        source="modrinth"
+        isOpen
+        onClose={onClose}
+        onUpdated={onUpdated}
+      />,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Update' }));
+    await waitFor(() => expect(operationListener).toBeTypeOf('function'));
+    act(() => operationListener?.({
+      ...queuedUpdate,
+      status,
+      phase: 'completed',
+      result: { status, instanceId: 'alpha' },
+    }));
+
+    await waitFor(() => expect(invalidateInstancesMock).toHaveBeenCalledTimes(1));
+    expect(onUpdated).toHaveBeenCalledTimes(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('contains no provider-specific lifecycle, subscription or reload fallback', () => {
+    expect(updateModalSource).toContain('useOperationSession');
+    expect(updateModalSource).not.toMatch(/useProviderInstallOperation|ProviderInstallOperationState|operationsIPC|\.subscribe\s*\(|location\.reload/);
   });
 });
