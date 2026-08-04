@@ -170,18 +170,25 @@ On the first registration for a newly created instance, main derives the manifes
 
 ### 3.5 Network
 
-- `network:host`
-- `network:join`
-- `network:stop`
-- `network:getMode`
-- `network:setMode`
-- `network:ping`
-- `network:lanStart`
-- `network:lanStop`
-- `network:lanBroadcast`
-- `network:upnpMapTcp`
-- `network:upnpUnmapTcp`
-- `network:lan-discover`
+- `network:tunnel:get-state`
+- `network:tunnel:host`
+- `network:tunnel:join`
+- `network:tunnel:stop`
+- `network:tunnel:state`
+- `network:lan:get-state`
+- `network:lan:start`
+- `network:lan:stop`
+- `network:lan:broadcast`
+- `network:lan:ping`
+- `network:lan:state`
+- `network:lan:discover`
+- `network:upnp:get-state`
+- `network:upnp:map-tcp`
+- `network:upnp:unmap-tcp`
+- `network:upnp:stop`
+- `network:upnp:state`
+
+`window.api.network` contains three focused capabilities. FriendTunnel, LAN discovery and UPnP expose independent typed lifecycle snapshots and subscriptions; there is no mutable main-process network mode. Native errors, gateway details and peer identities do not cross the preload boundary.
 
 ### 3.6 Settings and dialogs
 

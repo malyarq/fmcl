@@ -14,6 +14,9 @@ const removedOwnerFiles = [
   'electron/services/instances/configStore.ts',
   'electron/services/modpacks/modpackService.ts',
   'electron/services/modpacks/storage.ts',
+  'electron/services/network/networkService.ts',
+  'electron/services/network/networkManager.ts',
+  'src/contexts/instances/hooks/useInstanceNetworkModeSync.ts',
 ]
 const removedGenericBridgeFiles = [
   'shared/contracts/ipcRenderer.ts',
@@ -230,6 +233,14 @@ function collectArchitectureViolations(projectRoot = defaultRoot) {
       relativePath,
       /\bnew\s+(?:ModpackService|InstanceService)\s*\(/g,
       () => 'constructs a removed legacy owner',
+    )
+
+    addMatches(
+      violations,
+      source,
+      relativePath,
+      /\b(?:loadRoomCode|saveRoomCode|loadMappedPort|saveMappedPort)\b|['"]network:(?:getMode|setMode)['"]/g,
+      () => 'restores removed network mode or persisted session truth',
     )
 
     if (relativePath !== 'electron/infrastructure/instances/jsonControlPlaneStore.ts') {

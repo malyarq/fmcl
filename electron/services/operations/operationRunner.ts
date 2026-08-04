@@ -41,6 +41,9 @@ export class OperationRunner {
   private readonly snapshots = new Map<string, OperationSnapshot>();
   private readonly completions = new Map<string, Promise<OperationSnapshot>>();
   private readonly listeners = new Map<string, Set<(snapshot: OperationSnapshot) => void>>();
+  private readonly admittedWork = new Set<Promise<unknown>>();
+  private acceptingMutations = true;
+  private shutdownPromise?: Promise<void>;
 
   constructor(adapters: OperationAdapter[], options: OperationRunnerOptions = {}) {
     this.registry = options.registryPath ? new OperationRootRegistry(options.registryPath) : undefined;
@@ -51,9 +54,10 @@ export class OperationRunner {
   private readonly registry?: OperationRootRegistry;
 
   public async prepareRoot(rootPath: string): Promise<void> {
-    await this.runRootMutation(rootPath, async () => {
+    this.assertAccepting();
+    await this.track(this.runRootMutation(rootPath, async () => {
       this.registry?.register(rootPath);
-    });
+    }));
   }
 
   /** A non-mutating canonical read. It intentionally bypasses the writer queue. */
@@ -69,8 +73,9 @@ export class OperationRunner {
 
   /** Explicitly prepares canonical state while holding the Phase 39 root scope. */
   public async prepareControlPlane(rootPath: string): Promise<RootMutationPreparationResult | RootMutationFailure> {
+    this.assertAccepting();
     try {
-      return await this.runRootMutation(rootPath, async (scope) => {
+      return await this.track(this.runRootMutation(rootPath, async (scope) => {
         if (!scope.coordinator) return rootMutationFailure('ROOT_MUTATION_COORDINATOR_UNAVAILABLE', 'Canonical control-plane coordinator is unavailable');
         if (scope.current?.status === 'ready') {
           return { status: 'ready', source: 'canonical', snapshot: scope.current.snapshot };
@@ -79,7 +84,7 @@ export class OperationRunner {
         return prepared.status === 'recovery-required'
           ? rootMutationFailure('ROOT_MUTATION_PREPARE_FAILED', prepared.reason)
           : prepared;
-      });
+      }));
     } catch (error) {
       return rootMutationFailure('ROOT_MUTATION_PREPARE_FAILED', toSafeMessage(error));
     }
@@ -91,8 +96,9 @@ export class OperationRunner {
    * turn a read into a migration write.
    */
   public async commitControlPlane(rootPath: string, command: InstanceCommand): Promise<RootMutationCommandResult> {
+    this.assertAccepting();
     try {
-      return await this.runRootMutation(rootPath, async (scope) => await scope.commit(command));
+      return await this.track(this.runRootMutation(rootPath, async (scope) => await scope.commit(command)));
     } catch (error) {
       return rootMutationFailure('ROOT_MUTATION_FAILED', toSafeMessage(error));
     }
@@ -113,6 +119,7 @@ export class OperationRunner {
   }
 
   public start(input: OperationInput): OperationSnapshot {
+    this.assertAccepting();
     const adapter = this.adapters.get(input.kind);
     if (!adapter) throw new Error(`No operation adapter registered for ${input.kind}`);
     const now = new Date().toISOString();
@@ -133,10 +140,10 @@ export class OperationRunner {
       input: clone(input),
     };
     this.snapshots.set(snapshot.id, snapshot);
-    const completion = Promise.resolve().then(() => this.runRootMutation(
+    const completion = this.track(Promise.resolve().then(() => this.runRootMutation(
       snapshot.rootPath,
       async (scope) => this.execute(adapter, snapshot.id, scope),
-    ));
+    )));
     this.completions.set(snapshot.id, completion);
     return clone(snapshot);
   }
@@ -181,8 +188,25 @@ export class OperationRunner {
   }
 
   public async recover(rootPath: string): Promise<void> {
+    this.assertAccepting();
     await this.runRootMutation(rootPath, async () => undefined);
   }
+
+  /**
+   * Permanently closes mutation admission and waits until every operation
+   * admitted before the barrier has reached a durable terminal snapshot.
+   */
+  public beginShutdown(): Promise<void> {
+    if (this.shutdownPromise) return this.shutdownPromise;
+    this.acceptingMutations = false;
+    for (const snapshot of this.snapshots.values()) {
+      if (!isTerminal(snapshot)) this.cancel(snapshot.id);
+    }
+    this.shutdownPromise = this.drainAdmitted();
+    return this.shutdownPromise;
+  }
+
+  public get isShuttingDown(): boolean { return !this.acceptingMutations; }
 
   private async recoverUnlocked(rootPath: string, scope?: RootMutationScope): Promise<void> {
     const journal = new OperationJournal(rootPath);
@@ -407,6 +431,22 @@ export class OperationRunner {
 
   private coordinatorFor(rootPath: string): RootMutationCoordinator | undefined {
     return this.rootMutationCoordinator?.forRoot(rootPath);
+  }
+
+  private assertAccepting(): void {
+    if (!this.acceptingMutations) throw new Error('Operation runner is shutting down');
+  }
+
+  private track<T>(work: Promise<T>): Promise<T> {
+    this.admittedWork.add(work);
+    void work.finally(() => this.admittedWork.delete(work)).catch(() => undefined);
+    return work;
+  }
+
+  private async drainAdmitted(): Promise<void> {
+    while (this.admittedWork.size > 0) {
+      await Promise.allSettled([...this.admittedWork]);
+    }
   }
 
   private complete(snapshot: OperationSnapshot, result: OperationResult, persist = true): void {

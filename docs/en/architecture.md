@@ -72,7 +72,7 @@ Do not create a second copy of a cross-process payload type in renderer or main 
 | Launch and Java | `electron/services/launcher/`, `electron/services/java/`, injected instance/launch ports | `src/features/launcher/`, `src/components/SimplePlayDashboard.tsx` |
 | Provider catalog and installs | `electron/services/mods/platform/` and provider operation adapters | `useModpackBrowserCatalog`, typed content adapters, and semantic IPC wrappers |
 | Accounts | `electron/services/account/` | `src/features/accounts/` |
-| Multiplayer | `electron/services/network/` | `src/features/multiplayer/` |
+| Multiplayer | `FriendTunnelService`, `LanDiscoveryService`, and `PortMappingService` under `electron/services/network/` | one live capability controller under `src/features/multiplayer/` |
 | Updates | `electron/services/updater/` | `src/features/updater/` |
 | Resource packs, shaders, worlds, datapacks, screenshots | narrow services and validated handlers under `electron/services/` and `electron/ipc/handlers/` | modpack detail/content features |
 
@@ -118,6 +118,54 @@ Each mutation feature owns its call to `useOperationSession`; the hook owns subs
 Mods, resource packs, and shaders share `useContentAcquisitionState` and `ContentAcquisitionSurface`, but each keeps a typed adapter for its real provider, runtime, local-file, manifest, and retry semantics. Partial commits retain only failed logical selections. A committed file is never downloaded again merely because follow-up invalidation or manifest registration failed.
 
 Installed list, browser, creation, Classic, Appearance, and Details are split into controller/state and render-focused modules. Persistent navigation and settings owners stay outside `Suspense`. List, Details, Appearance, and Storage remain eager; optional modpack routes and the heavy Downloads, Launcher, Accounts, and Statistics settings tabs are lazy only where production bundle measurements justified the boundary. Every fallback is a labelled polite status and does not replace route state.
+
+## Networking and application lifecycle
+
+Networking has no global mutable mode and no mixed god service. The selected instance's `networkMode` chooses a renderer surface only; each main-process capability owns its own resources and typed lifecycle snapshot:
+
+```mermaid
+flowchart LR
+  UI["Multiplayer controller"] --> T["FriendTunnelService\nfresh Hyperswarm per session"]
+  UI --> L["LanDiscoveryService\none XMCL socket generation"]
+  UI --> U["PortMappingService\ngateway and mapping owner"]
+  T --> TS["discovery + peer links + TCP bridge + muxers"]
+  L --> LS["bind + exact listener + broadcast/ping"]
+  U --> US["coalesced discovery + owned mappings"]
+```
+
+FriendTunnel validates fixed-size room codes, attaches connection handling before discovery flush, aborts pending peer waits, and awaits discovery, local TCP server, sockets, and swarm destruction. Its mux parser bounds frames and buffered bytes, rejects invalid command/session transitions, allocates collision-free session IDs, and contains protocol faults to the peer connection. Remote close never echoes another close.
+
+LAN start/stop is serialized and listener cleanup captures the exact XMCL generation. Ping responses are copied into bounded serializable DTOs. UPnP coalesces gateway discovery, removes mapping state only after successful unmap, and uses `gateway.stop()` for complete cleanup. A failed cleanup remains a typed failed state instead of falsely reporting idle. One capability failure never stops the other two.
+
+Session truth comes from main snapshots and subscriptions. Local storage retains only tab, port, and room-code input convenience; old persisted room/mapped-port values are deleted and can never resurrect a phantom active session.
+
+### Startup and shutdown order
+
+Normal startup is ordered as follows:
+
+```text
+Electron ready
+  -> start or verify local AuthServer
+  -> construct one composition root
+  -> recover operation journals
+  -> create window and tray
+  -> install application lifecycle owner
+  -> register IPC handlers
+```
+
+The first `before-quit` event is prevented while one shared shutdown promise runs:
+
+```text
+unregister IPC admission
+  -> stop OperationRunner admission and drain durable terminal records
+  -> stop InstanceApplication admission and drain admitted config writes
+  -> stop FriendTunnel, LAN, and UPnP independently
+  -> stop the owned AuthServer
+  -> destroy the tray
+  -> reissue app.quit under a completion guard
+```
+
+Repeated quit requests share the same promise. Cleanup failures are collected without skipping unrelated owners. A running Minecraft process is intentionally independent and is not killed when the launcher closes. `app.exit()` is reserved for an already-cleaned startup failure or the isolated full-install test because Electron skips normal quit events for that API.
 
 ## Canonical durable state
 
@@ -177,6 +225,7 @@ Reverse imports are not allowed. Domain code cannot import renderer, preload, IP
 - direct control-plane writes outside `JsonControlPlaneStore`;
 - renderer `instancePath`, `resolvePath`, and public operation `rootPath`/`filePath` authority;
 - imports of removed mixed `modpacks` transport.
+- restoration of the removed network god service, reusable Hyperswarm manager, global mode sync, or persisted active-session helpers.
 
 Additional security invariants:
 

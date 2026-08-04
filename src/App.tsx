@@ -4,7 +4,6 @@ import { useAppIcon } from './app/hooks/useAppIcon';
 import { useAppOverlays } from './app/hooks/useAppOverlays';
 import { useLaunchHandler } from './app/hooks/useLaunchHandler';
 import { useOnboarding } from './app/hooks/useOnboarding';
-import { useInstanceNetworkModeSync } from './contexts/instances/hooks/useInstanceNetworkModeSync';
 import { getInstanceRamGb } from './contexts/instances/utils/memory';
 import { useSettings } from './contexts/SettingsContext';
 import { useLauncherState } from './features/launcher/hooks/useLauncherState';
@@ -29,7 +28,6 @@ function MainApp() {
   const effectiveInstance = useEffectiveInstance();
   const modpackConfig = effectiveInstance.status === 'ready' ? effectiveInstance.data.snapshot : null;
   const modpackReady = modpackConfig !== null;
-  useInstanceNetworkModeSync(modpackConfig?.networkMode);
   const { showSettings, showMultiplayer, openSettings, closeSettings, openMultiplayer, closeMultiplayer } = useAppOverlays();
   const { iconPath } = useAppIcon();
   const {

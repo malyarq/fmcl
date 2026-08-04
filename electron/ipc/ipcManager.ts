@@ -26,6 +26,7 @@ import { registerStorageMaintenanceHandlers } from './handlers/storageMaintenanc
 import { registerJavaRuntimeHandlers } from './handlers/javaRuntimeHandlers'
 import { registerInstanceModsHandlers } from './handlers/instanceModsHandlers'
 import { INSTANCE_CHANNELS } from '../../shared/contracts/instances'
+import { allowedIpcChannels } from '../../shared/contracts/ipcChannels'
 
 import { registerShareHandlers } from './handlers/shareHandlers'
 import type { HandlerComposition } from '../app/compositionRoot'
@@ -35,6 +36,9 @@ import type { HandlerComposition } from '../app/compositionRoot'
  * Registers handlers for window controls, launcher operations, and networking.
  */
 export class IPCManager {
+    public static unregisterAllHandlers(): void {
+        for (const channel of allowedIpcChannels) ipcMain.removeHandler(channel)
+    }
     /**
      * Registers all IPC handlers with the Main process.
      * 
@@ -48,7 +52,7 @@ export class IPCManager {
      */
     public static registerAllHandlers(params: { window: BrowserWindow; composition: HandlerComposition }) {
         const { window, composition } = params
-        const { application, getDefaultRootPath, getDefaultInstanceRoot, scanJava, inspectArchive, launcher, networkService, modPlatforms, instanceMods, storageMaintenance, accountService, mirrorsService, statisticsService, shareService, operations, consumeArchiveReference } = composition
+        const { application, getDefaultRootPath, getDefaultInstanceRoot, scanJava, inspectArchive, launcher, friendTunnel, lanDiscovery, portMapping, modPlatforms, instanceMods, storageMaintenance, accountService, mirrorsService, statisticsService, shareService, operations, consumeArchiveReference } = composition
         const sendLog = createThrottledLauncherLogSender()
 
         registerWindowHandlers({ window })
@@ -63,7 +67,7 @@ export class IPCManager {
             scanJava,
         })
         registerInstanceModsHandlers({ instanceMods })
-        registerNetworkHandlers({ window, networkService, sendLog })
+        registerNetworkHandlers({ window, friendTunnel, lanDiscovery, portMapping })
         registerSettingsHandlers({ window })
         registerAssetsHandlers()
         registerAppUpdaterHandlers()

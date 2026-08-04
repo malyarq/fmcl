@@ -234,6 +234,11 @@ function assertSupportedCommand(value: unknown): asserts value is InstanceComman
  * filesystem, provider, archive, and process implementations.
  */
 export class InstanceApplication {
+  private acceptingWrites = true;
+  private writeTail: Promise<void> = Promise.resolve();
+  private readonly activeWrites = new Set<Promise<InstanceCommandResult>>();
+  private shutdownPromise?: Promise<void>;
+
   public constructor(private readonly ports: InstanceApplicationPorts) {}
 
   public async read(root: LauncherRoot): Promise<InstanceControlPlaneRead> {
@@ -241,6 +246,24 @@ export class InstanceApplication {
   }
 
   public async execute(root: LauncherRoot, command: unknown): Promise<InstanceCommandResult> {
+    if (!this.acceptingWrites) throw new Error('Instance application is shutting down');
+    const write = this.writeTail.then(() => this.executeAccepted(root, command));
+    this.writeTail = write.then(() => undefined, () => undefined);
+    this.activeWrites.add(write);
+    void write.finally(() => this.activeWrites.delete(write)).catch(() => undefined);
+    return await write;
+  }
+
+  public beginShutdown(): Promise<void> {
+    if (this.shutdownPromise) return this.shutdownPromise;
+    this.acceptingWrites = false;
+    this.shutdownPromise = (async () => {
+      while (this.activeWrites.size > 0) await Promise.allSettled([...this.activeWrites]);
+    })();
+    return this.shutdownPromise;
+  }
+
+  private async executeAccepted(root: LauncherRoot, command: unknown): Promise<InstanceCommandResult> {
     assertSupportedCommand(command);
     const current = await this.read(root);
     const snapshot = current.status === 'uninitialized'

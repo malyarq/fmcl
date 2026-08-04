@@ -2,83 +2,40 @@ import { toIpcError } from './ipcError';
 
 type NetworkApi = Window['api']['network'];
 
-function getNetworkApi(): NetworkApi | undefined {
-  if (typeof window === 'undefined') return undefined;
-  return window.api?.network;
+function api(): NetworkApi {
+  if (typeof window === 'undefined' || !window.api?.network) throw new Error('[networkIPC] network API is not available');
+  return window.api.network;
 }
 
-function hasNetwork(): boolean {
-  return Boolean(getNetworkApi());
-}
-
-function hasMethod<K extends keyof NetworkApi>(key: K): boolean {
-  const api = getNetworkApi() as NetworkApi | undefined;
-  return Boolean(api && typeof api[key] === 'function');
-}
-
-function requireNetwork(methodName: string): NetworkApi {
-  const api = getNetworkApi() as NetworkApi | undefined;
-  if (!api) {
-    throw new Error(`[networkIPC] network API is not available (method: ${methodName})`);
-  }
-  return api;
-}
-
-async function call<T>(methodName: string, fn: () => Promise<T>): Promise<T> {
-  try {
-    return await fn();
-  } catch (err) {
-    const e = toIpcError({ namespace: 'networkIPC', method: methodName }, err);
-    console.error(e);
-    throw e;
-  }
+async function call<T>(method: string, work: () => Promise<T>): Promise<T> {
+  try { return await work(); }
+  catch (error) { throw toIpcError({ namespace: 'networkIPC', method }, error); }
 }
 
 export const networkIPC = {
-  isAvailable(): boolean {
-    return hasNetwork();
+  isAvailable: () => typeof window !== 'undefined' && Boolean(window.api?.network),
+  tunnel: {
+    getState: () => call('tunnel.getState', () => api().tunnel.getState()),
+    host: (request: Parameters<NetworkApi['tunnel']['host']>[0]) => call('tunnel.host', () => api().tunnel.host(request)),
+    join: (request: Parameters<NetworkApi['tunnel']['join']>[0]) => call('tunnel.join', () => api().tunnel.join(request)),
+    stop: () => call('tunnel.stop', () => api().tunnel.stop()),
+    onState: (callback: Parameters<NetworkApi['tunnel']['onState']>[0]) => api().tunnel.onState(callback),
   },
-
-  has<K extends keyof NetworkApi>(key: K): boolean {
-    return hasMethod(key);
+  lan: {
+    getState: () => call('lan.getState', () => api().lan.getState()),
+    start: (request?: Parameters<NetworkApi['lan']['start']>[0]) => call('lan.start', () => api().lan.start(request)),
+    stop: () => call('lan.stop', () => api().lan.stop()),
+    broadcast: (request: Parameters<NetworkApi['lan']['broadcast']>[0]) => call('lan.broadcast', () => api().lan.broadcast(request)),
+    ping: (request: Parameters<NetworkApi['lan']['ping']>[0]) => call('lan.ping', () => api().lan.ping(request)),
+    onState: (callback: Parameters<NetworkApi['lan']['onState']>[0]) => api().lan.onState(callback),
+    onDiscover: (callback: Parameters<NetworkApi['lan']['onDiscover']>[0]) => api().lan.onDiscover(callback),
   },
-
-  host(port: Parameters<NetworkApi['host']>[0]): ReturnType<NetworkApi['host']> {
-    return call('host', () => requireNetwork('host').host(port));
-  },
-  join(code: Parameters<NetworkApi['join']>[0]): ReturnType<NetworkApi['join']> {
-    return call('join', () => requireNetwork('join').join(code));
-  },
-  stop(): ReturnType<NetworkApi['stop']> {
-    return call('stop', () => requireNetwork('stop').stop());
-  },
-  getMode(): ReturnType<NetworkApi['getMode']> {
-    return call('getMode', () => requireNetwork('getMode').getMode());
-  },
-  setMode(mode: Parameters<NetworkApi['setMode']>[0]): ReturnType<NetworkApi['setMode']> {
-    return call('setMode', () => requireNetwork('setMode').setMode(mode));
-  },
-  ping(host: Parameters<NetworkApi['ping']>[0], port?: Parameters<NetworkApi['ping']>[1]): ReturnType<NetworkApi['ping']> {
-    return call('ping', () => requireNetwork('ping').ping(host, port));
-  },
-  lanStart(): ReturnType<NetworkApi['lanStart']> {
-    return call('lanStart', () => requireNetwork('lanStart').lanStart());
-  },
-  lanStop(): ReturnType<NetworkApi['lanStop']> {
-    return call('lanStop', () => requireNetwork('lanStop').lanStop());
-  },
-  lanBroadcast(motd: Parameters<NetworkApi['lanBroadcast']>[0], port: Parameters<NetworkApi['lanBroadcast']>[1]): ReturnType<NetworkApi['lanBroadcast']> {
-    return call('lanBroadcast', () => requireNetwork('lanBroadcast').lanBroadcast(motd, port));
-  },
-  upnpMapTcp(publicPort: Parameters<NetworkApi['upnpMapTcp']>[0], privatePort: Parameters<NetworkApi['upnpMapTcp']>[1]): ReturnType<NetworkApi['upnpMapTcp']> {
-    return call('upnpMapTcp', () => requireNetwork('upnpMapTcp').upnpMapTcp(publicPort, privatePort));
-  },
-  upnpUnmapTcp(publicPort: Parameters<NetworkApi['upnpUnmapTcp']>[0]): ReturnType<NetworkApi['upnpUnmapTcp']> {
-    return call('upnpUnmapTcp', () => requireNetwork('upnpUnmapTcp').upnpUnmapTcp(publicPort));
-  },
-  onLanDiscover(callback: Parameters<NetworkApi['onLanDiscover']>[0]): ReturnType<NetworkApi['onLanDiscover']> {
-    if (!hasMethod('onLanDiscover')) return () => {};
-    return requireNetwork('onLanDiscover').onLanDiscover(callback);
+  upnp: {
+    getState: () => call('upnp.getState', () => api().upnp.getState()),
+    mapTcp: (request: Parameters<NetworkApi['upnp']['mapTcp']>[0]) => call('upnp.mapTcp', () => api().upnp.mapTcp(request)),
+    unmapTcp: (request: Parameters<NetworkApi['upnp']['unmapTcp']>[0]) => call('upnp.unmapTcp', () => api().upnp.unmapTcp(request)),
+    stop: () => call('upnp.stop', () => api().upnp.stop()),
+    onState: (callback: Parameters<NetworkApi['upnp']['onState']>[0]) => api().upnp.onState(callback),
   },
 };
 

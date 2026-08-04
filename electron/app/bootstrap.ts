@@ -1,4 +1,4 @@
-import { app, ipcMain, BrowserWindow, nativeImage } from 'electron';
+import { app, ipcMain, BrowserWindow, nativeImage, type Tray } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -11,6 +11,7 @@ import { registerLifecycleHandlers } from './lifecycle';
 import { runFullInstallationTest } from './fullInstallationTest';
 import { loadFullTestConfig } from './fullTestConfig';
 import { createCompositionRoot } from './compositionRoot';
+import { ApplicationLifecycle } from './applicationLifecycle';
 
 function configureAppRoot() {
   const __filename = fileURLToPath(import.meta.url);
@@ -78,16 +79,9 @@ function resolveAuthServerPort() {
   return 25530 + (slot - 1);
 }
 
-function startAuthServer(): { url: string } {
+function createAuthServer(): AuthServer {
   const port = resolveAuthServerPort();
-  const url = `http://127.0.0.1:${port}`;
-
-  // Start local Authlib mock server used by authlib-injector.
-  // If the port is already in use, AuthServer logs and we assume another instance provides it.
-  const authServer = new AuthServer(port);
-  authServer.start();
-
-  return { url };
+  return new AuthServer(port);
 }
 
 function resolveNativeIconPath(vitePublicPath: string): string {
@@ -139,7 +133,11 @@ export function bootstrapMain() {
     return win;
   };
 
-  registerLifecycleHandlers({ createWindow });
+  let applicationLifecycle: ApplicationLifecycle | undefined;
+  registerLifecycleHandlers({
+    createWindow,
+    shutdown: async () => { await applicationLifecycle?.shutdown(); },
+  });
 
   app.whenReady().then(async () => {
     // Check for test configuration file
@@ -153,62 +151,79 @@ export function bootstrapMain() {
     }
 
     const nativeIconPath = applyNativeAppIcon(paths.vitePublicPath);
-    const { url: authServerUrl } = startAuthServer();
-    const win = createWindow();
-
-    // Tray menu keeps the window accessible when hidden.
-    createTray({
-      iconPath: nativeIconPath,
-      onShowWindow: () => winRef?.show(),
-      onQuit: () => app.quit(),
-      onToggleWindowVisibility: () => {
-        if (winRef?.isVisible()) winRef.hide();
-        else {
-          winRef?.show();
-          winRef?.focus();
-        }
-      },
-    });
-
-    const composition = createCompositionRoot({
-      paths: { userDataPath: app.getPath('userData'), appDataPath: app.getPath('appData') },
-      authServerUrl,
-    });
-
-    // Recovery must finish before mutating operation handlers are registered.
-    await composition.recoverOperations();
-
-    // --- Register IPC Handlers ---
-    IPCManager.registerAllHandlers({
-      window: win,
-      composition: composition.handlerDependencies,
-    });
-
-    let consoleWinRef: BrowserWindow | null = null;
-    ipcMain.handle('window:openConsole', () => {
-      if (consoleWinRef && !consoleWinRef.isDestroyed()) {
-        consoleWinRef.show();
-        consoleWinRef.focus();
-        return;
-      }
-
-      consoleWinRef = createConsoleWindow({
-        preloadPath: path.join(paths.mainDist, 'preload.cjs'),
-        rendererDevUrl: paths.rendererDevUrl,
-        rendererDist: paths.rendererDist,
-        vitePublicPath: paths.vitePublicPath,
+    const authServer = createAuthServer();
+    let composition: ReturnType<typeof createCompositionRoot> | undefined;
+    let tray: Tray | undefined;
+    try {
+      const { url: authServerUrl } = await authServer.start();
+      composition = createCompositionRoot({
+        paths: { userDataPath: app.getPath('userData'), appDataPath: app.getPath('appData') },
+        authServerUrl,
       });
 
-      consoleWinRef.on('closed', () => {
+      // Recovery is part of startup and finishes before any window can submit
+      // a mutation or observe an incomplete canonical state.
+      await composition.recoverOperations();
+      const win = createWindow();
+
+      tray = createTray({
+        iconPath: nativeIconPath,
+        onShowWindow: () => winRef?.show(),
+        onQuit: () => app.quit(),
+        onToggleWindowVisibility: () => {
+          if (winRef?.isVisible()) winRef.hide();
+          else {
+            winRef?.show();
+            winRef?.focus();
+          }
+        },
+      });
+
+      applicationLifecycle = new ApplicationLifecycle({
+        unregisterIpc: () => IPCManager.unregisterAllHandlers(),
+        shutdownComposition: () => composition!.shutdown(),
+        stopAuthServer: () => authServer.stop(),
+        destroyTray: () => tray?.destroy(),
+      });
+
+      IPCManager.registerAllHandlers({ window: win, composition: composition.handlerDependencies });
+
+      let consoleWinRef: BrowserWindow | null = null;
+      ipcMain.handle('window:openConsole', () => {
+        if (consoleWinRef && !consoleWinRef.isDestroyed()) {
+          consoleWinRef.show();
+          consoleWinRef.focus();
+          return;
+        }
+
+        consoleWinRef = createConsoleWindow({
+          preloadPath: path.join(paths.mainDist, 'preload.cjs'),
+          rendererDevUrl: paths.rendererDevUrl,
+          rendererDist: paths.rendererDist,
+          vitePublicPath: paths.vitePublicPath,
+        });
+
+        consoleWinRef.on('closed', () => {
+          consoleWinRef = null;
+        });
+      });
+
+      ipcMain.handle('window:closeConsole', () => {
+        if (consoleWinRef && !consoleWinRef.isDestroyed()) {
+          consoleWinRef.close();
+        }
         consoleWinRef = null;
       });
-    });
-
-    ipcMain.handle('window:closeConsole', () => {
-      if (consoleWinRef && !consoleWinRef.isDestroyed()) {
-        consoleWinRef.close();
-      }
-      consoleWinRef = null;
-    });
+    } catch (error) {
+      const partialLifecycle = applicationLifecycle ?? new ApplicationLifecycle({
+        unregisterIpc: () => IPCManager.unregisterAllHandlers(),
+        shutdownComposition: async () => composition ? await composition.shutdown() : { failures: [] },
+        stopAuthServer: () => authServer.stop(),
+        destroyTray: () => tray?.destroy(),
+      });
+      await partialLifecycle.shutdown();
+      console.error('[Bootstrap] Startup failed:', error);
+      app.exit(1);
+    }
   });
 }

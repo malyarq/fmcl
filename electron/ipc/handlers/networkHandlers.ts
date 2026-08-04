@@ -1,113 +1,85 @@
-import { ipcMain, type BrowserWindow } from 'electron'
-import type { NetworkService } from '../../services/network/networkService'
-import type { LogSender } from '../logThrottler'
-import { validateBoundedString, validateEnum, validateInteger } from '../validation/privilegedPayloads'
+import { ipcMain, type BrowserWindow } from 'electron';
+import { NETWORK_CHANNELS } from '../../../shared/contracts/network';
+import type { FriendTunnelService } from '../../services/network/friendTunnelService';
+import type { LanDiscoveryService } from '../../services/network/lanDiscoveryService';
+import type { PortMappingService } from '../../services/network/portMappingService';
+import { validateBoundedString, validateEnum, validateInteger } from '../validation/privilegedPayloads';
 
-const NETWORK_MODES = ['hyperswarm', 'xmcl_lan', 'xmcl_upnp_host'] as const
+function requestObject(value: unknown, label: string): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} must be an object`);
+  const prototype = Object.getPrototypeOf(value);
+  if (prototype !== Object.prototype && prototype !== null) throw new Error(`${label} must be a plain object`);
+  return value as Record<string, unknown>;
+}
+function exactKeys(record: Record<string, unknown>, allowed: readonly string[], label: string): void {
+  const extras = Object.keys(record).filter((key) => !allowed.includes(key));
+  if (extras.length) throw new Error(`${label} contains unsupported fields`);
+}
 
-function validatePort(value: unknown, label: string): number {
-  return validateInteger(value, label, { min: 1, max: 65_535 })
+function port(value: unknown, label: string): number {
+  return validateInteger(value, label, { min: 1, max: 65_535 });
 }
 
 export function registerNetworkHandlers(deps: {
-  window: BrowserWindow
-  networkService: NetworkService
-  sendLog: LogSender
+  window: BrowserWindow;
+  friendTunnel: FriendTunnelService;
+  lanDiscovery: LanDiscoveryService;
+  portMapping: PortMappingService;
 }) {
-  const { window, networkService, sendLog } = deps
-
-  ipcMain.removeHandler('network:host')
-  ipcMain.handle('network:host', async (_evt, port: unknown) => {
-    return await networkService.hostTunnel(validatePort(port, 'LAN port'), (msg) => {
-      sendLog(msg)
-    })
-  })
-
-  ipcMain.removeHandler('network:join')
-  ipcMain.handle('network:join', async (_evt, code: unknown) => {
-    return await networkService.joinTunnel(validateBoundedString(code, 'Room code', { maxLength: 512 }), (msg) => {
-      sendLog(msg)
-    })
-  })
-
-  ipcMain.removeHandler('network:stop')
-  ipcMain.handle('network:stop', async () => {
-    return await networkService.stop((msg) => {
-      sendLog(msg)
-    })
-  })
-
-  // --- Network mode + XMCL LAN/Ping/UPnP (step 6) ---
-  ipcMain.removeHandler('network:getMode')
-  ipcMain.handle('network:getMode', async () => {
-    return networkService.getMode()
-  })
-
-  ipcMain.removeHandler('network:setMode')
-  ipcMain.handle('network:setMode', async (_evt, mode: unknown) => {
-    networkService.setMode(validateEnum(mode, 'Network mode', NETWORK_MODES))
-    return { ok: true }
-  })
-
-  ipcMain.removeHandler('network:ping')
-  ipcMain.handle('network:ping', async (_evt, host: unknown, port?: unknown) => {
-    return await networkService.ping(
-      validateBoundedString(host, 'Server host', { maxLength: 253 }),
-      port === undefined ? 25565 : validatePort(port, 'Server port'),
-    )
-  })
-
-  let lanUnsubscribe: undefined | (() => void)
-  const cleanupLanForwarding = () => {
-    lanUnsubscribe?.()
-    lanUnsubscribe = undefined
-    // Best-effort: ensure we don't keep background listeners/sockets after the window is gone.
-    void networkService.lanStop().catch(() => undefined)
+  const { window, friendTunnel, lanDiscovery, portMapping } = deps;
+  const handlers: Array<[string, (...args: unknown[]) => unknown]> = [
+    [NETWORK_CHANNELS.tunnelGetState, () => friendTunnel.getState()],
+    [NETWORK_CHANNELS.tunnelHost, async (value) => {
+      const request = requestObject(value, 'Tunnel host request'); exactKeys(request, ['port'], 'Tunnel host request');
+      return await friendTunnel.host(port(request.port, 'LAN port'));
+    }],
+    [NETWORK_CHANNELS.tunnelJoin, async (value) => {
+      const request = requestObject(value, 'Tunnel join request'); exactKeys(request, ['roomCode'], 'Tunnel join request');
+      return await friendTunnel.join(validateBoundedString(request.roomCode, 'Room code', { minLength: 64, maxLength: 64 }));
+    }],
+    [NETWORK_CHANNELS.tunnelStop, async () => await friendTunnel.stop()],
+    [NETWORK_CHANNELS.lanGetState, () => lanDiscovery.getState()],
+    [NETWORK_CHANNELS.lanStart, async (value) => {
+      const request = value === undefined ? {} : requestObject(value, 'LAN start request'); exactKeys(request, ['family'], 'LAN start request');
+      const family = request.family === undefined ? 'udp4' : validateEnum(request.family, 'LAN family', ['udp4', 'udp6'] as const);
+      return await lanDiscovery.start(family);
+    }],
+    [NETWORK_CHANNELS.lanStop, async () => await lanDiscovery.stop()],
+    [NETWORK_CHANNELS.lanBroadcast, async (value) => {
+      const request = requestObject(value, 'LAN broadcast request'); exactKeys(request, ['motd', 'port'], 'LAN broadcast request');
+      return await lanDiscovery.broadcast(validateBoundedString(request.motd, 'LAN message', { maxLength: 256 }), port(request.port, 'LAN port'));
+    }],
+    [NETWORK_CHANNELS.lanPing, async (value) => {
+      const request = requestObject(value, 'LAN ping request'); exactKeys(request, ['host', 'port'], 'LAN ping request');
+      return await lanDiscovery.ping(
+        validateBoundedString(request.host, 'Server host', { maxLength: 253 }),
+        request.port === undefined ? 25_565 : port(request.port, 'Server port'),
+      );
+    }],
+    [NETWORK_CHANNELS.upnpGetState, () => portMapping.getState()],
+    [NETWORK_CHANNELS.upnpMapTcp, async (value) => {
+      const request = requestObject(value, 'UPnP map request'); exactKeys(request, ['publicPort', 'privatePort'], 'UPnP map request');
+      return await portMapping.mapTcp(port(request.publicPort, 'Public port'), port(request.privatePort, 'Private port'));
+    }],
+    [NETWORK_CHANNELS.upnpUnmapTcp, async (value) => {
+      const request = requestObject(value, 'UPnP unmap request'); exactKeys(request, ['publicPort'], 'UPnP unmap request');
+      return await portMapping.unmapTcp(port(request.publicPort, 'Public port'));
+    }],
+    [NETWORK_CHANNELS.upnpStop, async () => await portMapping.stop()],
+  ];
+  for (const [channel, handler] of handlers) {
+    ipcMain.removeHandler(channel);
+    ipcMain.handle(channel, async (_event, ...args) => await handler(...args));
   }
 
-  // Ensure we don't leak listeners across window lifecycles.
-  window.once('closed', cleanupLanForwarding)
-
-  ipcMain.removeHandler('network:lanStart')
-  ipcMain.handle('network:lanStart', async () => {
-    await networkService.lanStart('udp4')
-
-    // forward discover events to renderer (keep a single listener per window)
-    lanUnsubscribe?.()
-    lanUnsubscribe = networkService.onLanDiscover((e) => {
-      if (!window.isDestroyed()) window.webContents.send('network:lan-discover', e)
-    })
-
-    return { ok: true } as const
-  })
-
-  ipcMain.removeHandler('network:lanStop')
-  ipcMain.handle('network:lanStop', async () => {
-    await networkService.lanStop()
-    lanUnsubscribe?.()
-    lanUnsubscribe = undefined
-    return { ok: true }
-  })
-
-  ipcMain.removeHandler('network:lanBroadcast')
-  ipcMain.handle('network:lanBroadcast', async (_evt, motd: unknown, port: unknown) => {
-    await networkService.lanBroadcast(
-      validateBoundedString(motd, 'LAN message', { maxLength: 256 }),
-      validatePort(port, 'LAN port'),
-    )
-    return { ok: true }
-  })
-
-  ipcMain.removeHandler('network:upnpMapTcp')
-  ipcMain.handle('network:upnpMapTcp', async (_evt, publicPort: unknown, privatePort: unknown) => {
-    return await networkService.upnpMapTcp(
-      validatePort(publicPort, 'Public port'),
-      validatePort(privatePort, 'Private port'),
-    )
-  })
-
-  ipcMain.removeHandler('network:upnpUnmapTcp')
-  ipcMain.handle('network:upnpUnmapTcp', async (_evt, publicPort: unknown) => {
-    return await networkService.upnpUnmapTcp(validatePort(publicPort, 'Public port'))
-  })
+  const send = (channel: string, value: unknown) => {
+    if (!window.isDestroyed()) window.webContents.send(channel, value);
+  };
+  const unsubscribe = [
+    friendTunnel.subscribe((snapshot) => send(NETWORK_CHANNELS.tunnelState, snapshot)),
+    lanDiscovery.subscribe((snapshot) => send(NETWORK_CHANNELS.lanState, snapshot)),
+    lanDiscovery.onDiscover((event) => send(NETWORK_CHANNELS.lanDiscover, event)),
+    portMapping.subscribe((snapshot) => send(NETWORK_CHANNELS.upnpState, snapshot)),
+  ];
+  window.once('closed', () => unsubscribe.forEach((dispose) => dispose()));
 }

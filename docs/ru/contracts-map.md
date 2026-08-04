@@ -170,18 +170,25 @@
 
 ### 3.5 Network
 
-- `network:host`
-- `network:join`
-- `network:stop`
-- `network:getMode`
-- `network:setMode`
-- `network:ping`
-- `network:lanStart`
-- `network:lanStop`
-- `network:lanBroadcast`
-- `network:upnpMapTcp`
-- `network:upnpUnmapTcp`
-- `network:lan-discover`
+- `network:tunnel:get-state`
+- `network:tunnel:host`
+- `network:tunnel:join`
+- `network:tunnel:stop`
+- `network:tunnel:state`
+- `network:lan:get-state`
+- `network:lan:start`
+- `network:lan:stop`
+- `network:lan:broadcast`
+- `network:lan:ping`
+- `network:lan:state`
+- `network:lan:discover`
+- `network:upnp:get-state`
+- `network:upnp:map-tcp`
+- `network:upnp:unmap-tcp`
+- `network:upnp:stop`
+- `network:upnp:state`
+
+`window.api.network` содержит три отдельные capability. FriendTunnel, LAN discovery и UPnP отдают независимые типизированные lifecycle-снимки и подписки; изменяемого network mode в main-процессе больше нет. Нативные ошибки, данные роутера и идентификаторы пиров не пересекают preload-границу.
 
 ### 3.6 Settings и dialogs
 

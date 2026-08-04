@@ -9,13 +9,14 @@ declare module 'hyperswarm' {
          */
         join(topic: Buffer, opts: { server: boolean; client: boolean }): {
             flushed(): Promise<void>;
+            destroy(): Promise<void>;
         };
 
         /**
          * Leave a topic
          * @param topic 32-byte buffer representing the topic
          */
-        leave(topic: Buffer): void;
+        leave(topic: Buffer): Promise<void>;
 
         /**
          * Set of active peer connections

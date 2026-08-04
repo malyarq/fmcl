@@ -4,14 +4,14 @@ import { Muxer, type MuxerStream } from './muxer';
 import type { Connection } from './types';
 
 export function handleHostPeerConnection(params: {
-  conn: Connection;
+  connection: Connection;
   lanPort: number;
   onLog: (msg: string) => void;
 }) {
-  const { conn, lanPort, onLog } = params;
+  const { connection, lanPort, onLog } = params;
 
   onLog('[Network] Peer connected! Multiplexer ready.');
-  const muxer = new Muxer(conn);
+  const muxer = new Muxer(connection, (error) => onLog(`[Network] Tunnel protocol rejected: ${error.message}`));
 
   // Handle incoming streams from client (player joining).
   muxer.on('stream', (stream: MuxerStream) => {
@@ -28,4 +28,3 @@ export function handleHostPeerConnection(params: {
     onLog('[Network] Peer disconnected.');
   });
 }
-

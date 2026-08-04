@@ -39,6 +39,7 @@ import { StatisticsTab } from '../../features/settings/statistics/StatisticsTab'
 import { AppearanceTab } from '../../components/settings/tabs/AppearanceTab';
 import { ResourcePacksTab } from '../../components/modpacks/details/ResourcePacksTab';
 import { WorldDatapacksModal } from '../../components/modpacks/details/WorldDatapacksModal';
+import MultiplayerPage from '../../components/MultiplayerPage';
 import { cn } from '../../utils/cn';
 import {
   CLOSEOUT_VIEWS,
@@ -2028,8 +2029,22 @@ function ContentScenario({ onReady }: ManualVerificationScenarioProps) {
   );
 }
 
+function Phase42NetworkScenario({ view, onReady }: ManualVerificationScenarioProps & { view: 'phase-42-tunnel-en' | 'phase-42-lan-ru' }) {
+  const isLan = view === 'phase-42-lan-ru';
+  useReadyByText(
+    onReady,
+    isLan ? ['Мультиплеер', 'Мир Beta Pack', '192.168.1.42:25565'] : ['Multiplayer', 'Room Active!', 'abababab'],
+    `Phase 42 ${isLan ? 'RU LAN discovery' : 'EN FriendTunnel'} live-state surface rendered from the typed network capability fixture.`,
+  );
+  return <ModpackProviders><MultiplayerPage onBack={() => undefined} /></ModpackProviders>;
+}
+
 export function ManualVerificationScenarios(props: { view: ManualVerificationView; onReady: (message: string) => void }) {
   const scenarioProps = { onReady: props.onReady };
+
+  if (props.view === 'phase-42-tunnel-en' || props.view === 'phase-42-lan-ru') {
+    return <Phase42NetworkScenario {...scenarioProps} view={props.view} />;
+  }
 
   if (props.view === 'phase-41-ownership-en') {
     return <Phase41OwnershipScenario {...scenarioProps} language="en" />;

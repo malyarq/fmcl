@@ -72,7 +72,7 @@ Main process отвечает за lifecycle, окна, нативные диа�
 | Запуск и Java | `electron/services/launcher/`, `electron/services/java/`, внедрённые instance/launch ports | `src/features/launcher/`, `src/components/SimplePlayDashboard.tsx` |
 | Каталог и установка контента провайдеров | `electron/services/mods/platform/` и provider operation adapters | `useModpackBrowserCatalog`, типизированные content adapters и семантические IPC wrappers |
 | Аккаунты | `electron/services/account/` | `src/features/accounts/` |
-| Мультиплеер | `electron/services/network/` | `src/features/multiplayer/` |
+| Мультиплеер | `FriendTunnelService`, `LanDiscoveryService` и `PortMappingService` в `electron/services/network/` | единый live capability controller в `src/features/multiplayer/` |
 | Обновления | `electron/services/updater/` | `src/features/updater/` |
 | Ресурспаки, шейдеры, миры, датапаки, скриншоты | узкие services и проверяемые handlers в `electron/services/` и `electron/ipc/handlers/` | modpack detail/content features |
 
@@ -118,6 +118,54 @@ Shell, список установленных сборок, Details, Classic, S
 Моды, ресурспаки и шейдеры используют общие `useContentAcquisitionState` и `ContentAcquisitionSurface`, но сохраняют типизированные adapters для реальной семантики provider, runtime, локального файла, manifest и retry. Partial commit оставляет только неуспешные логические элементы. Уже записанный файл не скачивается повторно только из-за ошибки последующей invalidation или регистрации manifest.
 
 Список установленных сборок, browser, creation, Classic, Appearance и Details разделены на controller/state и render-focused модули. Постоянные владельцы навигации и settings остаются вне `Suspense`. List, Details, Appearance и Storage загружаются сразу; опциональные маршруты модпаков и тяжёлые вкладки Downloads, Launcher, Accounts и Statistics загружаются лениво только там, где границу оправдали production bundle measurements. Каждый fallback — подписанный polite status, который не подменяет состояние маршрута.
+
+## Networking и application lifecycle
+
+В networking нет глобального изменяемого mode и смешанного god service. `networkMode` выбранного instance выбирает только renderer surface; каждая capability main-процесса независимо владеет ресурсами и типизированным lifecycle snapshot:
+
+```mermaid
+flowchart LR
+  UI["Multiplayer controller"] --> T["FriendTunnelService\nновый Hyperswarm на сессию"]
+  UI --> L["LanDiscoveryService\nодно поколение XMCL socket"]
+  UI --> U["PortMappingService\nвладелец gateway и mappings"]
+  T --> TS["discovery + peer links + TCP bridge + muxers"]
+  L --> LS["bind + точный listener + broadcast/ping"]
+  U --> US["coalesced discovery + owned mappings"]
+```
+
+FriendTunnel проверяет room code фиксированного размера, подключает обработчик соединений до discovery flush, отменяет ожидающие peer waits и дожидается уничтожения discovery, локального TCP server, sockets и swarm. Mux parser ограничивает frames и буфер, отвергает неверные переходы command/session, выделяет session ID без коллизий и локализует protocol fault в peer connection. Remote close не отправляет повторный close.
+
+LAN start/stop сериализованы, а очистка listener захватывает точное поколение XMCL. Ответ ping копируется в ограниченный serializable DTO. UPnP объединяет параллельный gateway discovery, удаляет mapping state только после успешного unmap и вызывает `gateway.stop()` для полной очистки. Ошибка очистки остаётся типизированным failed state, а не ложным idle. Сбой одной capability не останавливает две другие.
+
+Session truth приходит из main snapshots и subscriptions. В local storage остаются только выбранная вкладка, порт и введённый room code; старые сохранённые room/mapped-port удаляются и не могут восстановить фантомную активную сессию.
+
+### Порядок startup и shutdown
+
+Обычный startup выполняется так:
+
+```text
+Electron ready
+  -> запустить или проверить локальный AuthServer
+  -> собрать один composition root
+  -> восстановить operation journals
+  -> создать window и tray
+  -> установить application lifecycle owner
+  -> зарегистрировать IPC handlers
+```
+
+Первый `before-quit` отменяется, пока выполняется один общий shutdown promise:
+
+```text
+закрыть IPC admission
+  -> закрыть admission OperationRunner и дождаться durable terminal records
+  -> закрыть admission InstanceApplication и дождаться принятых config writes
+  -> независимо остановить FriendTunnel, LAN и UPnP
+  -> остановить принадлежащий приложению AuthServer
+  -> уничтожить tray
+  -> повторно вызвать app.quit под completion guard
+```
+
+Повторные запросы quit используют тот же promise. Ошибки очистки собираются, не пропуская независимых owners. Запущенный Minecraft process намеренно независим и не завершается при закрытии лаунчера. `app.exit()` применяется только после явной очистки при ошибке startup или в изолированном full-install test, потому что Electron пропускает обычные quit events для этого API.
 
 ## Каноническое устойчивое состояние
 
@@ -177,6 +225,7 @@ renderer feature
 - прямой записи control-plane вне `JsonControlPlaneStore`;
 - renderer authority через `instancePath`, `resolvePath` и публичные operation `rootPath`/`filePath`;
 - импортов удалённого mixed `modpacks` transport.
+- восстановления удалённого network god service, переиспользуемого Hyperswarm manager, глобального mode sync или helpers с сохранённой active-session truth.
 
 Дополнительные инварианты безопасности:
 

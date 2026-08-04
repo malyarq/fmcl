@@ -13,6 +13,8 @@ export type ManualVerificationView =
   | 'phase-41-recovery-ru'
   | 'phase-41-surfaces-en'
   | 'phase-41-surfaces-ru'
+  | 'phase-42-tunnel-en'
+  | 'phase-42-lan-ru'
   | 'welcome'
   | 'tour'
   | 'dashboard'
@@ -150,6 +152,20 @@ export const CLOSEOUT_VIEWS: ManualVerificationViewMeta[] = [
 ];
 
 export const GENERAL_VIEWS: ManualVerificationViewMeta[] = [
+  {
+    id: 'phase-42-tunnel-en',
+    label: 'Phase 42 FriendTunnel EN',
+    description: 'English real multiplayer surface initialized from a live main-owned FriendTunnel host snapshot.',
+    group: 'general', screenshot: true, viewport: 'desktop', language: 'en',
+    forbidText: ['/Users/', 'node_modules', 'renderWithHooks'],
+  },
+  {
+    id: 'phase-42-lan-ru',
+    label: 'Phase 42 LAN RU',
+    description: 'Russian real multiplayer LAN discovery surface with typed live state and discovered endpoint.',
+    group: 'general', screenshot: true, viewport: 'desktop', language: 'ru',
+    forbidText: ['/Users/', 'node_modules', 'renderWithHooks'],
+  },
   {
     id: 'phase-41-ownership-en',
     label: 'Phase 41 Ownership EN',

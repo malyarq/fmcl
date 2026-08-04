@@ -11,6 +11,9 @@ export class AuthServer {
     private server: http.Server;
     private port: number;
     private publicKey: string;
+    private owned = false;
+    private startPromise?: Promise<{ url: string; owned: boolean }>;
+    private stopPromise?: Promise<void>;
 
     constructor(port: number = 25530) {
         this.port = port;
@@ -19,23 +22,60 @@ export class AuthServer {
 
         this.server = http.createServer((req, res) => this.handleRequest(req, res));
 
-        this.server.on('error', (e: Error & { code?: string }) => {
-            if (e.code === 'EADDRINUSE') {
-                console.log(`[AuthMock] Port ${this.port} busy. Assuming another instance is providing Auth.`);
-            } else {
-                console.error('[AuthMock] Server Error:', e);
-            }
+        this.server.on('error', (error) => {
+            if (this.owned) console.error('[AuthMock] Server error:', error);
         });
     }
 
-    public start() {
-        this.server.listen(this.port, '127.0.0.1', () => {
-            console.log(`[AuthMock] Permissive Yggdrasil running on 127.0.0.1:${this.port}`);
+    public start(): Promise<{ url: string; owned: boolean }> {
+        if (this.startPromise) return this.startPromise;
+        this.startPromise = new Promise((resolve, reject) => {
+            const onError = async (error: Error & { code?: string }) => {
+                this.server.off('listening', onListening);
+                if (error.code === 'EADDRINUSE' && await this.verifyExistingServer()) {
+                    console.log(`[AuthMock] Verified compatible server on 127.0.0.1:${this.port}.`);
+                    resolve({ url: this.url, owned: false });
+                    return;
+                }
+                reject(error);
+            };
+            const onListening = () => {
+                this.server.off('error', onError);
+                const address = this.server.address();
+                if (address && typeof address !== 'string') this.port = address.port;
+                this.owned = true;
+                console.log(`[AuthMock] Permissive Yggdrasil running on 127.0.0.1:${this.port}`);
+                resolve({ url: this.url, owned: true });
+            };
+            this.server.once('error', onError);
+            this.server.once('listening', onListening);
+            this.server.listen(this.port, '127.0.0.1');
         });
+        return this.startPromise;
     }
 
-    public stop() {
-        this.server.close();
+    public stop(): Promise<void> {
+        if (this.stopPromise) return this.stopPromise;
+        this.stopPromise = (async () => {
+            if (!this.owned || !this.server.listening) return;
+            this.owned = false;
+            this.server.closeAllConnections?.();
+            await new Promise<void>((resolve, reject) => this.server.close((error) => error ? reject(error) : resolve()));
+        })();
+        return this.stopPromise;
+    }
+
+    public get url(): string { return `http://127.0.0.1:${this.port}`; }
+
+    private async verifyExistingServer(): Promise<boolean> {
+        try {
+            const response = await fetch(this.url, { signal: AbortSignal.timeout(1_500) });
+            if (!response.ok) return false;
+            const value = await response.json() as { meta?: { implementationName?: unknown } };
+            return value.meta?.implementationName === 'OfflineMock';
+        } catch {
+            return false;
+        }
     }
 
     private generateKeys() {

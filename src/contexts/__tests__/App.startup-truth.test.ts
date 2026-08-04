@@ -99,7 +99,6 @@ vi.mock('../../components/ConsoleWindow', () => ({ ConsoleWindow: () => React.cr
 vi.mock('../instances/hooks/useInstanceCrudActions', () => ({
   useInstanceCrudActions: () => ({ select: vi.fn(), create: vi.fn(), rename: vi.fn(), duplicate: vi.fn(), remove: vi.fn() }),
 }));
-vi.mock('../instances/hooks/useInstanceNetworkModeSync', () => ({ useInstanceNetworkModeSync: vi.fn() }));
 vi.mock('../../services/ipc/instancesIPC', () => ({
   instancesIPC: {
     prepare: () => prepareMock(),

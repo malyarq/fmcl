@@ -13,8 +13,9 @@ import { InstanceModContentService } from '../services/mods/instanceModContentSe
 import { ManifestContentInstaller } from '../services/mods/manifestContentInstaller';
 import { javaScanner, type DetectedJava } from '../services/java/javaScanner';
 import { getModpackInfoFromFile } from '../services/modpacks/importers';
-import { NetworkManager } from '../services/network/networkManager';
-import { NetworkService } from '../services/network/networkService';
+import { FriendTunnelService } from '../services/network/friendTunnelService';
+import { LanDiscoveryService } from '../services/network/lanDiscoveryService';
+import { PortMappingService } from '../services/network/portMappingService';
 import { createDeleteOperationAdapter } from '../services/operations/deleteOperation';
 import { createDuplicateOperationAdapter } from '../services/operations/duplicateOperation';
 import { createExportOperationAdapter } from '../services/operations/exportOperation';
@@ -48,7 +49,9 @@ export type HandlerComposition = Readonly<{
   modPlatforms: ModPlatformService;
   instanceMods: InstanceModContentService;
   storageMaintenance: StorageMaintenanceAdapter;
-  networkService: NetworkService;
+  friendTunnel: FriendTunnelService;
+  lanDiscovery: LanDiscoveryService;
+  portMapping: PortMappingService;
   accountService: AccountService;
   mirrorsService: MirrorsService;
   statisticsService: StatisticsService;
@@ -62,6 +65,11 @@ export type MainComposition = HandlerComposition & Readonly<{
   launchAdapters: LaunchAdapters;
   handlerDependencies: HandlerComposition;
   recoverOperations(): Promise<void>;
+  shutdown(): Promise<CompositionShutdownReport>;
+}>;
+
+export type CompositionShutdownReport = Readonly<{
+  failures: readonly { owner: 'operations' | 'instances' | 'friend-tunnel' | 'lan-discovery' | 'port-mapping'; message: string }[];
 }>;
 
 export type CompositionRootOptions = Readonly<{
@@ -93,11 +101,12 @@ export function createCompositionRoot(options: CompositionRootOptions): MainComp
       return await contentManager.cleanup();
     },
   };
-  const networkManager = new NetworkManager();
+  const friendTunnel = new FriendTunnelService();
+  const lanDiscovery = new LanDiscoveryService();
+  const portMapping = new PortMappingService();
   const accountService = new AccountService(options.paths.userDataPath);
   const mirrorsService = new MirrorsService();
   const statisticsService = new StatisticsService();
-  const networkService = new NetworkService(networkManager);
   const manifestManager = new InstanceManifestManager();
   const archiveContent: ArchiveExportContentPort = {
     async resolveRoot(rootPath) {
@@ -128,7 +137,6 @@ export function createCompositionRoot(options: CompositionRootOptions): MainComp
     rootResolver: filesystem.rootResolver,
     launchAdapters,
     launcherRootPath: defaultRootPath,
-    networkManager,
     authServerUrl: options.authServerUrl,
     accountService,
     mirrorsService,
@@ -207,7 +215,9 @@ export function createCompositionRoot(options: CompositionRootOptions): MainComp
     modPlatforms,
     instanceMods,
     storageMaintenance,
-    networkService,
+    friendTunnel,
+    lanDiscovery,
+    portMapping,
     accountService,
     mirrorsService,
     statisticsService,
@@ -224,5 +234,25 @@ export function createCompositionRoot(options: CompositionRootOptions): MainComp
     async recoverOperations(): Promise<void> {
       await operations.recoverRegistered(defaultRootPath);
     },
+    async shutdown(): Promise<CompositionShutdownReport> {
+      const failures: Array<CompositionShutdownReport['failures'][number]> = [];
+      await settleOwner('operations', () => operations.beginShutdown(), failures);
+      await settleOwner('instances', () => application.beginShutdown(), failures);
+      await Promise.all([
+        settleOwner('friend-tunnel', () => friendTunnel.stop(), failures),
+        settleOwner('lan-discovery', () => lanDiscovery.stop(), failures),
+        settleOwner('port-mapping', () => portMapping.stop(), failures),
+      ]);
+      return { failures };
+    },
   };
+}
+
+async function settleOwner(
+  owner: CompositionShutdownReport['failures'][number]['owner'],
+  stop: () => Promise<unknown>,
+  failures: Array<CompositionShutdownReport['failures'][number]>,
+): Promise<void> {
+  try { await stop(); }
+  catch (error) { failures.push({ owner, message: error instanceof Error ? error.message.slice(0, 240) : 'Cleanup failed' }); }
 }

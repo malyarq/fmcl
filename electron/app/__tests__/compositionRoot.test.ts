@@ -64,4 +64,22 @@ describe('createCompositionRoot', () => {
       authServerUrl: 'http://127.0.0.1:25530',
     })).toThrow('Composition root requires user-data, app-data, and auth-server dependencies');
   });
+
+  it('drains canonical owners and stops each independent network capability', async () => {
+    const composition = createCompositionRoot({
+      paths: { userDataPath: '/tmp/fmcl-user-data', appDataPath: '/tmp/fmcl-app-data' },
+      authServerUrl: 'http://127.0.0.1:25530',
+    });
+    const operations = vi.spyOn(composition.operations, 'beginShutdown');
+    const instances = vi.spyOn(composition.application, 'beginShutdown');
+    const tunnel = vi.spyOn(composition.friendTunnel, 'stop');
+    const lan = vi.spyOn(composition.lanDiscovery, 'stop');
+    const upnp = vi.spyOn(composition.portMapping, 'stop');
+    await expect(composition.shutdown()).resolves.toEqual({ failures: [] });
+    expect(operations).toHaveBeenCalledOnce();
+    expect(instances).toHaveBeenCalledOnce();
+    expect(tunnel).toHaveBeenCalledOnce();
+    expect(lan).toHaveBeenCalledOnce();
+    expect(upnp).toHaveBeenCalledOnce();
+  });
 });

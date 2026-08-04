@@ -1,173 +1,194 @@
-import { EventEmitter } from 'events';
-import { Duplex } from 'stream';
-import b4a from 'b4a';
+import { EventEmitter } from 'node:events';
+import { Duplex } from 'node:stream';
 
-// Packet header: [Length (2 bytes BE)][SessionID (2 bytes BE)][Type (1 byte)].
 const HEADER_SIZE = 5;
+const MAX_FRAME_SIZE = 65_535;
+const MAX_PAYLOAD_SIZE = MAX_FRAME_SIZE - HEADER_SIZE;
+const MAX_BUFFER_SIZE = MAX_FRAME_SIZE * 2;
 const CMD_DATA = 0;
 const CMD_OPEN = 1;
 const CMD_CLOSE = 2;
+const KNOWN_COMMANDS = new Set([CMD_DATA, CMD_OPEN, CMD_CLOSE]);
 
-/**
- * A Duplex stream wrapping a specific session ID within the multiplexed connection.
- */
-export class MuxerStream extends Duplex {
-    private muxer: Muxer;
-    public sessionId: number;
-
-    constructor(muxer: Muxer, sessionId: number) {
-        super();
-        this.muxer = muxer;
-        this.sessionId = sessionId;
-    }
-
-    _write(chunk: Buffer, _encoding: string, callback: (err?: Error) => void) {
-        try {
-            this.muxer.send(this.sessionId, CMD_DATA, chunk);
-            callback();
-        } catch (err) {
-            callback(err instanceof Error ? err : new Error(String(err)));
-        }
-    }
-
-    _read(_size: number) {
-        // Data is pushed via pushData when packets arrive
-    }
-
-    _destroy(err: Error | null, callback: (err: Error | null) => void) {
-        if (!err) {
-            this.muxer.send(this.sessionId, CMD_CLOSE);
-        }
-        this.muxer.removeStream(this.sessionId);
-        callback(err);
-    }
-
-    public pushData(data: Buffer) {
-        this.push(data);
-    }
+export interface MuxConnection {
+  on(event: 'data', listener: (chunk: Buffer) => void): void;
+  on(event: 'close', listener: () => void): void;
+  on(event: 'error', listener: (error: Error) => void): void;
+  write(data: Buffer): void;
+  destroy?(error?: Error): void;
 }
 
-/**
- * Multiplexer Class
- * Handles splitting a single P2P connection into multiple logical streams (sessions).
- * Used to support multiple player connections (though rarely used in simple LAN) 
- * or just to provide a clean Stream interface over the raw Hyperswarm connection.
- */
-interface Connection {
-    on(event: 'data', listener: (chunk: Buffer) => void): void;
-    on(event: 'close', listener: () => void): void;
-    on(event: 'error', listener: (err: Error) => void): void;
-    write(data: Buffer): void;
+export class MuxerStream extends Duplex {
+  private remoteClosing = false;
+
+  constructor(private readonly muxer: Muxer, public readonly sessionId: number) {
+    super();
+  }
+
+  public _write(chunk: Buffer, _encoding: string, callback: (error?: Error | null) => void): void {
+    try {
+      this.muxer.send(this.sessionId, CMD_DATA, chunk);
+      callback();
+    } catch (error) {
+      callback(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+
+  public _read(): void {}
+
+  public _destroy(error: Error | null, callback: (error: Error | null) => void): void {
+    if (!this.remoteClosing && !error) this.muxer.sendClose(this.sessionId);
+    this.muxer.removeStream(this.sessionId);
+    callback(error);
+  }
+
+  public pushData(data: Buffer): void {
+    this.push(data);
+  }
+
+  public closeFromRemote(error?: Error): void {
+    this.remoteClosing = true;
+    this.destroy(error);
+  }
 }
 
 export class Muxer extends EventEmitter {
-    private conn: Connection;
-    private buffer: Buffer;
-    private processing: boolean = false;
-    private streams: Map<number, MuxerStream> = new Map();
+  private buffer = Buffer.alloc(0);
+  private readonly streams = new Map<number, MuxerStream>();
+  private nextSessionId = 1;
+  private closed = false;
 
-    constructor(conn: Connection) {
-        super();
-        this.conn = conn;
-        this.buffer = b4a.alloc(0);
+  constructor(
+    private readonly connection: MuxConnection,
+    private readonly onProtocolError: (error: Error) => void = () => undefined,
+  ) {
+    super();
+    connection.on('data', (chunk) => this.receive(chunk));
+    connection.on('close', () => this.closeAll());
+    connection.on('error', (error) => this.closeAll(error));
+  }
 
-        conn.on('data', (chunk: Buffer) => {
-            this.buffer = b4a.concat([this.buffer, chunk]);
-            this.process();
-        });
+  public createStream(): MuxerStream {
+    const sessionId = this.allocateSessionId();
+    const stream = new MuxerStream(this, sessionId);
+    this.streams.set(sessionId, stream);
+    this.send(sessionId, CMD_OPEN);
+    return stream;
+  }
 
-        conn.on('close', () => {
-            this.emit('close');
-            for (const stream of this.streams.values()) {
-                stream.destroy();
-            }
-            this.streams.clear();
-        });
+  public send(sessionId: number, command: number, data?: Buffer): void {
+    if (this.closed) throw new Error('Tunnel connection is closed');
+    if (!KNOWN_COMMANDS.has(command)) throw new Error('Unknown tunnel command');
+    const payload = data ?? Buffer.alloc(0);
+    if (command !== CMD_DATA && payload.length > 0) throw new Error('Control frame payload is not allowed');
 
-        conn.on('error', (err: Error) => {
-            this.emit('error', err);
-            for (const stream of this.streams.values()) {
-                stream.destroy(err);
-            }
-            this.streams.clear();
-        });
+    if (payload.length > MAX_PAYLOAD_SIZE) {
+      for (let offset = 0; offset < payload.length; offset += MAX_PAYLOAD_SIZE) {
+        this.send(sessionId, command, payload.subarray(offset, offset + MAX_PAYLOAD_SIZE));
+      }
+      return;
     }
 
-    private process() {
-        if (this.processing) return;
-        this.processing = true;
+    const header = Buffer.alloc(HEADER_SIZE);
+    header.writeUInt16BE(HEADER_SIZE + payload.length, 0);
+    header.writeUInt16BE(sessionId, 2);
+    header.writeUInt8(command, 4);
+    this.connection.write(payload.length ? Buffer.concat([header, payload]) : header);
+  }
 
-        while (this.buffer.length >= HEADER_SIZE) {
-            const length = this.buffer.readUInt16BE(0);
+  public sendClose(sessionId: number): void {
+    if (!this.closed && this.streams.has(sessionId)) this.send(sessionId, CMD_CLOSE);
+  }
 
-            if (this.buffer.length < length) {
-                break;
-            }
+  public removeStream(sessionId: number): void {
+    this.streams.delete(sessionId);
+  }
 
-            const packet = this.buffer.subarray(0, length);
-            this.buffer = this.buffer.subarray(length);
+  public get activeStreamCount(): number {
+    return this.streams.size;
+  }
 
-            const sessionId = packet.readUInt16BE(2);
-            const type = packet.readUInt8(4);
-            const data = packet.subarray(HEADER_SIZE);
-
-            if (type === CMD_DATA) {
-                const stream = this.streams.get(sessionId);
-                if (stream) {
-                    stream.pushData(data);
-                }
-            } else if (type === CMD_OPEN) {
-                if (this.streams.has(sessionId)) {
-                    const stream = this.streams.get(sessionId)!;
-                    stream.destroy();
-                }
-                const stream = new MuxerStream(this, sessionId);
-                this.streams.set(sessionId, stream);
-                this.emit('stream', stream);
-            } else if (type === CMD_CLOSE) {
-                const stream = this.streams.get(sessionId);
-                if (stream) {
-                stream.destroy();
-                }
-            }
-        }
-
-        this.processing = false;
+  private receive(chunk: Buffer): void {
+    if (this.closed || chunk.length === 0) return;
+    if (this.buffer.length + chunk.length > MAX_BUFFER_SIZE) {
+      this.protocolViolation('Tunnel frame buffer limit exceeded');
+      return;
     }
+    this.buffer = Buffer.concat([this.buffer, chunk]);
 
-    public send(sessionId: number, type: number, data?: Buffer) {
-        const payloadLength = data ? data.length : 0;
-        const totalLength = HEADER_SIZE + payloadLength;
+    while (!this.closed && this.buffer.length >= HEADER_SIZE) {
+      const length = this.buffer.readUInt16BE(0);
+      if (length < HEADER_SIZE) {
+        this.protocolViolation('Tunnel frame length is smaller than its header');
+        return;
+      }
+      if (this.buffer.length < length) return;
 
-        if (totalLength > 65535) {
-            if (data && data.length > 60000) {
-                const chunk1 = data.subarray(0, 60000);
-                const chunk2 = data.subarray(60000);
-                this.send(sessionId, type, chunk1);
-                this.send(sessionId, type, chunk2);
-                return;
-            }
+      const frame = this.buffer.subarray(0, length);
+      this.buffer = this.buffer.subarray(length);
+      const sessionId = frame.readUInt16BE(2);
+      const command = frame.readUInt8(4);
+      const payload = frame.subarray(HEADER_SIZE);
+
+      if (sessionId === 0 || !KNOWN_COMMANDS.has(command)) {
+        this.protocolViolation('Tunnel frame contains an invalid session or command');
+        return;
+      }
+      if (command !== CMD_DATA && payload.length > 0) {
+        this.protocolViolation('Tunnel control frame contains a payload');
+        return;
+      }
+
+      const existing = this.streams.get(sessionId);
+      if (command === CMD_OPEN) {
+        if (existing) {
+          this.protocolViolation('Tunnel session was opened twice');
+          return;
         }
-
-        const header = b4a.alloc(HEADER_SIZE);
-        header.writeUInt16BE(totalLength, 0);
-        header.writeUInt16BE(sessionId, 2);
-        header.writeUInt8(type, 4);
-
-        if (data) {
-            this.conn.write(b4a.concat([header, data]));
-        } else {
-            this.conn.write(header);
-        }
-    }
-
-    public createStream(sessionId: number): MuxerStream {
         const stream = new MuxerStream(this, sessionId);
         this.streams.set(sessionId, stream);
-        return stream;
+        this.emit('stream', stream);
+      } else if (command === CMD_DATA) {
+        if (!existing) {
+          this.protocolViolation('Tunnel data targets an unknown session');
+          return;
+        }
+        existing.pushData(payload);
+      } else {
+        if (!existing) {
+          this.protocolViolation('Tunnel close targets an unknown session');
+          return;
+        }
+        existing.closeFromRemote();
+      }
     }
+  }
 
-    public removeStream(sessionId: number) {
-        this.streams.delete(sessionId);
+  private allocateSessionId(): number {
+    for (let attempt = 0; attempt < 65_535; attempt += 1) {
+      const candidate = this.nextSessionId;
+      this.nextSessionId = candidate === 65_535 ? 1 : candidate + 1;
+      if (!this.streams.has(candidate)) return candidate;
     }
+    throw new Error('Tunnel session limit reached');
+  }
+
+  private protocolViolation(message: string): void {
+    const error = new Error(message);
+    this.onProtocolError(error);
+    this.connection.destroy?.(error);
+    this.closeAll(error);
+  }
+
+  private closeAll(_error?: Error): void {
+    if (this.closed) return;
+    this.closed = true;
+    this.buffer = Buffer.alloc(0);
+    // The connection owns the failure diagnostic. Destroying child streams
+    // without re-emitting that error avoids an unhandled EventEmitter error in
+    // consumers that treat disconnects as normal lifecycle events.
+    for (const stream of [...this.streams.values()]) stream.closeFromRemote();
+    this.streams.clear();
+    this.emit('close');
+  }
 }

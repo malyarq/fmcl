@@ -29,7 +29,24 @@ export type {
 export type { ModsAPI, ModInstallContentType, ModInstallIssue, ModInstallRequest, ModInstallResponse, ModInstallStatus } from './mods';
 export { INSTANCE_MODS_CHANNELS } from './instanceMods';
 export type { InstanceModRegistrationRequest, InstanceModsAPI, InstanceModsChannel } from './instanceMods';
-export type { NetworkAPI, NetworkMode, LanDiscoverEvent } from './network';
+export { NETWORK_CHANNELS } from './network';
+export type {
+  FriendTunnelAPI,
+  FriendTunnelSnapshot,
+  LanDiscoverEvent,
+  LanDiscoveryAPI,
+  LanDiscoverySnapshot,
+  MinecraftServerStatus,
+  MinecraftServerStatusResult,
+  NetworkAPI,
+  NetworkChannel,
+  NetworkDiagnostic,
+  NetworkDiagnosticCode,
+  NetworkLifecycleState,
+  PortMappingAPI,
+  PortMappingDto,
+  PortMappingSnapshot,
+} from './network';
 export type { WindowControlsAPI } from './windowControls';
 export type {
   CacheAPI,

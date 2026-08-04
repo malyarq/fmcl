@@ -2,8 +2,22 @@ import { app, BrowserWindow } from 'electron';
 
 export function registerLifecycleHandlers(params: {
   createWindow: () => void;
+  shutdown: () => Promise<unknown>;
 }) {
-  const { createWindow } = params;
+  const { createWindow, shutdown } = params;
+  let shutdownComplete = false;
+  let shutdownPromise: Promise<unknown> | undefined;
+
+  app.on('before-quit', (event) => {
+    if (shutdownComplete) return;
+    event.preventDefault();
+    shutdownPromise ??= shutdown()
+      .catch((error) => console.error('[Lifecycle] Shutdown failed:', error))
+      .finally(() => {
+        shutdownComplete = true;
+        app.quit();
+      });
+  });
 
   // Quit when all windows are closed, except on macOS.
   app.on('window-all-closed', () => {
@@ -19,4 +33,3 @@ export function registerLifecycleHandlers(params: {
     }
   });
 }
-

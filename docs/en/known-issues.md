@@ -20,6 +20,7 @@ Checksums detect corruption or asset replacement only when users compare them wi
 - Archive export recovery deliberately stops at `recovery-required` after a restart. The launcher preserves the external output and private staging artifacts, but does not rename or delete them after the one-time native save authorization has expired; manual verification is required.
 - Real Microsoft authentication is not implemented; supported profiles are offline or compatible third-party Yggdrasil providers.
 - LAN discovery and UPnP depend on the local network and router and cannot be guaranteed by the launcher.
+- Electron documents that normal quit events may not fire during Windows shutdown, restart, or user logout. The ordered drain applies to ordinary launcher quit paths; crash/journal recovery remains the protection for forced termination.
 
 ## Architecture and maintenance debt
 

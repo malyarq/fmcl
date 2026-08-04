@@ -224,4 +224,20 @@ describe('InstanceApplication', () => {
     expect(repeatedDelete).toEqual({ status: 'noop', snapshot: deleted.snapshot });
     expect(ports.controlPlane.commit).toHaveBeenCalledTimes(2);
   });
+
+  it('drains admitted configuration writes and permanently closes admission', async () => {
+    let release: (() => void) | undefined;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const ports = createPorts(ready({ selectedId: 'pack-one', records: [createRecord()] }));
+    vi.mocked(ports.controlPlane.commit).mockImplementationOnce(async () => { await gate; });
+    const application = new InstanceApplication(ports);
+    const write = application.execute(createRoot(), { version: 1, type: 'rename', id: 'pack-one', name: 'New name' });
+    await vi.waitFor(() => expect(ports.controlPlane.commit).toHaveBeenCalledOnce());
+    const drain = application.beginShutdown();
+    expect(application.beginShutdown()).toBe(drain);
+    await expect(application.execute(createRoot(), { version: 1, type: 'select', id: 'pack-one' })).rejects.toThrow('shutting down');
+    release?.();
+    await expect(write).resolves.toMatchObject({ status: 'committed' });
+    await drain;
+  });
 });

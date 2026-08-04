@@ -45,6 +45,8 @@ const PHASE_41_RECOVERY_EN_VIEW = 'phase-41-recovery-en';
 const PHASE_41_RECOVERY_RU_VIEW = 'phase-41-recovery-ru';
 const PHASE_41_SURFACES_EN_VIEW = 'phase-41-surfaces-en';
 const PHASE_41_SURFACES_RU_VIEW = 'phase-41-surfaces-ru';
+const PHASE_42_TUNNEL_EN_VIEW = 'phase-42-tunnel-en';
+const PHASE_42_LAN_RU_VIEW = 'phase-42-lan-ru';
 
 const PHASE_21_DETAIL_VIEWS = new Set([PHASE_21_DETAILS_DENSITY_VIEW, PHASE_21_RUNTIME_EDIT_VIEW]);
 const PHASE_24_CLOSEOUT_VIEWS = new Set([
@@ -976,12 +978,12 @@ function getConfigsForView(view: string): Record<string, ModpackConfig> {
 function createState(view: string): ManualState {
   const configs = getConfigsForView(view);
   const modpacks = [structuredClone(configs.alpha), structuredClone(configs.classic)];
-  if (OWNERSHIP_PROOF_VIEWS.has(view)) {
+  if (OWNERSHIP_PROOF_VIEWS.has(view) || view === PHASE_42_LAN_RU_VIEW) {
     modpacks.push(structuredClone(configs.beta));
   }
 
   return {
-    selectedModpackId: 'alpha',
+    selectedModpackId: view === PHASE_42_LAN_RU_VIEW ? 'beta' : 'alpha',
     selectedAccountId: 'account-1',
     modpacks,
     metadata: getMetadataForView(view),
@@ -1114,7 +1116,7 @@ export function seedManualVerificationStorage(view: string) {
   const isPhase24LocaleRu = view === PHASE_24_LOCALE_RU_VIEW;
   const seededBrowserResults = getBrowserResultsForView(view);
 
-  localStorage.setItem('settings_language', isPhase17Polish || isPhase22LocaleRu || isPhase24LocaleRu || PHASE_41_RU_VIEWS.has(view) ? 'ru' : 'en');
+  localStorage.setItem('settings_language', isPhase17Polish || isPhase22LocaleRu || isPhase24LocaleRu || PHASE_41_RU_VIEWS.has(view) || view === PHASE_42_LAN_RU_VIEW ? 'ru' : 'en');
   localStorage.setItem('settings_theme', isPhase22ThemeLight || isPhase24ThemeLight ? 'light' : 'dark');
   if (isPhase17Polish || isPhase22ThemeDark || isPhase24ThemeDark) {
     localStorage.setItem('settings_themePresetId', 'forest');
@@ -1124,6 +1126,7 @@ export function seedManualVerificationStorage(view: string) {
   localStorage.setItem('settings_accentColor', isPhase22ThemeLight || isPhase24ThemeLight ? 'rose' : 'emerald');
   localStorage.setItem('settings_disableAnimations', PHASE_24_CLOSEOUT_VIEWS.has(view) || PHASE_41_PROOF_VIEWS.has(view) ? 'true' : 'false');
   localStorage.setItem('settings_minecraftPath', '/mock/.minecraft');
+  localStorage.setItem('mp_mode', view === PHASE_42_LAN_RU_VIEW ? 'join' : 'host');
   localStorage.setItem('settings_uiMode', simpleViews.has(view) ? 'simple' : 'modpacks');
   localStorage.setItem('simple_play_welcome_dismissed', 'false');
   localStorage.setItem('onboarding_completed', simpleViews.has(view) ? 'false' : 'true');
@@ -1577,12 +1580,56 @@ export function installManualVerificationEnvironment() {
     },
   };
 
+  const tunnelSnapshot = {
+    revision: 1,
+    state: view === PHASE_42_TUNNEL_EN_VIEW ? 'active' as const : 'idle' as const,
+    role: view === PHASE_42_TUNNEL_EN_VIEW ? 'host' as const : null,
+    ...(view === PHASE_42_TUNNEL_EN_VIEW ? { roomCode: 'ab'.repeat(32) } : {}),
+    peerCount: view === PHASE_42_TUNNEL_EN_VIEW ? 2 : 0,
+  };
+  const lanSnapshot = {
+    revision: 1,
+    state: view === PHASE_42_LAN_RU_VIEW ? 'active' as const : 'idle' as const,
+    family: view === PHASE_42_LAN_RU_VIEW ? 'udp4' as const : null,
+    discoveredCount: view === PHASE_42_LAN_RU_VIEW ? 1 : 0,
+  };
+  const upnpSnapshot = { revision: 1, state: 'idle' as const, mappings: [] };
+  const network = {
+    tunnel: {
+      getState: async () => structuredClone(tunnelSnapshot),
+      host: async () => structuredClone(tunnelSnapshot),
+      join: async () => structuredClone(tunnelSnapshot),
+      stop: async () => ({ revision: 2, state: 'idle' as const, role: null, peerCount: 0 }),
+      onState: () => () => undefined,
+    },
+    lan: {
+      getState: async () => structuredClone(lanSnapshot),
+      start: async () => structuredClone(lanSnapshot),
+      stop: async () => ({ revision: 2, state: 'idle' as const, family: null, discoveredCount: 0 }),
+      broadcast: async () => structuredClone(lanSnapshot),
+      ping: async () => ({ status: 'ok' as const, server: { description: 'Beta LAN', versionName: '1.21.1', protocol: 767, onlinePlayers: 2, maxPlayers: 8, latencyMs: 14 } }),
+      onState: () => () => undefined,
+      onDiscover: (listener: (event: { motd: string; port: number; address: string }) => void) => {
+        if (view === PHASE_42_LAN_RU_VIEW) queueMicrotask(() => listener({ motd: 'Мир Beta Pack', port: 25_565, address: '192.168.1.42' }));
+        return () => undefined;
+      },
+    },
+    upnp: {
+      getState: async () => structuredClone(upnpSnapshot),
+      mapTcp: async () => structuredClone(upnpSnapshot),
+      unmapTcp: async () => structuredClone(upnpSnapshot),
+      stop: async () => structuredClone(upnpSnapshot),
+      onState: () => () => undefined,
+    },
+  };
+
   const api = {
     instances: instancesApi,
     instanceMods: instanceModsApi,
     providerCatalog: providerCatalogApi,
     archiveInspection,
     operations,
+    network,
     account: accountApi,
     externalLinks: externalLinksApi,
     mods: modsApi,

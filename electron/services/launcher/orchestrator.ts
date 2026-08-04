@@ -4,7 +4,6 @@ import type { AccountService } from '../account/accountService';
 import type { MirrorsService } from '../mirrors/mirrorsService';
 import type { StatisticsService } from '../stats/statisticsService';
 import { JavaManager } from '../java/provisioning';
-import { NetworkManager } from '../network/networkManager';
 import { createDispatcher, resolveDownloadConcurrency } from '../runtime/http';
 import { RuntimeDownloadService } from '../runtime/downloadService';
 import { TaskRunner } from '../runtime/taskRunner';
@@ -29,7 +28,6 @@ import type { LaunchAdapters } from '../../infrastructure/instances/launchAdapte
 export class LauncherManager {
   private currentGameProcess: ChildProcess | null = null;
   private javaManager: JavaManager;
-  public networkManager: NetworkManager;
   private readonly downloads: RuntimeDownloadService;
   private readonly versionLists: VersionListService;
   private readonly tasks: TaskRunner;
@@ -47,7 +45,6 @@ export class LauncherManager {
 
   constructor(deps: {
     javaManager?: JavaManager;
-    networkManager?: NetworkManager;
     downloads?: RuntimeDownloadService;
     versionLists?: VersionListService;
     tasks?: TaskRunner;
@@ -65,7 +62,6 @@ export class LauncherManager {
   }) {
     patchUndiciThrowOnError();
     this.javaManager = deps?.javaManager ?? new JavaManager();
-    this.networkManager = deps?.networkManager ?? new NetworkManager();
 
     this.mirrorsService = deps?.mirrorsService;
     this.downloads = deps?.downloads ?? new RuntimeDownloadService(this.mirrorsService);
