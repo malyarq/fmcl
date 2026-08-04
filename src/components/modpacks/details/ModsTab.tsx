@@ -5,7 +5,7 @@ import { useConfirm } from '../../../contexts/ConfirmContext';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { useToast } from '../../../contexts/ToastContext';
 import { externalLinksIPC } from '../../../services/ipc/externalLinksIPC';
-import { modpacksIPC } from '../../../services/ipc/modpacksIPC';
+import { instanceModsIPC } from '../../../services/ipc/instanceModsIPC';
 import { cn } from '../../../utils/cn';
 import { modNameToSlug } from '../../../utils/modSlug';
 import { AddModModal } from '../AddModModal';
@@ -13,8 +13,7 @@ import { Button } from '../../ui/Button';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 
 export interface ModsTabProps {
-    modpackId: string;
-    instancePath?: string;
+    instanceId: string;
     showAddButton?: boolean;
     defaultMCVersion?: string;
     defaultLoader?: string;
@@ -32,8 +31,7 @@ function normalizeMods(list: SharedModEntry[]): ModEntry[] {
 }
 
 export function ModsTab({
-    modpackId,
-    instancePath,
+    instanceId,
     showAddButton = false,
     defaultMCVersion,
     defaultLoader,
@@ -50,7 +48,7 @@ export function ModsTab({
     const loadMods = useCallback(async () => {
         setLoading(true);
         try {
-            const list = (await modpacksIPC.getMods(modpackId, instancePath)) as unknown as SharedModEntry[];
+            const list = await instanceModsIPC.list(instanceId);
             setMods(normalizeMods(list ?? []));
             onUpdate?.();
         } catch (err) {
@@ -59,7 +57,7 @@ export function ModsTab({
         } finally {
             setLoading(false);
         }
-    }, [instancePath, modpackId, onUpdate]);
+    }, [instanceId, onUpdate]);
 
     useEffect(() => {
         void loadMods();
@@ -80,14 +78,14 @@ export function ModsTab({
             }
 
             try {
-                await modpacksIPC.removeMod(modpackId, mod.file.name, instancePath);
+                await instanceModsIPC.remove(instanceId, mod.file.name);
                 await loadMods();
             } catch (error) {
                 console.error('Error removing mod:', error);
                 toast.error(t('modpacks.remove_mod_error'));
             }
         },
-        [confirm, instancePath, loadMods, modpackId, t, toast]
+        [confirm, instanceId, loadMods, t, toast]
     );
 
     const handleModToggle = useCallback(
@@ -97,14 +95,14 @@ export function ModsTab({
             setMods((prev) => prev.map((entry) => (entry.id === mod.id ? { ...entry, enabled } : entry)));
 
             try {
-                await modpacksIPC.setModEnabled(modpackId, mod.file.name, enabled, instancePath);
+                await instanceModsIPC.setEnabled(instanceId, mod.file.name, enabled);
             } catch (error) {
                 console.error('Error toggling mod:', error);
                 setMods((prev) => prev.map((entry) => (entry.id === mod.id ? { ...entry, enabled: !enabled } : entry)));
                 toast.error(t('modpacks.mod_toggle_error'));
             }
         },
-        [instancePath, modpackId, t, toast]
+        [instanceId, t, toast]
     );
 
     const handleOpenExternalLink = useCallback((url: string, context: string) => {
@@ -245,7 +243,7 @@ export function ModsTab({
 
             {showAddButton && (
                 <AddModModal
-                    modpackId={modpackId}
+                    modpackId={instanceId}
                     isOpen={showAddModModal}
                     onClose={() => setShowAddModModal(false)}
                     onAdded={() => {

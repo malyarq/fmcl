@@ -2,15 +2,16 @@
 
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ProviderCatalogAPI } from '@shared/contracts';
 import { ModpackList } from '../ModpackList';
 import { ModpackBrowser } from '../ModpackBrowser';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
+import { instancesFromListFixture } from './instancesListFixture';
 
 const listWithMetadataMock = vi.fn();
-const searchModrinthMock = vi.fn();
-const getCurseForgeVersionsMock = vi.fn();
-const getModrinthVersionsMock = vi.fn();
+const searchMock = vi.fn<ProviderCatalogAPI['search']>();
+const versionsMock = vi.fn<ProviderCatalogAPI['versions']>();
 const selectMock = vi.fn();
 const refreshMock = vi.fn();
 const t = createTranslator('en');
@@ -57,12 +58,10 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    listWithMetadata: (...args: unknown[]) => listWithMetadataMock(...args),
-    searchModrinth: (...args: unknown[]) => searchModrinthMock(...args),
-    getCurseForgeVersions: (...args: unknown[]) => getCurseForgeVersionsMock(...args),
-    getModrinthVersions: (...args: unknown[]) => getModrinthVersionsMock(...args),
+vi.mock('../../../services/ipc/providerCatalogIPC', () => ({
+  providerCatalogIPC: {
+    search: (...args: Parameters<ProviderCatalogAPI['search']>) => searchMock(...args),
+    versions: (...args: Parameters<ProviderCatalogAPI['versions']>) => versionsMock(...args),
   },
 }));
 
@@ -82,19 +81,18 @@ vi.mock('../../../features/share/ImportShareModal', () => ({
 
 describe('Catalog header actions', () => {
   beforeEach(() => {
+    Object.defineProperty(window, 'api', { configurable: true, value: { instances: instancesFromListFixture(() => listWithMetadataMock()) } });
     cleanup();
     localStorage.clear();
     listWithMetadataMock.mockReset();
-    searchModrinthMock.mockReset();
-    getCurseForgeVersionsMock.mockReset();
-    getModrinthVersionsMock.mockReset();
+    searchMock.mockReset();
+    versionsMock.mockReset();
     selectMock.mockReset();
     refreshMock.mockReset();
 
     selectMock.mockResolvedValue(undefined);
     refreshMock.mockResolvedValue(undefined);
-    getCurseForgeVersionsMock.mockResolvedValue([]);
-    getModrinthVersionsMock.mockResolvedValue([]);
+    versionsMock.mockResolvedValue([]);
 
     listWithMetadataMock.mockResolvedValue([
       {
@@ -110,7 +108,7 @@ describe('Catalog header actions', () => {
       },
     ]);
 
-    searchModrinthMock.mockResolvedValue({
+    searchMock.mockResolvedValue({
       items: [
         {
           platform: 'modrinth',

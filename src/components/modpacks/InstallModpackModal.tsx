@@ -4,8 +4,8 @@ import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
-import type { ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import type { ProviderCatalogSearchResultItem, ProviderCatalogVersionDescriptor } from '@shared/contracts';
+import { instancesIPC } from '../../services/ipc/instancesIPC';
 import { ProviderInstallOperationState } from './ProviderInstallOperationState';
 import {
   hasPublishedProviderInstance,
@@ -17,8 +17,8 @@ import {
 interface InstallModpackModalProps {
   isOpen: boolean;
   onClose: () => void;
-  modpack: ModpackSearchResultItem;
-  versions: ModpackVersionDescriptor[];
+  modpack: ProviderCatalogSearchResultItem;
+  versions: ProviderCatalogVersionDescriptor[];
   platform: 'curseforge' | 'modrinth';
 }
 
@@ -30,7 +30,7 @@ export const InstallModpackModal: React.FC<InstallModpackModalProps> = ({
   platform,
 }) => {
   const { t, getAccentStyles } = useSettings();
-  const [selectedVersion, setSelectedVersion] = useState<ModpackVersionDescriptor | null>(
+  const [selectedVersion, setSelectedVersion] = useState<ProviderCatalogVersionDescriptor | null>(
     versions[0] || null
   );
   const { operation, error, isActive, start, cancel } = useProviderInstallOperation(isOpen);
@@ -41,8 +41,8 @@ export const InstallModpackModal: React.FC<InstallModpackModalProps> = ({
     completedOperationRef.current = operation.id;
     if (!isPublishedProviderInstall(operation)) return;
 
-    if (hasPublishedProviderInstance(operation)) {
-      void modpacksIPC.setSelected(operation.result.instanceId).catch((nextError) => {
+    if (hasPublishedProviderInstance(operation) && operation.status !== 'degraded') {
+      void instancesIPC.select({ id: operation.result.instanceId }).catch((nextError) => {
         console.warn('Failed to select modpack:', nextError);
       });
     }

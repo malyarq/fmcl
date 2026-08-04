@@ -3,14 +3,14 @@
 import type { ComponentProps } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ModpackSearchResultItem } from '@shared/contracts/modpacks';
+import type { ProviderCatalogAPI } from '@shared/contracts';
+import type { ProviderCatalogSearchResultItem } from '@shared/contracts/providerCatalog';
 import { ModpackBrowser } from '../ModpackBrowser';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
 import { createTranslator } from '../../../contexts/settings/i18n';
 
-const searchModrinthMock = vi.fn();
-const getCurseForgeVersionsMock = vi.fn();
-const getModrinthVersionsMock = vi.fn();
+const searchMock = vi.fn<ProviderCatalogAPI['search']>();
+const versionsMock = vi.fn<ProviderCatalogAPI['versions']>();
 const t = createTranslator('en');
 
 vi.mock('../../../contexts/SettingsContext', () => ({
@@ -27,11 +27,10 @@ vi.mock('../../../hooks/useDebounce', () => ({
   useDebounce: <T,>(value: T) => value,
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    searchModrinth: (...args: unknown[]) => searchModrinthMock(...args),
-    getCurseForgeVersions: (...args: unknown[]) => getCurseForgeVersionsMock(...args),
-    getModrinthVersions: (...args: unknown[]) => getModrinthVersionsMock(...args),
+vi.mock('../../../services/ipc/providerCatalogIPC', () => ({
+  providerCatalogIPC: {
+    search: (...args: Parameters<ProviderCatalogAPI['search']>) => searchMock(...args),
+    versions: (...args: Parameters<ProviderCatalogAPI['versions']>) => versionsMock(...args),
   },
 }));
 
@@ -57,7 +56,7 @@ function renderBrowser(overrides: Partial<ComponentProps<typeof ModpackBrowser>>
   return { onNavigate, onStateChange };
 }
 
-function seedHistory(modpacks: ModpackSearchResultItem[]) {
+function seedHistory(modpacks: ProviderCatalogSearchResultItem[]) {
   localStorage.setItem('modpack-history', JSON.stringify(modpacks));
 }
 
@@ -65,18 +64,16 @@ describe('ModpackBrowser history flow', () => {
   beforeEach(() => {
     cleanup();
     localStorage.clear();
-    searchModrinthMock.mockReset();
-    getCurseForgeVersionsMock.mockReset();
-    getModrinthVersionsMock.mockReset();
+    searchMock.mockReset();
+    versionsMock.mockReset();
 
-    searchModrinthMock.mockResolvedValue({
+    searchMock.mockResolvedValue({
       items: [],
       total: 0,
       offset: 0,
       limit: 12,
     });
-    getCurseForgeVersionsMock.mockResolvedValue([]);
-    getModrinthVersionsMock.mockResolvedValue([]);
+    versionsMock.mockResolvedValue([]);
   });
 
   it('reopens history entries with their own provider and preserves mixed-provider history entries', async () => {
@@ -109,16 +106,16 @@ describe('ModpackBrowser history flow', () => {
     fireEvent.click(screen.getByText('CurseForge Pack'));
 
     await waitFor(() => {
-      expect(getCurseForgeVersionsMock).toHaveBeenCalledWith(42);
+      expect(versionsMock).toHaveBeenCalledWith({ platform: 'curseforge', projectId: '42' });
     });
-    expect(getModrinthVersionsMock).not.toHaveBeenCalled();
+    expect(versionsMock).toHaveBeenCalledTimes(1);
     expect(onNavigate).toHaveBeenCalledWith(expect.objectContaining({
       type: 'install',
       platform: 'curseforge',
       modpack: expect.objectContaining({ title: 'CurseForge Pack', platform: 'curseforge' }),
     }));
 
-    const savedHistory = JSON.parse(localStorage.getItem('modpack-history') ?? '[]') as ModpackSearchResultItem[];
+    const savedHistory = JSON.parse(localStorage.getItem('modpack-history') ?? '[]') as ProviderCatalogSearchResultItem[];
     expect(savedHistory).toHaveLength(2);
     expect(savedHistory.map((modpack) => `${modpack.platform}:${modpack.projectId}`)).toEqual([
       'curseforge:42',

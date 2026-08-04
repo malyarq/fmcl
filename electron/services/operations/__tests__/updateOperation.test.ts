@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OperationJournal } from '../operationJournal';
 import { OperationRunner } from '../operationRunner';
 import { createUpdateOperationAdapter } from '../updateOperation';
+import type { InstanceCommand } from '../../../domains/instances/instanceTypes';
 
 describe('staged manifest update operation', () => {
   const tempDirs: string[] = [];
@@ -19,7 +20,7 @@ describe('staged manifest update operation', () => {
     const rootPath = seedRoot();
     tempDirs.push(rootPath);
     stubVerifiedManifest();
-    const runner = new OperationRunner([createUpdateOperationAdapter()]);
+    const { runner, execute } = createRunner();
 
     const started = runner.start(request(rootPath));
     const completed = await runner.waitFor(started.id);
@@ -31,6 +32,11 @@ describe('staged manifest update operation', () => {
     });
     expect(fs.readFileSync(path.join(rootPath, 'modpacks', 'updated-pack', 'mods', 'verified.jar'), 'utf8')).toBe('verified bytes');
     expect(fs.readFileSync(path.join(rootPath, 'modpacks', 'updated-pack', 'payload.txt'), 'utf8')).toBe('original bytes');
+    expect(execute).toHaveBeenCalledWith(expect.objectContaining({
+      version: 1,
+      type: 'reconcile-update',
+      record: expect.objectContaining({ id: 'updated-pack', name: 'Updated Pack' }),
+    }));
   });
 
   it.each(['validation', 'publish', 'control-plane'] as const)(
@@ -40,7 +46,7 @@ describe('staged manifest update operation', () => {
       tempDirs.push(rootPath);
       const before = capture(rootPath);
       stubVerifiedManifest();
-      const runner = new OperationRunner([createUpdateOperationAdapter({ faults: { [fault]: () => { throw new Error(`${fault} failed`); } } })]);
+      const { runner } = createRunner({ faults: { [fault]: () => { throw new Error(`${fault} failed`); } } });
 
       const started = runner.start(request(rootPath));
 
@@ -62,7 +68,7 @@ describe('staged manifest update operation', () => {
     vi.stubGlobal('fetch', vi.fn()
       .mockResolvedValueOnce(manifestResponse({ name: 'Unsafe', files: [{ path: filePath, hash, size, url }] }))
       .mockResolvedValueOnce(new Response('owned', { status: 200 })));
-    const runner = new OperationRunner([createUpdateOperationAdapter()]);
+    const { runner } = createRunner();
 
     const started = runner.start(request(rootPath));
 
@@ -77,9 +83,9 @@ describe('staged manifest update operation', () => {
     const before = capture(rootPath);
     stubVerifiedManifest();
     let cancel: (() => boolean) | undefined;
-    const runner = new OperationRunner([createUpdateOperationAdapter({ faults: {
+    const { runner } = createRunner({ faults: {
       validation: () => { cancel?.(); },
-    } })]);
+    } });
     const started = runner.start(request(rootPath));
     cancel = () => runner.cancel(started.id);
 
@@ -105,14 +111,14 @@ describe('staged manifest update operation', () => {
       input: request(rootPath),
       recovery: { destinationId: 'updated-pack' },
     });
-    const runner = new OperationRunner([createUpdateOperationAdapter()]);
+    const { runner } = createRunner();
 
     await runner.recover(rootPath);
 
     expect(runner.get(operationId)).toMatchObject({
-      status: 'recovered',
-      phase: 'completed',
-      result: { status: 'recovered', instanceId: 'updated-pack' },
+      status: 'recovery-required',
+      phase: 'recovery-required',
+      result: { status: 'recovery-required' },
     });
   });
 
@@ -124,12 +130,12 @@ describe('staged manifest update operation', () => {
     const calls: string[] = [];
     let releaseFirst: (() => void) | undefined;
     const firstPending = new Promise<void>((resolve) => { releaseFirst = resolve; });
-    const runner = new OperationRunner([createUpdateOperationAdapter({
+    const { runner } = createRunner({
       sync: async ({ stagePath }) => {
         calls.push(path.basename(stagePath));
         if (calls.length === 1) await firstPending;
       },
-    })]);
+    });
 
     const first = runner.start(request(rootPath));
     const sameInstance = runner.start(request(rootPath));
@@ -141,7 +147,63 @@ describe('staged manifest update operation', () => {
     await Promise.all([runner.waitFor(first.id), runner.waitFor(sameInstance.id), runner.waitFor(independent.id)]);
     expect(calls.filter((instanceId) => instanceId === 'updated-pack')).toHaveLength(2);
   });
+
+  it('persists the exact update reconciliation command before a post-publish fault', async () => {
+    const rootPath = seedRoot();
+    tempDirs.push(rootPath);
+    let recorded: unknown;
+    const { runner } = createRunner({
+      sync: async () => undefined,
+      faults: {
+        'control-plane': () => {
+          recorded = new OperationJournal(rootPath).get(started.id)?.recovery?.canonicalCommand;
+          throw new Error('simulated crash after publish');
+        },
+      },
+    });
+    const started = runner.start(request(rootPath));
+
+    await expect(runner.waitFor(started.id)).resolves.toMatchObject({ status: 'failed' });
+    expect(recorded).toMatchObject({
+      version: 1,
+      rootPath,
+      operationId: started.id,
+      command: { version: 1, type: 'reconcile-update', record: { id: 'updated-pack' } },
+    });
+  });
 });
+
+function createRunner(options: Parameters<typeof createUpdateOperationAdapter>[0] = {}) {
+  const execute = vi.fn(async (command: InstanceCommand) => ({
+    status: 'committed' as const,
+    snapshot: command.type === 'reconcile-update'
+      ? { selectedId: command.record.id, records: [command.record] }
+      : { selectedId: 'updated-pack', records: [record('updated-pack', 'Updated Pack')] },
+  }));
+  const snapshot = { selectedId: 'updated-pack' as const, records: [record('updated-pack', 'Updated Pack')] };
+  return {
+    execute,
+    runner: new OperationRunner([createUpdateOperationAdapter(options)], {
+      rootMutationCoordinator: {
+        forRoot: () => ({
+          read: async () => ({ status: 'ready' as const, snapshot }),
+          prepare: async () => ({ status: 'ready' as const, source: 'canonical' as const, snapshot }),
+          execute,
+        }),
+      },
+    }),
+  };
+}
+
+function record(id: string, name: string) {
+  return {
+    id,
+    name,
+    source: { source: 'local' as const, createdAt: '2026-08-04T00:00:00.000Z', updatedAt: '2026-08-04T00:00:00.000Z' },
+    config: { runtime: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } } },
+    summary: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } },
+  };
+}
 
 function request(rootPath: string) {
   return { kind: 'update' as const, rootPath, instanceId: 'updated-pack', manifestUrl: 'https://updates.example.com/manifest.json' };

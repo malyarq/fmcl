@@ -3,32 +3,14 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 import { AuthServer } from '../auth/server';
-import { LauncherManager } from '../services/launcher/orchestrator';
 import { SelfUpdater } from '../services/updater/appUpdater';
 import { IPCManager } from '../ipc/ipcManager';
 import { createMainWindow, createConsoleWindow, getNativeWindowIconCandidates } from '../window/windowManager';
 import { createTray } from '../tray/trayManager';
 import { registerLifecycleHandlers } from './lifecycle';
-import { ModPlatformService } from '../services/mods/platform/modPlatformService';
-import { ModpackService } from '../services/modpacks/modpackService';
-import { NetworkService } from '../services/network/networkService';
-import { NetworkManager } from '../services/network/networkManager';
 import { runFullInstallationTest } from './fullInstallationTest';
-import { ContentManager } from '../services/content/contentManager';
-import { AccountService } from '../services/account/accountService';
-import { MirrorsService } from '../services/mirrors/mirrorsService';
-import { StatisticsService } from '../services/stats/statisticsService';
-import { ShareService } from '../services/sharing/shareService';
 import { loadFullTestConfig } from './fullTestConfig';
-import { OperationRunner } from '../services/operations/operationRunner';
-import { createDuplicateOperationAdapter } from '../services/operations/duplicateOperation';
-import { createImportOperationAdapter } from '../services/operations/importOperation';
-import { createLiveProviderInstallers, createProviderInstallOperationAdapters } from '../services/operations/providerInstallOperation';
-import { createUpdateOperationAdapter } from '../services/operations/updateOperation';
-import { createDeleteOperationAdapter } from '../services/operations/deleteOperation';
-import { createExportOperationAdapter } from '../services/operations/exportOperation';
-import { InstanceExporterService } from '../services/instances/exporter/InstanceExporterService';
-import { exportToZip } from '../services/modpacks/exporters/zipExporter';
+import { createCompositionRoot } from './compositionRoot';
 
 function configureAppRoot() {
   const __filename = fileURLToPath(import.meta.url);
@@ -106,33 +88,6 @@ function startAuthServer(): { url: string } {
   authServer.start();
 
   return { url };
-}
-
-function createServices(deps: { authServerUrl: string; accountService: AccountService; mirrorsService: MirrorsService; statisticsService: StatisticsService }) {
-  const modpacks = new ModpackService(new ContentManager(app.getPath('userData')));
-  const networkManager = new NetworkManager();
-
-  const launcherManager = new LauncherManager({
-    instances: modpacks,
-    networkManager,
-    authServerUrl: deps.authServerUrl,
-    accountService: deps.accountService,
-    mirrorsService: deps.mirrorsService,
-    statisticsService: deps.statisticsService,
-  });
-
-  const modPlatforms = new ModPlatformService();
-  const networkService = new NetworkService(networkManager);
-  const shareService = new ShareService(modpacks);
-
-  return {
-    modpacks,
-    networkManager,
-    launcherManager,
-    modPlatforms,
-    networkService,
-    shareService,
-  };
 }
 
 function resolveNativeIconPath(vitePublicPath: string): string {
@@ -215,54 +170,18 @@ export function bootstrapMain() {
       },
     });
 
-    const accountService = new AccountService(app.getPath('userData'));
-    const mirrorsService = new MirrorsService();
-    const statisticsService = new StatisticsService();
-    const { modpacks, launcherManager, modPlatforms, networkService, shareService } = createServices({ authServerUrl, accountService, mirrorsService, statisticsService });
-    const instanceExporter = new InstanceExporterService(modpacks);
-    const operations = new OperationRunner([
-      createDuplicateOperationAdapter(),
-      createImportOperationAdapter(),
-      createUpdateOperationAdapter(),
-      createDeleteOperationAdapter(),
-      createExportOperationAdapter({
-        platformService: modPlatforms,
-        writeArchive: async ({ rootPath, instanceId, format, outputPath, options }) => {
-          const hasInstanceExportOptions = options?.includeSaves !== undefined
-            || options?.includeScreenshots !== undefined
-            || options?.includeResourcePacks !== undefined
-            || options?.includeShaders !== undefined
-            || options?.includeMods !== undefined;
-          if (format === 'multimc' || hasInstanceExportOptions) {
-            await instanceExporter.exportInstance(rootPath, instanceId, format, outputPath, options);
-            return;
-          }
-          await exportToZip(modpacks.getModpackDir(rootPath, instanceId), outputPath);
-        },
-      }),
-      ...createProviderInstallOperationAdapters({
-        installers: createLiveProviderInstallers(modpacks, {
-          curseforge: () => modPlatforms.getCurseForgeClient(),
-          modrinth: () => modPlatforms.getModrinthClient(),
-        }),
-      }),
-    ], { registryPath: app.getPath('appData') });
+    const composition = createCompositionRoot({
+      paths: { userDataPath: app.getPath('userData'), appDataPath: app.getPath('appData') },
+      authServerUrl,
+    });
 
     // Recovery must finish before mutating operation handlers are registered.
-    await operations.recoverRegistered(modpacks.getDefaultRootPath());
+    await composition.recoverOperations();
 
     // --- Register IPC Handlers ---
     IPCManager.registerAllHandlers({
       window: win,
-      launcher: launcherManager,
-      modPlatforms,
-      networkService,
-      modpacks,
-      accountService,
-      mirrorsService,
-      statisticsService,
-      shareService,
-      operations,
+      composition: composition.handlerDependencies,
     });
 
     let consoleWinRef: BrowserWindow | null = null;

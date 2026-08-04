@@ -8,8 +8,7 @@ import { AddModPage } from '../AddModPage';
 const searchModsMock = vi.fn();
 const getMetadataMock = vi.fn();
 const getConfigMock = vi.fn();
-const resolvePathMock = vi.fn();
-const addModMock = vi.fn();
+const registerModMock = vi.fn();
 const resourcePackAddMock = vi.fn();
 const shaderAddMock = vi.fn();
 const toastSuccessMock = vi.fn();
@@ -55,13 +54,15 @@ vi.mock('../../../services/ipc/modsIPC', () => ({
   },
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getMetadata: (...args: unknown[]) => getMetadataMock(...args),
-    getConfig: (...args: unknown[]) => getConfigMock(...args),
-    resolvePath: (...args: unknown[]) => resolvePathMock(...args),
-    addMod: (...args: unknown[]) => addModMock(...args),
+vi.mock('../../../services/ipc/instanceModsIPC', () => ({
+  instanceModsIPC: {
+    register: (...args: unknown[]) => registerModMock(...args),
   },
+}));
+
+vi.mock('../../../contexts/instances/services/instancesService', () => ({
+  fetchModpackMetadata: (...args: unknown[]) => getMetadataMock(...args),
+  fetchModpackConfig: (...args: unknown[]) => getConfigMock(...args),
 }));
 
 vi.mock('../../../services/ipc/resourcePacksIPC', () => ({
@@ -83,8 +84,7 @@ describe('guided content fallback', () => {
     searchModsMock.mockReset();
     getMetadataMock.mockReset();
     getConfigMock.mockReset();
-    resolvePathMock.mockReset();
-    addModMock.mockReset();
+    registerModMock.mockReset();
     resourcePackAddMock.mockReset();
     shaderAddMock.mockReset();
     toastSuccessMock.mockReset();
@@ -108,10 +108,9 @@ describe('guided content fallback', () => {
         modLoader: { type: 'fabric' },
       },
     });
-    resolvePathMock.mockResolvedValue('/instances/alpha');
   });
 
-  it('keeps resource-pack local import inside the guided route and scoped to the resolved instance', async () => {
+  it('keeps resource-pack local import inside the guided route and scoped to the opaque instance ID', async () => {
     const onBack = vi.fn();
     resourcePackAddMock.mockResolvedValue({
       status: 'success',
@@ -126,13 +125,9 @@ describe('guided content fallback', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Import local .zip' }));
 
-    await waitFor(() => {
-      expect(resolvePathMock).toHaveBeenCalledWith('alpha', '/minecraft');
-    });
-
-    expect(resourcePackAddMock).toHaveBeenCalledWith('/instances/alpha');
+    await waitFor(() => expect(resourcePackAddMock).toHaveBeenCalledWith('alpha'));
     expect(shaderAddMock).not.toHaveBeenCalled();
-    expect(addModMock).not.toHaveBeenCalled();
+    expect(registerModMock).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(toastSuccessMock).toHaveBeenCalledWith('Resource packs added to this modpack.');
@@ -163,14 +158,13 @@ describe('guided content fallback', () => {
 
     const notice = await screen.findByTestId('add-mod-page-notice');
 
-    expect(resolvePathMock).toHaveBeenCalledWith('alpha', '/minecraft');
-    expect(shaderAddMock).toHaveBeenCalledWith('/instances/alpha');
+    expect(shaderAddMock).toHaveBeenCalledWith('alpha');
     expect(resourcePackAddMock).not.toHaveBeenCalled();
     expect(notice.getAttribute('data-tone')).toBe('error');
     expect(notice.textContent).toContain('FMCL could not treat these files as valid shader packs');
     expect(notice.textContent).toContain('bad-shader.zip');
     expect(onBack).not.toHaveBeenCalled();
     expect(toastSuccessMock).not.toHaveBeenCalled();
-    expect(addModMock).not.toHaveBeenCalled();
+    expect(registerModMock).not.toHaveBeenCalled();
   });
 });

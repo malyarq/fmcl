@@ -5,14 +5,9 @@ import type { Dispatch, SetStateAction } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { OperationResult, OperationSnapshot } from '@shared/contracts';
 import type { ModpackConfig } from '../../types';
-import modpacksContract from '../../../../../shared/contracts/modpacks.ts?raw';
 import ipcChannels from '../../../../../shared/contracts/ipcChannels.ts?raw';
-import modpacksHandlers from '../../../../../electron/ipc/handlers/modpacksHandlers.ts?raw';
-import modpacksBridge from '../../../../../electron/preload/bridges/ModpacksBridge.ts?raw';
-import instanceService from '../../../../../electron/services/instances/instanceService.ts?raw';
-import modpackService from '../../../../../electron/services/modpacks/modpackService.ts?raw';
 import instanceImporterService from '../../../../../electron/services/instances/importer/InstanceImporterService.ts?raw';
-import modpacksIPC from '../../../../services/ipc/modpacksIPC.ts?raw';
+import instancesIPC from '../../../../services/ipc/instancesIPC.ts?raw';
 import instancesService from '../../services/instancesService.ts?raw';
 import crudActions from '../useInstanceCrudActions.ts?raw';
 import manualEnvironment from '../../../../verification/manual/mockEnvironment.ts?raw';
@@ -20,19 +15,25 @@ import englishContractsMap from '../../../../../docs/en/contracts-map.md?raw';
 import russianContractsMap from '../../../../../docs/ru/contracts-map.md?raw';
 
 const mocked = vi.hoisted(() => ({
-  createModpack: vi.fn(),
-  fetchModpackConfig: vi.fn(),
-  renameModpack: vi.fn(),
-  setSelectedModpackId: vi.fn(),
+  create: vi.fn(),
+  snapshot: vi.fn(),
+  rename: vi.fn(),
+  select: vi.fn(),
   start: vi.fn(),
   subscribe: vi.fn(),
 }));
 
-vi.mock('../../services/instancesService', () => ({
-  createModpack: mocked.createModpack,
-  fetchModpackConfig: mocked.fetchModpackConfig,
-  renameModpack: mocked.renameModpack,
-  setSelectedModpackId: mocked.setSelectedModpackId,
+vi.mock('../../../../services/ipc/instancesIPC', () => ({
+  instancesIPC: {
+    create: (...args: unknown[]) => mocked.create(...args),
+    snapshot: (...args: unknown[]) => mocked.snapshot(...args),
+    rename: (...args: unknown[]) => mocked.rename(...args),
+    select: (...args: unknown[]) => mocked.select(...args),
+    list: vi.fn(),
+    config: vi.fn(),
+    metadata: vi.fn(),
+    prepare: vi.fn(),
+  },
 }));
 
 vi.mock('../../../../services/ipc/operationsIPC', () => ({
@@ -79,7 +80,6 @@ describe('useInstanceCrudActions duplicate operation', () => {
     await waitFor(() => {
       expect(mocked.start).toHaveBeenCalledWith({
         kind: 'duplicate',
-        rootPath: '/launcher',
         sourceId: 'source-pack',
         name: 'Copy',
       });
@@ -92,7 +92,7 @@ describe('useInstanceCrudActions duplicate operation', () => {
     });
 
     await waitFor(() => expect((result.current as HookResult).duplicateOperation).toEqual(nextSnapshot));
-    expect(mocked.setSelectedModpackId).not.toHaveBeenCalled();
+    expect(mocked.select).not.toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
     expect(loadSelected).not.toHaveBeenCalled();
   });
@@ -119,7 +119,7 @@ describe('useInstanceCrudActions duplicate operation', () => {
     });
 
     await waitFor(() => expect((result.current as HookResult).duplicateOperation).toEqual(completed));
-    expect(mocked.setSelectedModpackId).toHaveBeenCalledWith('published-pack', '/launcher');
+    expect(mocked.select).toHaveBeenCalledWith({ id: 'published-pack' });
   });
 
   it('uses the exact typed operation unsubscribe once when the hook unmounts', async () => {
@@ -185,7 +185,7 @@ describe('useInstanceCrudActions delete operation', () => {
 
     let operation: Promise<void> | undefined;
     act(() => { operation = result.current.remove('source-pack'); });
-    await waitFor(() => expect(mocked.start).toHaveBeenCalledWith({ kind: 'delete', rootPath: '/launcher', instanceId: 'source-pack' }));
+    await waitFor(() => expect(mocked.start).toHaveBeenCalledWith({ kind: 'delete', instanceId: 'source-pack' }));
     await act(async () => { listener?.(nextSnapshot); if (isTerminal(nextSnapshot)) await operation; });
 
     expect((result.current as HookResult).deleteOperation).toEqual(nextSnapshot);
@@ -221,13 +221,24 @@ function renderActions() {
   const loadSelected = vi.fn().mockResolvedValue(undefined);
   const setConfig = vi.fn() as unknown as Dispatch<SetStateAction<ModpackConfig | null>>;
   const { result, unmount } = renderHook(() => useInstanceCrudActions({
-    rootPath: '/launcher',
     selectedId: 'source-pack',
     setSelectedId: vi.fn(),
     setConfig,
     refresh,
     loadSelected,
   }));
+
+  mocked.select.mockResolvedValue({ ok: true, value: { status: 'committed', selectedId: 'published-pack', instances: [] } });
+  mocked.snapshot.mockResolvedValue({
+    ok: true,
+    value: {
+      id: 'published-pack',
+      name: 'Published Pack',
+      metadata: { source: 'local', createdAt: '2026-08-03T00:00:00.000Z', updatedAt: '2026-08-03T00:00:00.000Z' },
+      config: { runtime: { minecraftVersion: '1.20.1' } },
+      summary: { minecraftVersion: '1.20.1' },
+    },
+  });
 
   return { result, unmount, refresh, loadSelected };
 }
@@ -257,40 +268,31 @@ function isTerminal(snapshot: OperationSnapshot): boolean {
 
 function findLegacyDuplicateReferences(): string[] {
   const files = {
-    'shared/contracts/modpacks.ts': modpacksContract,
     'shared/contracts/ipcChannels.ts': ipcChannels,
-    'electron/ipc/handlers/modpacksHandlers.ts': modpacksHandlers,
-    'electron/preload/bridges/ModpacksBridge.ts': modpacksBridge,
-    'electron/services/instances/instanceService.ts': instanceService,
-    'electron/services/modpacks/modpackService.ts': modpackService,
     'electron/services/instances/importer/InstanceImporterService.ts': instanceImporterService,
-    'src/services/ipc/modpacksIPC.ts': modpacksIPC,
+    'src/services/ipc/instancesIPC.ts': instancesIPC,
     'src/contexts/instances/services/instancesService.ts': instancesService,
     'src/contexts/instances/hooks/useInstanceCrudActions.ts': crudActions,
     'src/verification/manual/mockEnvironment.ts': manualEnvironment,
     'docs/en/contracts-map.md': englishContractsMap,
     'docs/ru/contracts-map.md': russianContractsMap,
   };
-  const legacy = /modpacks:duplicate|\bduplicateModpack\b|modpacksIPC\.duplicate/;
+  const legacy = /modpacks:duplicate|\bduplicateModpack\b|operationsIPC\.duplicate/;
 
   return Object.entries(files).filter(([, source]) => legacy.test(source)).map(([file]) => file);
 }
 
 function findLegacyDeleteReferences(): string[] {
   const files = {
-    'shared/contracts/modpacks.ts': modpacksContract,
     'shared/contracts/ipcChannels.ts': ipcChannels,
-    'electron/ipc/handlers/modpacksHandlers.ts': modpacksHandlers,
-    'electron/preload/bridges/ModpacksBridge.ts': modpacksBridge,
-    'electron/services/instances/instanceService.ts': instanceService,
-    'src/services/ipc/modpacksIPC.ts': modpacksIPC,
+    'src/services/ipc/instancesIPC.ts': instancesIPC,
     'src/contexts/instances/services/instancesService.ts': instancesService,
     'src/contexts/instances/hooks/useInstanceCrudActions.ts': crudActions,
     'src/verification/manual/mockEnvironment.ts': manualEnvironment,
     'docs/en/contracts-map.md': englishContractsMap,
     'docs/ru/contracts-map.md': russianContractsMap,
   };
-  const legacy = /modpacks:delete|\bdeleteModpack\b|modpacksIPC\.remove/;
+  const legacy = /modpacks:delete|\bdeleteModpack\b|operationsIPC\.remove/;
 
   return Object.entries(files).filter(([, source]) => legacy.test(source)).map(([file]) => file);
 }

@@ -5,6 +5,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../../contexts/settings/i18n';
 import { ModpackDetailsModsTab } from '../ModpackDetailsModsTab';
+import { ModsTab } from '../ModsTab';
 import { ResourcePacksTab } from '../ResourcePacksTab';
 import { ShadersTab } from '../ShadersTab';
 import { WorldDatapacksModal } from '../WorldDatapacksModal';
@@ -28,7 +29,9 @@ const resourcePackDeleteMock = vi.fn();
 const resourcePackReorderMock = vi.fn();
 const shaderListMock = vi.fn();
 const worldsListMock = vi.fn();
-const openWorldFolderMock = vi.fn();
+const instanceModsListMock = vi.fn();
+const instanceModsRemoveMock = vi.fn();
+const instanceModsSetEnabledMock = vi.fn();
 
 vi.mock('react-virtuoso', () => ({
   Virtuoso: ({
@@ -74,13 +77,13 @@ vi.mock('../../../../services/ipc/externalLinksIPC', () => ({
 
 vi.mock('../../../../services/ipc/datapacksIPC', () => ({
   datapacksIPC: {
-    list: (...args: unknown[]) => listMock(...args),
+    listByInstanceId: (...args: unknown[]) => listMock(...args),
     search: (...args: unknown[]) => searchMock(...args),
     getVersions: (...args: unknown[]) => getVersionsMock(...args),
-    install: (...args: unknown[]) => installMock(...args),
-    delete: (...args: unknown[]) => deleteMock(...args),
-    enable: (...args: unknown[]) => enableMock(...args),
-    disable: (...args: unknown[]) => disableMock(...args),
+    installByInstanceId: (...args: unknown[]) => installMock(...args),
+    deleteByInstanceId: (...args: unknown[]) => deleteMock(...args),
+    enableByInstanceId: (...args: unknown[]) => enableMock(...args),
+    disableByInstanceId: (...args: unknown[]) => disableMock(...args),
   },
 }));
 
@@ -105,12 +108,20 @@ vi.mock('../../../../services/ipc/shadersIPC', () => ({
 
 vi.mock('../../../../services/ipc/worldsIPC', () => ({
   worldsIPC: {
-    list: (...args: unknown[]) => worldsListMock(...args),
-    backup: vi.fn(),
-    duplicate: vi.fn(),
-    delete: vi.fn(),
+    listByInstanceId: (...args: unknown[]) => worldsListMock(...args),
+    backupByInstanceId: vi.fn(),
+    duplicateByInstanceId: vi.fn(),
+    deleteByInstanceId: vi.fn(),
+    openFolderByInstanceId: vi.fn(),
   },
-  openWorldFolder: (...args: unknown[]) => openWorldFolderMock(...args),
+}));
+
+vi.mock('../../../../services/ipc/instanceModsIPC', () => ({
+  instanceModsIPC: {
+    list: (...args: unknown[]) => instanceModsListMock(...args),
+    remove: (...args: unknown[]) => instanceModsRemoveMock(...args),
+    setEnabled: (...args: unknown[]) => instanceModsSetEnabledMock(...args),
+  },
 }));
 
 function mockMatchMedia(matches = false) {
@@ -281,7 +292,9 @@ describe('secondary content tabs', () => {
     resourcePackReorderMock.mockReset();
     shaderListMock.mockReset();
     worldsListMock.mockReset();
-    openWorldFolderMock.mockReset();
+    instanceModsListMock.mockReset();
+    instanceModsRemoveMock.mockReset();
+    instanceModsSetEnabledMock.mockReset();
 
     confirmMock.mockResolvedValue(true);
     listMock.mockResolvedValue([
@@ -351,7 +364,24 @@ describe('secondary content tabs', () => {
         lastPlayed: 1_776_000_000_000,
       },
     ]);
-    openWorldFolderMock.mockResolvedValue(undefined);
+    instanceModsListMock.mockResolvedValue([
+      {
+        id: 'alpha-mod',
+        name: 'Alpha Utilities',
+        version: '1.0.0',
+        loaders: ['fabric'],
+        deps: [],
+        file: {
+          path: 'mods/alpha.jar',
+          name: 'alpha.jar',
+          size: 12,
+          mtimeMs: 1,
+        },
+        hash: { sha1: 'alpha' },
+      },
+    ]);
+    instanceModsRemoveMock.mockResolvedValue({ ok: true });
+    instanceModsSetEnabledMock.mockResolvedValue({ ok: true });
   });
 
   it('keeps the details mods tab filterable without breaking the refreshed surface copy', async () => {
@@ -386,6 +416,19 @@ describe('secondary content tabs', () => {
     expect(screen.getByText('Beta Tweaks')).toBeTruthy();
   });
 
+  it('manages mods through the opaque instance-mods seam', async () => {
+    render(<ModsTab instanceId="alpha" />);
+
+    expect(await screen.findByText('Alpha Utilities')).toBeTruthy();
+    expect(instanceModsListMock).toHaveBeenCalledWith('alpha');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Disable' }));
+
+    await waitFor(() => {
+      expect(instanceModsSetEnabledMock).toHaveBeenCalledWith('alpha', 'alpha.jar', false);
+    });
+  });
+
   it('marks runtime-provided dependencies truthfully and formats readable requirement copy', async () => {
     render(<ModsHarness />);
 
@@ -411,7 +454,7 @@ describe('secondary content tabs', () => {
   });
 
   it('keeps resource pack summaries explicitly labeled instead of collapsing into raw ratios', async () => {
-    render(<ResourcePacksTab instancePath="/instances/alpha" />);
+    render(<ResourcePacksTab instanceId="alpha" />);
 
     expect(await screen.findByText('Faithful 64x')).toBeTruthy();
 
@@ -424,7 +467,7 @@ describe('secondary content tabs', () => {
   it('shows a truthful unavailable resource-pack state instead of reusing the empty card', async () => {
     resourcePackListMock.mockRejectedValue(new Error('[IPC] resource packs failed: Packs directory unavailable'));
 
-    render(<ResourcePacksTab instancePath="/instances/alpha" />);
+    render(<ResourcePacksTab instanceId="alpha" />);
 
     const errorState = await screen.findByRole('status');
     expect(screen.getByRole('heading', { name: 'Failed to load resource packs' })).toBeTruthy();
@@ -436,7 +479,7 @@ describe('secondary content tabs', () => {
     const onAddResourcePack = vi.fn();
     resourcePackListMock.mockRejectedValue(new Error('[IPC] resource packs failed: Packs directory unavailable'));
 
-    render(<ResourcePacksTab instancePath="/instances/alpha" onAddResourcePack={onAddResourcePack} />);
+    render(<ResourcePacksTab instanceId="alpha" onAddResourcePack={onAddResourcePack} />);
 
     expect(await screen.findByRole('heading', { name: 'Failed to load resource packs' })).toBeTruthy();
     const unavailableState = screen.getByRole('status');
@@ -450,7 +493,7 @@ describe('secondary content tabs', () => {
     const onAddShader = vi.fn();
     shaderListMock.mockRejectedValue(new Error('[IPC] shaders failed: Packs directory unavailable'));
 
-    render(<ShadersTab instancePath="/instances/alpha" onAddShader={onAddShader} />);
+    render(<ShadersTab instanceId="alpha" onAddShader={onAddShader} />);
 
     expect(await screen.findByRole('heading', { name: 'Failed to load shader packs' })).toBeTruthy();
     const unavailableState = screen.getByRole('status');
@@ -461,7 +504,7 @@ describe('secondary content tabs', () => {
   });
 
   it('keeps worlds on the same details workspace grammar as the other content tabs', async () => {
-    render(<WorldsTab instancePath="/instances/alpha" mcVersion="1.20.1" />);
+    render(<WorldsTab instanceId="alpha" mcVersion="1.20.1" />);
 
     expect(await screen.findByText('Alpha World')).toBeTruthy();
     expect(screen.getByText('Saved Worlds')).toBeTruthy();
@@ -476,7 +519,7 @@ describe('secondary content tabs', () => {
       <WorldDatapacksModal
         isOpen={true}
         onClose={vi.fn()}
-        instancePath="/instances/alpha"
+        instanceId="alpha"
         worldFolder="world-1"
         worldName="Alpha World"
       />
@@ -501,7 +544,7 @@ describe('secondary content tabs', () => {
       <WorldDatapacksModal
         isOpen={true}
         onClose={vi.fn()}
-        instancePath="/instances/alpha"
+        instanceId="alpha"
         worldFolder="world-1"
         worldName="Alpha World"
       />
@@ -516,7 +559,7 @@ describe('secondary content tabs', () => {
     });
 
     await waitFor(() => {
-      expect(deleteMock).toHaveBeenCalledWith('/instances/alpha', 'world-1', 'better-mobs.zip');
+      expect(deleteMock).toHaveBeenCalledWith('alpha', 'world-1', 'better-mobs.zip');
     });
   });
 
@@ -525,7 +568,7 @@ describe('secondary content tabs', () => {
       <WorldDatapacksModal
         isOpen={true}
         onClose={vi.fn()}
-        instancePath="/instances/alpha"
+        instanceId="alpha"
         worldFolder="world-1"
         worldName="Alpha World"
       />
@@ -544,7 +587,7 @@ describe('secondary content tabs', () => {
     });
 
     await waitFor(() => {
-      expect(installMock).toHaveBeenCalledWith('/instances/alpha', 'world-1', 'version-1');
+      expect(installMock).toHaveBeenCalledWith('alpha', 'world-1', 'version-1');
     });
 
     await waitFor(() => {
@@ -559,7 +602,7 @@ describe('secondary content tabs', () => {
       <WorldDatapacksModal
         isOpen={true}
         onClose={vi.fn()}
-        instancePath="/instances/alpha"
+        instanceId="alpha"
         worldFolder="world-1"
         worldName="Alpha World"
       />

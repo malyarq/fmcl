@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ModrinthV2Client } from '@xmcl/modrinth';
+import type { InstanceApplication } from '../../../../domains/instances/instanceApplication';
+import type { LauncherRoot } from '../../../../domains/instances/instanceTypes';
 import { ModPlatformService } from '../modPlatformService';
 
 type ModrinthSearchResult = Awaited<ReturnType<ModrinthV2Client['searchProjects']>>;
@@ -34,9 +36,75 @@ function createDescendingHits(total: number): ModrinthSearchHit[] {
   });
 }
 
+function createPlatformService(): ModPlatformService {
+  return new ModPlatformService(
+    {} as InstanceApplication,
+    {
+      resolveRoot: async () => ({} as LauncherRoot),
+      getModpackDir: (_rootPath, instanceId) => `/tmp/fmcl-platform-test/modpacks/${instanceId}`,
+    },
+  );
+}
+
 describe('ModPlatformService alphabetical modpack pagination', () => {
+  it('rejects a provider install before network access when its canonical instance is absent', async () => {
+    const root = {} as LauncherRoot;
+    const application = {
+      read: vi.fn(async () => ({ status: 'uninitialized' as const })),
+    } as unknown as InstanceApplication;
+    const content = {
+      resolveRoot: vi.fn(async () => root),
+      getModpackDir: vi.fn(),
+    };
+    const service = new ModPlatformService(application, content);
+
+    await expect(service.installModFile({
+      platform: 'modrinth',
+      projectId: 'project',
+      versionId: 'version',
+      instanceId: 'missing',
+      contentType: 'mod',
+    }, '/tmp/fmcl-platform-test')).rejects.toThrow('Canonical instance does not exist: missing');
+
+    expect(application.read).toHaveBeenCalledWith(root);
+    expect(content.getModpackDir).not.toHaveBeenCalled();
+  });
+
+  it('rejects path-shaped provider filenames before using them as a destination', async () => {
+    const root = {} as LauncherRoot;
+    const application = {
+      read: vi.fn(async () => ({
+        status: 'ready' as const,
+        snapshot: { records: [{ id: 'alpha' }] },
+      })),
+    } as unknown as InstanceApplication;
+    const content = {
+      resolveRoot: vi.fn(async () => root),
+      getModpackDir: vi.fn(() => '/tmp/fmcl-platform-test/modpacks/alpha'),
+    };
+    const service = new ModPlatformService(application, content);
+    vi.spyOn(service.getModrinthClient(), 'getProjectVersion').mockResolvedValueOnce({
+      files: [{
+        url: 'https://example.test/escape.jar',
+        filename: '../escape.jar',
+        primary: true,
+        hashes: {},
+      }],
+    } as Awaited<ReturnType<ModrinthV2Client['getProjectVersion']>>);
+
+    await expect(service.installModFile({
+      platform: 'modrinth',
+      projectId: 'project',
+      versionId: 'version',
+      instanceId: 'alpha',
+      contentType: 'mod',
+    }, '/tmp/fmcl-platform-test')).rejects.toThrow(/provider filename/i);
+
+    expect(content.getModpackDir).toHaveBeenCalledWith('/tmp/fmcl-platform-test', 'alpha');
+  });
+
   it('fetches enough Modrinth pages to serve later alphabetical pages correctly', async () => {
-    const service = new ModPlatformService();
+    const service = createPlatformService();
     const allHits = createDescendingHits(135);
     const searchProjectsMock = vi.spyOn(service.getModrinthClient(), 'searchProjects').mockImplementation(async ({ offset = 0, limit = 20 }) => {
       return createSearchResult(allHits.slice(offset, offset + limit), offset, limit, allHits.length);
@@ -54,7 +122,7 @@ describe('ModPlatformService alphabetical modpack pagination', () => {
   });
 
   it('keeps larger alphabetical page sizes aligned with the fully sorted result set', async () => {
-    const service = new ModPlatformService();
+    const service = createPlatformService();
     const allHits = createDescendingHits(140);
     vi.spyOn(service.getModrinthClient(), 'searchProjects').mockImplementation(async ({ offset = 0, limit = 20 }) => {
       return createSearchResult(allHits.slice(offset, offset + limit), offset, limit, allHits.length);

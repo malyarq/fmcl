@@ -73,7 +73,7 @@ describe('ShadersTab compatibility guidance', () => {
       optiFineVersions: ['1.20.1'],
     });
 
-    render(<ShadersTab instancePath="/instances/alpha" runtimeSummary={runtimeSummary} />);
+    render(<ShadersTab instanceId="alpha" runtimeSummary={runtimeSummary} />);
 
     expect(await screen.findByText('No shader packs installed')).toBeTruthy();
 
@@ -90,7 +90,7 @@ describe('ShadersTab compatibility guidance', () => {
       optiFineVersions: ['1.20.1'],
     });
 
-    render(<ShadersTab instancePath="/instances/alpha" runtimeSummary={runtimeSummary} />);
+    render(<ShadersTab instanceId="alpha" runtimeSummary={runtimeSummary} />);
 
     expect(await screen.findByText('No shader packs installed')).toBeTruthy();
 
@@ -118,7 +118,7 @@ describe('ShadersTab compatibility guidance', () => {
       optiFineVersions: ['1.20.1'],
     });
 
-    render(<ShadersTab instancePath="/instances/alpha" runtimeSummary={runtimeSummary} />);
+    render(<ShadersTab instanceId="alpha" runtimeSummary={runtimeSummary} />);
 
     expect(await screen.findByText('No shader packs installed')).toBeTruthy();
 
@@ -144,7 +144,7 @@ describe('ShadersTab compatibility guidance', () => {
       },
     });
 
-    render(<ShadersTab instancePath="/instances/alpha" runtimeSummary={runtimeSummary} />);
+    render(<ShadersTab instanceId="alpha" runtimeSummary={runtimeSummary} />);
 
     expect(await screen.findByText('No shader packs installed')).toBeTruthy();
 

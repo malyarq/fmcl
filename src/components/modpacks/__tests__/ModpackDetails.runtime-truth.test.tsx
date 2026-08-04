@@ -78,18 +78,6 @@ vi.mock('../../../features/launcher/hooks/useModSupportedVersions', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getMetadata: vi.fn(),
-    getMods: vi.fn(),
-    updateMetadata: vi.fn(),
-    removeMod: vi.fn(),
-    setModEnabled: vi.fn(),
-    getCurseForgeVersions: vi.fn(),
-    getModrinthVersions: vi.fn(),
-  },
-}));
-
 describe('Modpack details runtime truth', () => {
   beforeEach(() => {
     effectiveConfigRef.current = null;

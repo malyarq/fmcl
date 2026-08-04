@@ -20,7 +20,6 @@ export interface GameTabProps {
   modpackConfig: ModpackConfig | null;
   setMemoryGb: (gb: number) => void;
   setMinMemoryGb: (gb: number) => void;
-  setJavaPath: (path: string) => void;
   setVmOptions: (vmOptions: string[]) => void;
   setGameExtraArgs: (args: string[]) => void;
   setGameResolution: (resolution?: { width?: number; height?: number; fullscreen?: boolean }) => void;
@@ -37,7 +36,6 @@ export const GameTab: React.FC<GameTabProps> = ({
   modpackConfig,
   setMemoryGb,
   setMinMemoryGb,
-  setJavaPath,
   setVmOptions,
   setGameExtraArgs,
   setGameResolution,
@@ -116,7 +114,6 @@ export const GameTab: React.FC<GameTabProps> = ({
             modpackConfig={modpackConfig}
             setMemoryGb={setMemoryGb}
             setMinMemoryGb={setMinMemoryGb}
-            setJavaPath={setJavaPath}
             t={t}
             getAccentStyles={getAccentStyles}
             isReadOnly={isReadOnly}

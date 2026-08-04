@@ -6,6 +6,7 @@ import { SimplePlayDashboard } from '../SimplePlayDashboard'
 
 const setModeMock = vi.fn()
 const showSettingsMock = vi.fn()
+const snapshotMock = vi.fn()
 
 vi.mock('../../contexts/SettingsContext', () => ({
   useSettings: () => ({
@@ -51,13 +52,12 @@ vi.mock('../../contexts/ModpackContext', () => ({
     setGameExtraArgs: vi.fn(),
     setGameResolution: vi.fn(),
     setAutoConnectServer: vi.fn(),
-    modpacks: [{ id: 'classic-pack', path: '/minecraft' }],
   }),
 }))
 
-vi.mock('../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    resolvePath: vi.fn(),
+vi.mock('../../services/ipc/instancesIPC', () => ({
+  instancesIPC: {
+    snapshot: (...args: unknown[]) => snapshotMock(...args),
   },
 }))
 
@@ -98,6 +98,26 @@ describe('SimplePlayDashboard route flow', () => {
     localStorage.clear()
     setModeMock.mockReset()
     showSettingsMock.mockReset()
+    snapshotMock.mockReset()
+    snapshotMock.mockResolvedValue({
+      ok: true,
+      value: {
+        id: 'classic-pack',
+        name: 'Classic Pack',
+        metadata: {
+          source: 'local',
+          createdAt: '2026-04-14T00:00:00.000Z',
+          updatedAt: '2026-04-14T00:00:00.000Z',
+        },
+        config: {
+          runtime: { minecraftVersion: '1.20.1' },
+        },
+        summary: {
+          minecraftVersion: '1.20.1',
+          modLoader: { type: 'fabric' },
+        },
+      },
+    })
     window.matchMedia = vi.fn().mockImplementation(() => ({
       matches: false,
       addEventListener: vi.fn(),
@@ -139,5 +159,6 @@ describe('SimplePlayDashboard route flow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
     expect(screen.queryByRole('heading', { name: 'Welcome to FriendLauncher!' })).toBeNull()
+    expect(snapshotMock).toHaveBeenCalledWith({ id: 'classic-pack' })
   })
 })

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFile } from 'node:fs/promises';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
@@ -51,12 +52,9 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    createLocal: vi.fn().mockResolvedValue({ id: 'pack-1' }),
-    updateMetadata: vi.fn().mockResolvedValue(undefined),
-    getMods: vi.fn().mockResolvedValue([]),
-    removeMod: vi.fn(),
+vi.mock('../../../services/ipc/instancesIPC', () => ({
+  instancesIPC: {
+    create: vi.fn().mockResolvedValue({ ok: true, value: { status: 'committed', selectedId: 'pack-1', instances: [] } }),
   },
 }));
 
@@ -92,6 +90,13 @@ describe('ModpackCreationWizard flow layout', () => {
     localStorage.clear();
     refreshMock.mockReset();
     refreshMock.mockResolvedValue(undefined);
+  });
+
+  it('keeps creation control-plane writes on instancesIPC', async () => {
+    const source = await readFile(`${process.cwd()}/src/components/modpacks/ModpackCreationWizard.tsx`, 'utf8');
+
+    expect(source).toMatch(/instancesIPC\.create/);
+    expect(source).toMatch(/instanceModsIPC\.(list|remove)/);
   });
 
   it('keeps the wizard action block inside the main content flow as a card section', () => {

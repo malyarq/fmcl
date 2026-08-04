@@ -189,7 +189,6 @@ export class ResourcePacksService {
                 name: file.replace(/\.zip$/, ''), // Or use description? Usually filename is strictly used for ID
                 description: metadata?.description,
                 packFormat: metadata?.packFormat || 0,
-                path: filePath,
                 iconUrl,
                 isEnabled: enabledPacks.has(file),
                 size: stats.size,

@@ -5,7 +5,6 @@ import {
   validateBoolean,
   validateBoundedString,
   validateEnum,
-  validateFilesystemPath,
   validateInteger,
   validateOfflineNickname,
 } from './privilegedPayloads';
@@ -16,28 +15,16 @@ const LAUNCH_OPTION_KEYS = new Set([
   'version',
   'ram',
   'hideLauncher',
-  'gamePath',
-  'modpackId',
-  'modpackPath',
-  'javaPath',
-  'vmOptions',
+  'instanceId',
   'downloadProvider',
   'autoDownloadThreads',
   'downloadThreads',
   'maxSockets',
   'useOptiFine',
-  'instanceId',
-  'instancePath',
 ]);
 
 function optionalBoolean(value: unknown, label: string): boolean | undefined {
   return value === undefined ? undefined : validateBoolean(value, label);
-}
-
-function optionalPath(value: unknown, label: string): string | undefined {
-  return value === undefined || value === null || value === ''
-    ? undefined
-    : validateFilesystemPath(value, label, { maxLength: 4_096 });
 }
 
 function optionalChildName(value: unknown, label: string): string | undefined {
@@ -62,25 +49,12 @@ export function validateLaunchGameOptions(value: unknown): LaunchGameOptions {
     throw new Error('Minecraft version contains unsupported characters');
   }
 
-  const vmOptions = record.vmOptions === undefined ? undefined : (() => {
-    if (!Array.isArray(record.vmOptions) || record.vmOptions.length > 64) {
-      throw new Error('VM options must contain at most 64 items');
-    }
-    return record.vmOptions.map((entry, index) => validateBoundedString(entry, `VM option ${index}`, {
-      maxLength: 512,
-    }));
-  })();
-
   return {
     nickname: validateOfflineNickname(record.nickname),
     version,
     ram: validateInteger(record.ram, 'RAM', { min: 1, max: 64 }),
     hideLauncher: optionalBoolean(record.hideLauncher, 'Hide launcher'),
-    gamePath: optionalPath(record.gamePath, 'Minecraft root path'),
-    modpackId: optionalChildName(record.modpackId, 'Modpack id'),
-    modpackPath: optionalPath(record.modpackPath, 'Modpack path'),
-    javaPath: optionalPath(record.javaPath, 'Java path'),
-    vmOptions,
+    instanceId: optionalChildName(record.instanceId, 'Instance id'),
     downloadProvider: record.downloadProvider === undefined
       ? undefined
       : validateEnum(record.downloadProvider, 'Download provider', DOWNLOAD_PROVIDERS),
@@ -88,8 +62,6 @@ export function validateLaunchGameOptions(value: unknown): LaunchGameOptions {
     downloadThreads: optionalInteger(record.downloadThreads, 'Download threads', 1, 64),
     maxSockets: optionalInteger(record.maxSockets, 'Maximum sockets', 1, 256),
     useOptiFine: optionalBoolean(record.useOptiFine, 'Use OptiFine'),
-    instanceId: optionalChildName(record.instanceId, 'Legacy instance id'),
-    instancePath: optionalPath(record.instancePath, 'Legacy instance path'),
   };
 }
 

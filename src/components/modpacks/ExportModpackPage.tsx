@@ -4,7 +4,7 @@ import { useToast } from '../../contexts/ToastContext';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
 import { Breadcrumbs } from '../ui/Breadcrumbs';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import { instancesIPC } from '../../services/ipc/instancesIPC';
 import { dialogIPC } from '../../services/ipc/dialogIPC';
 import { ArrowLeft } from 'lucide-react';
 import { ArchiveExportOperationStatus } from './ArchiveExportOperationStatus';
@@ -18,7 +18,7 @@ interface ExportModpackPageProps {
 type ExportFormat = 'zip' | 'multimc';
 
 export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({ modpackId, onBack }) => {
-  const { t, getAccentStyles, minecraftPath } = useSettings();
+  const { t, getAccentStyles } = useSettings();
   const toast = useToast();
   const [modpackName, setModpackName] = useState('');
   const [format, setFormat] = useState<ExportFormat>('multimc');
@@ -27,10 +27,10 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({ modpackId,
   const { operation, error, isActive, start } = useArchiveExportOperation();
 
   useEffect(() => {
-    void modpacksIPC.getMetadata(modpackId, minecraftPath)
-      .then((metadata) => setModpackName(metadata.name || ''))
+    void instancesIPC.snapshot({ id: modpackId })
+      .then((snapshotResult) => setModpackName(snapshotResult.ok ? snapshotResult.value.name : ''))
       .catch((nextError) => console.error('Error loading modpack name:', nextError));
-  }, [modpackId, minecraftPath]);
+  }, [modpackId]);
 
   useEffect(() => {
     if (!operation || !isArchiveExportSuccessful(operation) || completedRef.current === operation.id) return;
@@ -56,7 +56,6 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({ modpackId,
 
       await start({
         kind: 'export',
-        rootPath: minecraftPath,
         instanceId: modpackId,
         format,
         outputPath: result.filePath,

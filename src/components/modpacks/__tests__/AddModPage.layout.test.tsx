@@ -32,13 +32,9 @@ vi.mock('../../../services/ipc/modsIPC', () => ({
   },
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getMetadata: (...args: unknown[]) => getMetadataMock(...args),
-    getConfig: (...args: unknown[]) => getConfigMock(...args),
-    addMod: vi.fn(),
-    resolvePath: vi.fn(),
-  },
+vi.mock('../../../contexts/instances/services/instancesService', () => ({
+  fetchModpackMetadata: (...args: unknown[]) => getMetadataMock(...args),
+  fetchModpackConfig: (...args: unknown[]) => getConfigMock(...args),
 }));
 
 vi.mock('../../../features/launcher/hooks/useModSupportedVersions', () => ({

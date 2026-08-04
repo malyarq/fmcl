@@ -4,7 +4,7 @@ import type { WorldInfo } from '@shared/contracts/worlds';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { useSettings } from '../../../contexts/SettingsContext';
 import { useToast } from '../../../contexts/ToastContext';
-import { openWorldFolder, worldsIPC } from '../../../services/ipc/worldsIPC';
+import { worldsIPC } from '../../../services/ipc/worldsIPC';
 import { formatSize } from '../../../utils/format';
 import { Button } from '../../ui/Button';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
@@ -13,7 +13,7 @@ import { DegradedStateView } from '../../layout/DegradedStateView';
 import { toDisplayErrorMessage } from '../../../utils/displayError';
 
 interface WorldsTabProps {
-    instancePath: string;
+    instanceId: string;
     mcVersion?: string;
     onUpdate?: () => void;
 }
@@ -31,7 +31,7 @@ function supportsDatapacks(version?: string): boolean {
     return Number.parseInt(match[1], 10) >= 13;
 }
 
-export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps) {
+export function WorldsTab({ instanceId, mcVersion, onUpdate }: WorldsTabProps) {
     const { t, formatDate, formatNumber } = useSettings();
     const confirm = useConfirm();
     const [worlds, setWorlds] = useState<WorldInfo[]>([]);
@@ -44,7 +44,7 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
         setLoading(true);
         setLoadError(null);
         try {
-            const list = await worldsIPC.list(instancePath);
+            const list = await worldsIPC.listByInstanceId(instanceId);
             setWorlds(list);
         } catch (err) {
             console.error(err);
@@ -53,7 +53,7 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
         } finally {
             setLoading(false);
         }
-    }, [instancePath, t, toast]);
+    }, [instanceId, t, toast]);
     const worldsLoadDescription = loadError
         ? toDisplayErrorMessage(loadError, t('error.inline_fallback'))
         : t('error.inline_fallback');
@@ -65,20 +65,19 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
     const handleBackup = useCallback(
         async (world: WorldInfo) => {
             try {
-                const backupPath = await worldsIPC.backup(world.folderName, instancePath);
-                const fileName = backupPath.split(/[/\\]/).pop() || 'backup';
-                toast.success(t('modpacks.world_backup_success', { file: fileName }));
+                await worldsIPC.backupByInstanceId(world.folderName, instanceId);
+                toast.success(t('modpacks.world_backup_success', { file: `${world.folderName}.zip` }));
             } catch {
                 toast.error(t('modpacks.world_backup_error'));
             }
         },
-        [instancePath, t, toast]
+        [instanceId, t, toast]
     );
 
     const handleDuplicate = useCallback(
         async (world: WorldInfo) => {
             try {
-                const newName = await worldsIPC.duplicate(world.folderName, instancePath);
+                const newName = await worldsIPC.duplicateByInstanceId(world.folderName, instanceId);
                 await loadWorlds();
                 onUpdate?.();
                 toast.success(t('modpacks.world_duplicate_success', { name: newName }));
@@ -86,7 +85,7 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
                 toast.error(t('modpacks.world_duplicate_error'));
             }
         },
-        [instancePath, loadWorlds, onUpdate, t, toast]
+        [instanceId, loadWorlds, onUpdate, t, toast]
     );
 
     const handleDelete = useCallback(
@@ -104,7 +103,7 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
             }
 
             try {
-                await worldsIPC.delete(world.folderName, instancePath);
+                await worldsIPC.deleteByInstanceId(world.folderName, instanceId);
                 await loadWorlds();
                 onUpdate?.();
                 toast.success(t('modpacks.world_delete_success'));
@@ -112,7 +111,7 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
                 toast.error(t('modpacks.world_delete_error'));
             }
         },
-        [confirm, instancePath, loadWorlds, onUpdate, t, toast]
+        [confirm, instanceId, loadWorlds, onUpdate, t, toast]
     );
 
     return (
@@ -195,7 +194,7 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
                                         {t('modpacks.datapacks')}
                                     </Button>
                                 )}
-                                <Button variant="ghost" size="sm" onClick={() => openWorldFolder(world.folderName, instancePath)}>
+                                <Button variant="ghost" size="sm" onClick={() => worldsIPC.openFolderByInstanceId(world.folderName, instanceId)}>
                                     <FolderOpen className="h-4 w-4" />
                                     {t('settings.open_folder')}
                                 </Button>
@@ -226,7 +225,7 @@ export function WorldsTab({ instancePath, mcVersion, onUpdate }: WorldsTabProps)
                 <WorldDatapacksModal
                     isOpen={Boolean(datapacksModalWorld)}
                     onClose={() => setDatapacksModalWorld(null)}
-                    instancePath={instancePath}
+                    instanceId={instanceId}
                     worldFolder={datapacksModalWorld.folderName}
                     worldName={datapacksModalWorld.name}
                 />

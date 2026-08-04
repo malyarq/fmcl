@@ -17,7 +17,7 @@ interface ExportModpackModalProps {
 }
 
 export const ExportModpackModal: React.FC<ExportModpackModalProps> = ({ modpackId, modpackName, isOpen, onClose, onExported }) => {
-  const { t, getAccentStyles, minecraftPath } = useSettings();
+  const { t, getAccentStyles } = useSettings();
   const toast = useToast();
   const [format, setFormat] = useState<'zip' | 'multimc'>('zip');
   const [dialogError, setDialogError] = useState<unknown>(null);
@@ -44,7 +44,7 @@ export const ExportModpackModal: React.FC<ExportModpackModalProps> = ({ modpackI
         ],
       });
       if (result.canceled || !result.filePath) return;
-      await start({ kind: 'export', rootPath: minecraftPath, instanceId: modpackId, format, outputPath: result.filePath });
+      await start({ kind: 'export', instanceId: modpackId, format, outputPath: result.filePath });
     } catch (nextError) {
       console.error('Error selecting export path:', nextError);
       setDialogError(nextError);

@@ -1,12 +1,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { assertChildName, resolvePathWithinRoot } from '../../security/pathGuards';
-import { saveModpackConfigFile, loadModpackConfigFile } from '../instances/configStore';
-import { loadModpacksIndexFile, saveModpacksIndexFile } from '../instances/indexStore';
 import { getModpackDir, resolveLauncherRootPath } from '../instances/paths';
 import type { ModLoaderType, ModpackConfig } from '../instances/types';
-import { createModpackMetadataFromConfig, loadModpacksMetadata, saveModpacksMetadata } from '../modpacks/storage';
 import { stageArchiveImport } from '../modpacks/importers/localInstaller';
+import { readCanonicalRecordFromContent } from './canonicalRecord';
 import { StagingWorkspace } from './stagingWorkspace';
 import type { OperationAdapter, OperationContext, OperationResult } from './operationTypes';
 
@@ -23,10 +21,9 @@ export function createImportOperationAdapter(options: ImportOperationOptions = {
       const input = context.snapshot.input;
       if (input.kind !== 'import') throw new Error('Import adapter received an invalid input');
       const rootPath = resolveLauncherRootPath(input.rootPath);
-      const destinationId = resolveDestinationId(input.destinationId, input.name, input.filePath, loadModpacksIndexFile(rootPath).modpacks);
+      const destinationId = resolveDestinationId(input.destinationId, input.name, input.filePath, rootPath);
       const destinationPath = getModpackDir(rootPath, destinationId);
       const workspace = new StagingWorkspace(rootPath, context.snapshot.id);
-      const controlPlaneBefore = snapshotControlPlane(rootPath);
       let backupCreated = false;
       let published = false;
       let missing: string[] = [];
@@ -38,7 +35,7 @@ export function createImportOperationAdapter(options: ImportOperationOptions = {
         const staged = await stageArchiveImport(input.filePath, workspace.stagedModpack(destinationId));
         missing = staged.missing;
         const config = buildConfig(destinationId, input.name?.trim() || staged.manifest.name, staged.manifest.minecraft.version, staged.manifest.minecraft.modLoaders[0]?.id);
-        saveModpackConfigFile(workspace.stagingRoot, config);
+        writeStagedConfig(workspace.stagedModpack(destinationId), config);
         workspace.markStaged(workspace.stagedModpack(destinationId));
         context.setRecoveryData({ destinationId, destinationName: config.name, missing });
         context.transition('staged', { completed: 1, total: 4, message: 'staged' });
@@ -46,6 +43,8 @@ export function createImportOperationAdapter(options: ImportOperationOptions = {
         options.faults?.validation?.();
         throwIfCancelled(context);
         validateStagedImport(workspace.stagedModpack(destinationId), destinationId);
+        const command = { version: 1 as const, type: 'commit-published' as const, record: readCanonicalRecordFromContent(workspace.stagedModpack(destinationId), destinationId), select: true };
+        context.recordCanonicalCommand(command);
         context.transition('validated', { completed: 2, total: 4, message: 'validated' });
         throwIfCancelled(context);
 
@@ -58,7 +57,7 @@ export function createImportOperationAdapter(options: ImportOperationOptions = {
         context.transition('published', { completed: 3, total: 4, message: 'published' });
 
         options.faults?.['control-plane']?.();
-        commitControlPlane(rootPath, destinationId);
+        await commitControlPlane(context, command);
         context.transition('control-plane-committed', { completed: 4, total: 4, message: 'control-plane-committed' });
         workspace.removePublishMarker(destinationPath);
         workspace.cleanupStaging();
@@ -69,36 +68,23 @@ export function createImportOperationAdapter(options: ImportOperationOptions = {
         if (published && !backupCreated && workspace.recoverUncommittedDestination(destinationPath, destinationId) === false) {
           throw new Error('ROLLBACK_RECOVERY_REQUIRED');
         }
-        if (published) restoreControlPlane(controlPlaneBefore);
         workspace.cleanupStaging();
         if (backupCreated) workspace.cleanupBackups();
         throw error;
       }
     },
     async recoverPublished(context): Promise<OperationResult> {
-      const recovery = context.snapshot.recovery;
-      if (!recovery || !('missing' in recovery)) return { status: 'recovery-required', message: 'Import recovery data is missing' };
-      const destinationPath = getModpackDir(context.snapshot.rootPath, recovery.destinationId);
-      if (!isValidStagedImport(destinationPath, recovery.destinationId)) {
-        return { status: 'recovery-required', message: 'Published import cannot be verified' };
-      }
-      try {
-        commitControlPlane(context.snapshot.rootPath, recovery.destinationId);
-        context.transition('control-plane-committed', { completed: 4, total: 4, message: 'recovered-control-plane' });
-        return recovery.missing.length > 0 ? { status: 'degraded', instanceId: recovery.destinationId, missing: recovery.missing } : { status: 'recovered', instanceId: recovery.destinationId };
-      } catch {
-        return { status: 'recovery-required', message: 'Published import control-plane state is ambiguous' };
-      }
+      return await context.replayCanonicalCommand();
     },
   };
 }
 
-function resolveDestinationId(requestedId: string | undefined, requestedName: string | undefined, filePath: string, entries: Record<string, { name: string }>): string {
+function resolveDestinationId(requestedId: string | undefined, requestedName: string | undefined, filePath: string, rootPath: string): string {
   if (requestedId) return assertChildName(requestedId, 'Destination modpack id');
   const baseName = requestedName?.trim() || path.basename(filePath, path.extname(filePath));
   const slug = baseName.toLowerCase().replace(/[^a-z0-9._-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'imported-modpack';
   let destinationId = slug;
-  for (let suffix = 2; entries[destinationId]; suffix += 1) destinationId = `${slug}-${suffix}`;
+  for (let suffix = 2; fs.existsSync(getModpackDir(rootPath, destinationId)); suffix += 1) destinationId = `${slug}-${suffix}`;
   return destinationId;
 }
 
@@ -130,41 +116,13 @@ function validateStagedImport(stagedPath: string, destinationId: string): void {
   }
 }
 
-function isValidStagedImport(destinationPath: string, destinationId: string): boolean {
-  try {
-    validateStagedImport(destinationPath, destinationId);
-    return true;
-  } catch {
-    return false;
-  }
+async function commitControlPlane(context: OperationContext, command: Parameters<OperationContext['commitControlPlane']>[0]): Promise<void> {
+  const result = await context.commitControlPlane(command);
+  if ('code' in result) throw new Error(result.message);
 }
 
-function commitControlPlane(rootPath: string, destinationId: string): void {
-  const config = loadModpackConfigFile(rootPath, destinationId);
-  const index = loadModpacksIndexFile(rootPath);
-  index.modpacks[destinationId] = { name: config.name };
-  index.selectedModpack = destinationId;
-  saveModpacksIndexFile(rootPath, index);
-  const metadata = loadModpacksMetadata(rootPath);
-  metadata.modpacks[destinationId] = createModpackMetadataFromConfig(config);
-  metadata.selectedModpack = destinationId;
-  saveModpacksMetadata(rootPath, metadata);
-}
-
-type FileSnapshot = { path: string; bytes?: Buffer };
-
-function snapshotControlPlane(rootPath: string): FileSnapshot[] {
-  return ['modpacks.json', 'modpacks-metadata.json'].map((name) => {
-    const filePath = resolvePathWithinRoot(rootPath, name, 'Operation control-plane file');
-    return { path: filePath, bytes: fs.existsSync(filePath) ? fs.readFileSync(filePath) : undefined };
-  });
-}
-
-function restoreControlPlane(snapshots: FileSnapshot[]): void {
-  for (const snapshot of snapshots) {
-    if (snapshot.bytes) fs.writeFileSync(snapshot.path, snapshot.bytes);
-    else fs.rmSync(snapshot.path, { force: true });
-  }
+function writeStagedConfig(instancePath: string, config: ModpackConfig): void {
+  fs.writeFileSync(resolvePathWithinRoot(instancePath, 'modpack.json', 'Staged import config'), JSON.stringify(config));
 }
 
 function throwIfCancelled(context: OperationContext): void {

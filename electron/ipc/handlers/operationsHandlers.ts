@@ -1,8 +1,9 @@
 import { ipcMain, type IpcMainInvokeEvent } from 'electron';
 import { assertAbsolutePath, assertChildName } from '../../security/pathGuards';
+import { consumeArchiveReference as consumeMainArchiveReference } from '../../security/archiveReferenceAuthorizations';
 import { consumeAuthorizedSavePath } from '../../security/savePathAuthorizations';
 import { resolveApprovedLauncherRootPath } from '../../services/instances/paths';
-import { validateExportOptions, validateModpackExportFormat } from '../validation/privilegedPayloads';
+import { validateExportOptions, validateModpackExportFormat, validateShareCode } from '../validation/privilegedPayloads';
 import type { OperationRunner } from '../../services/operations/operationRunner';
 import type {
   OperationInput,
@@ -20,7 +21,21 @@ type Subscription = {
   unsubscribe: () => void;
 };
 
-export function registerOperationsHandlers({ runner }: { runner: OperationRunner }): void {
+type ArchiveReferenceConsumer = (ownerId: number, reference: string) => string;
+
+type OperationsHandlerDependencies = Readonly<{
+  runner: OperationRunner;
+  consumeArchiveReference?: ArchiveReferenceConsumer;
+}>;
+
+type ValidatedOperationStart = Exclude<OperationInput, { kind: 'import' }> | Omit<Extract<OperationInput, { kind: 'import' }>, 'filePath'> & {
+  archiveRef: string;
+};
+
+export function registerOperationsHandlers({
+  runner,
+  consumeArchiveReference = consumeMainArchiveReference,
+}: OperationsHandlerDependencies): void {
   const owners = new Map<string, number>();
   const subscriptions = new Map<string, Subscription>();
 
@@ -34,8 +49,11 @@ export function registerOperationsHandlers({ runner }: { runner: OperationRunner
 
   ipcMain.removeHandler('operations:start');
   ipcMain.handle('operations:start', async (event, input: unknown) => {
-    const request = validateStartRequest(input, event.sender.id);
-    await runner.prepareRoot(request.rootPath);
+    const validated = validateStartRequest(input, event.sender.id);
+    await runner.prepareRoot(validated.rootPath);
+    // Consumption is deliberately the final privileged action before start:
+    // preparation cannot turn a single-use renderer capability into durable state.
+    const request = resolveOperationInput(validated, event.sender.id, consumeArchiveReference);
     const snapshot = runner.start(request);
     owners.set(snapshot.id, event.sender.id);
     return toPublicSnapshot(snapshot);
@@ -87,18 +105,19 @@ export function registerOperationsHandlers({ runner }: { runner: OperationRunner
   });
 }
 
-function validateStartRequest(value: unknown, senderId: number): OperationInput {
+function validateStartRequest(value: unknown, senderId: number): ValidatedOperationStart {
   if (!isRecord(value)) throw new Error('Operation request is invalid');
-  const rootPath = resolveApprovedLauncherRootPath(
-    value.rootPath === undefined ? undefined : requireString(value.rootPath, 'Operation root path'),
-  );
+  const rootPath = resolveApprovedLauncherRootPath();
   if (value.kind === 'import') {
-    const filePath = assertAbsolutePath(requireString(value.filePath, 'Modpack import path'), 'Modpack import path');
+    const archiveRef = requireString(value.archiveRef, 'Archive reference');
     const destinationId = value.destinationId === undefined
       ? undefined
       : assertChildName(requireString(value.destinationId, 'Destination modpack id'), 'Destination modpack id');
     const name = value.name === undefined ? undefined : validateName(value.name, 'Imported modpack name');
-    return { kind: 'import', rootPath, filePath, destinationId, name };
+    return { kind: 'import', rootPath, archiveRef, destinationId, name };
+  }
+  if (value.kind === 'import-share') {
+    return { kind: 'import-share', rootPath, shareCode: validateShareCode(value.code) };
   }
   if (value.kind === 'install-curseforge') {
     const projectId = requirePositiveInteger(value.projectId, 'CurseForge project id');
@@ -150,6 +169,22 @@ function validateStartRequest(value: unknown, senderId: number): OperationInput 
     : assertChildName(requireString(value.destinationId, 'Destination modpack id'), 'Destination modpack id');
   const name = value.name === undefined ? undefined : validateName(value.name, 'Duplicated modpack name');
   return { kind: 'duplicate', rootPath, sourceId, destinationId, name };
+}
+
+function resolveOperationInput(
+  request: ValidatedOperationStart,
+  senderId: number,
+  consumeArchiveReference: ArchiveReferenceConsumer,
+): OperationInput {
+  if (request.kind !== 'import') return request;
+  const filePath = consumeArchiveReference(senderId, request.archiveRef);
+  return {
+    kind: 'import',
+    rootPath: request.rootPath,
+    filePath,
+    destinationId: request.destinationId,
+    name: request.name,
+  };
 }
 
 function validateName(value: unknown, label: string): string {
@@ -316,7 +351,7 @@ function safeOperationId(value: unknown): string {
 }
 
 function safeOperationKind(value: unknown): OperationSnapshot['kind'] {
-  return value === 'duplicate' || value === 'import' || value === 'install-curseforge' || value === 'install-modrinth'
+  return value === 'duplicate' || value === 'import' || value === 'import-share' || value === 'install-curseforge' || value === 'install-modrinth'
     || value === 'update' || value === 'delete' || value === 'export'
     ? value
     : 'duplicate';

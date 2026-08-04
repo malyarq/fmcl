@@ -6,7 +6,7 @@ import type { OperationSnapshot } from '@shared/contracts';
 import { ExportModpackModal } from '../ExportModpackModal';
 import { ExportModpackPage } from '../ExportModpackPage';
 
-const getMetadataMock = vi.fn();
+const snapshotMock = vi.fn();
 const showSaveDialogMock = vi.fn();
 const startMock = vi.fn();
 const subscribeMock = vi.fn();
@@ -43,8 +43,8 @@ vi.mock('../../../contexts/ToastContext', () => ({
   useToast: () => ({ success: toastSuccessMock, error: toastErrorMock }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: { getMetadata: (...args: unknown[]) => getMetadataMock(...args) },
+vi.mock('../../../services/ipc/instancesIPC', () => ({
+  instancesIPC: { snapshot: (...args: unknown[]) => snapshotMock(...args) },
 }));
 
 vi.mock('../../../services/ipc/dialogIPC', () => ({
@@ -91,7 +91,6 @@ async function startPageExport(): Promise<(next: OperationSnapshot) => void> {
   await waitFor(() => expect(showSaveDialogMock).toHaveBeenCalledOnce());
   await waitFor(() => expect(startMock).toHaveBeenCalledWith({
     kind: 'export',
-    rootPath: '/minecraft',
     instanceId: 'alpha',
     format: 'multimc',
     outputPath: '/exports/alpha.zip',
@@ -110,7 +109,16 @@ async function startPageExport(): Promise<(next: OperationSnapshot) => void> {
 describe('ExportModpack operation state', () => {
   beforeEach(() => {
     cleanup();
-    getMetadataMock.mockReset().mockResolvedValue({ name: 'Alpha Pack' });
+    snapshotMock.mockReset().mockResolvedValue({
+      ok: true,
+      value: {
+        id: 'alpha',
+        name: 'Alpha Pack',
+        metadata: { source: 'local', createdAt: '2026-08-03T00:00:00.000Z', updatedAt: '2026-08-03T00:00:00.000Z' },
+        config: { runtime: { minecraftVersion: '1.20.1' } },
+        summary: { minecraftVersion: '1.20.1' },
+      },
+    });
     showSaveDialogMock.mockReset().mockResolvedValue({ canceled: false, filePath: '/exports/alpha.zip' });
     startMock.mockReset().mockResolvedValue(snapshot('queued'));
     subscribeMock.mockReset();

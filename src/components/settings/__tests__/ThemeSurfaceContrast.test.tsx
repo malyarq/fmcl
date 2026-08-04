@@ -6,9 +6,10 @@ import { GameTab } from '../tabs/GameTab';
 
 const scanJavaMock = vi.fn();
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    scanJava: (...args: unknown[]) => scanJavaMock(...args),
+vi.mock('../../../services/ipc/javaRuntimeIPC', () => ({
+  javaRuntimeIPC: {
+    scan: (...args: unknown[]) => scanJavaMock(...args),
+    select: vi.fn(),
   },
 }));
 
@@ -66,7 +67,6 @@ describe('GameTab theme surface contrast', () => {
         modpackConfig={null}
         setMemoryGb={vi.fn()}
         setMinMemoryGb={vi.fn()}
-        setJavaPath={vi.fn()}
         setVmOptions={vi.fn()}
         setGameExtraArgs={vi.fn()}
         setGameResolution={vi.fn()}

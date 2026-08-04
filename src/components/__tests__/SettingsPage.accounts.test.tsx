@@ -98,8 +98,8 @@ vi.mock('../../contexts/ToastContext', () => ({
   }),
 }))
 
-vi.mock('../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {},
+vi.mock('../../services/ipc/storageMaintenanceIPC', () => ({
+  storageMaintenanceIPC: {},
 }))
 
 vi.mock('../../services/ipc/externalLinksIPC', () => ({

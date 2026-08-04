@@ -10,10 +10,10 @@ import { AnchoredOverlay } from '../ui/AnchoredOverlay';
 import { rectFromElement, type AnchoredAlign, type AnchoredRect } from '../ui/anchoredOverlayLayout';
 import { SkeletonLoader } from '../ui/SkeletonLoader';
 import { LazyImage } from '../ui/LazyImage';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import { instancesIPC } from '../../services/ipc/instancesIPC';
 import { operationsIPC } from '../../services/ipc/operationsIPC';
 import type { OperationSnapshot } from '@shared/contracts';
-import type { ModpackManifest, ModpackMetadata } from '@shared/types/modpack';
+import type { ModpackMetadata } from '@shared/types/modpack';
 import { cn } from '../../utils/cn';
 import { ShareModal } from '../../features/share/ShareModal';
 import { ImportShareModal } from '../../features/share/ImportShareModal';
@@ -21,6 +21,7 @@ import { Compass, Download, FolderOpen, MoreHorizontal, PackagePlus, Share2 } fr
 import type { ModLoaderType } from '../../contexts/instances/types';
 import { DegradedStateView } from '../layout/DegradedStateView';
 import { toDisplayErrorMessage } from '../../utils/displayError';
+import { archiveInspectionIPC } from '../../services/ipc/archiveInspectionIPC';
 import { ModpackCatalogControls } from './ModpackCatalogControls';
 import { buildModpackRuntimeSummary } from '../../features/modpacks/hooks/useModpackRuntimeSummary';
 import {
@@ -31,9 +32,13 @@ import {
 interface ModpackListItemWithMetadata {
   id: string;
   name: string;
-  path: string;
   selected: boolean;
-  metadata?: ModpackMetadata;
+  metadata: ModpackMetadata;
+}
+
+function instanceValue<T>(result: { ok: true; value: T } | { ok: false; error: { message: string } }): T {
+  if (result.ok) return result.value;
+  throw new Error(result.error.message);
 }
 
 const SORT_OPTIONS = ['name', 'created', 'updated'] as const;
@@ -126,10 +131,10 @@ const ModpackListComponentInternal: React.FC<{
   refresh: ReturnType<typeof useModpackListValues>['refresh'];
   loadSelected: ReturnType<typeof useModpackListValues>['loadSelected'];
   modpacksKey: string;
-  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string } | { type: 'export'; modpackId: string } | { type: 'importPreview'; filePath: string }) => void;
+  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string } | { type: 'export'; modpackId: string } | { type: 'importPreview'; archiveRef: string; inspection: import('@shared/contracts/archiveInspection').ArchiveManifestMetadata }) => void;
   onCreateWizard?: () => void;
 }> = ({ contextModpacks: _contextModpacks, selectedId, select, rename, duplicate, refresh, loadSelected, modpacksKey, onNavigate, onCreateWizard }) => {
-  const { t, getAccentStyles, minecraftPath } = useSettings();
+  const { t, getAccentStyles } = useSettings();
   const toast = useToast();
   const confirm = useConfirm();
   const [modpacks, setModpacks] = useState<ModpackListItemWithMetadata[]>([]);
@@ -146,12 +151,18 @@ const ModpackListComponentInternal: React.FC<{
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
   const contextMenuTriggerRef = useRef<HTMLElement | null>(null);
   const unsubscribeDeleteRef = useRef<(() => void) | null>(null);
+  const releaseShareImportRef = useRef<(() => void) | null>(null);
+  const rejectShareImportRef = useRef<((error: Error) => void) | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => () => {
     isMountedRef.current = false;
     unsubscribeDeleteRef.current?.();
     unsubscribeDeleteRef.current = null;
+    releaseShareImportRef.current?.();
+    releaseShareImportRef.current = null;
+    rejectShareImportRef.current?.(new Error('Share import view was unmounted'));
+    rejectShareImportRef.current = null;
   }, []);
 
   // Share state
@@ -169,7 +180,34 @@ const ModpackListComponentInternal: React.FC<{
     setLoading(true);
     setLoadError(null);
     try {
-      const list = await modpacksIPC.listWithMetadata(minecraftPath);
+      const response = instanceValue(await instancesIPC.list());
+      if (response.status === 'uninitialized') {
+        setModpacks([]);
+        return;
+      }
+      const list = await Promise.all(response.instances.map(async (instance) => {
+        const metadata = instanceValue(await instancesIPC.metadata({ id: instance.id }));
+        return {
+          id: instance.id,
+          name: instance.name,
+          selected: instance.selected,
+          metadata: {
+            id: instance.id,
+            name: instance.name,
+            source: metadata.source,
+            ...(metadata.sourceId === undefined ? {} : { sourceId: metadata.sourceId }),
+            ...(metadata.sourceVersionId === undefined ? {} : { sourceVersionId: metadata.sourceVersionId }),
+            ...(metadata.version === undefined ? {} : { version: metadata.version }),
+            ...(metadata.iconUrl === undefined ? {} : { iconUrl: metadata.iconUrl }),
+            ...(metadata.description === undefined ? {} : { description: metadata.description }),
+            ...(metadata.author === undefined ? {} : { author: metadata.author }),
+            minecraftVersion: instance.summary.minecraftVersion,
+            ...(instance.summary.modLoader === undefined ? {} : { modLoader: { ...instance.summary.modLoader } }),
+            createdAt: metadata.createdAt,
+            updatedAt: metadata.updatedAt,
+          },
+        };
+      }));
       setModpacks(list);
     } catch (error) {
       console.error('Error loading modpacks:', error);
@@ -178,7 +216,7 @@ const ModpackListComponentInternal: React.FC<{
     } finally {
       setLoading(false);
     }
-  }, [minecraftPath]);
+  }, []);
 
   // Load modpacks on mount and when minecraftPath changes
   useEffect(() => {
@@ -193,7 +231,7 @@ const ModpackListComponentInternal: React.FC<{
       return;
     }
 
-    void resolveInstalledModpackUpdates(modpacks, minecraftPath).then((updates) => {
+    void resolveInstalledModpackUpdates(modpacks).then((updates) => {
       if (cancelled) {
         return;
       }
@@ -206,7 +244,7 @@ const ModpackListComponentInternal: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [loadError, loading, minecraftPath, modpacks]);
+  }, [loadError, loading, modpacks]);
 
   // Sync with context modpacks list changes (only when list actually changes, not config)
   // Use a ref to track previous modpacks list to avoid unnecessary reloads
@@ -324,7 +362,7 @@ const ModpackListComponentInternal: React.FC<{
     });
     if (confirmed) {
       try {
-        const started = await operationsIPC.start({ kind: 'delete', rootPath: minecraftPath, instanceId: id });
+        const started = await operationsIPC.start({ kind: 'delete', instanceId: id });
         setDeleteOperation(started);
         await new Promise<void>((resolve, reject) => {
           let terminal: OperationSnapshot | null = null;
@@ -374,7 +412,7 @@ const ModpackListComponentInternal: React.FC<{
         toast.error(t('modpacks.delete_error') || 'Ошибка при удалении модпака');
       }
     }
-  }, [confirm, loadModpacks, loadSelected, minecraftPath, refresh, t, toast]);
+  }, [confirm, loadModpacks, loadSelected, refresh, t, toast]);
 
   const handleRename = useCallback(async (id: string, currentName: string) => {
     const nextName = await confirm.prompt({
@@ -535,36 +573,76 @@ const ModpackListComponentInternal: React.FC<{
     e.stopPropagation();
     setIsDragging(false);
 
-    const files = Array.from(e.dataTransfer.files);
-    const modpackFiles = files.filter((f) =>
-      f.name.endsWith('.mrpack') ||
-      f.name.endsWith('.zip') ||
-      f.name.endsWith('.curseforge')
-    );
-
-    if (modpackFiles.length === 0) {
+    if (e.dataTransfer.files.length === 0) {
       toast.warning(t('modpacks.invalid_file') || 'Пожалуйста, перетащите файл модпака (.mrpack, .zip, .curseforge)');
       return;
     }
 
-    const file = modpackFiles[0];
-    if (!file) return;
-    const filePath = (file as unknown as { path?: string }).path || file.name;
-    onNavigate?.({ type: 'importPreview', filePath });
+    const selected = await archiveInspectionIPC.select();
+    if (selected.status === 'selected') {
+      onNavigate?.({ type: 'importPreview', archiveRef: selected.archiveRef, inspection: selected });
+    }
   }, [onNavigate, toast, t]);
 
-  const handleImportShareCode = useCallback(async (manifest: ModpackManifest) => {
+  const handleImportShareCode = useCallback(async (code: string) => {
     try {
       setLoading(true);
-      await modpacksIPC.createFromManifest(manifest);
+      const started = await operationsIPC.start({ kind: 'import-share', code });
+      if (!isMountedRef.current) return;
+      const completed = await new Promise<OperationSnapshot>((resolve, reject) => {
+        let unsubscribe: (() => void) | undefined;
+        let terminal: OperationSnapshot | undefined;
+        let settled = false;
+        let released = false;
+        const release = () => {
+          if (released) return;
+          released = true;
+          unsubscribe?.();
+          if (releaseShareImportRef.current === release) releaseShareImportRef.current = null;
+        };
+        const finish = (snapshot: OperationSnapshot) => {
+          if (settled) return;
+          settled = true;
+          release();
+          if (rejectShareImportRef.current === rejectPending) rejectShareImportRef.current = null;
+          if (snapshot.status === 'succeeded' || snapshot.status === 'degraded' || snapshot.status === 'recovered') resolve(snapshot);
+          else reject(new Error('Share import failed'));
+        };
+        const rejectPending = (error: Error) => {
+          if (settled) return;
+          settled = true;
+          release();
+          reject(error);
+        };
+        rejectShareImportRef.current = rejectPending;
+        void operationsIPC.subscribe(started.id, (snapshot) => {
+          if (!isMountedRef.current) return;
+          if (!['succeeded', 'degraded', 'recovered', 'failed', 'cancelled', 'recovery-required'].includes(snapshot.status)) return;
+          terminal = snapshot;
+          if (unsubscribe) finish(snapshot);
+        }).then((nextUnsubscribe) => {
+          if (!isMountedRef.current) {
+            nextUnsubscribe();
+            return;
+          }
+          unsubscribe = nextUnsubscribe;
+          releaseShareImportRef.current?.();
+          releaseShareImportRef.current = release;
+          if (terminal) finish(terminal);
+        }).catch(rejectPending);
+      });
+      if (!completed.result || !('instanceId' in completed.result)) throw new Error('Share import did not publish an instance');
       await refresh();
+      if (!isMountedRef.current) return;
       await loadModpacks();
+      if (!isMountedRef.current) return;
       toast.success(t('share.import_success'));
     } catch (error) {
+      if (!isMountedRef.current) return;
       console.error('Error importing modpack from share code:', error);
       toast.error(t('share.import_error'));
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   }, [refresh, loadModpacks, toast, t]);
 
@@ -1241,7 +1319,7 @@ const MemoizedModpackListInternal = React.memo(ModpackListComponentInternal);
 
 // Wrapper component that extracts values from context
 const ModpackListComponent: React.FC<{
-  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string } | { type: 'export'; modpackId: string } | { type: 'importPreview'; filePath: string }) => void;
+  onNavigate?: (view: { type: 'browser' } | { type: 'details'; modpackId: string } | { type: 'export'; modpackId: string } | { type: 'importPreview'; archiveRef: string; inspection: import('@shared/contracts/archiveInspection').ArchiveManifestMetadata }) => void;
   onCreateWizard?: () => void;
 }> = ({ onNavigate, onCreateWizard }) => {
   const values = useModpackListValues();

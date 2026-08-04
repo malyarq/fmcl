@@ -1,4 +1,15 @@
-import type { FriendLauncherApi, ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts';
+import type {
+  FriendLauncherApi,
+  InstanceConfigDto,
+  InstanceListItemDto,
+  InstanceMetadataDto,
+  InstanceMutationResponse,
+  InstanceResult,
+  InstanceSnapshotDto,
+  InstancesAPI,
+  ProviderCatalogSearchResultItem,
+  ProviderCatalogVersionDescriptor,
+} from '@shared/contracts';
 import type { ResourcePackAcquisitionResult } from '@shared/contracts/resourcePacks';
 import type { ShaderPack, ShaderPackAcquisitionResult } from '@shared/contracts/shaders';
 import type { Account, Mirror, ModpackManifest, ModpackMetadata, StatisticsOverview } from '@shared/types';
@@ -154,7 +165,7 @@ const baseAccounts: Account[] = [
   },
 ];
 
-const browserResults: ModpackSearchResultItem[] = [
+const browserResults: ProviderCatalogSearchResultItem[] = [
   {
     platform: 'modrinth',
     projectId: 'alpha-pack',
@@ -256,7 +267,7 @@ const guidedShaderResults: ManualModSearchResult[] = [
   },
 ];
 
-const phase21BrowserResults: ModpackSearchResultItem[] = [
+const phase21BrowserResults: ProviderCatalogSearchResultItem[] = [
   {
     platform: 'modrinth',
     projectId: 'atlas-control-room',
@@ -359,7 +370,7 @@ function getMetadataForView(view: string): Record<string, ModpackMetadata> {
   return metadata;
 }
 
-function getBrowserResultsForView(view: string): ModpackSearchResultItem[] {
+function getBrowserResultsForView(view: string): ProviderCatalogSearchResultItem[] {
   if (view === PHASE_21_BROWSER_DENSITY_VIEW) {
     return structuredClone(phase21BrowserResults);
   }
@@ -491,7 +502,7 @@ function createShaderAcquisitionResult(): ShaderPackAcquisitionResult {
   };
 }
 
-const modpackVersions: ModpackVersionDescriptor[] = [
+const modpackVersions: ProviderCatalogVersionDescriptor[] = [
   {
     platform: 'modrinth',
     versionId: 'alpha-pack-1.4.2',
@@ -724,14 +735,14 @@ const sharedManifest: ModpackManifest = {
 const screenshots: Screenshot[] = [
   {
     name: 'mountain-sunrise.png',
-    path: '/mock/.minecraft/instances/alpha/screenshots/mountain-sunrise.png',
+    path: 'screenshots/mountain-sunrise.png',
     url: ICON_PATH,
     createdAt: minutesAgo(12),
     size: 256_000,
   },
   {
     name: 'village-evening.png',
-    path: '/mock/.minecraft/instances/alpha/screenshots/village-evening.png',
+    path: 'screenshots/village-evening.png',
     url: ICON_PATH,
     createdAt: minutesAgo(6),
     size: 248_000,
@@ -744,14 +755,14 @@ const installedDatapacks = [
     name: 'Logic Tweaks',
     description: 'Adds world automation helpers for the Alpha fixture.',
     isEnabled: true,
-    path: '/mock/.minecraft/instances/alpha/saves/AlphaWorld/datapacks/logic-tweaks.zip',
+    path: 'datapacks/logic-tweaks.zip',
   },
   {
     fileName: 'adventure-rules.zip',
     name: 'Adventure Rules',
     description: 'Tighter progression rules for shared sessions.',
     isEnabled: false,
-    path: '/mock/.minecraft/instances/alpha/saves/AlphaWorld/datapacks/adventure-rules.zip',
+    path: 'datapacks/adventure-rules.zip',
   },
 ];
 
@@ -773,7 +784,6 @@ const resourcePacks: ResourcePack[] = [
     name: 'Painterly Depth',
     description: 'Missing-art proof pack for the Phase 20 brand fallback route.',
     packFormat: 34,
-    path: '/mock/.minecraft/instances/alpha/resourcepacks/painterly-depth.zip',
     iconUrl: undefined,
     isEnabled: true,
     size: 1_572_864,
@@ -783,7 +793,6 @@ const resourcePacks: ResourcePack[] = [
     name: 'Grid Notes',
     description: 'Secondary pack with bundled art for reorder and state contrast.',
     packFormat: 34,
-    path: '/mock/.minecraft/instances/alpha/resourcepacks/grid-notes.zip',
     iconUrl: ICON_PATH,
     isEnabled: false,
     size: 1_048_576,
@@ -796,7 +805,6 @@ const phase21DenseResourcePacks: ResourcePack[] = [
     name: 'Painterly Depth Annotated UI Pack',
     description: 'Missing-art proof pack with a deliberately long label for dense secondary-content review.',
     packFormat: 34,
-    path: '/mock/.minecraft/instances/alpha/resourcepacks/painterly-depth-annotated-ui-pack.zip',
     iconUrl: undefined,
     isEnabled: true,
     size: 1_572_864,
@@ -806,7 +814,6 @@ const phase21DenseResourcePacks: ResourcePack[] = [
     name: 'Status Ribbon Contrast Calibration Sheets',
     description: 'Long secondary label used to expose multi-line list rhythm and CTA stacking.',
     packFormat: 34,
-    path: '/mock/.minecraft/instances/alpha/resourcepacks/status-ribbon-contrast-calibration-sheets.zip',
     iconUrl: ICON_PATH,
     isEnabled: true,
     size: 1_848_320,
@@ -816,7 +823,6 @@ const phase21DenseResourcePacks: ResourcePack[] = [
     name: 'Dense Inventory Labels Companion',
     description: 'Support pack with enough metadata to keep the secondary route visibly busy.',
     packFormat: 34,
-    path: '/mock/.minecraft/instances/alpha/resourcepacks/dense-inventory-labels-companion.zip',
     iconUrl: undefined,
     isEnabled: false,
     size: 1_228_800,
@@ -826,7 +832,6 @@ const phase21DenseResourcePacks: ResourcePack[] = [
     name: 'Night Transit Lighting Proof',
     description: 'Trailing pack that keeps reorder and enable controls visible under density pressure.',
     packFormat: 34,
-    path: '/mock/.minecraft/instances/alpha/resourcepacks/night-transit-lighting-proof.zip',
     iconUrl: ICON_PATH,
     isEnabled: false,
     size: 1_009_664,
@@ -907,21 +912,103 @@ function createState(view: string): ManualState {
   };
 }
 
-function listItemsFromState(state: ManualState) {
-  return state.modpacks.map((cfg) => ({
-    id: cfg.id,
-    name: cfg.name,
-    path: `/mock/.minecraft/instances/${cfg.id}`,
-    selected: cfg.id === state.selectedModpackId,
-  }));
-}
-
 function findConfig(state: ManualState, modpackId: string) {
   return state.modpacks.find((cfg) => cfg.id === modpackId) ?? null;
 }
 
 function updateConfig(state: ManualState, nextConfig: ModpackConfig) {
   state.modpacks = state.modpacks.map((cfg) => (cfg.id === nextConfig.id ? structuredClone(nextConfig) : cfg));
+}
+
+function toInstanceConfig(config: ModpackConfig): InstanceConfigDto {
+  return {
+    runtime: {
+      minecraftVersion: config.runtime.minecraft,
+      ...(config.runtime.modLoader === undefined ? {} : { modLoader: { ...config.runtime.modLoader } }),
+    },
+    ...(config.memory === undefined ? {} : { memory: { ...config.memory } }),
+    ...(config.vmOptions === undefined ? {} : { vmOptions: [...config.vmOptions] }),
+    ...(config.game === undefined ? {} : {
+      game: {
+        ...(config.game.resolution === undefined ? {} : { resolution: { ...config.game.resolution } }),
+        ...(config.game.extraArgs === undefined ? {} : { extraArgs: [...config.game.extraArgs] }),
+        ...(config.game.useOptiFine === undefined ? {} : { useOptiFine: config.game.useOptiFine }),
+      },
+    }),
+    ...(config.server === undefined ? {} : { server: { ...config.server } }),
+    ...(config.networkMode === undefined ? {} : { networkMode: config.networkMode }),
+  };
+}
+
+function toModpackConfig(id: string, name: string, config: InstanceConfigDto, metadata?: InstanceMetadataDto): ModpackConfig {
+  return {
+    id,
+    name,
+    runtime: {
+      minecraft: config.runtime.minecraftVersion,
+      ...(config.runtime.modLoader === undefined ? {} : { modLoader: { ...config.runtime.modLoader } }),
+    },
+    ...(config.memory === undefined ? {} : { memory: { ...config.memory } }),
+    ...(config.vmOptions === undefined ? {} : { vmOptions: [...config.vmOptions] }),
+    ...(config.game === undefined ? {} : {
+      game: {
+        ...(config.game.resolution === undefined ? {} : { resolution: { ...config.game.resolution } }),
+        ...(config.game.extraArgs === undefined ? {} : { extraArgs: [...config.game.extraArgs] }),
+        ...(config.game.useOptiFine === undefined ? {} : { useOptiFine: config.game.useOptiFine }),
+      },
+    }),
+    ...(config.server === undefined ? {} : { server: { ...config.server } }),
+    ...(config.networkMode === undefined ? {} : { networkMode: config.networkMode }),
+    ...(metadata === undefined ? {} : { createdAt: metadata.createdAt, updatedAt: metadata.updatedAt }),
+  };
+}
+
+function toInstanceMetadata(metadata: ModpackMetadata): InstanceMetadataDto {
+  return {
+    source: metadata.source,
+    ...(metadata.sourceId === undefined ? {} : { sourceId: metadata.sourceId }),
+    ...(metadata.sourceVersionId === undefined ? {} : { sourceVersionId: metadata.sourceVersionId }),
+    ...(metadata.version === undefined ? {} : { version: metadata.version }),
+    ...(metadata.iconUrl === undefined ? {} : { iconUrl: metadata.iconUrl }),
+    ...(metadata.description === undefined ? {} : { description: metadata.description }),
+    ...(metadata.author === undefined ? {} : { author: metadata.author }),
+    createdAt: metadata.createdAt,
+    updatedAt: metadata.updatedAt,
+  };
+}
+
+function instanceListItems(state: ManualState): InstanceListItemDto[] {
+  return state.modpacks.map((config) => ({
+    id: config.id,
+    name: config.name,
+    selected: config.id === state.selectedModpackId,
+    summary: {
+      minecraftVersion: config.runtime.minecraft,
+      ...(config.runtime.modLoader === undefined ? {} : { modLoader: { ...config.runtime.modLoader } }),
+    },
+  }));
+}
+
+function instanceMutation(state: ManualState, status: 'committed' | 'noop' = 'committed'): InstanceMutationResponse {
+  return {
+    status,
+    selectedId: state.selectedModpackId,
+    instances: instanceListItems(state),
+  };
+}
+
+function instanceResult<T>(value: T): InstanceResult<T> {
+  return { ok: true, value };
+}
+
+function missingInstance<T>(id: string): InstanceResult<T> {
+  return {
+    ok: false,
+    error: {
+      code: 'INSTANCE_NOT_FOUND',
+      message: `Instance '${id}' was not found in the manual verification fixture.`,
+    },
+  };
 }
 
 function createSearchResponse(query: string, offset = 0, limit = 12, view = 'overview') {
@@ -996,92 +1083,90 @@ export function installManualVerificationEnvironment() {
   const view = getManualVerificationView();
   const state = createState(view);
 
-  const modpacksApi = {
-    listModpacks: async () => listItemsFromState(state),
-    listModpacksWithMetadata: async () =>
-      listItemsFromState(state).map((item) => ({
-        ...item,
-        metadata: structuredClone(state.metadata[item.id] ?? baseMetadata.alpha),
-      })),
-    bootstrapModpacks: async () => ({
-      index: {},
-      selectedId: state.selectedModpackId,
-      config: structuredClone(findConfig(state, state.selectedModpackId) ?? baseConfigs.alpha),
-    }),
-    getSelectedModpack: async () => state.selectedModpackId,
-    setSelectedModpack: async (modpackId: string) => {
-      state.selectedModpackId = modpackId;
-      return { ok: true };
+  const instancesApi: InstancesAPI = {
+    list: async () => instanceResult({ status: 'ready', instances: instanceListItems(state) }),
+    snapshot: async ({ id }) => {
+      const config = findConfig(state, id);
+      const metadata = state.metadata[id];
+      if (!config || !metadata) return missingInstance<InstanceSnapshotDto>(id);
+
+      return instanceResult({
+        id,
+        name: config.name,
+        metadata: toInstanceMetadata(metadata),
+        config: toInstanceConfig(config),
+        summary: {
+          minecraftVersion: config.runtime.minecraft,
+          ...(config.runtime.modLoader === undefined ? {} : { modLoader: { ...config.runtime.modLoader } }),
+        },
+      });
     },
-    createModpack: async (name: string) => {
+    select: async ({ id }) => {
+      if (!findConfig(state, id)) return missingInstance<InstanceMutationResponse>(id);
+
+      if (state.selectedModpackId === id) return instanceResult(instanceMutation(state, 'noop'));
+      state.selectedModpackId = id;
+      return instanceResult(instanceMutation(state));
+    },
+    create: async ({ name, source, config }) => {
       const id = `created-${state.modpacks.length + 1}`;
-      const created: ModpackConfig = {
-        ...structuredClone(baseConfigs.alpha),
-        id,
-        name,
-      };
-      state.modpacks.push(created);
+      const createdAt = new Date().toISOString();
+      state.modpacks.push(toModpackConfig(id, name, config, {
+        source: source.source,
+        ...(source.sourceId === undefined ? {} : { sourceId: source.sourceId }),
+        ...(source.sourceVersionId === undefined ? {} : { sourceVersionId: source.sourceVersionId }),
+        ...(source.version === undefined ? {} : { version: source.version }),
+        ...(source.iconUrl === undefined ? {} : { iconUrl: source.iconUrl }),
+        ...(source.description === undefined ? {} : { description: source.description }),
+        ...(source.author === undefined ? {} : { author: source.author }),
+        createdAt,
+        updatedAt: createdAt,
+      }));
       state.metadata[id] = {
-        ...structuredClone(baseMetadata.alpha),
         id,
         name,
+        source: source.source,
+        ...(source.sourceId === undefined ? {} : { sourceId: source.sourceId }),
+        ...(source.sourceVersionId === undefined ? {} : { sourceVersionId: source.sourceVersionId }),
+        ...(source.version === undefined ? {} : { version: source.version }),
+        ...(source.iconUrl === undefined ? {} : { iconUrl: source.iconUrl }),
+        ...(source.description === undefined ? {} : { description: source.description }),
+        ...(source.author === undefined ? {} : { author: source.author }),
+        minecraftVersion: config.runtime.minecraftVersion,
+        ...(config.runtime.modLoader === undefined ? {} : { modLoader: { ...config.runtime.modLoader } }),
+        createdAt,
+        updatedAt: createdAt,
       };
       state.selectedModpackId = id;
-      return { id, config: structuredClone(created) };
+      return instanceResult(instanceMutation(state));
     },
-    renameModpack: async (modpackId: string, name: string) => {
-      const config = findConfig(state, modpackId);
-      if (config) {
-        updateConfig(state, { ...config, name });
-      }
-      if (state.metadata[modpackId]) {
-        state.metadata[modpackId] = { ...state.metadata[modpackId], name };
-      }
-      return { ok: true };
+    rename: async ({ id, name }) => {
+      const config = findConfig(state, id);
+      const metadata = state.metadata[id];
+      if (!config || !metadata) return missingInstance<InstanceMutationResponse>(id);
+
+      updateConfig(state, { ...config, name });
+      state.metadata[id] = { ...metadata, name, updatedAt: new Date().toISOString() };
+      return instanceResult(instanceMutation(state));
     },
-    getModpackConfig: async (modpackId: string) => structuredClone(findConfig(state, modpackId)),
-    saveModpackConfig: async (cfg: unknown) => {
-      const nextConfig = cfg as ModpackConfig;
-      updateConfig(state, structuredClone(nextConfig));
-      return { ok: true };
+    config: async (request) => {
+      const current = findConfig(state, request.id);
+      const metadata = state.metadata[request.id];
+      if (!current || !metadata) return missingInstance<InstanceConfigDto | InstanceMutationResponse>(request.id);
+
+      if (request.action === 'get') return instanceResult(toInstanceConfig(current));
+
+      updateConfig(state, toModpackConfig(request.id, current.name, request.config, toInstanceMetadata(metadata)));
+      state.metadata[request.id] = { ...metadata, updatedAt: new Date().toISOString() };
+      return instanceResult(instanceMutation(state));
     },
-    getModpackMetadata: async (modpackId: string) => structuredClone(state.metadata[modpackId] ?? baseMetadata.alpha),
-    updateModpackMetadata: async (modpackId: string, updates: Partial<ModpackMetadata>) => {
-      const current = state.metadata[modpackId] ?? baseMetadata.alpha;
-      const next = { ...structuredClone(current), ...updates, updatedAt: new Date().toISOString() };
-      state.metadata[modpackId] = next;
-      return structuredClone(next);
+    metadata: async ({ id }) => {
+      const metadata = state.metadata[id];
+      return metadata
+        ? instanceResult(toInstanceMetadata(metadata))
+        : missingInstance<InstanceMetadataDto>(id);
     },
-    searchCurseForgeModpacks: async (query: string, _mcVersion?: string, _loader?: string, _sort?: string, offset?: number, limit?: number) =>
-      createSearchResponse(query, offset, limit, view),
-    searchModrinthModpacks: async (query: string, _mcVersion?: string, _loader?: string, _sort?: string, offset?: number, limit?: number) =>
-      createSearchResponse(query, offset, limit, view),
-    getCurseForgeModpackVersions: async () => structuredClone(modpackVersions),
-    getModrinthModpackVersions: async () => structuredClone(modpackVersions),
-    createLocalModpack: async () => ({
-      id: 'alpha',
-      config: structuredClone(getConfigsForView(view).alpha),
-      metadata: structuredClone(getMetadataForView(view).alpha),
-    }),
-    createFromManifest: async () => ({ id: 'alpha' }),
-    getModpackInfoFromFile: async () => ({ format: 'modrinth' as const, manifest: structuredClone(sharedManifest) }),
-    addModToModpack: async () => ({ ok: true }),
-    removeModFromModpack: async () => ({ ok: true }),
-    setModEnabled: async () => ({ ok: true }),
-    updateModpackOverrides: async () => ({ ok: true }),
-    getModpackMods: async () => getModEntriesForView(view),
-    backupModpack: async () => ({ backupPath: '/mock/.minecraft/backups/alpha.zip' }),
-    resolvePath: async (modpackId: string) => `/mock/.minecraft/instances/${modpackId}`,
-    scanJava: async () => [
-      {
-        path: '/Library/Java/JavaVirtualMachines/temurin-21.jdk/bin/java',
-        version: '21.0.2',
-        majorVersion: 21,
-        valid: true,
-      },
-    ],
-    getContentStats: async () => ({ totalSize: 2048, dedupedSize: 1024, totalFiles: 12, storedFiles: 8 }),
-    cleanupContent: async () => ({ freedSize: 0, deletedFiles: 0 }),
+    prepare: async () => instanceResult({ status: 'ready' }),
   };
 
   const accountApi = {
@@ -1156,7 +1241,6 @@ export function installManualVerificationEnvironment() {
       }
       return `fmcl://share/${modpackId}?v=1.4.2`;
     },
-    importCode: async () => structuredClone(sharedManifest),
   };
 
   const resourcePacksApi = {
@@ -1164,7 +1248,6 @@ export function installManualVerificationEnvironment() {
     enable: async () => ({ ok: true }),
     disable: async () => ({ ok: true }),
     reorder: async () => ({ ok: true }),
-    import: async () => createResourcePackAcquisitionResult(view),
     delete: async () => ({ ok: true }),
     openFolder: async () => ({ ok: true }),
     add: async () => createResourcePackAcquisitionResult(view),
@@ -1217,8 +1300,24 @@ export function installManualVerificationEnvironment() {
         };
       }
 
-      return { ok: true };
+      return { status: 'success' as const, filename: 'fixture-content.jar', issues: [] };
     },
+  };
+
+  const instanceModsApi = {
+    list: async () => getModEntriesForView(view),
+    remove: async () => ({ ok: true }),
+    setEnabled: async () => ({ ok: true }),
+    register: async () => ({ ok: true }),
+  };
+
+  const providerCatalogApi = {
+    search: async ({ query, offset, limit }: { query: string; offset?: number; limit?: number }) => (
+      createSearchResponse(query, offset, limit, view)
+    ),
+    versions: async ({ platform, projectId }: { platform: 'curseforge' | 'modrinth'; projectId: string }) => (
+      structuredClone(modpackVersions).filter((version) => version.platform === platform && projectId === 'alpha-pack')
+    ),
   };
 
   const statisticsApi = {
@@ -1283,25 +1382,25 @@ export function installManualVerificationEnvironment() {
   };
 
   const worldsApi = {
-    list: async () => [{
+    listByInstanceId: async () => [{
       name: 'Alpha World',
       folderName: 'AlphaWorld',
       lastPlayed: hoursAgo(2),
       sizeBytes: 128 * 1024 * 1024,
     }],
-    delete: async () => undefined,
-    backup: async (folderName: string) => `${DESKTOP_PATH}/${folderName}.zip`,
-    duplicate: async (folderName: string) => `${folderName}-copy`,
-    openFolder: async () => undefined,
+    deleteByInstanceId: async () => undefined,
+    backupByInstanceId: async () => undefined,
+    duplicateByInstanceId: async (folderName: string) => `${folderName}-copy`,
+    openFolderByInstanceId: async () => undefined,
   };
 
   const datapacksApi = {
-    list: async () => structuredClone(installedDatapacks),
-    enable: async () => ({ ok: true }),
-    disable: async () => ({ ok: true }),
-    delete: async () => ({ ok: true }),
+    listByInstanceId: async () => structuredClone(installedDatapacks),
+    enableByInstanceId: async () => ({ ok: true }),
+    disableByInstanceId: async () => ({ ok: true }),
+    deleteByInstanceId: async () => ({ ok: true }),
     search: async () => structuredClone(datapackSearchResults),
-    install: async () => ({ ok: true }),
+    installByInstanceId: async () => ({ ok: true }),
     getVersions: async () => [{ id: 'immersive-world-events-1.0.0' }],
   };
 
@@ -1313,9 +1412,24 @@ export function installManualVerificationEnvironment() {
   };
 
   let nextOperationId = 0;
+  const archiveReferences = new Map<string, number>();
+  const archiveInspection = {
+    select: async () => {
+      const archiveRef = `manual-archive-${crypto.randomUUID()}`;
+      archiveReferences.set(archiveRef, Date.now() + 5 * 60 * 1_000);
+      return { status: 'selected' as const, archiveRef, format: 'modrinth' as const, manifest: structuredClone(sharedManifest) };
+    },
+  };
   const operationSnapshots = new Map<string, Record<string, unknown>>();
   const operations = {
-    start: async (request: { kind: string; instanceId?: string }) => {
+    start: async (request: { kind: string; instanceId?: string; archiveRef?: string }) => {
+      if (request.kind === 'import') {
+        const expiresAt = request.archiveRef ? archiveReferences.get(request.archiveRef) : undefined;
+        if (!request.archiveRef || !expiresAt || expiresAt <= Date.now()) {
+          throw new Error('Archive reference was not authorized by a recent native archive selection');
+        }
+        archiveReferences.delete(request.archiveRef);
+      }
       const id = `manual-operation-${++nextOperationId}`;
       if (request.kind === 'delete' && request.instanceId) {
         state.modpacks = state.modpacks.filter((cfg) => cfg.id !== request.instanceId);
@@ -1350,7 +1464,10 @@ export function installManualVerificationEnvironment() {
   };
 
   const api = {
-    modpacks: modpacksApi,
+    instances: instancesApi,
+    instanceMods: instanceModsApi,
+    providerCatalog: providerCatalogApi,
+    archiveInspection,
     operations,
     account: accountApi,
     externalLinks: externalLinksApi,
@@ -1365,15 +1482,15 @@ export function installManualVerificationEnvironment() {
     worlds: worldsApi,
     datapacks: datapacksApi,
     screenshots: {
-      list: async () => {
+      list: async (_instanceId: string) => {
         if (view === PHASE_24_DEGRADED_CLOSEOUT_VIEW) {
           throw new Error('[IPC] screenshots failed: Screenshots folder unavailable');
         }
         return structuredClone(screenshots);
       },
-      delete: async () => ({ ok: true }),
-      rename: async () => ({ ok: true }),
-      openFolder: async () => ({ ok: true }),
+      delete: async (_fileName: string, _instanceId: string) => ({ ok: true }),
+      rename: async (_oldName: string, _newName: string, _instanceId: string) => ({ ok: true }),
+      openFolder: async (_instanceId: string) => ({ ok: true }),
     },
   } as unknown as FriendLauncherApi;
 

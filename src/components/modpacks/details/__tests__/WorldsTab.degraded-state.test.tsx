@@ -33,12 +33,12 @@ vi.mock('../../../../contexts/ToastContext', () => ({
 
 vi.mock('../../../../services/ipc/worldsIPC', () => ({
   worldsIPC: {
-    list: (...args: unknown[]) => listMock(...args),
-    backup: vi.fn(),
-    duplicate: vi.fn(),
-    delete: vi.fn(),
+    listByInstanceId: (...args: unknown[]) => listMock(...args),
+    backupByInstanceId: vi.fn(),
+    duplicateByInstanceId: vi.fn(),
+    deleteByInstanceId: vi.fn(),
+    openFolderByInstanceId: vi.fn(),
   },
-  openWorldFolder: vi.fn(),
 }));
 
 describe('WorldsTab degraded states', () => {
@@ -51,7 +51,7 @@ describe('WorldsTab degraded states', () => {
   it('shows an unavailable state when saved worlds cannot be loaded', async () => {
     listMock.mockRejectedValue(new Error('[IPC] worlds failed: Saves path unavailable'));
 
-    render(<WorldsTab instancePath="/instances/alpha" mcVersion="1.20.1" />);
+    render(<WorldsTab instanceId="alpha" mcVersion="1.20.1" />);
 
     const errorState = await screen.findByRole('status');
     expect(screen.getByRole('heading', { name: t('modpacks.world_load_error') })).toBeTruthy();

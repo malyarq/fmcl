@@ -57,14 +57,6 @@ vi.mock('../../../services/ipc/modsIPC', () => ({
   },
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getMetadata: (...args: unknown[]) => getMetadataMock(...args),
-    getConfig: (...args: unknown[]) => getConfigMock(...args),
-    addMod: vi.fn(),
-  },
-}));
-
 describe('Add-mod placeholder truth', () => {
   beforeEach(() => {
     mockMatchMedia();

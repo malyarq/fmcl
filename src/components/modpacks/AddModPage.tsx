@@ -12,7 +12,11 @@ import { LazyImage } from '../ui/LazyImage';
 import { DegradedStateView } from '../layout/DegradedStateView';
 import { cn } from '../../utils/cn';
 import { isGuidedContentInstallResult, modsIPC, type GuidedContentInstallIssueStatus } from '../../services/ipc/modsIPC';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import { instanceModsIPC } from '../../services/ipc/instanceModsIPC';
+import {
+  fetchModpackConfig,
+  fetchModpackMetadata,
+} from '../../contexts/instances/services/instancesService';
 import { resourcePacksIPC } from '../../services/ipc/resourcePacksIPC';
 import { shadersIPC } from '../../services/ipc/shadersIPC';
 import { MINECRAFT_VERSIONS } from '../../utils/minecraftVersionsList';
@@ -89,7 +93,7 @@ function formatRecoveryItems(labels: string[]): string {
 }
 
 export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, contentType = 'mod' }) => {
-  const { t, getAccentStyles, minecraftPath } = useSettings();
+  const { t, getAccentStyles } = useSettings();
   const toast = useToast();
   const [query, setQuery] = useState('');
   const [platform, setPlatform] = useState<'curseforge' | 'modrinth'>('modrinth');
@@ -121,8 +125,8 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
   const loadModpackMetadataAndConfig = useCallback(async () => {
     try {
       const [metadata, config] = await Promise.all([
-        modpacksIPC.getMetadata(modpackId, minecraftPath),
-        modpacksIPC.getConfig(modpackId, minecraftPath),
+        fetchModpackMetadata(modpackId),
+        fetchModpackConfig(modpackId),
       ]);
       setModpackMetadata(metadata);
       setModpackConfig(config);
@@ -133,7 +137,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
     } catch (error) {
       console.error('Error loading modpack metadata:', error);
     }
-  }, [modpackId, minecraftPath]);
+  }, [modpackId]);
 
   useEffect(() => {
     loadModpackMetadataAndConfig();
@@ -562,7 +566,6 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
               projectId: mod.projectId,
               versionId: version.versionId,
               instanceId: modpackId,
-              rootPath: minecraftPath,
               contentType,
             });
 
@@ -638,17 +641,16 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
             projectId: mod.projectId,
             versionId: version.versionId,
             instanceId: modpackId,
-            rootPath: minecraftPath,
             contentType,
           });
           installedToInstance = true;
 
           if (shouldPersistInstallToManifest) {
-            await modpacksIPC.addMod(modpackId, {
+            await instanceModsIPC.register(modpackId, {
               platform: mod.platform,
-              projectId: mod.platform === 'curseforge' ? Number(mod.projectId) : mod.projectId,
-              versionId: mod.platform === 'curseforge' ? Number(version.versionId) : version.versionId,
-            }, minecraftPath);
+              projectId: mod.projectId,
+              versionId: version.versionId,
+            });
           }
 
           added++;
@@ -700,20 +702,12 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
     setFlowNotice(null);
 
     try {
-      const instancePath = await modpacksIPC.resolvePath(modpackId, minecraftPath);
-      if (!instancePath) {
-        setFlowNotice({
-          tone: 'error',
-          message:
-            t('modpacks.guided_local_open_error')
-            || 'FMCL could not open the local import picker for this modpack right now.',
-        });
-        return;
+      let result: LocalImportResult;
+      if (contentType === 'resourcepack') {
+        result = await resourcePacksIPC.add(modpackId);
+      } else {
+        result = await shadersIPC.add(modpackId);
       }
-
-      const result = contentType === 'resourcepack'
-        ? await resourcePacksIPC.add(instancePath)
-        : await shadersIPC.add(instancePath);
 
       if (result.status === 'success') {
         toast.success(
@@ -743,7 +737,7 @@ export const AddModPage: React.FC<AddModPageProps> = ({ modpackId, onBack, conte
     } finally {
       setLocalImporting(false);
     }
-  }, [contentType, getLocalImportNotice, localFallbackCopy, minecraftPath, modpackId, onBack, supportsLocalFallback, t, toast]);
+  }, [contentType, getLocalImportNotice, localFallbackCopy, modpackId, onBack, supportsLocalFallback, t, toast]);
 
   const unavailableVersionLabel = t('modpacks.version_unavailable') || 'Version unavailable';
 

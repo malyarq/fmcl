@@ -36,7 +36,7 @@ describe('operation recovery', () => {
     expect(fs.readFileSync(path.join(rootPath, 'modpacks', 'ambiguous', 'payload.txt'), 'utf8')).toBe('do not guess');
   });
 
-  it('replays a proven published import through the registered adapter without replacing its bytes', async () => {
+  it('retains a legacy published import without an exact canonical command as recovery-required', async () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-import-recovery-'));
     tempDirs.push(rootPath);
     const journal = new OperationJournal(rootPath);
@@ -58,12 +58,29 @@ describe('operation recovery', () => {
     const runner = new OperationRunner([createDuplicateOperationAdapter(), createImportOperationAdapter()]);
     await runner.recover(rootPath);
 
-    expect(runner.get(operationId)).toMatchObject({ status: 'recovered', result: { status: 'recovered', instanceId: 'imported' } });
+    expect(runner.get(operationId)).toMatchObject({ status: 'recovery-required', result: { status: 'recovery-required' } });
     expect(fs.readFileSync(path.join(rootPath, 'modpacks', 'imported', 'payload.txt'), 'utf8')).toBe('published bytes');
-    expect(JSON.parse(fs.readFileSync(path.join(rootPath, 'modpacks.json'), 'utf8'))).toMatchObject({ modpacks: { imported: { name: 'Imported' } } });
+    expect(JSON.parse(fs.readFileSync(path.join(rootPath, 'modpacks.json'), 'utf8'))).toMatchObject({ modpacks: {} });
   });
 
-  it('replays a proven published provider install through its registered adapter without replacing its bytes', async () => {
+  it('rejects an unconsumed public archive capability from a restart journal', async () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-import-reference-recovery-'));
+    tempDirs.push(rootPath);
+    const operationId = '34343434-3434-4434-8434-343434343434';
+    writeRawJournal(rootPath, {
+      [operationId]: {
+        id: operationId, kind: 'import', rootPath, status: 'running', phase: 'started', progress: { completed: 0, total: 4 },
+        createdAt: '2026-08-04T00:00:00.000Z', updatedAt: '2026-08-04T00:00:00.000Z',
+        input: { kind: 'import', rootPath, archiveRef: 'forged-or-stale-reference' },
+      },
+    });
+
+    const runner = new OperationRunner([createImportOperationAdapter()]);
+    await expect(runner.recover(rootPath)).rejects.toThrow(/state and recovery backup are unavailable/i);
+    expect(runner.get(operationId)).toBeUndefined();
+  });
+
+  it('retains a legacy published provider install without a canonical command as recovery-required', async () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-provider-recovery-'));
     tempDirs.push(rootPath);
     const journal = new OperationJournal(rootPath);
@@ -87,11 +104,40 @@ describe('operation recovery', () => {
     }));
     await runner.recover(rootPath);
 
-    expect(runner.get(operationId)).toMatchObject({ status: 'recovered', result: { status: 'recovered', instanceId: 'provider' } });
+    expect(runner.get(operationId)).toMatchObject({ status: 'recovery-required', result: { status: 'recovery-required' } });
     expect(fs.readFileSync(path.join(rootPath, 'modpacks', 'provider', 'payload.txt'), 'utf8')).toBe('published provider bytes');
   });
 
-  it('restores a pre-commit quarantined delete on restart but preserves ambiguous residue', async () => {
+  it('retains a published manifest export without a canonical command as recovery-required', async () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-manifest-export-recovery-'));
+    tempDirs.push(rootPath);
+    const operationId = '45454545-4545-4545-8454-454545454545';
+    const instancePath = path.join(rootPath, 'modpacks', 'export-me');
+    fs.mkdirSync(instancePath, { recursive: true });
+    fs.writeFileSync(path.join(instancePath, 'modpack.json'), JSON.stringify({
+      id: 'export-me', name: 'Old pack', runtime: { minecraft: '1.20.1', modLoader: { type: 'vanilla' } }, memory: { maxMb: 4096 }, vmOptions: [],
+    }));
+    fs.writeFileSync(path.join(instancePath, 'manifest.json'), JSON.stringify({ formatVersion: 1, name: 'Published pack', version: '2.0.0', minecraft: { version: '1.20.1' } }));
+    const metadataPath = path.join(rootPath, 'modpacks-metadata.json');
+    fs.writeFileSync(metadataPath, JSON.stringify({ selectedModpack: 'export-me', modpacks: { 'export-me': { name: 'Old pack', version: '1.0.0' } } }));
+    const metadataBefore = fs.readFileSync(metadataPath);
+    new OperationJournal(rootPath).save({
+      id: operationId, kind: 'export', rootPath, instanceId: 'export-me', status: 'running', phase: 'published', progress: { completed: 3, total: 4 },
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+      input: { kind: 'export', rootPath, instanceId: 'export-me', format: 'manifest', name: 'Published pack', version: '2.0.0', author: 'Friend' },
+      recovery: { destinationId: 'export-me' },
+    });
+
+    await new OperationRunner([createExportOperationAdapter()]).recover(rootPath);
+
+    expect(new OperationJournal(rootPath).get(operationId)).toMatchObject({
+      status: 'recovery-required', result: { status: 'recovery-required' },
+    });
+    expect(fs.readFileSync(metadataPath)).toEqual(metadataBefore);
+    expect(fs.readFileSync(path.join(instancePath, 'manifest.json'), 'utf8')).toContain('Published pack');
+  });
+
+  it('retains a legacy pre-commit delete quarantine without an exact canonical command', async () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-delete-recovery-'));
     tempDirs.push(rootPath);
     const journal = new OperationJournal(rootPath);
@@ -109,8 +155,9 @@ describe('operation recovery', () => {
     const runner = new OperationRunner([createDeleteOperationAdapter()]);
     await runner.recover(rootPath);
 
-    expect(runner.get(operationId)).toMatchObject({ status: 'recovered', result: { status: 'recovered', instanceId: 'target' } });
-    expect(fs.readFileSync(path.join(rootPath, 'modpacks', 'target', 'payload.bin'))).toEqual(Buffer.from([0, 1, 2, 255]));
+    expect(runner.get(operationId)).toMatchObject({ status: 'recovery-required', result: { status: 'recovery-required' } });
+    expect(fs.existsSync(path.join(rootPath, 'modpacks', 'target', 'payload.bin'))).toBe(false);
+    expect(fs.readFileSync(path.join(rootPath, '.fmcl-operations', 'backups', operationId, 'modpacks', 'target', 'payload.bin'))).toEqual(Buffer.from([0, 1, 2, 255]));
   });
 
   it('fails closed without cleaning a foreign root when a journal record changes its root paths', async () => {

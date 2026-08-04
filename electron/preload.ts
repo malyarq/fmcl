@@ -2,7 +2,6 @@ import { contextBridge } from 'electron'
 import { assets } from './preload/bridges/AssetsBridge'
 import { appUpdater } from './preload/bridges/AppUpdaterBridge'
 import { cache } from './preload/bridges/CacheBridge'
-import { modpacks } from './preload/bridges/ModpacksBridge'
 import { launcher } from './preload/bridges/LauncherBridge'
 import { mods } from './preload/bridges/ModsBridge'
 import { networkAPI } from './preload/bridges/NetworkBridge'
@@ -20,13 +19,22 @@ import { worlds } from './preload/bridges/WorldsBridge'
 import { datapacks } from './preload/bridges/DatapacksBridge'
 import { dialogs } from './preload/bridges/DialogsBridge'
 import { operations } from './preload/bridges/OperationsBridge'
+import { instances } from './preload/bridges/InstancesBridge'
+import { archiveInspection } from './preload/bridges/ArchiveInspectionBridge'
+import { providerCatalog } from './preload/bridges/ProviderCatalogBridge'
+import { storageMaintenance } from './preload/bridges/StorageMaintenanceBridge'
+import { javaRuntime } from './preload/bridges/JavaRuntimeBridge'
+import { instanceMods } from './preload/bridges/InstanceModsBridge'
 import type { FriendLauncherApi } from '@shared/contracts'
 
 // The renderer receives one minimal, typed namespace. No raw IPC or legacy globals.
 const api: FriendLauncherApi = {
   launcher,
-  modpacks,
+  providerCatalog,
+  storageMaintenance,
+  javaRuntime,
   mods,
+  instanceMods,
   appUpdater,
   windowControls,
   network: networkAPI,
@@ -45,6 +53,8 @@ const api: FriendLauncherApi = {
   share: ShareBridge,
   externalLinks: ExternalLinksBridge,
   operations,
+  instances,
+  archiveInspection,
 }
 
 contextBridge.exposeInMainWorld('api', api)

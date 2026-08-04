@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OperationRunner } from '../operationRunner';
 import { createDuplicateOperationAdapter } from '../duplicateOperation';
 import { OperationJournal } from '../operationJournal';
+import type { InstanceCommand } from '../../../domains/instances/instanceTypes';
 
 describe('OperationRunner', () => {
   const tempDirs: string[] = [];
@@ -17,7 +18,7 @@ describe('OperationRunner', () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-runner-'));
     tempDirs.push(rootPath);
     seed(rootPath);
-    const runner = new OperationRunner([createDuplicateOperationAdapter()]);
+    const runner = new OperationRunner([createDuplicateOperationAdapter()], { rootMutationCoordinator: coordinator() });
 
     const started = runner.start({ kind: 'duplicate', rootPath, sourceId: 'source', name: 'Copy' });
     expect(started).toMatchObject({ kind: 'duplicate', status: 'queued', phase: 'started' });
@@ -76,4 +77,26 @@ function seed(rootPath: string): void {
   fs.writeFileSync(path.join(rootPath, 'modpacks-metadata.json'), JSON.stringify({
     selectedModpack: 'source', modpacks: {},
   }));
+}
+
+function coordinator() {
+  const record = {
+    id: 'source',
+    name: 'Source',
+    source: { source: 'local' as const, createdAt: '2026-08-04T00:00:00.000Z', updatedAt: '2026-08-04T00:00:00.000Z' },
+    config: { runtime: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } } },
+    summary: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } },
+  };
+  return {
+    forRoot: () => ({
+      read: async () => ({ status: 'ready' as const, snapshot: { selectedId: record.id, records: [record] } }),
+      prepare: async () => ({ status: 'ready' as const, source: 'canonical' as const, snapshot: { selectedId: record.id, records: [record] } }),
+      execute: async (command: InstanceCommand) => ({
+        status: 'committed' as const,
+        snapshot: command.type === 'commit-published'
+          ? { selectedId: command.record.id, records: [record, command.record] }
+          : { selectedId: record.id, records: [record] },
+      }),
+    }),
+  };
 }

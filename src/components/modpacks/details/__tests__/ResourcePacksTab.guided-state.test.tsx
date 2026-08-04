@@ -59,7 +59,7 @@ describe('ResourcePacksTab guided entry state', () => {
 
     render(
       <ResourcePacksTab
-        instancePath="/instances/alpha"
+        instanceId="alpha"
         onAddResourcePack={onAddResourcePack}
       />,
     );
@@ -78,7 +78,7 @@ describe('ResourcePacksTab guided entry state', () => {
 
     render(
       <ResourcePacksTab
-        instancePath="/instances/alpha"
+        instanceId="alpha"
         onAddResourcePack={onAddResourcePack}
       />,
     );

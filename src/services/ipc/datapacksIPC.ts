@@ -1,13 +1,13 @@
 import type { DatapacksAPI } from '@shared/contracts';
 
-export type { Datapack, DatapackSearchResult, DatapackSearchResultItem, DatapackVersion } from '@shared/contracts';
+export type { DatapackInfo, DatapackSearchResult, DatapackSearchResultItem, DatapackVersion } from '../../../shared/contracts/datapacks';
 
 export const datapacksIPC: DatapacksAPI = {
-    list: (instancePath, worldFolder) => window.api.datapacks.list(instancePath, worldFolder),
-    enable: (instancePath, worldFolder, fileName) => window.api.datapacks.enable(instancePath, worldFolder, fileName),
-    disable: (instancePath, worldFolder, fileName) => window.api.datapacks.disable(instancePath, worldFolder, fileName),
-    delete: (instancePath, worldFolder, fileName) => window.api.datapacks.delete(instancePath, worldFolder, fileName),
     search: (query, mcVersion) => window.api.datapacks.search(query, mcVersion),
-    install: (instancePath, worldFolder, versionId) => window.api.datapacks.install(instancePath, worldFolder, versionId),
     getVersions: (projectId) => window.api.datapacks.getVersions(projectId),
+    listByInstanceId: (instanceId, worldFolder) => window.api.datapacks.listByInstanceId(instanceId, worldFolder),
+    enableByInstanceId: (instanceId, worldFolder, fileName) => window.api.datapacks.enableByInstanceId(instanceId, worldFolder, fileName),
+    disableByInstanceId: (instanceId, worldFolder, fileName) => window.api.datapacks.disableByInstanceId(instanceId, worldFolder, fileName),
+    deleteByInstanceId: (instanceId, worldFolder, fileName) => window.api.datapacks.deleteByInstanceId(instanceId, worldFolder, fileName),
+    installByInstanceId: (instanceId, worldFolder, versionId) => window.api.datapacks.installByInstanceId(instanceId, worldFolder, versionId),
 };

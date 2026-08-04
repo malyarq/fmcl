@@ -5,10 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ModpackList } from '../ModpackList';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { MEDIA_FALLBACK_PATH } from '../../../app/assets/branding';
+import { instancesFromListFixture } from './instancesListFixture';
 
 const listWithMetadataMock = vi.fn();
-const getModrinthVersionsMock = vi.fn();
-const getCurseForgeVersionsMock = vi.fn();
+const providerVersionsMock = vi.fn();
 const selectMock = vi.fn();
 const refreshMock = vi.fn();
 const t = createTranslator('en');
@@ -52,11 +52,9 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    listWithMetadata: (...args: unknown[]) => listWithMetadataMock(...args),
-    getModrinthVersions: (...args: unknown[]) => getModrinthVersionsMock(...args),
-    getCurseForgeVersions: (...args: unknown[]) => getCurseForgeVersionsMock(...args),
+vi.mock('../../../services/ipc/providerCatalogIPC', () => ({
+  providerCatalogIPC: {
+    versions: (...args: unknown[]) => providerVersionsMock(...args),
   },
 }));
 
@@ -70,17 +68,16 @@ vi.mock('../../../features/share/ImportShareModal', () => ({
 
 describe('ModpackList ergonomics', () => {
   beforeEach(() => {
+    Object.defineProperty(window, 'api', { configurable: true, value: { instances: instancesFromListFixture(() => listWithMetadataMock()) } });
     cleanup();
     listWithMetadataMock.mockReset();
-    getModrinthVersionsMock.mockReset();
-    getCurseForgeVersionsMock.mockReset();
+    providerVersionsMock.mockReset();
     selectMock.mockReset();
     refreshMock.mockReset();
 
     selectMock.mockResolvedValue(undefined);
     refreshMock.mockResolvedValue(undefined);
-    getModrinthVersionsMock.mockResolvedValue([]);
-    getCurseForgeVersionsMock.mockResolvedValue([]);
+    providerVersionsMock.mockResolvedValue([]);
     listWithMetadataMock.mockResolvedValue([
       {
         id: 'alpha',
@@ -153,7 +150,7 @@ describe('ModpackList ergonomics', () => {
         },
       },
     ]);
-    getModrinthVersionsMock.mockResolvedValue([
+    providerVersionsMock.mockResolvedValue([
       {
         platform: 'modrinth',
         versionId: 'release-2',
@@ -172,6 +169,8 @@ describe('ModpackList ergonomics', () => {
     await waitFor(() => {
       expect(screen.getByTestId('installed-modpack-update-indicator-alpha')).toBeTruthy();
     });
+
+    expect(providerVersionsMock).toHaveBeenCalledWith({ platform: 'modrinth', projectId: 'alpha-pack' });
 
     const updateIndicator = screen.getByTestId('installed-modpack-update-indicator-alpha');
     expect(updateIndicator.getAttribute('data-update-scope')).toBe('modpack-local');

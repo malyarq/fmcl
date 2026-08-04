@@ -1,124 +1,167 @@
 # Архитектура
 
-FriendLauncher — десктопное Electron-приложение с React renderer, который собирается через Vite. Архитектура не даёт веб-интерфейсу прямой доступ к Node.js и возможностям операционной системы.
+FriendLauncher — десктопное Electron-приложение с React renderer, собранным через Vite. Все нативные возможности принадлежат main process; там же собирается один канонический домен инстансов. Renderer получает типизированные операции без доступа к файловой системе.
 
 ```mermaid
 flowchart LR
   UI["React renderer\nsrc/"] --> W["Типизированные обёртки\nsrc/services/ipc/"]
-  W --> P["Preload bridges\nelectron/preload/"]
-  P --> I["IPC handlers и валидация\nelectron/ipc/"]
-  I --> S["Доменные сервисы\nelectron/services/"]
-  S --> OS["Файловая система, сеть, Java, Electron API"]
-  C["Общие контракты\nshared/contracts/"] -. типы .-> W
-  C -. типы .-> P
-  C -. типы .-> I
+  W --> P["Узкие preload capabilities\nelectron/preload/"]
+  P --> I["Валидация и IPC handlers\nelectron/ipc/"]
+  I --> C["Composition root\nelectron/app/compositionRoot.ts"]
+  C --> A["InstanceApplication\nelectron/domains/instances/"]
+  C --> O["OperationRunner\nelectron/services/operations/"]
+  A --> CP["JsonControlPlaneStore\nelectron/infrastructure/instances/"]
+  A --> AD["Внедрённые filesystem и launch adapters"]
+  O --> AD
+  SC["Общие контракты\nshared/contracts/"] -. типы .-> W
+  SC -. типы .-> P
+  SC -. типы .-> I
 ```
 
 ## Границы процессов
 
 ### Renderer (`src/`)
 
-Renderer отвечает за интерфейс, локальное состояние представления, переводы и координацию пользовательских сценариев. Он работает с `nodeIntegration: false`, `contextIsolation: true` и включённым Electron sandbox.
+Renderer отвечает за интерфейс, переводы, состояние представления и координацию функций. Он работает с `nodeIntegration: false`, `contextIsolation: true` и включённым Electron sandbox.
 
 Правила:
 
 - Не импортировать Node.js или Electron.
-- Не обращаться к файловой системе или сети через случайные browser globals.
-- Использовать обёртки `src/services/ipc/*`; не размазывать вызовы `window.api.*` по компонентам.
-- Любую пользовательскую строку добавлять и в `src/locales/en.json`, и в `src/locales/ru.json`.
+- Не принимать и не восстанавливать корень лаунчера, пути инстансов и архивов или путь к Java executable.
+- Использовать обёртки `src/services/ipc/*`; не размазывать `window.api.*` по дереву компонентов.
+- Любую пользовательскую строку добавлять в `src/locales/en.json` и `src/locales/ru.json`.
+- Launch UI живёт в одном дереве `src/features/launcher/`; параллельной реализации launcher быть не должно.
 
 ### Preload (`electron/preload.ts`, `electron/preload/bridges/`)
 
-Preload — граница возможностей между renderer и main process. Он экспортирует ровно один global — `window.api` из `shared/contracts/windowApi.ts`. Каждая возможность описана узким доменным контрактом; raw-методы `invoke`, `send`, `on` и `off` renderer-коду не доступны.
+Preload — граница возможностей между renderer и main. Он экспортирует ровно один global — `window.api` из `shared/contracts/windowApi.ts`. Каждый его элемент — узкий семантический контракт. Raw-методы `invoke`, `send`, `on` и `off` renderer-коду недоступны.
+
+Непрозрачный ID не является замаскированным путём. Ссылки на архив привязаны к sender, имеют срок жизни и используются один раз. ID установки Java краткоживущие и привязаны к корню лаунчера, для которого выполнялось сканирование.
 
 ### Main process (`electron/`)
 
-Main process отвечает за окна, lifecycle, нативные диалоги, Java-процессы, загрузки, архивы, аккаунты, игровые файлы, обновления и multiplayer networking.
+Main process отвечает за lifecycle, окна, нативные диалоги, Java-процессы, загрузки, архивы, аккаунты, игровые файлы, обновления и multiplayer networking.
 
-- `electron/app/` — bootstrap, lifecycle, сборка сервисов, full-install harness
-- `electron/window/` — безопасное создание BrowserWindow и защита навигации
-- `electron/ipc/` — регистрация handlers и проверка данных на границе процесса
-- `electron/security/` — правила для путей, URL, архивов, permissions и save-path
-- `electron/services/` — доменная логика
-- `electron/preload/` — типизированные возможности для renderer
+- `electron/app/` — bootstrap и единственный production composition root
+- `electron/domains/instances/` — канонические команды, состояние, порты и application service инстансов
+- `electron/infrastructure/instances/` — control-plane и filesystem adapters
+- `electron/services/operations/` — staged-операции, журнал, root lock и recovery
+- `electron/services/*` — узкие content, provider, launcher, account, network и updater services
+- `electron/ipc/` — валидация входов и регистрация handlers
+- `electron/security/` — правила путей, URL, архивов, разрешений и save-path
+- `electron/preload/` — типизированные возможности renderer
 
-IPC handler валидирует неизвестные входные данные и передаёт работу сервису. Сервисы не должны импортировать регистрацию handler или preload.
+`electron/app/bootstrap.ts` один раз создаёт весь граф, восстанавливает зарегистрированные операции до открытия handlers и передаёт внедрённые зависимости в `IPCManager`. Production handlers и services не создают собственные instance store, application или operation runner.
 
 ### Общие контракты (`shared/`)
 
-- `shared/contracts/*` описывает preload-интерфейсы и IPC DTO.
+- `shared/contracts/*` описывает preload-интерфейсы и сериализуемые IPC DTO.
 - `shared/contracts/ipcChannels.ts` содержит allowlist каналов.
-- `shared/contracts/windowApi.ts` задаёт поддерживаемый `window.api`.
-- `shared/types/*` содержит доменные данные, общие для процессов.
+- `shared/contracts/windowApi.ts` задаёт всю поддерживаемую поверхность `window.api`.
+- `shared/types/*` содержит данные, общие для процессов.
 
-Не создавайте отдельную копию cross-process типа в renderer или main process.
+Не создавайте вторую копию cross-process типа в renderer или main. Публичные запросы операций не могут содержать `rootPath` или `filePath`.
 
-## Основные домены
+## Граф владения
 
-| Домен | Main process | Renderer |
+| Домен | Канонический владелец в main process | Владелец в renderer |
 | --- | --- | --- |
-| Запуск и Java | `electron/services/launcher/`, `electron/services/java/` | `src/features/launcher/`, `src/components/SimplePlayDashboard.tsx` |
-| Инстансы модпаков | базовый filesystem/index сервис в `electron/services/instances/`; расширенный фасад import, metadata, content и export в `electron/services/modpacks/` | `src/components/modpacks/`, `src/features/modpacks/`, `src/contexts/ModpackContext.tsx` |
-| Моды и провайдеры | `electron/services/mods/` | экраны контента и `src/services/ipc/modsIPC.ts` |
+| Lifecycle инстансов и выбранное состояние | `electron/domains/instances/instanceApplication.ts` с `electron/infrastructure/instances/jsonControlPlaneStore.ts` | `src/contexts/instances/`, экраны модпаков |
+| Transactional import, export, install, update, duplicate, delete | `electron/services/operations/operationRunner.ts` и operation adapters | `src/services/ipc/operationsIPC.ts` и соответствующие features |
+| Файлы модов и регистрация manifest | `electron/services/mods/instanceModContentService.ts`, `manifestContentInstaller.ts` | экраны контента и `instanceModsIPC.ts` |
+| Запуск и Java | `electron/services/launcher/`, `electron/services/java/`, внедрённые instance/launch ports | `src/features/launcher/`, `src/components/SimplePlayDashboard.tsx` |
+| Каталог и установка контента провайдеров | `electron/services/mods/platform/` и provider operation adapters | каталог и семантические wrappers |
 | Аккаунты | `electron/services/account/` | `src/features/accounts/` |
 | Мультиплеер | `electron/services/network/` | `src/features/multiplayer/` |
 | Обновления | `electron/services/updater/` | `src/features/updater/` |
-| Контент | `electron/services/{resourcePacks,shaders,worlds,screenshots,content}/` | функции контента внутри modpack details |
+| Ресурспаки, шейдеры, миры, датапаки, скриншоты | узкие services и проверяемые handlers в `electron/services/` и `electron/ipc/handlers/` | modpack detail/content features |
 
-Расширенный `electron/services/modpacks/modpackService.ts` сейчас наследует низкоуровневый instance service. Это совместимый переходный слой, а не приглашение добавлять в фасад новые обязанности.
+Разделения на базовый instance store и унаследованный modpack facade больше нет. `InstanceApplication` — единственный публичный владелец control-plane чтений и команд. Семантические services зависят от его портов и добавляют только собственное поведение для контента.
 
-## Устойчивое локальное состояние
+## Каноническое устойчивое состояние
 
-Управляемые JSON-файлы состояния используют версионируемый `AtomicJsonStore` из `electron/services/storage/`. Запись сначала создаётся рядом с целевым файлом, синхронизируется и публикуется атомарным rename; предыдущий корректный документ сохраняется в `.bak`. Повреждённый или неподдерживаемый документ не заменяется пустым значением и остаётся доступен для восстановления. Пересоздаваемые кэши и сторонние форматы Minecraft намеренно не входят в этот контракт.
+Единственный поддерживаемый control-plane документ инстансов — `<launcher-root>/instance-control-plane.json`. `JsonControlPlaneStore` читает и записывает его через версионированный `AtomicJsonStore`: запись создаётся рядом с целевым файлом, синхронизируется и публикуется атомарным rename, а предыдущий корректный документ сохраняется как `.bak`. Повреждённый или неподдерживаемый документ не перезаписывается и остаётся доступен для восстановления.
 
-Install, import, update и разрушительные операции над несколькими файлами проходят через stage, journal и recovery operation engine. Атомарность отдельного control file дополняет, но не заменяет журналируемый сценарий с каталогами. Archive export — намеренное исключение для внешнего пути: после перезапуска операция становится `recovery-required` и сохраняет все артефакты, потому что недоверенный journal не может восстановить истёкшее разрешение native dialog на запись.
+Обычное чтение никогда не смотрит в legacy state и ничего там не переписывает. Только явная подготовка может прочитать `modpacks.json`, `modpacks-metadata.json` и `modpack.json` каждого инстанса. Она валидирует полный legacy-граф, атомарно публикует один канонический snapshot с migration provenance и на повторных запусках считает canonical primary или backup авторитетным. Пересоздаваемые кэши и сторонние форматы Minecraft намеренно не входят в control-plane контракт.
+
+## Lifecycle транзакции и recovery
+
+Многофайловые изменения проходят один lifecycle:
+
+```text
+валидация публичной команды
+  -> разрешение launcher root и нативных ссылок в main
+  -> получение root mutation lock
+  -> запись в приватный staging
+  -> проверка staged-результата
+  -> сохранение backup при необходимости
+  -> публикация изменений файловой системы
+  -> commit канонической команды InstanceApplication
+  -> публикация sanitised operation snapshot
+```
+
+`OperationRunner` отвечает за очередь, отмену, журнал, root lock и зарегистрированные recovery-команды. Журнал может содержать внутренние пути main process, необходимые для восстановления; публичные контракты операций и renderer wrappers — нет. Активные операции доступны только renderer-процессу, который их запустил. Восстановленные snapshots sanitised, terminal и read-only.
+
+Archive import использует непрозрачный `archiveRef`; renderer не получает выбранный путь. Archive export — единственное намеренное исключение для публичного native save: `outputPath` создаётся диалогом main process, авторизуется для sender, один раз потребляется operation handler и далее хранится только во внутренних recovery-данных main. После перезапуска незавершённый export переходит в `recovery-required`, потому что недоверенный журнал не может заново создать истёкшее разрешение на запись.
 
 ### Протокол root mutation lock
 
-Разрушительные root-wide операции используют протокол v3 в `.fmcl-operations/locks`. Неизменяемые записи Lamport bakery (`choosing` и `ticket`) выбирают одного writer; каждая запись содержит случайный token и уникальный путь к локальному Node socket процесса-владельца. Contender удаляет запись только когда socket однозначно отказал или отклонил этот token. Таймауты и другие неоднозначные ошибки локальной сети считаются live и блокируют операцию. Смерть token никогда не разрешает удалять общий endpoint процесса. После `SIGKILL` в системной временной папке может остаться неактивная запись socket со случайным именем; она не переиспользуется. Поэтому протокол не опирается на PID reuse или прошедшее время и безопасен при suspend процесса.
+Разрушительные root-wide операции используют протокол v3 в `.fmcl-operations/locks`. Неизменяемые записи Lamport bakery (`choosing` и `ticket`) выбирают одного writer; каждая запись содержит случайный token и уникальный путь к локальному Node socket владельца. Contender удаляет запись только когда socket однозначно отказал или отклонил token. Таймауты и неоднозначные ошибки локальной сети считаются live и блокируют операцию. Протокол не опирается на PID reuse или прошедшее время и безопасен при suspend процесса.
 
-После победы в bakery writer удерживает атомарно опубликованный canonical bridge `mutation.lock` весь callback. Это не позволяет обычному живому старому O_EXCL owner работать одновременно с v3 callback. Marker `mutation.lock.v3` задаёт границу offline upgrade: перед обновлением до v3, откатом версии или смешиванием сборок остановите все процессы FMCL, которые используют один custom launcher root. V3 не reclaim-ит pre-v3 canonical marker: операция fail-closed завершается `ROOT_LOCK_OFFLINE_UPGRADE_REQUIRED`. Гонки stale-reclaimer из pre-v3 явно не поддерживаются.
+После победы writer удерживает атомарно опубликованный canonical bridge `mutation.lock` весь callback. Marker `mutation.lock.v3` задаёт границу offline upgrade: перед обновлением до v3, откатом или смешиванием сборок остановите все процессы FMCL с общим custom launcher root. Pre-v3 marker не reclaim-ится; операция fail-closed завершается `ROOT_LOCK_OFFLINE_UPGRADE_REQUIRED`.
 
 ## Направление зависимостей
 
-Нормальное направление:
+Разрешённое направление:
 
 ```text
-renderer component/context
+renderer feature
   -> renderer IPC wrapper
-  -> preload contract/bridge
+  -> preload semantic capability
   -> validated IPC handler
-  -> domain service
-  -> operating system или внешний провайдер
+  -> dependency из composition root
+  -> application port или узкий service
+  -> infrastructure adapter / операционная система / provider
 ```
 
-Обратные импорты запрещены. Доменные сервисы не должны импортировать renderer, preload или регистрацию IPC.
+Обратные импорты запрещены. Domain-код не импортирует renderer, preload, регистрацию IPC, Electron или нативные модули Node. Infrastructure и native services реализуют порты, направленные внутрь; создаёт их только composition root.
 
-## Инварианты безопасности
+## Автоматически проверяемые инварианты
 
-- Данные renderer считаются недоверенными на входе main process.
-- Пути разрешаются через общие path guards и остаются внутри одобренного root.
+`npm run architecture:check` содержит fixture-тесты, которые падают при появлении:
+
+- удалённых legacy owners, stores, transports, aliases и второго launch tree;
+- создания canonical store, application service или operation runner вне composition root и тестов;
+- Node/Electron imports в instance domain;
+- прямой записи control-plane вне `JsonControlPlaneStore`;
+- renderer authority через `instancePath`, `resolvePath` и публичные operation `rootPath`/`filePath`;
+- импортов удалённого mixed `modpacks` transport.
+
+Дополнительные инварианты безопасности:
+
+- Данные renderer считаются недоверенными на каждой границе main process.
+- Дочерние имена и provider IDs валидируются до разрешения путей в main.
 - Удалённые URL проходят общую policy, архивы — единую archive policy.
-- Секреты аккаунтов остаются в main process и шифруются Electron `safeStorage`, когда он доступен.
-- Навигация на внешние адреса блокируется внутри приложения и проходит через проверяемый external-link handler.
+- Секреты аккаунтов остаются в main и шифруются Electron `safeStorage`, когда он доступен.
+- Внешняя навигация запрещена внутри приложения и проходит через проверяемый external-link handler.
 - Обновление приложения скачивается только после согласия пользователя.
 
-Подробности: [модель безопасности](security.md) и [известные проблемы](known-issues.md).
+Подробности: [модель безопасности](security.md), [карта IPC-контрактов](contracts-map.md) и [известные проблемы](known-issues.md).
 
 ## Несколько инстансов в разработке
 
-В dev можно запустить второй локальный инстанс с суффиксом в Electron `userData`. Порты локальных helper-сервисов зависят от номера инстанса; не добавляйте новый фиксированный порт в обход этой схемы.
+В dev можно запустить второй локальный процесс с суффиксом в Electron `userData`. Порты локальных helper-сервисов зависят от номера инстанса; не добавляйте фиксированный порт в обход этой модели. Процессы, намеренно использующие один launcher root, сериализуются root mutation protocol.
 
 ## Изменение cross-process функции
 
 Проверьте весь путь:
 
-1. общий тип или контракт;
+1. общий контракт и allowlist каналов;
 2. preload bridge и тип `window.api`;
 3. валидацию и handler в main process;
-4. доменный сервис;
-5. renderer-обёртку;
-6. UI и тесты;
-7. обе карты контрактов, если меняется канал.
+4. application port или узкий semantic service;
+5. injection в composition root;
+6. renderer wrapper и UI consumer;
+7. тесты и обе языковые карты контрактов.
 
-Перед ревью запустите `npm run contracts:check`, `npm run ipc:check`, `npm run architecture:check` и релевантные тесты.
+Перед ревью запустите `npm run verify`, `npm run contracts:check`, `npm run ipc:check` и `npm run architecture:check`.

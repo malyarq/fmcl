@@ -6,8 +6,7 @@ import { createTranslator } from '../../../contexts/settings/i18n';
 import { ModpackCreationWizard } from '../ModpackCreationWizard';
 
 const refreshMock = vi.fn();
-const createLocalMock = vi.fn();
-const updateMetadataMock = vi.fn();
+const createMock = vi.fn();
 const getModsMock = vi.fn();
 
 function mockMatchMedia() {
@@ -65,14 +64,9 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    createLocal: (...args: unknown[]) => createLocalMock(...args),
-    updateMetadata: (...args: unknown[]) => updateMetadataMock(...args),
-    getMods: (...args: unknown[]) => getModsMock(...args),
-    removeMod: vi.fn(),
-    getConfig: vi.fn(),
-    saveConfig: vi.fn(),
+vi.mock('../../../services/ipc/instancesIPC', () => ({
+  instancesIPC: {
+    create: (...args: unknown[]) => createMock(...args),
   },
 }));
 
@@ -107,18 +101,17 @@ describe('ModpackCreationWizard async state', () => {
     mockMatchMedia();
     localStorage.clear();
     refreshMock.mockReset();
-    createLocalMock.mockReset();
-    updateMetadataMock.mockReset();
+    createMock.mockReset();
     getModsMock.mockReset();
 
     refreshMock.mockResolvedValue(undefined);
-    updateMetadataMock.mockResolvedValue(undefined);
+    createMock.mockResolvedValue({ ok: true, value: { status: 'committed', selectedId: 'pack-1', instances: [] } });
     getModsMock.mockResolvedValue([]);
   });
 
   it('locks every obvious exit while the durable create is running', async () => {
-    const deferred = createDeferred<{ id: string }>();
-    createLocalMock.mockReturnValue(deferred.promise);
+    const deferred = createDeferred<{ ok: true; value: { status: 'committed'; selectedId: string; instances: [] } }>();
+    createMock.mockReturnValue(deferred.promise);
 
     render(<ModpackCreationWizard onBack={vi.fn()} />);
 
@@ -133,15 +126,14 @@ describe('ModpackCreationWizard async state', () => {
     expect(screen.getByRole('button', { name: 'Next' }).getAttribute('aria-busy')).toBe('true');
 
     await act(async () => {
-      deferred.resolve({ id: 'pack-1' });
+      deferred.resolve({ ok: true, value: { status: 'committed', selectedId: 'pack-1', instances: [] } });
       await deferred.promise;
     });
   });
 
-  it('keeps metadata failure after create as calm optional follow-up instead of a failed create', async () => {
+  it('keeps refresh failure after a committed create as calm optional follow-up', async () => {
     const onCreated = vi.fn();
-    createLocalMock.mockResolvedValue({ id: 'pack-1' });
-    updateMetadataMock.mockRejectedValue(new Error('metadata failed'));
+    refreshMock.mockRejectedValue(new Error('refresh failed'));
 
     render(<ModpackCreationWizard onBack={vi.fn()} onCreated={onCreated} />);
 
@@ -161,7 +153,22 @@ describe('ModpackCreationWizard async state', () => {
     expect(screen.queryByText('Error creating modpack')).toBeNull();
     expect(screen.getByRole('button', { name: 'Finish' })).toBeTruthy();
     expect(refreshMock).toHaveBeenCalled();
+    expect(createMock).toHaveBeenCalledWith({
+      name: 'Recovery Pack',
+      source: {
+        source: 'local',
+        version: '1.0.0',
+        description: 'Needs recovery',
+      },
+      config: {
+        runtime: {
+          minecraftVersion: '1.20.1',
+          modLoader: { type: 'vanilla' },
+        },
+      },
+    });
 
+    refreshMock.mockResolvedValue(undefined);
     fireEvent.click(screen.getByRole('button', { name: 'Finish' }));
 
     await waitFor(() => {

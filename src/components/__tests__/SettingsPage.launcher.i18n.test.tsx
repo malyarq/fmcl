@@ -94,8 +94,8 @@ vi.mock('../UpdateModal', () => ({
   UpdateModal: () => null,
 }));
 
-vi.mock('../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {},
+vi.mock('../../services/ipc/storageMaintenanceIPC', () => ({
+  storageMaintenanceIPC: {},
 }));
 
 vi.mock('../../contexts/ToastContext', () => ({

@@ -6,8 +6,7 @@ import { createTranslator } from '../../../contexts/settings/i18n';
 import { AddModModal } from '../AddModModal';
 
 const searchModsMock = vi.fn();
-const getMetadataMock = vi.fn();
-const getConfigMock = vi.fn();
+const snapshotMock = vi.fn();
 
 type Language = 'en' | 'ru';
 
@@ -58,12 +57,8 @@ vi.mock('../../../services/ipc/modsIPC', () => ({
   },
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getMetadata: (...args: unknown[]) => getMetadataMock(...args),
-    getConfig: (...args: unknown[]) => getConfigMock(...args),
-    addMod: vi.fn(),
-  },
+vi.mock('../../../services/ipc/instancesIPC', () => ({
+  instancesIPC: { snapshot: (...args: unknown[]) => snapshotMock(...args) },
 }));
 
 describe('AddModModal i18n seams', () => {
@@ -72,25 +67,16 @@ describe('AddModModal i18n seams', () => {
     mockMatchMedia();
     currentLanguage = 'en';
     searchModsMock.mockReset();
-    getMetadataMock.mockReset();
-    getConfigMock.mockReset();
+    snapshotMock.mockReset();
 
     searchModsMock.mockResolvedValue({ items: [], total: 0 });
-    getMetadataMock.mockResolvedValue({
-      id: 'alpha',
-      name: 'Alpha Pack',
-      source: 'local',
-      minecraftVersion: '1.20.1',
-      modLoader: { type: 'fabric' },
-      createdAt: '2026-04-13T00:00:00.000Z',
-      updatedAt: '2026-04-13T00:00:00.000Z',
-    });
-    getConfigMock.mockResolvedValue({
-      id: 'alpha',
-      name: 'Alpha Pack',
-      runtime: {
-        minecraft: '1.20.1',
-        modLoader: { type: 'fabric' },
+    snapshotMock.mockResolvedValue({
+      ok: true,
+      value: {
+        id: 'alpha', name: 'Alpha Pack',
+        metadata: { source: 'local', createdAt: '2026-04-13T00:00:00.000Z', updatedAt: '2026-04-13T00:00:00.000Z' },
+        config: { runtime: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } } },
+        summary: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } },
       },
     });
   });

@@ -5,7 +5,7 @@ import { useSettings } from '../../../contexts/SettingsContext';
 import { useToast } from '../../../contexts/ToastContext';
 import {
     datapacksIPC,
-    type Datapack,
+    type DatapackInfo,
     type DatapackSearchResultItem,
     type DatapackVersion,
 } from '../../../services/ipc/datapacksIPC';
@@ -23,7 +23,7 @@ import { MODPACK_SECONDARY_CONTENT_WORKSPACE } from '../ModpackCatalogControls';
 interface WorldDatapacksModalProps {
     isOpen: boolean;
     onClose: () => void;
-    instancePath: string;
+    instanceId: string;
     worldFolder: string;
     worldName: string;
 }
@@ -33,7 +33,7 @@ type Tab = 'installed' | 'search';
 export const WorldDatapacksModal: React.FC<WorldDatapacksModalProps> = ({
     isOpen,
     onClose,
-    instancePath,
+    instanceId,
     worldFolder,
     worldName,
 }) => {
@@ -41,7 +41,7 @@ export const WorldDatapacksModal: React.FC<WorldDatapacksModalProps> = ({
     const toast = useToast();
     const confirm = useConfirm();
     const [tab, setTab] = useState<Tab>('installed');
-    const [datapacks, setDatapacks] = useState<Datapack[]>([]);
+    const [datapacks, setDatapacks] = useState<DatapackInfo[]>([]);
     const [loadingInstalled, setLoadingInstalled] = useState(false);
     const [installedError, setInstalledError] = useState<unknown | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -60,7 +60,7 @@ export const WorldDatapacksModal: React.FC<WorldDatapacksModalProps> = ({
         setLoadingInstalled(true);
         setInstalledError(null);
         try {
-            const list = await datapacksIPC.list(instancePath, worldFolder);
+            const list = await datapacksIPC.listByInstanceId(instanceId, worldFolder);
             setDatapacks(list);
         } catch (err) {
             console.error(err);
@@ -69,7 +69,7 @@ export const WorldDatapacksModal: React.FC<WorldDatapacksModalProps> = ({
         } finally {
             setLoadingInstalled(false);
         }
-    }, [instancePath, t, toast, worldFolder]);
+    }, [instanceId, t, toast, worldFolder]);
 
     const handleSearch = useCallback(async () => {
         setLoadingSearch(true);
@@ -106,23 +106,23 @@ export const WorldDatapacksModal: React.FC<WorldDatapacksModalProps> = ({
     }, [handleSearch, isOpen, loadInstalled, tab]);
 
     const handleToggle = useCallback(
-        async (pack: Datapack) => {
+        async (pack: DatapackInfo) => {
             try {
                 if (pack.isEnabled) {
-                    await datapacksIPC.disable(instancePath, worldFolder, pack.fileName);
+                    await datapacksIPC.disableByInstanceId(instanceId, worldFolder, pack.fileName);
                 } else {
-                    await datapacksIPC.enable(instancePath, worldFolder, pack.fileName);
+                    await datapacksIPC.enableByInstanceId(instanceId, worldFolder, pack.fileName);
                 }
                 await loadInstalled();
             } catch {
                 toast.error(t('modpacks.datapack_toggle_error'));
             }
         },
-        [instancePath, loadInstalled, t, toast, worldFolder]
+        [instanceId, loadInstalled, t, toast, worldFolder]
     );
 
     const handleDelete = useCallback(
-        async (pack: Datapack) => {
+        async (pack: DatapackInfo) => {
             const confirmed = await confirm.confirm({
                 title: t('modpacks.datapacks'),
                 message: t('modpacks.datapack_delete_confirm', { name: pack.name }),
@@ -136,13 +136,13 @@ export const WorldDatapacksModal: React.FC<WorldDatapacksModalProps> = ({
             }
 
             try {
-                await datapacksIPC.delete(instancePath, worldFolder, pack.fileName);
+                await datapacksIPC.deleteByInstanceId(instanceId, worldFolder, pack.fileName);
                 await loadInstalled();
             } catch {
                 toast.error(t('modpacks.datapack_delete_error'));
             }
         },
-        [confirm, instancePath, loadInstalled, t, toast, worldFolder]
+        [confirm, instanceId, loadInstalled, t, toast, worldFolder]
     );
 
     const handleInstall = useCallback(
@@ -155,7 +155,7 @@ export const WorldDatapacksModal: React.FC<WorldDatapacksModalProps> = ({
                     throw new Error('No versions found');
                 }
 
-                await datapacksIPC.install(instancePath, worldFolder, latest.id);
+                await datapacksIPC.installByInstanceId(instanceId, worldFolder, latest.id);
                 toast.success(t('modpacks.datapack_install_success', { name: project.title }));
                 await loadInstalled();
                 setTab('installed');
@@ -166,7 +166,7 @@ export const WorldDatapacksModal: React.FC<WorldDatapacksModalProps> = ({
                 setInstalling(null);
             }
         },
-        [instancePath, loadInstalled, t, toast, worldFolder]
+        [instanceId, loadInstalled, t, toast, worldFolder]
     );
 
     if (!isOpen) {

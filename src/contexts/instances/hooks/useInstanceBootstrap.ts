@@ -21,7 +21,7 @@ export function useInstanceBootstrap(params: {
       setSelectedId('');
       setConfig(null);
 
-      const boot = await bootstrapModpacksIfSupported(rootPath);
+      const boot = await bootstrapModpacksIfSupported();
       if (cancelled) return;
 
       if (boot) {

@@ -7,7 +7,9 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { Button } from '../ui/Button';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { ModpackUpdateModal } from './ModpackUpdateModal';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import { instanceModsIPC } from '../../services/ipc/instanceModsIPC';
+import { instancesIPC } from '../../services/ipc/instancesIPC';
+import { fetchModpackMetadata } from '../../contexts/instances/services/instancesService';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { useModpackDetailsConfig } from '../../features/modpacks/hooks/useModpackDetailsConfig';
 import {
@@ -56,7 +58,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
   initialMods,
   hydrateFromIpc = true,
 }) => {
-  const { t, getAccentStyles, getAccentHex, minecraftPath } = useSettings();
+  const { t, getAccentStyles, getAccentHex } = useSettings();
   const { modpacks, select, rename, duplicate, remove, refresh } = useModpack();
   const toast = useToast();
   const confirm = useConfirm();
@@ -72,7 +74,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
   const [modFilterStatus, setModFilterStatus] = useState<'all' | 'enabled' | 'disabled'>('all');
   const [descriptionDraft, setDescriptionDraft] = useState('');
 
-  const { effectiveConfig, loadModpackConfig, setters } = useModpackDetailsConfig({ modpackId, minecraftPath });
+  const { effectiveConfig, loadModpackConfig, setters } = useModpackDetailsConfig({ modpackId });
   const { versions } = useVersions();
   const { forgeVersions, fabricVersions, neoForgeVersions, optiFineVersions } = useModSupportedVersions();
 
@@ -117,13 +119,12 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
 
     setLoading(true);
     try {
-      const meta = await modpacksIPC.getMetadata(modpackId, minecraftPath);
+      const meta = await fetchModpackMetadata(modpackId);
       setMetadata(meta);
       setDescriptionDraft(meta.description || '');
       try {
         const update = await resolveModpackUpdateInfo(
           { id: modpackId, name: modpack?.name ?? modpackId, metadata: meta },
-          minecraftPath,
         );
         setAvailableUpdate(update);
       } catch (error) {
@@ -137,7 +138,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [hydrateFromIpc, minecraftPath, modpack?.name, modpackId]);
+  }, [hydrateFromIpc, modpack?.name, modpackId]);
 
   useEffect(() => {
     if (!modpackId || !hydrateFromIpc) return;
@@ -152,7 +153,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
     }
     setLoadingMods(true);
     try {
-      const modsList = await modpacksIPC.getMods(modpackId, minecraftPath);
+      const modsList = await instanceModsIPC.list(modpackId);
       const modsWithStatus: ModpackModEntry[] = modsList.map((mod) => ({
         ...mod,
         enabled: !mod.file.name.endsWith('.disabled'),
@@ -164,7 +165,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
     } finally {
       setLoadingMods(false);
     }
-  }, [activeTab, hydrateFromIpc, modpackId, minecraftPath]);
+  }, [activeTab, hydrateFromIpc, modpackId]);
 
   useEffect(() => {
     if (activeTab === 'mods') {
@@ -175,11 +176,11 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
   const handleSaveDescription = async () => {
     if (!modpackId) return;
     try {
-      const updated = await modpacksIPC.updateMetadata(
-        modpackId,
-        { description: descriptionDraft.trim() || undefined },
-        minecraftPath
-      );
+      const result = await instancesIPC.updateMetadata(modpackId, {
+        description: descriptionDraft.trim() || null,
+      });
+      if (!result.ok) throw new Error(result.error.message);
+      const updated = await fetchModpackMetadata(modpackId);
       setMetadata(updated);
       onMetadataUpdated?.(updated);
       await refresh();
@@ -275,7 +276,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
     });
     if (confirmed) {
       try {
-        await modpacksIPC.removeMod(modpackId, mod.file.name, minecraftPath);
+        await instanceModsIPC.remove(modpackId, mod.file.name);
         await loadMods();
       } catch (error) {
         console.error('Error removing mod:', error);
@@ -290,7 +291,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
       prev.map((m) => (m.id === mod.id ? { ...m, enabled } : m))
     );
     try {
-      await modpacksIPC.setModEnabled(modpackId, mod.file.name, enabled, minecraftPath);
+      await instanceModsIPC.setEnabled(modpackId, mod.file.name, enabled);
     } catch (error) {
       setMods((prev) =>
         prev.map((m) => (m.id === mod.id ? { ...m, enabled: !enabled } : m))
@@ -420,7 +421,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
 
                   {activeTab === 'resourcepacks' && modpack && (
                     <ResourcePacksTab
-                      instancePath={modpack.path}
+                      instanceId={modpackId}
                       onUpdate={refresh}
                       onAddResourcePack={() => onNavigate({ type: 'addResourcePack', modpackId })}
                     />
@@ -428,7 +429,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
 
                   {activeTab === 'shaders' && modpack && (
                     <ShadersTab
-                      instancePath={modpack.path}
+                      instanceId={modpackId}
                       runtimeSummary={runtimeSummary}
                       onUpdate={refresh}
                       onAddShader={() => onNavigate({ type: 'addShader', modpackId })}
@@ -437,7 +438,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
 
                   {activeTab === 'worlds' && modpack && (
                     <WorldsTab
-                      instancePath={modpack.path}
+                      instanceId={modpackId}
                       mcVersion={runtimeSummary.minecraftVersion || undefined}
                       onUpdate={refresh}
                     />
@@ -445,7 +446,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
 
                   {activeTab === 'screenshots' && modpack && (
                     <ScreenshotsTab
-                      instancePath={modpack.path}
+                      instanceId={modpackId}
                     />
                   )}
 
@@ -463,7 +464,6 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
                         await refresh();
                         await loadModpackConfig();
                       }}
-                      minecraftPath={minecraftPath}
                       t={t}
                       getAccentStyles={getAccentStyles}
                     />

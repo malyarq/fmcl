@@ -5,8 +5,8 @@ import { Button } from '../ui/Button';
 import { LazyImage } from '../ui/LazyImage';
 import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
-import type { ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import type { ProviderCatalogSearchResultItem, ProviderCatalogVersionDescriptor } from '@shared/contracts';
+import { instancesIPC } from '../../services/ipc/instancesIPC';
 import { ArrowLeft } from 'lucide-react';
 import { ProviderInstallOperationState } from './ProviderInstallOperationState';
 import {
@@ -16,8 +16,8 @@ import {
 } from './useProviderInstallOperation';
 
 interface InstallModpackPageProps {
-  modpack: ModpackSearchResultItem;
-  versions: ModpackVersionDescriptor[];
+  modpack: ProviderCatalogSearchResultItem;
+  versions: ProviderCatalogVersionDescriptor[];
   platform: 'curseforge' | 'modrinth';
   onBack: () => void;
 }
@@ -30,7 +30,7 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
 }) => {
   const { t, getAccentStyles } = useSettings();
   const toast = useToast();
-  const [selectedVersion, setSelectedVersion] = useState<ModpackVersionDescriptor | null>(
+  const [selectedVersion, setSelectedVersion] = useState<ProviderCatalogVersionDescriptor | null>(
     versions[0] || null
   );
   const { operation, error, isActive, start, cancel } = useProviderInstallOperation();
@@ -40,9 +40,9 @@ export const InstallModpackPage: React.FC<InstallModpackPageProps> = ({
     if (!operation || !isProviderInstallTerminal(operation) || completedOperationRef.current === operation.id) return;
     completedOperationRef.current = operation.id;
 
-    if (!hasPublishedProviderInstance(operation)) return;
+    if (!hasPublishedProviderInstance(operation) || operation.status === 'degraded') return;
 
-    void modpacksIPC.setSelected(operation.result.instanceId).catch((nextError) => {
+    void instancesIPC.select({ id: operation.result.instanceId }).catch((nextError) => {
       console.warn('Failed to select modpack:', nextError);
     });
     toast.success(t('modpacks.install_success'));

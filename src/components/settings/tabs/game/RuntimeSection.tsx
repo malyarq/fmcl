@@ -1,20 +1,11 @@
 import React, { useEffect, useState } from 'react';
 
-import { Input } from '../../../ui/Input';
 import { Button } from '../../../ui/Button';
 import { Select } from '../../../ui/Select';
 import { cn } from '../../../../utils/cn';
 import type { ModpackConfig } from '../../../../contexts/ModpackContext';
-import { modpacksIPC } from '../../../../services/ipc/modpacksIPC';
-
-// Type from shared/contracts/modpacks.ts, duplicated here for now or ideally imported if shared is available
-type DetectedJava = {
-  path: string;
-  version: string;
-  majorVersion: number;
-  valid: boolean;
-  arch?: string;
-};
+import { javaRuntimeIPC } from '../../../../services/ipc/javaRuntimeIPC';
+import type { JavaRuntimeInstallationDto } from '@shared/contracts';
 
 // Helper to get RAM in GB
 const getRamGb = (config: ModpackConfig | null, defaultVal: number): number => {
@@ -55,7 +46,6 @@ export function RuntimeSection(props: {
   modpackConfig: ModpackConfig | null;
   setMemoryGb: (gb: number) => void;
   setMinMemoryGb: (gb: number) => void;
-  setJavaPath: (path: string) => void;
   t: (key: string, params?: Record<string, string | number>) => string;
   getAccentStyles: (type: 'bg' | 'text' | 'border' | 'ring' | 'hover' | 'accent' | 'title' | 'soft-bg' | 'soft-border') => {
     className?: string;
@@ -63,8 +53,9 @@ export function RuntimeSection(props: {
   };
   isReadOnly?: boolean;
 }) {
-  const { modpackConfig, setMemoryGb, setMinMemoryGb, setJavaPath, t, getAccentStyles, isReadOnly = false } = props;
-  const [detectedJavas, setDetectedJavas] = useState<DetectedJava[]>([]);
+  const { modpackConfig, setMemoryGb, setMinMemoryGb, t, getAccentStyles, isReadOnly = false } = props;
+  const [detectedJavas, setDetectedJavas] = useState<readonly JavaRuntimeInstallationDto[]>([]);
+  const [selectedInstallationId, setSelectedInstallationId] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
@@ -72,8 +63,9 @@ export function RuntimeSection(props: {
   const scanJava = async () => {
     setIsScanning(true);
     try {
-      const result = await modpacksIPC.scanJava();
+      const result = await javaRuntimeIPC.scan();
       setDetectedJavas(result);
+      setSelectedInstallationId((current) => result.some((java) => java.id === current) ? current : null);
     } catch (err) {
       console.error('Failed to scan Java:', err);
     } finally {
@@ -91,11 +83,7 @@ export function RuntimeSection(props: {
     }
   }, [isReadOnly]);
 
-  const currentJavaPath = modpackConfig?.java?.path || '';
-  const isCustomJava = currentJavaPath !== '' && !detectedJavas.some(j => j.path === currentJavaPath);
-
-  // Find currently selected Java object if possible
-  const selectedJava = detectedJavas.find(j => j.path === currentJavaPath);
+  const selectedJava = detectedJavas.find((java) => java.id === selectedInstallationId);
 
   const currentRam = getRamGb(modpackConfig, 4);
   const requiredJavaVer = getRequiredJavaVersion(modpackConfig?.runtime?.minecraft);
@@ -137,15 +125,14 @@ export function RuntimeSection(props: {
     );
   }
 
-  const handleJavaChange = (val: string) => {
-    if (val === 'auto') {
-      setJavaPath('');
-    } else if (val === 'custom') {
-      // Logic handled by rendering Input when custom is selected,
-      // but here we might set a placeholder or keep current if it was already custom
-      if (!isCustomJava) setJavaPath('C:/'); // Placeholder or keep previous
-    } else {
-      setJavaPath(val);
+  const handleJavaChange = async (installationId: string) => {
+    if (!installationId) return;
+
+    try {
+      await javaRuntimeIPC.select({ installationId });
+      setSelectedInstallationId(installationId);
+    } catch (err) {
+      console.error('Failed to select Java runtime:', err);
     }
   };
 
@@ -275,7 +262,7 @@ export function RuntimeSection(props: {
             <label className="control-label">
               {translateWithFallback(t, 'settings.java_runtime', 'Java runtime')}
             </label>
-            <Button size="sm" variant="ghost" onClick={scanJava} disabled={isScanning}>
+            <Button size="sm" variant="ghost" onClick={scanJava} disabled={isScanning || isReadOnly}>
               {isScanning
                 ? translateWithFallback(t, 'general.scanning', 'Scanning...')
                 : translateWithFallback(t, 'general.rescan', 'Rescan')}
@@ -283,28 +270,17 @@ export function RuntimeSection(props: {
           </div>
 
           <Select
-            value={isCustomJava ? 'custom' : (currentJavaPath || 'auto')}
-            onChange={(e) => handleJavaChange(e.target.value)}
-            disabled={isScanning}
+            value={selectedInstallationId ?? ''}
+            onChange={(e) => void handleJavaChange(e.target.value)}
+            disabled={isScanning || isReadOnly}
           >
-            <option value="auto">{translateWithFallback(t, 'settings.java_auto', 'Auto (Recommended)')}</option>
+            <option value="" disabled>{translateWithFallback(t, 'settings.java_auto', 'Select a detected runtime')}</option>
             {detectedJavas.map((java) => (
-              <option key={java.path} value={java.path}>
-                Java {java.majorVersion} ({java.version}){java.arch ? ` [${java.arch}]` : ''} - {java.path}
+              <option key={java.id} value={java.id}>
+                Java {java.majorVersion} ({java.version}){java.arch ? ` [${java.arch}]` : ''}
               </option>
             ))}
-            <option value="custom">{translateWithFallback(t, 'settings.java_custom', 'Custom path...')}</option>
           </Select>
-
-          {/* Custom Java Path Input */}
-          {(isCustomJava || currentJavaPath === 'custom' || (!currentJavaPath && false)) && (
-            <Input
-              value={currentJavaPath}
-              onChange={(e) => setJavaPath(e.target.value)}
-              placeholder={translateWithFallback(t, 'settings.java_custom_placeholder', '/path/to/java')}
-              className="mt-2"
-            />
-          )}
         </div>
       </div>
     </>

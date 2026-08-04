@@ -30,10 +30,13 @@ vi.mock('../../../contexts/ToastContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getModrinthVersions: (...args: unknown[]) => getModrinthVersionsMock(...args),
-    getCurseForgeVersions: (...args: unknown[]) => getCurseForgeVersionsMock(...args),
+vi.mock('../../../services/ipc/providerCatalogIPC', () => ({
+  providerCatalogIPC: {
+    versions: ({ platform, projectId }: { platform: 'curseforge' | 'modrinth'; projectId: string }) => (
+      platform === 'curseforge'
+        ? getCurseForgeVersionsMock(projectId)
+        : getModrinthVersionsMock(projectId)
+    ),
   },
 }));
 
@@ -96,7 +99,7 @@ describe('ModpackUpdateModal degraded states', () => {
   });
 
   it('shows a dedicated degraded error instead of treating failed version loading as no updates', async () => {
-    getModrinthVersionsMock.mockRejectedValue(new Error('[modpacksIPC] getModrinthVersions failed: ${file.jarVersion}'));
+    getModrinthVersionsMock.mockRejectedValue(new Error('[providerCatalogIPC] versions failed: ${file.jarVersion}'));
 
     render(
       <ModpackUpdateModal
@@ -183,7 +186,6 @@ describe('ModpackUpdateModal degraded states', () => {
       projectId: 'alpha-pack',
       versionId: 'release-2',
       destinationId: 'alpha',
-      rootPath: '/minecraft',
     }));
 
     act(() => operationListener?.({

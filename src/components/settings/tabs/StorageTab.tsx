@@ -1,28 +1,22 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Button } from '../../ui/Button';
-import { ModpacksIPC } from '../../../services/ipc/modpacksIPC';
+import type { StorageMaintenanceStats } from '@shared/contracts';
+import type { StorageMaintenanceIPC } from '../../../services/ipc/storageMaintenanceIPC';
 import { formatSize } from '../../../utils/format';
 import { cn } from '../../../utils/cn';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
 
-interface StorageStats {
-    totalSize: number;
-    dedupedSize: number;
-    totalFiles: number;
-    storedFiles: number;
-}
-
 interface StorageSettingsProps {
     t: (key: string) => string;
     getAccentStyles: (type: 'bg' | 'text' | 'border') => { className?: string; style?: React.CSSProperties };
-    modpacksIPC: ModpacksIPC;
+    storageMaintenanceIPC: StorageMaintenanceIPC;
     embedded?: boolean;
 }
 
-export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentStyles, modpacksIPC, embedded = false }) => {
+export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentStyles, storageMaintenanceIPC, embedded = false }) => {
     const confirm = useConfirm();
-    const [stats, setStats] = useState<StorageStats | null>(null);
+    const [stats, setStats] = useState<StorageMaintenanceStats | null>(null);
     const [loading, setLoading] = useState(false);
     const [cleanupResult, setCleanupResult] = useState<{ freedSize: number; deletedFiles: number } | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -37,7 +31,7 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
     const loadStats = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await modpacksIPC.getContentStats();
+            const data = await storageMaintenanceIPC.getStats();
             setStats(data);
             setError(null);
         } catch (error) {
@@ -46,7 +40,7 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
         } finally {
             setLoading(false);
         }
-    }, [modpacksIPC, t]);
+    }, [storageMaintenanceIPC, t]);
 
     useEffect(() => {
         void loadStats();
@@ -67,7 +61,7 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
 
         setLoading(true);
         try {
-            const result = await modpacksIPC.cleanupContent();
+            const result = await storageMaintenanceIPC.cleanup();
             setCleanupResult(result);
             setError(null);
             await loadStats();

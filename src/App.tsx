@@ -7,7 +7,7 @@ import { useOnboarding } from './app/hooks/useOnboarding';
 import { useModpack } from './contexts/ModpackContext';
 import { getInstanceRamGb } from './contexts/instances/utils/memory';
 import { useSettings } from './contexts/SettingsContext';
-import { useLaunchState } from './features/launch/hooks/useLaunchState';
+import { useLauncherState } from './features/launcher/hooks/useLauncherState';
 import { useLauncher } from './features/launcher/hooks/useLauncher';
 import { AppLayout } from './components/AppLayout';
 import { useAppUpdater } from './features/updater/hooks/useAppUpdater';
@@ -72,7 +72,7 @@ function MainApp() {
     isOffline,
     launchVersion,
     loaderType,
-  } = useLaunchState({ forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions });
+  } = useLauncherState({ forgeVersions, fabricVersions, optiFineVersions, neoForgeVersions });
 
   const handleLaunch = useLaunchHandler({
     launchGame,

@@ -11,7 +11,7 @@ import { screenshotsIPC } from '../../../services/ipc/screenshotsIPC';
 interface ScreenshotLightboxProps {
     screenshots: Screenshot[];
     initialIndex: number;
-    instancePath: string;
+    instanceId: string;
     onClose: () => void;
     onDelete?: (screenshot: Screenshot) => Promise<boolean> | boolean;
     onOpenFolder?: () => void;
@@ -21,7 +21,7 @@ interface ScreenshotLightboxProps {
 export function ScreenshotLightbox({
     screenshots,
     initialIndex,
-    instancePath,
+    instanceId,
     onClose,
     onDelete,
     onOpenFolder,
@@ -119,14 +119,14 @@ export function ScreenshotLightbox({
         }
 
         try {
-            await screenshotsIPC.rename(current.name, normalizedName, instancePath);
+            await screenshotsIPC.rename(current.name, normalizedName, instanceId);
             onRename?.(current, normalizedName);
             toast.success(t('screenshots.renameSuccess'));
         } catch (error) {
             console.error('Failed to rename screenshot:', error);
             toast.error(t('screenshots.renameError'));
         }
-    }, [confirm, current, instancePath, onRename, t, toast]);
+    }, [confirm, current, instanceId, onRename, t, toast]);
 
     const handleDelete = useCallback(async () => {
         if (!current || !onDelete) {

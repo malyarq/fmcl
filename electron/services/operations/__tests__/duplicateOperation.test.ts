@@ -1,9 +1,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { OperationRunner } from '../operationRunner';
+import { OperationJournal } from '../operationJournal';
 import { createDuplicateOperationAdapter } from '../duplicateOperation';
+import type { InstanceCommand } from '../../../domains/instances/instanceTypes';
 
 describe('duplicate operation', () => {
   const tempDirs: string[] = [];
@@ -13,7 +15,7 @@ describe('duplicate operation', () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-duplicate-success-'));
     tempDirs.push(rootPath);
     seed(rootPath);
-    const runner = new OperationRunner([createDuplicateOperationAdapter()]);
+    const { runner, execute } = createRunner();
 
     const started = runner.start({ kind: 'duplicate', rootPath, sourceId: 'source', destinationId: 'published-copy' });
     const completed = await runner.waitFor(started.id);
@@ -23,6 +25,12 @@ describe('duplicate operation', () => {
       result: { status: 'succeeded', instanceId: 'published-copy' },
     });
     expect(fs.existsSync(path.join(rootPath, 'modpacks', 'published-copy', 'modpack.json'))).toBe(true);
+    expect(execute).toHaveBeenCalledWith(expect.objectContaining({
+      version: 1,
+      type: 'commit-published',
+      select: true,
+      record: expect.objectContaining({ id: 'published-copy', name: 'Source Copy' }),
+    }));
   });
 
   it.each(['copy', 'validation', 'publish', 'control-plane'] as const)(
@@ -32,7 +40,7 @@ describe('duplicate operation', () => {
       tempDirs.push(rootPath);
       seed(rootPath);
       const before = capture(rootPath);
-      const runner = new OperationRunner([createDuplicateOperationAdapter({ faults: { [fault]: () => { throw new Error(`${fault} failed`); } } })]);
+      const { runner } = createRunner({ faults: { [fault]: () => { throw new Error(`${fault} failed`); } } });
 
       const started = runner.start({ kind: 'duplicate', rootPath, sourceId: 'source', destinationId: 'destination', name: 'Destination' });
       const completed = await runner.waitFor(started.id);
@@ -49,15 +57,37 @@ describe('duplicate operation', () => {
     seed(rootPath);
     const before = capture(rootPath);
     let cancel: (() => boolean) | undefined;
-    const runner = new OperationRunner([createDuplicateOperationAdapter({ faults: {
+    const { runner } = createRunner({ faults: {
       validation: () => { cancel?.(); },
-    } })]);
+    } });
     const started = runner.start({ kind: 'duplicate', rootPath, sourceId: 'source', destinationId: 'destination' });
     cancel = () => runner.cancel(started.id);
 
     const completed = await runner.waitFor(started.id);
     expect(completed).toMatchObject({ status: 'cancelled', result: { status: 'cancelled' } });
     expect(capture(rootPath)).toEqual(before);
+  });
+
+  it('persists the complete canonical command before a post-publish fault', async () => {
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-duplicate-command-'));
+    tempDirs.push(rootPath);
+    seed(rootPath);
+    let recorded: unknown;
+    const { runner } = createRunner({ faults: {
+      'control-plane': () => {
+        recorded = new OperationJournal(rootPath).get(runner.get(started.id)!.id)?.recovery?.canonicalCommand;
+        throw new Error('simulated crash after publish');
+      },
+    } });
+    const started = runner.start({ kind: 'duplicate', rootPath, sourceId: 'source', destinationId: 'published-copy' });
+
+    await expect(runner.waitFor(started.id)).resolves.toMatchObject({ status: 'failed' });
+    expect(recorded).toMatchObject({
+      version: 1,
+      rootPath,
+      operationId: started.id,
+      command: { version: 1, type: 'commit-published', select: true, record: { id: 'published-copy' } },
+    });
   });
 });
 
@@ -70,6 +100,37 @@ function seed(rootPath: string): void {
   fs.writeFileSync(path.join(rootPath, 'modpacks', 'destination', 'modpack.json'), JSON.stringify({ id: 'destination', name: 'Original', runtime: { minecraft: '1.20.1' }, memory: { maxMb: 4096 }, vmOptions: [] }));
   fs.writeFileSync(path.join(rootPath, 'modpacks.json'), JSON.stringify({ selectedModpack: 'source', modpacks: { source: { name: 'Source' }, destination: { name: 'Original' } } }));
   fs.writeFileSync(path.join(rootPath, 'modpacks-metadata.json'), JSON.stringify({ selectedModpack: 'source', modpacks: {} }));
+}
+
+function createRunner(options: Parameters<typeof createDuplicateOperationAdapter>[0] = {}) {
+  const execute = vi.fn(async (command: InstanceCommand) => ({
+    status: 'committed' as const,
+    snapshot: command.type === 'commit-published'
+      ? { selectedId: command.record.id, records: [command.record] }
+      : { selectedId: 'source', records: [record('source', 'Source')] },
+  }));
+  return {
+    execute,
+    runner: new OperationRunner([createDuplicateOperationAdapter(options)], {
+      rootMutationCoordinator: {
+        forRoot: () => ({
+          read: async () => ({ status: 'ready' as const, snapshot: { selectedId: 'source', records: [record('source', 'Source')] } }),
+          prepare: async () => ({ status: 'ready' as const, source: 'canonical' as const, snapshot: { selectedId: 'source', records: [record('source', 'Source')] } }),
+          execute,
+        }),
+      },
+    }),
+  };
+}
+
+function record(id: string, name: string) {
+  return {
+    id,
+    name,
+    source: { source: 'local' as const, createdAt: '2026-08-04T00:00:00.000Z', updatedAt: '2026-08-04T00:00:00.000Z' },
+    config: { runtime: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } } },
+    summary: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } },
+  };
 }
 
 function capture(rootPath: string): Record<string, string> {

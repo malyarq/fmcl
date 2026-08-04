@@ -38,7 +38,5 @@ export interface ModpackConfig {
 export interface ModpackListItem {
   id: string;
   name: string;
-  path: string;
   selected: boolean;
 }
-

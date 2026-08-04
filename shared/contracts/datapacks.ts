@@ -1,9 +1,8 @@
-export interface Datapack {
+export interface DatapackInfo {
   fileName: string
   name: string
   description: string
   isEnabled: boolean
-  path: string
 }
 
 export interface DatapackSearchResultItem {
@@ -23,11 +22,11 @@ export interface DatapackVersion {
 }
 
 export interface DatapacksAPI {
-  list: (instancePath: string, worldFolder: string) => Promise<Datapack[]>
-  enable: (instancePath: string, worldFolder: string, fileName: string) => Promise<{ ok: boolean }>
-  disable: (instancePath: string, worldFolder: string, fileName: string) => Promise<{ ok: boolean }>
-  delete: (instancePath: string, worldFolder: string, fileName: string) => Promise<{ ok: boolean }>
   search: (query: string, mcVersion?: string) => Promise<DatapackSearchResult>
-  install: (instancePath: string, worldFolder: string, versionId: string) => Promise<{ ok: boolean }>
   getVersions: (projectId: string) => Promise<DatapackVersion[]>
+  listByInstanceId: (instanceId: string, worldFolder: string) => Promise<DatapackInfo[]>
+  enableByInstanceId: (instanceId: string, worldFolder: string, fileName: string) => Promise<{ ok: boolean }>
+  disableByInstanceId: (instanceId: string, worldFolder: string, fileName: string) => Promise<{ ok: boolean }>
+  deleteByInstanceId: (instanceId: string, worldFolder: string, fileName: string) => Promise<{ ok: boolean }>
+  installByInstanceId: (instanceId: string, worldFolder: string, versionId: string) => Promise<{ ok: boolean }>
 }

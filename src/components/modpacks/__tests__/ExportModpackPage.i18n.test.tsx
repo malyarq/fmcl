@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { ExportModpackPage } from '../ExportModpackPage';
 
-const getMetadataMock = vi.fn();
+const snapshotMock = vi.fn();
 const getDesktopPathMock = vi.fn();
 
 type Language = 'en' | 'ru';
@@ -27,11 +27,8 @@ vi.mock('../../../contexts/ToastContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getMetadata: (...args: unknown[]) => getMetadataMock(...args),
-    export: vi.fn(),
-  },
+vi.mock('../../../services/ipc/instancesIPC', () => ({
+  instancesIPC: { snapshot: (...args: unknown[]) => snapshotMock(...args) },
 }));
 
 vi.mock('../../../services/ipc/dialogIPC', () => ({
@@ -44,11 +41,17 @@ vi.mock('../../../services/ipc/dialogIPC', () => ({
 describe('ExportModpackPage i18n seams', () => {
   beforeEach(() => {
     cleanup();
-    getMetadataMock.mockReset();
+    snapshotMock.mockReset();
     getDesktopPathMock.mockReset();
 
-    getMetadataMock.mockResolvedValue({
-      name: 'Alpha Pack',
+    snapshotMock.mockResolvedValue({
+      ok: true,
+      value: {
+        id: 'alpha', name: 'Alpha Pack',
+        metadata: { source: 'local', createdAt: '2026-08-03T00:00:00.000Z', updatedAt: '2026-08-03T00:00:00.000Z' },
+        config: { runtime: { minecraftVersion: '1.20.1' } },
+        summary: { minecraftVersion: '1.20.1' },
+      },
     });
     getDesktopPathMock.mockResolvedValue('C:\\Users\\tester\\Desktop');
   });

@@ -105,26 +105,28 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [rootPath]);
 
   const fetchConfig = useCallback(async (id: string) => {
-    return await fetchModpackConfig(id, rootPath);
-  }, [rootPath]);
+    return await fetchModpackConfig(id);
+  }, []);
 
   const refresh = useCallback(async () => {
-    const list = await listModpacksSvc(rootPath);
+    const list = await listModpacksSvc();
     setModpacks(list);
     const selected = list.find((i) => i.selected)?.id;
     if (selected) setSelectedId(selected);
-  }, [rootPath]);
+  }, []);
 
   const loadSelected = useCallback(async () => {
-    const id = await getSelectedModpackId(rootPath);
-    const nextId = id || 'default';
-    setSelectedId(nextId);
-    const cfg = await fetchConfig(nextId);
-    setConfig(cfg);
-  }, [fetchConfig, rootPath]);
+    const id = await getSelectedModpackId();
+    if (id === null) {
+      setSelectedId('');
+      setConfig(null);
+      return;
+    }
+    setSelectedId(id);
+    setConfig(await fetchConfig(id));
+  }, [fetchConfig]);
 
   useInstanceBootstrap({
-    rootPath,
     refresh,
     loadSelected,
     setIsReady: setBootstrapReady,
@@ -137,7 +139,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (!isClassicMode) return;
 
     let cancelled = false;
-    fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {
+    fetchModpackConfig(CLASSIC_MODPACK_ID).then((cfg) => {
       if (!cancelled) {
         setClassicConfigState({
           rootPath,
@@ -146,7 +148,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     });
     return () => { cancelled = true; };
-  }, [isClassicMode, rootPath]);
+  }, [fetchConfig, isClassicMode, rootPath]);
 
   useInstanceNetworkModeSync(isClassicMode ? classicConfig?.networkMode : config?.networkMode);
 
@@ -163,7 +165,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setGameExtraArgs,
     setGameResolution,
     setAutoConnectServer,
-  } = useInstanceConfigPersistence({ rootPath, setConfig });
+  } = useInstanceConfigPersistence({ setConfig });
 
   const {
     saveConfig: saveClassicConfig,
@@ -178,7 +180,7 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setGameExtraArgs: setClassicGameExtraArgs,
     setGameResolution: setClassicGameResolution,
     setAutoConnectServer: setClassicAutoConnectServer,
-  } = useInstanceConfigPersistence({ rootPath, setConfig: setClassicConfig });
+  } = useInstanceConfigPersistence({ setConfig: setClassicConfig });
 
   const effectiveConfig = isClassicMode ? classicConfig : config;
   const effectiveModpackId = isClassicMode ? CLASSIC_MODPACK_ID : selectedId;
@@ -194,18 +196,18 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (classicConfig) {
           setClassicMemoryGb(gb);
         } else {
-          fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {
+          fetchModpackConfig(CLASSIC_MODPACK_ID).then((cfg) => {
             if (!cfg) return;
             const next = withModpackMemoryGb(cfg, gb);
             setClassicConfig(next);
-            void saveModpackConfigSvc(next, rootPath);
+            void saveModpackConfigSvc(next);
           });
         }
       } else {
         setMemoryGb(gb);
       }
     },
-    [classicConfig, isClassicMode, rootPath, setClassicConfig, setClassicMemoryGb, setMemoryGb]
+    [classicConfig, isClassicMode, setClassicConfig, setClassicMemoryGb, setMemoryGb]
   );
 
   const effectiveSetMinMemoryGb = useCallback(
@@ -214,18 +216,18 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (classicConfig) {
           setClassicMinMemoryGb(gb);
         } else {
-          fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {
+          fetchModpackConfig(CLASSIC_MODPACK_ID).then((cfg) => {
             if (!cfg) return;
             const next = withModpackMinMemoryGb(cfg, gb);
             setClassicConfig(next);
-            void saveModpackConfigSvc(next, rootPath);
+            void saveModpackConfigSvc(next);
           });
         }
       } else {
         setMinMemoryGb(gb);
       }
     },
-    [classicConfig, isClassicMode, rootPath, setClassicConfig, setClassicMinMemoryGb, setMinMemoryGb]
+    [classicConfig, isClassicMode, setClassicConfig, setClassicMinMemoryGb, setMinMemoryGb]
   );
 
   const effectiveSetJavaPath = useCallback(
@@ -234,18 +236,18 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (classicConfig) {
           setClassicJavaPath(javaPath);
         } else {
-          fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {
+          fetchModpackConfig(CLASSIC_MODPACK_ID).then((cfg) => {
             if (!cfg) return;
             const next = withModpackJavaPath(cfg, javaPath);
             setClassicConfig(next);
-            void saveModpackConfigSvc(next, rootPath);
+            void saveModpackConfigSvc(next);
           });
         }
       } else {
         setJavaPath(javaPath);
       }
     },
-    [classicConfig, isClassicMode, rootPath, setClassicConfig, setClassicJavaPath, setJavaPath]
+    [classicConfig, isClassicMode, setClassicConfig, setClassicJavaPath, setJavaPath]
   );
   const effectiveSetRuntimeMinecraft = useCallback(
     (mc: string) => {
@@ -253,18 +255,18 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (classicConfig) {
           setClassicRuntimeMinecraft(mc);
         } else {
-          fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {
+          fetchModpackConfig(CLASSIC_MODPACK_ID).then((cfg) => {
             if (!cfg) return;
             const next = withRuntimeMinecraft(cfg, mc);
             setClassicConfig(next);
-            void saveModpackConfigSvc(next, rootPath);
+            void saveModpackConfigSvc(next);
           });
         }
       } else {
         setRuntimeMinecraft(mc);
       }
     },
-    [classicConfig, isClassicMode, rootPath, setClassicConfig, setClassicRuntimeMinecraft, setRuntimeMinecraft]
+    [classicConfig, isClassicMode, setClassicConfig, setClassicRuntimeMinecraft, setRuntimeMinecraft]
   );
 
   const effectiveSetRuntimeLoader = useCallback(
@@ -273,18 +275,18 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (classicConfig) {
           setClassicRuntimeLoader(loader);
         } else {
-          fetchModpackConfig(CLASSIC_MODPACK_ID, rootPath).then((cfg) => {
+          fetchModpackConfig(CLASSIC_MODPACK_ID).then((cfg) => {
             if (!cfg) return;
             const next = withRuntimeLoader(cfg, loader);
             setClassicConfig(next);
-            void saveModpackConfigSvc(next, rootPath);
+            void saveModpackConfigSvc(next);
           });
         }
       } else {
         setRuntimeLoader(loader);
       }
     },
-    [classicConfig, isClassicMode, rootPath, setClassicConfig, setClassicRuntimeLoader, setRuntimeLoader]
+    [classicConfig, isClassicMode, setClassicConfig, setClassicRuntimeLoader, setRuntimeLoader]
   );
   const effectiveSetNetworkMode = isClassicMode ? setClassicNetworkMode : setNetworkMode;
   const effectiveSetVmOptions = isClassicMode ? setClassicVmOptions : setVmOptions;
@@ -293,7 +295,6 @@ export const ModpackProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const effectiveSetAutoConnectServer = isClassicMode ? setClassicAutoConnectServer : setAutoConnectServer;
 
   const { select, create, rename, duplicate, duplicateOperation, remove } = useInstanceCrudActions({
-    rootPath,
     selectedId,
     setSelectedId,
     setConfig,

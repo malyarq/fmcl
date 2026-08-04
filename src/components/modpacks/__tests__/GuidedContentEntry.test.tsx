@@ -9,7 +9,6 @@ import { ModpackRouter } from '../ModpackRouter';
 import { consumeQueuedInitialModpackView } from '../../../features/modpacks/hooks/useModpackNavigation';
 
 const setModeMock = vi.fn();
-const getMetadataMock = vi.fn();
 const loadModpackConfigMock = vi.fn();
 
 const translations: Record<string, string> = {
@@ -96,8 +95,8 @@ vi.mock('../../../contexts/ModpackContext', () => ({
     setGameResolution: vi.fn(),
     setAutoConnectServer: vi.fn(),
     modpacks: [
-      { id: 'classic', name: 'Classic Pack', path: '/instances/classic', selected: false },
-      { id: 'alpha', name: 'Alpha Pack', path: '/instances/alpha', selected: true },
+      { id: 'classic', name: 'Classic Pack', selected: false },
+      { id: 'alpha', name: 'Alpha Pack', selected: true },
     ],
     select: vi.fn(),
     rename: vi.fn(),
@@ -124,15 +123,25 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    resolvePath: vi.fn(),
-    getMetadata: (...args: unknown[]) => getMetadataMock(...args),
-    getConfig: vi.fn(),
-    updateMetadata: vi.fn(),
-    getMods: vi.fn(),
-    setModEnabled: vi.fn(),
-    removeMod: vi.fn(),
+vi.mock('../../../services/ipc/instancesIPC', () => ({
+  instancesIPC: {
+    snapshot: vi.fn().mockResolvedValue({
+      ok: true,
+      value: {
+        id: 'classic',
+        name: 'Classic Pack',
+        metadata: {
+          source: 'local',
+          createdAt: '2026-04-13T00:00:00.000Z',
+          updatedAt: '2026-04-13T00:00:00.000Z',
+        },
+        config: {
+          runtime: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } },
+          memory: { maxMb: 4096 },
+        },
+        summary: { minecraftVersion: '1.20.1', modLoader: { type: 'fabric' } },
+      },
+    }),
   },
 }));
 
@@ -252,17 +261,7 @@ describe('guided content entry', () => {
     localStorage.clear();
     mockMatchMedia();
     setModeMock.mockReset();
-    getMetadataMock.mockReset();
     loadModpackConfigMock.mockReset();
-    getMetadataMock.mockResolvedValue({
-      id: 'classic',
-      name: 'Classic Pack',
-      source: 'local',
-      minecraftVersion: '1.20.1',
-      modLoader: { type: 'fabric' },
-      createdAt: '2026-04-13T00:00:00.000Z',
-      updatedAt: '2026-04-13T00:00:00.000Z',
-    });
     loadModpackConfigMock.mockResolvedValue(undefined);
   });
 

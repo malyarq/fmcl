@@ -1,124 +1,167 @@
 # Architecture
 
-FriendLauncher is an Electron desktop application with a React renderer built by Vite. The architecture keeps web content away from Node.js and operating-system capabilities.
+FriendLauncher is an Electron desktop application with a React renderer built by Vite. The main process owns every native capability and composes one canonical instance domain; the renderer receives typed, path-free operations rather than filesystem access.
 
 ```mermaid
 flowchart LR
-  UI["React renderer\nsrc/"] --> W["Typed renderer wrappers\nsrc/services/ipc/"]
-  W --> P["Preload bridges\nelectron/preload/"]
-  P --> I["IPC handlers and validation\nelectron/ipc/"]
-  I --> S["Domain services\nelectron/services/"]
-  S --> OS["Filesystem, network, Java, Electron APIs"]
-  C["Shared contracts\nshared/contracts/"] -. types .-> W
-  C -. types .-> P
-  C -. types .-> I
+  UI["React renderer\nsrc/"] --> W["Typed wrappers\nsrc/services/ipc/"]
+  W --> P["Narrow preload capabilities\nelectron/preload/"]
+  P --> I["Validation and IPC handlers\nelectron/ipc/"]
+  I --> C["Composition root\nelectron/app/compositionRoot.ts"]
+  C --> A["InstanceApplication\nelectron/domains/instances/"]
+  C --> O["OperationRunner\nelectron/services/operations/"]
+  A --> CP["JsonControlPlaneStore\nelectron/infrastructure/instances/"]
+  A --> AD["Injected filesystem and launch adapters"]
+  O --> AD
+  SC["Shared contracts\nshared/contracts/"] -. types .-> W
+  SC -. types .-> P
+  SC -. types .-> I
 ```
 
 ## Process boundaries
 
 ### Renderer (`src/`)
 
-The renderer owns UI, local presentation state, translations, and feature orchestration. It runs with `nodeIntegration: false`, `contextIsolation: true`, and Electron sandboxing enabled.
+The renderer owns UI, translations, presentation state, and feature orchestration. It runs with `nodeIntegration: false`, `contextIsolation: true`, and Electron sandboxing enabled.
 
 Rules:
 
 - Do not import Node.js or Electron modules.
-- Do not access the filesystem or network through ad-hoc browser globals.
-- Prefer a wrapper from `src/services/ipc/*`; UI components should not spread `window.api.*` calls across the tree.
+- Do not accept or reconstruct launcher roots, instance paths, archive paths, or Java executable paths.
+- Use wrappers from `src/services/ipc/*`; components should not spread `window.api.*` calls through the tree.
 - Keep user-facing strings in both `src/locales/en.json` and `src/locales/ru.json`.
+- Launch UI lives in one tree, `src/features/launcher/`; do not create a parallel launcher implementation.
 
 ### Preload (`electron/preload.ts`, `electron/preload/bridges/`)
 
-Preload is the capability boundary between renderer and main. It exposes exactly one global, `window.api`, described by `shared/contracts/windowApi.ts`. Every capability is a narrow domain contract; raw `invoke`, `send`, `on`, and `off` are not exposed to renderer code.
+Preload is the capability boundary between renderer and main. It exposes exactly one global, `window.api`, described by `shared/contracts/windowApi.ts`. Each member is a narrow semantic contract. Raw `invoke`, `send`, `on`, and `off` are not available to renderer code.
+
+An opaque ID is not a path alias. Archive references are sender-bound, expiring, and single-use. Java installation IDs are short-lived and bound to the launcher root used for the scan.
 
 ### Main process (`electron/`)
 
-The main process owns windows, lifecycle, native dialogs, Java processes, downloads, archives, account storage, game files, updater behavior, and multiplayer networking.
+The main process owns lifecycle, windows, native dialogs, Java processes, downloads, archives, accounts, game files, updater behavior, and multiplayer networking.
 
-- `electron/app/` — bootstrap, lifecycle, service composition, full-install harness
-- `electron/window/` — hardened BrowserWindow creation and navigation guards
-- `electron/ipc/` — handler registration and validation at the process boundary
-- `electron/security/` — path, URL, archive, permission, and save-path policies
-- `electron/services/` — domain behavior
+- `electron/app/` — bootstrap and the only production composition root
+- `electron/domains/instances/` — canonical instance commands, state, ports, and application service
+- `electron/infrastructure/instances/` — control-plane and filesystem adapters
+- `electron/services/operations/` — staged operations, journal, root lock, and recovery
+- `electron/services/*` — narrow content, provider, launcher, account, network, and updater services
+- `electron/ipc/` — input validation and handler registration
+- `electron/security/` — path, URL, archive, authorization, and save-path policies
 - `electron/preload/` — typed capabilities exposed to the renderer
 
-IPC handlers should validate unknown input and delegate to services. Services must not import handler registration or preload code.
+`electron/app/bootstrap.ts` constructs the graph once, recovers registered operations before handlers become available, and passes injected dependencies to `IPCManager`. Production handlers and services must not construct their own instance store, application, or operation runner.
 
 ### Shared contracts (`shared/`)
 
-- `shared/contracts/*` defines preload interfaces and IPC-facing DTOs.
+- `shared/contracts/*` defines preload interfaces and serializable IPC DTOs.
 - `shared/contracts/ipcChannels.ts` is the channel allowlist.
-- `shared/contracts/windowApi.ts` defines the supported `window.api` surface.
-- `shared/types/*` contains cross-process domain data.
+- `shared/contracts/windowApi.ts` defines the complete supported `window.api` surface.
+- `shared/types/*` contains data shared across processes.
 
-Do not create a second copy of a cross-process payload type in the renderer or main process.
+Do not create a second copy of a cross-process payload type in renderer or main code. Public operation requests cannot contain `rootPath` or `filePath`.
 
-## Main domains
+## Ownership graph
 
-| Domain | Main-process owner | Renderer owner |
+| Domain | Canonical main-process owner | Renderer owner |
 | --- | --- | --- |
-| Launch and Java | `electron/services/launcher/`, `electron/services/java/` | `src/features/launcher/`, `src/components/SimplePlayDashboard.tsx` |
-| Modpack instances | base filesystem/index service in `electron/services/instances/`; extended import, metadata, content, and export facade in `electron/services/modpacks/` | `src/components/modpacks/`, `src/features/modpacks/`, `src/contexts/ModpackContext.tsx` |
-| Mods and providers | `electron/services/mods/` | modpack content screens and `src/services/ipc/modsIPC.ts` |
+| Instance lifecycle and selected state | `electron/domains/instances/instanceApplication.ts`, backed by `electron/infrastructure/instances/jsonControlPlaneStore.ts` | `src/contexts/instances/`, modpack screens |
+| Transactional import, export, install, update, duplicate, delete | `electron/services/operations/operationRunner.ts` and operation adapters | `src/services/ipc/operationsIPC.ts` plus owning features |
+| Instance mod files and manifest registration | `electron/services/mods/instanceModContentService.ts`, `manifestContentInstaller.ts` | modpack content screens and `instanceModsIPC.ts` |
+| Launch and Java | `electron/services/launcher/`, `electron/services/java/`, injected instance/launch ports | `src/features/launcher/`, `src/components/SimplePlayDashboard.tsx` |
+| Provider catalog and installs | `electron/services/mods/platform/` and provider operation adapters | catalog features and semantic wrappers |
 | Accounts | `electron/services/account/` | `src/features/accounts/` |
 | Multiplayer | `electron/services/network/` | `src/features/multiplayer/` |
 | Updates | `electron/services/updater/` | `src/features/updater/` |
-| Content | `electron/services/{resourcePacks,shaders,worlds,screenshots,content}/` | modpack detail/content features |
+| Resource packs, shaders, worlds, datapacks, screenshots | narrow services and validated handlers under `electron/services/` and `electron/ipc/handlers/` | modpack detail/content features |
 
-The extended `electron/services/modpacks/modpackService.ts` currently subclasses the lower-level instance service. This is an intentional compatibility seam, not a recommendation to keep adding responsibilities to the facade.
+There is no base instance store plus inherited modpack facade. `InstanceApplication` is the single public owner of instance control-plane reads and commands. Semantic services depend on its ports and add only their own content behavior.
 
-## Durable local state
+## Canonical durable state
 
-Maintained JSON control files use the versioned `AtomicJsonStore` in `electron/services/storage/`. Writes are staged beside the destination, flushed, and atomically renamed; the previous valid document is retained as `.bak`. A malformed or unsupported document fails closed and is preserved for recovery instead of being replaced by an empty default. Rebuildable caches and third-party Minecraft formats are deliberately outside this contract.
+The sole maintained instance control-plane document is `<launcher-root>/instance-control-plane.json`. `JsonControlPlaneStore` reads and writes it through the versioned `AtomicJsonStore`: a write is staged beside the destination, flushed, and atomically renamed, while the previous valid document is retained as `.bak`. Malformed or unsupported documents fail closed and are preserved for recovery.
 
-Multi-file installs, imports, updates, and destructive operations are staged, journaled, and recovered by the operation engine. Atomic control files prevent torn individual documents; they complement rather than replace the journaled directory-wide workflow. Archive export is the deliberate external-path exception: after restart it becomes `recovery-required` and preserves every artifact because an untrusted journal cannot recreate the expired native-dialog write authority.
+Ordinary reads never inspect or rewrite legacy state. Only the explicit preparation path may read `modpacks.json`, `modpacks-metadata.json`, and per-instance `modpack.json`. It validates the complete legacy graph, publishes one canonical snapshot with migration provenance, and then treats the canonical primary or backup as authoritative on every retry. Rebuildable caches and third-party Minecraft formats are deliberately outside this control-plane contract.
+
+## Transaction lifecycle and recovery
+
+Multi-file mutations use this lifecycle:
+
+```text
+validate public command
+  -> resolve launcher root and native references in main
+  -> acquire root mutation lock
+  -> stage private artifacts
+  -> validate staged result
+  -> preserve backup when required
+  -> publish filesystem changes
+  -> commit the canonical InstanceApplication command
+  -> publish a sanitized operation snapshot
+```
+
+`OperationRunner` owns queueing, cancellation, journal persistence, the root lock, and registered recovery commands. The journal may contain internal main-process paths needed for recovery; public operation contracts and renderer wrappers may not. Active operations are scoped to their originating renderer. Recovered snapshots are sanitized, terminal, read-only records.
+
+Archive import consumes an opaque `archiveRef`; the renderer never receives the selected path. Archive export is the one deliberate public native-save exception: `outputPath` is created by a main-process save dialog, authorized for that sender, consumed once by the operation handler, and then retained only inside main recovery data. After restart an unfinished export becomes `recovery-required`, because an untrusted journal cannot recreate expired native write authority.
 
 ### Root mutation lock protocol
 
-Destructive root-wide operations use protocol v3 in `.fmcl-operations/locks`. Immutable Lamport choosing and ticket records select one writer; each record carries a random token and the owning process's unique local Node socket path. A contender removes a record only after the socket definitively refuses or rejects that token. Timeouts and other ambiguous local-network failures remain live and block the operation. Token death never authorizes deletion of the shared process endpoint. A process killed with `SIGKILL` may therefore leave an inert, randomly named socket entry in the system temporary directory; it is never reused. This avoids PID-reuse and elapsed-time liveness decisions, including while a process is suspended.
+Destructive root-wide operations use protocol v3 in `.fmcl-operations/locks`. Immutable Lamport choosing and ticket records select one writer; each record carries a random token and the owning process's unique local Node socket path. A contender removes a record only after the socket definitively refuses or rejects that token. Timeouts and ambiguous local-network failures remain live and block the operation. This avoids PID-reuse and elapsed-time liveness decisions, including while a process is suspended.
 
-After winning the bakery turn, the writer holds the atomically published canonical `mutation.lock` bridge for its whole callback. This prevents an ordinary live old O_EXCL owner from running beside a v3 callback. The `mutation.lock.v3` marker is an offline upgrade boundary: stop every FMCL process that shares a custom launcher root before upgrading to v3, downgrading, or mixing builds. A pre-v3 canonical marker is not reclaimed by v3; the operation fails closed with `ROOT_LOCK_OFFLINE_UPGRADE_REQUIRED`. Pre-v3 stale-reclaimer races are explicitly unsupported.
+After winning the bakery turn, the writer holds the atomically published canonical `mutation.lock` bridge for the whole callback. The `mutation.lock.v3` marker is an offline upgrade boundary: stop every FMCL process sharing a custom launcher root before upgrading to v3, downgrading, or mixing builds. A pre-v3 marker is not reclaimed; the operation fails closed with `ROOT_LOCK_OFFLINE_UPGRADE_REQUIRED`.
 
 ## Dependency direction
 
-Allowed default direction:
+Allowed direction:
 
 ```text
-renderer component/context
+renderer feature
   -> renderer IPC wrapper
-  -> preload contract/bridge
+  -> preload semantic capability
   -> validated IPC handler
-  -> domain service
-  -> operating system or external provider
+  -> composition-root dependency
+  -> application port or narrow service
+  -> infrastructure adapter / operating system / provider
 ```
 
-Reverse imports are not allowed. In particular, domain services must not import renderer, preload, or IPC registration modules.
+Reverse imports are not allowed. Domain code cannot import renderer, preload, IPC registration, Electron, or Node native modules. Infrastructure and native services implement inward-facing ports; only the composition root constructs them.
 
-## Security invariants
+## Enforced invariants
 
-- Renderer input is untrusted at the main-process boundary.
-- File paths must be resolved through the central path guards and stay within an approved root.
-- Remote URLs must use the approved URL policy; archives must use the shared archive policy.
-- Account secrets stay in the main process and are encrypted with Electron `safeStorage` when available.
+`npm run architecture:check` has fixture-tested failures for:
+
+- deleted legacy owners, stores, transports, aliases, and the duplicate launch tree;
+- construction of canonical stores, application services, or operation runners outside the composition root and tests;
+- Node/Electron imports in the instance domain;
+- direct control-plane writes outside `JsonControlPlaneStore`;
+- renderer `instancePath`, `resolvePath`, and public operation `rootPath`/`filePath` authority;
+- imports of removed mixed `modpacks` transport.
+
+Additional security invariants:
+
+- Renderer input is untrusted at every main-process boundary.
+- Child names and provider identifiers are validated before main resolves paths.
+- Remote URLs use the central URL policy; archives use the shared archive policy.
+- Account secrets remain in main and use Electron `safeStorage` when available.
 - External navigation is denied in-app and routed through validated external-link handling.
 - Application updates require user consent before download.
 
-See [Security model](security.md) and [Known issues](known-issues.md) for the complete current posture.
+See [Security model](security.md), [IPC contract map](contracts-map.md), and [Known issues](known-issues.md).
 
 ## Multi-instance development
 
-Development can start a second local instance with a suffixed Electron `userData` directory. Local helper ports derive from that instance slot; do not add a new fixed port without using the same allocation model.
+Development can start a second local process with a suffixed Electron `userData` directory. Local helper ports derive from that instance slot; do not add a fixed port outside the allocation model. Processes that intentionally share one launcher root are serialized by the root mutation protocol.
 
 ## Changing a cross-process feature
 
-Trace and update the full path:
+Trace and update the complete path:
 
-1. shared type or contract;
+1. shared contract and channel allowlist;
 2. preload bridge and `window.api` type;
 3. main-process validation and handler;
-4. domain service;
-5. renderer wrapper;
-6. UI consumer and tests;
-7. contract map and both language variants when a channel changes.
+4. application port or narrow semantic service;
+5. composition-root injection;
+6. renderer wrapper and UI consumer;
+7. tests and both language contract maps.
 
-Run `npm run contracts:check`, `npm run ipc:check`, `npm run architecture:check`, and the relevant tests before review.
+Run `npm run verify`, `npm run contracts:check`, `npm run ipc:check`, and `npm run architecture:check` before review.

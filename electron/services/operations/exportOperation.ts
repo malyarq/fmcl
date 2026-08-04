@@ -2,19 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { assertAbsolutePath, assertChildName, resolvePathWithinRoot } from '../../security/pathGuards';
+import type { InstanceCommand } from '../../domains/instances/instanceTypes';
 import { getModpackDir, resolveLauncherRootPath } from '../instances/paths';
-import { loadModpackConfigFile } from '../instances/configStore';
 import { exportToZip } from '../modpacks/exporters/zipExporter';
 import { generateManifestFromInstance } from '../modpacks/exporters/manifestGenerator';
-import {
-  createModpackMetadataFromConfig,
-  getModpacksMetadataPath,
-  invalidateModpacksMetadataCache,
-  loadModpacksMetadata,
-  saveModpacksMetadata,
-  updateModpackMetadata,
-} from '../modpacks/storage';
 import type { ModPlatformService } from '../mods/platform/modPlatformService';
+import { readCanonicalRecordFromContent } from './canonicalRecord';
 import { StagingWorkspace } from './stagingWorkspace';
 import type {
   ArchiveExportOperationInput,
@@ -39,8 +32,8 @@ export type ExportOperationOptions = {
 
 /**
  * Owns both portable archive export and manifest publication. Manifest export stages a full
- * instance copy so its manifest and the metadata control-plane are never live-mutated before
- * validation, backup and operation journaling have completed.
+ * instance copy so its manifest and canonical control-plane command are never live-mutated
+ * before validation, backup and operation journaling have completed.
  */
 export function createExportOperationAdapter(options: ExportOperationOptions = {}): OperationAdapter {
   return {
@@ -59,23 +52,7 @@ export function createExportOperationAdapter(options: ExportOperationOptions = {
         return recoverArchiveExport(context);
       }
 
-      const recovery = context.snapshot.recovery;
-      if (!recovery || !('destinationId' in recovery)) {
-        return { status: 'recovery-required', message: 'Manifest export recovery data is missing' };
-      }
-
-      const rootPath = resolveLauncherRootPath(input.rootPath);
-      const instanceId = assertChildName(recovery.destinationId, 'Exported modpack id');
-      const instancePath = getModpackDir(rootPath, instanceId);
-      try {
-        validatePublishedManifest(instancePath, input);
-        commitManifestMetadata(rootPath, instanceId, input);
-        context.transition('control-plane-committed', { completed: 4, total: 4, message: 'recovered-control-plane' });
-        new StagingWorkspace(rootPath, context.snapshot.id).removePublishMarker(instancePath);
-        return { status: 'recovered', instanceId };
-      } catch {
-        return { status: 'recovery-required', message: 'Published manifest export cannot be verified' };
-      }
+      return await context.replayCanonicalCommand();
     },
   };
 }
@@ -158,16 +135,14 @@ async function runManifestExport(
   if (!fs.existsSync(destinationPath)) throw new Error(`Modpack ${instanceId} not found`);
 
   const workspace = new StagingWorkspace(rootPath, context.snapshot.id);
-  const metadataBefore = snapshotMetadataFile(rootPath);
   let backupCreated = false;
-  let metadataCommitted = false;
 
   context.setRecoveryData({ destinationId: instanceId });
   try {
     const stagedPath = workspace.stageCopy(destinationPath, instanceId);
     options.faults?.write?.();
     const manifest = await generateManifestFromInstance(stagedPath, input.name, input.version, input.author, options.platformService);
-    fs.writeFileSync(
+    await fs.promises.writeFile(
       resolvePathWithinRoot(stagedPath, 'manifest.json', 'Staged manifest output'),
       JSON.stringify(manifest, null, 2),
       { encoding: 'utf8', mode: 0o600 },
@@ -177,6 +152,8 @@ async function runManifestExport(
 
     options.faults?.validation?.();
     validatePublishedManifest(stagedPath, input);
+    const command = canonicalManifestCommand(stagedPath, instanceId, input);
+    context.recordCanonicalCommand(command);
     throwIfCancelled(context);
     context.transition('validated', { completed: 2, total: 4, message: 'validated' });
 
@@ -193,15 +170,13 @@ async function runManifestExport(
     throwIfCancelled(context);
 
     options.faults?.['control-plane']?.();
-    commitManifestMetadata(rootPath, instanceId, input);
-    metadataCommitted = true;
+    await commitControlPlane(context, command);
     context.transition('control-plane-committed', { completed: 4, total: 4, message: 'control-plane-committed' });
     workspace.removePublishMarker(destinationPath);
     workspace.cleanupStaging();
     workspace.cleanupBackups();
     return { status: 'succeeded', instanceId };
   } catch (error) {
-    if (metadataCommitted) restoreMetadataFile(rootPath, metadataBefore);
     if (backupCreated && !workspace.restoreDestination(destinationPath, instanceId)) return { status: 'recovery-required', message: 'Manifest rollback destination is ambiguous' };
     workspace.cleanupStaging();
     if (backupCreated) workspace.cleanupBackups();
@@ -216,16 +191,26 @@ async function writeZipArchive(input: ArchiveWriteInput): Promise<void> {
   await exportToZip(sourcePath, input.outputPath);
 }
 
-function commitManifestMetadata(rootPath: string, instanceId: string, input: ManifestExportOperationInput): void {
-  const metadata = loadModpacksMetadata(rootPath);
-  const config = loadModpackConfigFile(rootPath, instanceId);
-  const existing = metadata.modpacks[instanceId] ?? createModpackMetadataFromConfig(config);
-  metadata.modpacks[instanceId] = updateModpackMetadata(existing, {
-    name: input.name,
-    version: input.version,
-    ...(input.author === undefined ? {} : { author: input.author }),
-  });
-  saveModpacksMetadata(rootPath, metadata);
+function canonicalManifestCommand(stagedPath: string, instanceId: string, input: ManifestExportOperationInput): InstanceCommand {
+  const record = readCanonicalRecordFromContent(stagedPath, instanceId);
+  return {
+    version: 1,
+    type: 'reconcile-update',
+    record: {
+      ...record,
+      name: input.name,
+      source: {
+        ...record.source,
+        version: input.version,
+        ...(input.author === undefined ? {} : { author: input.author }),
+      },
+    },
+  };
+}
+
+async function commitControlPlane(context: OperationContext, command: InstanceCommand): Promise<void> {
+  const result = await context.commitControlPlane(command);
+  if ('code' in result) throw new Error(result.message);
 }
 
 function validatePublishedManifest(instancePath: string, input: ManifestExportOperationInput): void {
@@ -246,18 +231,6 @@ function validatePublishedManifest(instancePath: string, input: ManifestExportOp
   ) {
     throw new Error('Staged manifest output is invalid');
   }
-}
-
-function snapshotMetadataFile(rootPath: string): Buffer | undefined {
-  const filePath = getModpacksMetadataPath(rootPath);
-  return fs.existsSync(filePath) ? fs.readFileSync(filePath) : undefined;
-}
-
-function restoreMetadataFile(rootPath: string, bytes: Buffer | undefined): void {
-  const filePath = getModpacksMetadataPath(rootPath);
-  if (bytes) fs.writeFileSync(filePath, bytes, { mode: 0o600 });
-  else fs.rmSync(filePath, { force: true });
-  invalidateModpacksMetadataCache(rootPath);
 }
 
 function privateSiblingWorkspacePath(outputPath: string, operationId: string): string {

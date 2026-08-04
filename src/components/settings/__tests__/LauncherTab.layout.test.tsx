@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFile } from 'node:fs/promises';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { LauncherTab } from '../tabs/LauncherTab';
@@ -31,6 +32,13 @@ vi.mock('../tabs/game/MinecraftPathSection', () => ({
 }));
 
 describe('LauncherTab layout', () => {
+  it('keeps the runtime selector on the opaque Java runtime boundary', async () => {
+    const source = await readFile(`${process.cwd()}/src/components/settings/tabs/game/RuntimeSection.tsx`, 'utf8');
+
+    expect(source).toMatch(/javaRuntimeIPC/);
+    expect(source).not.toMatch(/setJavaPath|javaPath|path:/);
+  });
+
   it('keeps launcher controls inside the shared control family when embedded in SettingsPage', () => {
     const { container } = render(
       <LauncherTab

@@ -19,10 +19,7 @@ vi.mock('electron', () => ({
 }));
 
 vi.mock('../../../services/instances/paths', () => ({
-  resolveApprovedLauncherRootPath: (value: string) => {
-    if (value === 'relative') throw new Error('Operation root path must be absolute');
-    return value;
-  },
+  resolveApprovedLauncherRootPath: () => '/approved/root',
 }));
 
 import { registerOperationsHandlers } from '../operationsHandlers';
@@ -59,7 +56,11 @@ describe('operations IPC handlers', () => {
       listRecovered: vi.fn(() => []),
     };
     const sender = { id: 7, isDestroyed: () => false, send: vi.fn() };
-    registerOperationsHandlers({ runner: runner as never });
+    const consumeArchiveReference = vi.fn((ownerId: number, reference: string) => {
+      if (ownerId !== 7 || reference !== 'archive-ref') throw new Error('Archive reference was not authorized');
+      return '/private/imports/alpha.mrpack';
+    });
+    registerOperationsHandlers({ runner: runner as never, consumeArchiveReference });
 
     const start = mocked.handlers.get('operations:start');
     const subscribe = mocked.handlers.get('operations:subscribe');
@@ -68,14 +69,13 @@ describe('operations IPC handlers', () => {
 
     await expect(start?.({ sender }, {
       kind: 'duplicate',
-      rootPath: '/private/root',
       sourceId: 'source-pack',
       destinationId: 'destination-pack',
       name: 'Destination',
     })).resolves.toMatchObject({ id: '11111111-1111-1111-1111-111111111111', kind: 'duplicate', status: 'running' });
     expect(runner.start).toHaveBeenCalledWith({
       kind: 'duplicate',
-      rootPath: '/private/root',
+      rootPath: '/approved/root',
       sourceId: 'source-pack',
       destinationId: 'destination-pack',
       name: 'Destination',
@@ -83,18 +83,20 @@ describe('operations IPC handlers', () => {
 
     await expect(start?.({ sender }, {
       kind: 'import',
-      rootPath: '/private/root',
-      filePath: '/private/imports/alpha.mrpack',
+      archiveRef: 'archive-ref',
       destinationId: 'imported-pack',
       name: 'Imported Pack',
     })).resolves.toMatchObject({ id: '11111111-1111-1111-1111-111111111111' });
     expect(runner.start).toHaveBeenLastCalledWith({
       kind: 'import',
-      rootPath: '/private/root',
+      rootPath: '/approved/root',
       filePath: '/private/imports/alpha.mrpack',
       destinationId: 'imported-pack',
       name: 'Imported Pack',
     });
+    expect(consumeArchiveReference).toHaveBeenCalledWith(7, 'archive-ref');
+    expect(consumeArchiveReference.mock.invocationCallOrder[0]).toBeGreaterThan(runner.prepareRoot.mock.invocationCallOrder[1]);
+    expect(consumeArchiveReference.mock.invocationCallOrder[0]).toBeLessThan(runner.start.mock.invocationCallOrder[1]);
 
     await expect(subscribe?.({ sender }, '11111111-1111-1111-1111-111111111111')).resolves.toEqual({ ok: true });
     const onUpdate = subscribeToRunner.mock.calls[0]?.[1] as (snapshot: typeof activeSnapshot) => void;

@@ -6,8 +6,8 @@ import { DegradedStateView } from '../layout/DegradedStateView';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { Modal } from '../ui/Modal';
 import { Select } from '../ui/Select';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
-import type { ModpackVersionDescriptor } from '@shared/contracts';
+import { providerCatalogIPC } from '../../services/ipc/providerCatalogIPC';
+import type { ProviderCatalogVersionDescriptor } from '@shared/contracts';
 import { toDisplayErrorMessage } from '../../utils/displayError';
 import { isSuspiciousUiText, sanitizeUiText } from '../../utils/safeUiText';
 import { ProviderInstallOperationState } from './ProviderInstallOperationState';
@@ -27,14 +27,14 @@ interface ModpackUpdateModalProps {
   onUpdated?: () => void;
 }
 
-function getSafeVersionLabel(version: ModpackVersionDescriptor, fallback: string) {
+function getSafeVersionLabel(version: ProviderCatalogVersionDescriptor, fallback: string) {
   return sanitizeUiText(
     version.name,
     sanitizeUiText(version.versionNumber, sanitizeUiText(version.versionId, fallback)),
   );
 }
 
-function getChangelogState(version: ModpackVersionDescriptor | undefined) {
+function getChangelogState(version: ProviderCatalogVersionDescriptor | undefined) {
   const rawChangelog = version?.changelog?.trim() ?? '';
 
   if (!rawChangelog) {
@@ -60,9 +60,9 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
   onClose,
   onUpdated,
 }) => {
-  const { t, getAccentStyles, minecraftPath } = useSettings();
+  const { t, getAccentStyles } = useSettings();
   const toast = useToast();
-  const [versions, setVersions] = useState<ModpackVersionDescriptor[]>([]);
+  const [versions, setVersions] = useState<readonly ProviderCatalogVersionDescriptor[]>([]);
   const [selectedVersion, setSelectedVersion] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -86,8 +86,8 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
     try {
       const versionsList =
         source === 'curseforge'
-          ? await modpacksIPC.getCurseForgeVersions(Number(sourceId))
-          : await modpacksIPC.getModrinthVersions(sourceId);
+          ? await providerCatalogIPC.versions({ platform: 'curseforge', projectId: sourceId })
+          : await providerCatalogIPC.versions({ platform: 'modrinth', projectId: sourceId });
 
       const availableVersions = versionsList.filter((version) => version.versionId !== currentVersion);
       setVersions(availableVersions);
@@ -122,7 +122,6 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
         projectId: Number(sourceId),
         fileId: version.fileId,
         destinationId: modpackId,
-        rootPath: minecraftPath,
       });
       return;
     }
@@ -132,7 +131,6 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
       projectId: sourceId,
       versionId: selectedVersion,
       destinationId: modpackId,
-      rootPath: minecraftPath,
     });
   };
 

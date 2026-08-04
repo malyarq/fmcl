@@ -37,16 +37,36 @@ export const allowedIpcChannels = [
   'mods:getModVersions',
   'mods:installModFile',
 
+  // instance mods
+  'instance-mods:list',
+  'instance-mods:remove',
+  'instance-mods:setEnabled',
+  'instance-mods:register',
+
+  // provider catalog
+  'providerCatalog:search',
+  'providerCatalog:versions',
+
+  // storage maintenance
+  'storageMaintenance:getStats',
+  'storageMaintenance:cleanup',
+
+  // Java runtime
+  'javaRuntime:scan',
+  'javaRuntime:select',
+
   // instances
   'instances:list',
-  'instances:bootstrap',
-  'instances:getSelected',
-  'instances:setSelected',
+  'instances:snapshot',
+  'instances:select',
   'instances:create',
   'instances:rename',
-  'instances:delete',
-  'instances:getConfig',
-  'instances:saveConfig',
+  'instances:config',
+  'instances:metadata',
+  'instances:prepare',
+
+  // archive inspection
+  'archiveInspection:select',
 
   // network
   'network:host',
@@ -94,36 +114,6 @@ export const allowedIpcChannels = [
   'app-updater:progress',
   'app-updater:downloaded',
 
-  // modpacks
-  'modpacks:list',
-  'modpacks:listWithMetadata',
-  'modpacks:bootstrap',
-  'modpacks:getSelected',
-  'modpacks:setSelected',
-  'modpacks:create',
-  'modpacks:rename',
-  'modpacks:getConfig',
-  'modpacks:saveConfig',
-  'modpacks:getMetadata',
-  'modpacks:updateMetadata',
-  'modpacks:searchCurseForge',
-  'modpacks:searchModrinth',
-  'modpacks:getCurseForgeVersions',
-  'modpacks:getModrinthVersions',
-  'modpacks:createLocal',
-  'modpacks:getModpackInfoFromFile',
-  'modpacks:addMod',
-  'modpacks:removeMod',
-  'modpacks:setModEnabled',
-  'modpacks:updateOverrides',
-  'modpacks:getMods',
-  'modpacks:backup',
-  'modpacks:createFromManifest',
-  'modpacks:cleanupContent',
-  'modpacks:getContentStats',
-  'modpacks:resolvePath',
-  'modpacks:scanJava',
-
   // resource packs
   'resourcePacks:list',
   'resourcePacks:enable',
@@ -143,20 +133,20 @@ export const allowedIpcChannels = [
   'shaders:add',
 
   // worlds
-  'worlds:list',
-  'worlds:delete',
-  'worlds:backup',
-  'worlds:duplicate',
-  'worlds:openFolder',
+  'worlds:listByInstanceId',
+  'worlds:deleteByInstanceId',
+  'worlds:backupByInstanceId',
+  'worlds:duplicateByInstanceId',
+  'worlds:openFolderByInstanceId',
 
   // datapacks
-  'datapacks:list',
-  'datapacks:enable',
-  'datapacks:disable',
-  'datapacks:delete',
   'datapacks:search',
-  'datapacks:install',
   'datapacks:getVersions',
+  'datapacks:listByInstanceId',
+  'datapacks:enableByInstanceId',
+  'datapacks:disableByInstanceId',
+  'datapacks:deleteByInstanceId',
+  'datapacks:installByInstanceId',
 
   // app
   'app:saveFile',
@@ -190,7 +180,6 @@ export const allowedIpcChannels = [
 
   // sharing
   'share:generateCode',
-  'share:importCode',
 
   // statistics
   'stats:get',

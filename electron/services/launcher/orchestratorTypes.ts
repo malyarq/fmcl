@@ -5,18 +5,10 @@ export type LaunchGameOptions = {
   version: string; // Identifier like "1.12.2" or "1.12.2-Forge"
   ram: number;
   hideLauncher?: boolean;
-  gamePath?: string;
-  modpackId?: string;
-  modpackPath?: string;
-  javaPath?: string;
-  vmOptions?: string[];
+  instanceId?: string;
   downloadProvider?: DownloadProviderId;
   autoDownloadThreads?: boolean;
   downloadThreads?: number;
   maxSockets?: number;
   useOptiFine?: boolean;
-  // Legacy aliases for backward compatibility
-  instanceId?: string;
-  instancePath?: string;
 };
-

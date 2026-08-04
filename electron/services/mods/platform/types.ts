@@ -62,40 +62,6 @@ export interface ModVersionDescriptor {
   files: ModFileDescriptor[];
 }
 
-export interface ModInstallRequest {
-  platform: ModPlatformId;
-  /**
-   * If `platform=modrinth`: Modrinth version id.
-   * If `platform=curseforge`: Curseforge file id.
-   */
-  versionId: string;
-  /**
-   * Project id / modId used to resolve download url for some platforms.
-   */
-  projectId: string;
-  /**
-   * Optional override of Minecraft root path. Defaults to app userData minecraft_data.
-   */
-  rootPath?: string;
-  /**
-   * Install destination instance id (instances/<id>/mods). Preferred over rootPath/mods.
-   */
-  instanceId?: string;
-  /**
-   * Install destination instance path (mods/ inside). Used when caller already knows the full path.
-   */
-  instancePath?: string;
-  /**
-   * Optional extra fallback urls to try after the primary one.
-   */
-  fallbackUrls?: string[];
-  /**
-   * Type of content being installed. Determines destination folder.
-   * 'mod' -> mods/, 'resourcepack' -> resourcepacks/, 'shader' -> shaderpacks/
-   */
-  contentType?: ContentType;
-}
-
 export interface LegacyModInstallResult {
   destination: string;
   filename: string;

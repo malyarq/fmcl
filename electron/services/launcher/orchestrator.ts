@@ -9,23 +9,21 @@ import { createDispatcher, resolveDownloadConcurrency } from '../runtime/http';
 import { RuntimeDownloadService } from '../runtime/downloadService';
 import { TaskRunner } from '../runtime/taskRunner';
 import { VanillaService } from '../runtime/vanillaService';
-import { ModpackService } from '../modpacks/modpackService';
 import { logInstalledMods } from '../mods/logInstalledMods';
 import { VersionListService } from '../versions/versionListService';
 import { parseRequestedVersion } from '../versions/versionResolver';
 import { patchUndiciThrowOnError } from '../../utils/undiciPatcher';
 import { getRequiredJavaForMinecraftVersion } from './launchFlow/requiredJava';
-import { resolveJavaPath } from './launchFlow/resolveJavaPath';
 import type { TaskProgressData, VersionEntry } from './types';
 import type { LaunchGameOptions } from './orchestratorTypes';
 import { prepareLaunchContext, ensureAuthInjector, createOfflineSession } from './preLaunchSetup';
 import { installModLoaderIfNeeded } from './modLoaderInstaller';
-import { app } from 'electron';
 import type { ChildProcess } from 'child_process';
 import kill from 'tree-kill';
-import { spawnMinecraft } from './launchFlow/spawnMinecraft';
 import { getFabricSupportedVersions, getForgeSupportedVersions, getNeoForgeSupportedVersions, getOptiFineSupportedVersions } from './versionResolver';
 import { patchForgeVersionMetadata, prefetchLegacyForgeRuntimeDeps } from './legacyCompatibility';
+import type { InstanceReadPort, LauncherRootResolver } from '../../domains/instances/ports';
+import type { LaunchAdapters } from '../../infrastructure/instances/launchAdapters';
 
 // Orchestrates game launch flow: Java, modloaders, auth, and runtime options.
 export class LauncherManager {
@@ -36,7 +34,10 @@ export class LauncherManager {
   private readonly versionLists: VersionListService;
   private readonly tasks: TaskRunner;
   private readonly vanilla: VanillaService;
-  private readonly instances: ModpackService;
+  private readonly instances: InstanceReadPort;
+  private readonly rootResolver: LauncherRootResolver;
+  private readonly launchAdapters: LaunchAdapters;
+  private readonly launcherRootPath: string;
   private readonly logInstalledMods: typeof logInstalledMods;
 
   private readonly authServerUrl: string;
@@ -44,14 +45,17 @@ export class LauncherManager {
   private readonly mirrorsService?: MirrorsService;
   private readonly statisticsService?: StatisticsService;
 
-  constructor(deps?: {
+  constructor(deps: {
     javaManager?: JavaManager;
     networkManager?: NetworkManager;
     downloads?: RuntimeDownloadService;
     versionLists?: VersionListService;
     tasks?: TaskRunner;
     vanilla?: VanillaService;
-    instances?: ModpackService;
+    instances: InstanceReadPort;
+    rootResolver: LauncherRootResolver;
+    launchAdapters: LaunchAdapters;
+    launcherRootPath: string;
     logInstalledMods?: typeof logInstalledMods;
 
     authServerUrl?: string;
@@ -69,7 +73,10 @@ export class LauncherManager {
     this.versionLists = deps?.versionLists ?? new VersionListService(this.downloads);
     this.tasks = deps?.tasks ?? new TaskRunner(this.downloads);
     this.vanilla = deps?.vanilla ?? new VanillaService(this.downloads, this.tasks);
-    this.instances = deps?.instances ?? new ModpackService();
+    this.instances = deps.instances;
+    this.rootResolver = deps.rootResolver;
+    this.launchAdapters = deps.launchAdapters;
+    this.launcherRootPath = deps.launcherRootPath;
     this.logInstalledMods = deps?.logInstalledMods ?? logInstalledMods;
 
     this.authServerUrl = deps?.authServerUrl ?? 'http://127.0.0.1:25530';
@@ -114,13 +121,13 @@ export class LauncherManager {
     onClose: (code: number) => void,
     onGameStart?: () => void
   ) {
-    const { rootPath, modpackId, modpackPath, effective } = prepareLaunchContext({
-      modpacks: this.instances,
+    const { rootPath, instanceId, instancePath, record, effective } = await prepareLaunchContext({
+      instances: this.instances,
+      rootResolver: this.rootResolver,
+      native: this.launchAdapters,
+      launcherRootPath: this.launcherRootPath,
       options,
     });
-    // Legacy aliases for backward compatibility
-    const instanceId = modpackId;
-    const instancePath = modpackPath;
 
     const {
       requestedVersion,
@@ -159,7 +166,7 @@ export class LauncherManager {
     else if (requiredJava === 17) onLog(`Version ${mcVersion} requires Java 17.`);
     else onLog(`Version ${mcVersion} uses Legacy Java 8.`);
 
-    const javaPath = await resolveJavaPath({
+    const javaPath = await this.launchAdapters.resolveJavaPath({
       javaManager: this.javaManager,
       requiredJava,
       customJavaPath: effectiveJavaPath,
@@ -172,7 +179,7 @@ export class LauncherManager {
 
     const launchVersion = await installModLoaderIfNeeded({
       rootPath,
-      instancePath: modpackPath,
+      instancePath,
       mcVersion,
       javaPath,
       requestedVersion,
@@ -190,14 +197,14 @@ export class LauncherManager {
 
     if (isForge) {
       patchForgeVersionMetadata({ rootPath, launchVersion, mcVersion, onLog });
-      await prefetchLegacyForgeRuntimeDeps({ instancePath: modpackPath, mcVersion, downloadProvider, onLog });
+      await prefetchLegacyForgeRuntimeDeps({ instancePath, mcVersion, downloadProvider, onLog });
     }
 
-    await this.logInstalledMods(rootPath, onLog, modpackPath);
+    await this.logInstalledMods(rootPath, onLog, instancePath);
 
     const { destInjectorPath } = await ensureAuthInjector({
       rootPath,
-      modpackPath,
+      modpackPath: instancePath,
       downloadProvider,
       maxSockets,
       onLog,
@@ -227,14 +234,14 @@ export class LauncherManager {
     onLog(`[LAUNCH] Java: ${javaPath}`);
     onLog(`[LAUNCH] RAM: Max ${ramGb}GB${minRamGb ? `, Min ${minRamGb}GB` : ''}`);
 
-    const proc = await spawnMinecraft({
+    const proc = await this.launchAdapters.spawnMinecraft({
       requiredJava,
       effectiveVmOptions,
       onLog,
       onClose,
       onGameStart,
       launchOptions: {
-        gamePath: modpackPath,
+        gamePath: instancePath,
         resourcePath: rootPath,
         javaPath,
         version: launchVersion,
@@ -263,9 +270,7 @@ export class LauncherManager {
     // Record launch statistics
     if (this.statisticsService) {
       try {
-        const rootPath = app.getPath('userData');
-        const name = (await this.instances.getModpackMetadata(rootPath, instanceId || ''))?.name
-        this.statisticsService.recordLaunch(instanceId, name);
+        this.statisticsService.recordLaunch(instanceId, record.name);
       } catch (e) {
         console.error('Failed to record launch stats:', e);
       }

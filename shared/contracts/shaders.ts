@@ -31,10 +31,10 @@ export interface ShaderPackAcquisitionResult {
 }
 
 export interface ShadersAPI {
-    list: (instancePath: string) => Promise<ShaderPack[]>;
-    setActive: (shaderName: string, instancePath: string) => Promise<void>;
-    disable: (instancePath: string) => Promise<void>;
-    delete(fileName: string, instancePath?: string): Promise<boolean>;
-    openFolder(instancePath?: string): Promise<void>;
-    add(instancePath?: string): Promise<ShaderPackAcquisitionResult>;
+    list: (instanceId: string) => Promise<ShaderPack[]>;
+    setActive: (shaderName: string, instanceId: string) => Promise<void>;
+    disable: (instanceId: string) => Promise<void>;
+    delete(fileName: string, instanceId: string): Promise<boolean>;
+    openFolder(instanceId: string): Promise<void>;
+    add(instanceId: string): Promise<ShaderPackAcquisitionResult>;
 }

@@ -5,8 +5,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OperationSnapshot } from '@shared/contracts';
 import { ModpackList } from '../ModpackList';
 import { createTranslator } from '../../../contexts/settings/i18n';
+import { instancesFromListFixture } from './instancesListFixture';
 
-const listWithMetadataMock = vi.fn();
+const instancesListFixtureMock = vi.fn();
 const selectMock = vi.fn();
 const refreshMock = vi.fn();
 const loadSelectedMock = vi.fn();
@@ -63,12 +64,6 @@ vi.mock('../../../services/ipc/operationsIPC', () => ({
   },
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    listWithMetadata: (...args: unknown[]) => listWithMetadataMock(...args),
-  },
-}));
-
 vi.mock('../../../features/share/ShareModal', () => ({
   ShareModal: () => null,
 }));
@@ -87,8 +82,9 @@ function renderList() {
 
 describe('ModpackList degraded states', () => {
   beforeEach(() => {
+    Object.defineProperty(window, 'api', { configurable: true, value: { instances: instancesFromListFixture(() => instancesListFixtureMock()) } });
     cleanup();
-    listWithMetadataMock.mockReset();
+    instancesListFixtureMock.mockReset();
     selectMock.mockReset();
     refreshMock.mockReset();
     loadSelectedMock.mockReset();
@@ -104,13 +100,12 @@ describe('ModpackList degraded states', () => {
   });
 
   it('shows an explicit load error instead of collapsing into the empty catalog state', async () => {
-    listWithMetadataMock
+    instancesListFixtureMock
       .mockRejectedValueOnce(new Error('[IPC] list failed: Library unavailable'))
       .mockResolvedValueOnce([
         {
           id: 'alpha',
           name: 'Alpha Pack',
-          path: '/packs/alpha',
           selected: false,
           metadata: {
             description: 'Route truth test pack',
@@ -134,11 +129,10 @@ describe('ModpackList degraded states', () => {
   });
 
   it('keeps search zero-results separate from the true empty installed-catalog state', async () => {
-    listWithMetadataMock.mockResolvedValue([
+    instancesListFixtureMock.mockResolvedValue([
       {
         id: 'alpha',
         name: 'Alpha Pack',
-        path: '/packs/alpha',
         selected: false,
         metadata: {
           description: 'Route truth test pack',
@@ -171,7 +165,7 @@ describe('ModpackList degraded states', () => {
   });
 
   it('shows a calm empty state with a route-owned browser action when no packs are installed', async () => {
-    listWithMetadataMock.mockResolvedValue([]);
+    instancesListFixtureMock.mockResolvedValue([]);
 
     const { onNavigate } = renderList();
 
@@ -188,7 +182,7 @@ describe('ModpackList degraded states', () => {
     'renders delete operation %s without optimistic removal or false success',
     async (status) => {
       let listener: ((snapshot: OperationSnapshot) => void) | undefined;
-      listWithMetadataMock.mockResolvedValue([alphaPack]);
+      instancesListFixtureMock.mockResolvedValue([alphaPack]);
       startMock.mockResolvedValue(deleteSnapshot('queued'));
       subscribeMock.mockImplementation(async (_id: string, nextListener: (snapshot: OperationSnapshot) => void) => {
         listener = nextListener;
@@ -200,7 +194,7 @@ describe('ModpackList degraded states', () => {
       fireEvent.click(screen.getByRole('button', { name: /more actions: alpha pack/i }));
       fireEvent.click(screen.getByRole('menuitem', { name: t('modpacks.delete') }));
 
-      await waitFor(() => expect(startMock).toHaveBeenCalledWith({ kind: 'delete', rootPath: '/minecraft', instanceId: 'alpha' }));
+      await waitFor(() => expect(startMock).toHaveBeenCalledWith({ kind: 'delete', instanceId: 'alpha' }));
       await waitFor(() => expect(listener).toBeTypeOf('function'));
       act(() => listener?.(deleteSnapshot(status)));
 
@@ -219,7 +213,7 @@ describe('ModpackList degraded states', () => {
 
   it('unsubscribes exactly once after a delete terminal snapshot', async () => {
     let listener: ((snapshot: OperationSnapshot) => void) | undefined;
-    listWithMetadataMock.mockResolvedValue([alphaPack]);
+    instancesListFixtureMock.mockResolvedValue([alphaPack]);
     startMock.mockResolvedValue(deleteSnapshot('queued'));
     subscribeMock.mockImplementation(async (_id: string, nextListener: (snapshot: OperationSnapshot) => void) => {
       listener = nextListener;
@@ -242,7 +236,6 @@ describe('ModpackList degraded states', () => {
 const alphaPack = {
   id: 'alpha',
   name: 'Alpha Pack',
-  path: '/packs/alpha',
   selected: false,
   metadata: {
     description: 'Route truth test pack',

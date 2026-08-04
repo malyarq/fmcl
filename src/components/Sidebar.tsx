@@ -3,7 +3,7 @@ import { Globe2, Settings2 } from 'lucide-react';
 import pkg from '../../package.json';
 import { useSettings, useUIMode } from '../contexts/SettingsContext';
 import { useModpack } from '../contexts/ModpackContext';
-import { loadLastGame, formatLastLaunch } from '../features/launch/services/lastGame';
+import { formatLastLaunch, loadRecentLaunch } from '../features/launcher/services/launcherService';
 import type { MCVersion } from '../services/versions/types';
 import type { VersionHint } from '../utils/minecraftVersions';
 import { SidebarHeader } from './sidebar/SidebarHeader';
@@ -93,7 +93,7 @@ const Sidebar = ({
     const { uiMode, setMode } = useUIMode();
     const { modpacks, selectedId, effectiveModpackId } = useModpack();
     const modpackPrimaryActionOwnership = useModpackPrimaryActionOwnership();
-    const lastGame = useMemo(() => loadLastGame(effectiveModpackId), [effectiveModpackId]);
+    const recentLaunch = useMemo(() => loadRecentLaunch(effectiveModpackId), [effectiveModpackId]);
     const sidebarContentId = 'launcher-sidebar-content';
     const liveStatus = [runtime.statusText, runtime.statusDetail].filter(Boolean).join(' - ');
     const [isCollapsed, setIsCollapsed] = useState(() => {
@@ -290,7 +290,7 @@ const Sidebar = ({
                     getAccentStyles={(type) => getAccentStyles(type)}
                     isCollapsed={isCollapsed}
                     canLaunch={Boolean(canLaunch)}
-                    lastLaunch={lastGame ? formatLastLaunch(lastGame.timestamp, t) : undefined}
+                    lastLaunch={recentLaunch ? formatLastLaunch(recentLaunch.timestamp, t) : undefined}
                     priority={launchPriority}
                 />
             </div>

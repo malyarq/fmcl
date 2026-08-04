@@ -3,12 +3,12 @@ import type { OperationSnapshot } from '@shared/contracts';
 import { operationsIPC } from '../../services/ipc/operationsIPC';
 
 type ArchiveImportOperationOptions = {
-  filePath: string;
+  archiveRef: string;
   enabled?: boolean;
   onPublished: () => Promise<void> | void;
 };
 
-export function useArchiveImportOperation({ filePath, enabled = true, onPublished }: ArchiveImportOperationOptions) {
+export function useArchiveImportOperation({ archiveRef, enabled = true, onPublished }: ArchiveImportOperationOptions) {
   const [operation, setOperation] = useState<OperationSnapshot | null>(null);
   const [error, setError] = useState<unknown>(null);
   const mountedRef = useRef(true);
@@ -27,7 +27,7 @@ export function useArchiveImportOperation({ filePath, enabled = true, onPublishe
       releaseRef.current?.();
       releaseRef.current = null;
     };
-  }, [enabled, filePath]);
+  }, [enabled, archiveRef]);
 
   const start = useCallback(async () => {
     if (!enabled || startingRef.current || (operation && !isTerminal(operation))) return;
@@ -35,7 +35,7 @@ export function useArchiveImportOperation({ filePath, enabled = true, onPublishe
     setError(null);
 
     try {
-      const started = await operationsIPC.start({ kind: 'import', filePath });
+      const started = await operationsIPC.start({ kind: 'import', archiveRef });
       if (!mountedRef.current) {
         startingRef.current = false;
         return;
@@ -91,7 +91,7 @@ export function useArchiveImportOperation({ filePath, enabled = true, onPublishe
       if (mountedRef.current) setError(nextError);
       startingRef.current = false;
     }
-  }, [enabled, filePath, onPublished, operation]);
+  }, [archiveRef, enabled, onPublished, operation]);
 
   return {
     operation,

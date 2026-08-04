@@ -4,9 +4,19 @@ import { pipeline } from 'node:stream/promises';
 import { assertAbsolutePath, assertRelativePath, resolvePathWithinRoot } from '../../../security/pathGuards';
 import { resolveApprovedInstancePath, resolveLauncherRootPath } from '../paths';
 import { openValidatedZip, type ValidatedZip, type ValidatedZipEntry } from '../../../security/archivePolicy';
-import { ModpackService } from '../instanceService';
-import { ModpackService as AdvancedModpackService } from '../../modpacks/modpackService';
+import type { InstanceApplication } from '../../../domains/instances/instanceApplication';
+import type { CanonicalInstanceRecord, LauncherRoot } from '../../../domains/instances/instanceTypes';
 import type { ModLoaderType } from '../types';
+
+/** Main-process archive and content authority; it is never available to the renderer. */
+export interface ArchiveImportContentPort {
+    resolveRoot(rootPath: string): Promise<LauncherRoot>;
+    inspectArchive(filePath: string): Promise<{ format: string | null }>;
+    importArchive(root: LauncherRoot, filePath: string): Promise<{ id: string }>;
+    getInstanceDirectory(root: LauncherRoot, instanceId: string): string;
+    publishInstance(root: LauncherRoot, record: CanonicalInstanceRecord): Promise<void>;
+    removeInstance(root: LauncherRoot, instanceId: string): Promise<void>;
+}
 
 type MultiMCComponent = {
     uid?: string;
@@ -65,8 +75,8 @@ function collectMultiMCExtractionTasks(zip: ValidatedZip, zipRoot: string): Mult
 
 export class InstanceImporterService {
     constructor(
-        private modpackService: ModpackService,
-        private advancedModpackService: AdvancedModpackService
+        private readonly application: InstanceApplication,
+        private readonly content: ArchiveImportContentPort,
     ) { }
 
     /**
@@ -79,6 +89,7 @@ export class InstanceImporterService {
         targetName?: string
     ): Promise<string> {
         const safeRootPath = resolveLauncherRootPath(rootPath);
+        const root = await this.content.resolveRoot(safeRootPath);
         const safeFilePath = assertAbsolutePath(filePath, 'Modpack import path');
 
         if (!fs.existsSync(safeFilePath)) {
@@ -93,16 +104,16 @@ export class InstanceImporterService {
             const mmcPack = zip.getEntry('mmc-pack.json');
             const mmcPackDeep = zip.getEntries().find((entry) => entry.fileName.endsWith('mmc-pack.json') && !entry.fileName.includes('__MACOSX'));
             if (mmcPack || mmcPackDeep) {
-                return await this.importMultiMC(safeRootPath, zip, targetName || path.basename(safeFilePath, ext));
+                return await this.importMultiMC(root, zip, targetName || path.basename(safeFilePath, ext));
             }
         } finally {
             zip.close();
         }
 
         // Check if it's a CurseForge/Modrinth modpack
-        const format = (await this.advancedModpackService.getModpackInfoFromFile(safeFilePath)).format;
+        const format = (await this.content.inspectArchive(safeFilePath)).format;
         if (format) {
-            const result = await this.advancedModpackService.importModpack(safeRootPath, safeFilePath, undefined);
+            const result = await this.content.importArchive(root, safeFilePath);
             return result.id;
         }
 
@@ -110,7 +121,7 @@ export class InstanceImporterService {
     }
 
     private async importMultiMC(
-        rootPath: string,
+        root: LauncherRoot,
         zip: ValidatedZip,
         name: string
     ): Promise<string> {
@@ -152,16 +163,25 @@ export class InstanceImporterService {
         let createdModpackId: string | null = null;
 
         try {
-            const { id } = this.modpackService.createModpack(rootPath, name, {
-                runtime: {
-                    minecraft: mcComponent?.version || '1.20.1',
-                    modLoader,
+            const result = await this.application.execute(root, {
+                version: 1,
+                type: 'create',
+                name,
+                source: { source: 'local' },
+                config: {
+                    runtime: {
+                        minecraftVersion: mcComponent?.version || '1.20.1',
+                        ...(modLoader ? { modLoader } : {}),
+                    },
                 },
             });
-
+            const record = result.snapshot.records.at(-1);
+            if (!record) throw new Error('Canonical instance creation returned no record');
+            const { id } = record;
             createdModpackId = id;
+            await this.content.publishInstance(root, record);
 
-            const instanceDir = resolveApprovedInstancePath(this.modpackService.getModpackDir(rootPath, id));
+            const instanceDir = resolveApprovedInstancePath(this.content.getInstanceDirectory(root, id));
 
             for (const task of extractionTasks) {
                 const targetPath = resolvePathWithinRoot(
@@ -185,7 +205,8 @@ export class InstanceImporterService {
             return id;
         } catch (error) {
             if (createdModpackId) {
-                this.modpackService.cleanupFailedCreation(rootPath, createdModpackId);
+                await this.application.execute(root, { version: 1, type: 'delete', id: createdModpackId });
+                await this.content.removeInstance(root, createdModpackId);
             }
             throw error;
         }

@@ -2,47 +2,36 @@ import { app } from 'electron';
 import path from 'node:path';
 import fs from 'node:fs';
 import type { DownloadProvider } from '../mirrors/providers';
-import type { ModpackService, ModpackConfig } from '../modpacks/modpackService';
-import { resolveRootAndModpack } from './launchFlow/resolveModpack';
-import { loadModpackConfig } from './launchFlow/loadModpackConfig';
+import type { InstanceReadPort, LauncherRootResolver } from '../../domains/instances/ports';
+import type { LaunchAdapters } from '../../infrastructure/instances/launchAdapters';
+import { resolveLaunchInstance } from './launchFlow/resolveModpack';
+import { loadCanonicalLaunchConfig } from './launchFlow/loadCanonicalLaunchConfig';
 import { computeEffectiveLaunchOptions } from './launchFlow/computeEffectiveLaunchOptions';
 import { prepareAuthInjector } from './launchFlow/prepareAuthInjector';
 import { createOfflineUser } from './launchFlow/createOfflineUser';
 import type { LaunchGameOptions } from './orchestratorTypes';
 
-export function prepareLaunchContext(params: {
-  modpacks: ModpackService;
+export async function prepareLaunchContext(params: {
+  instances: InstanceReadPort;
+  rootResolver: LauncherRootResolver;
+  native: LaunchAdapters;
+  launcherRootPath: string;
   options: LaunchGameOptions;
 }) {
-  const { modpacks, options } = params;
+  const { instances, rootResolver, native, launcherRootPath, options } = params;
 
-  const { rootPath, modpackId, modpackPath } = resolveRootAndModpack({
-    modpacks,
-    options: {
-      gamePath: options.gamePath,
-      modpackId: options.modpackId ?? options.instanceId,
-      modpackPath: options.modpackPath ?? options.instancePath,
-    },
+  const launchInstance = await resolveLaunchInstance({
+    instances,
+    rootResolver,
+    native,
+    launcherRootPath,
+    options,
   });
-
-  const modpackCfg: ModpackConfig | undefined = loadModpackConfig({
-    modpacks,
-    rootPath,
-    modpackId,
-    modpackPath,
-  });
-
-  const effective = computeEffectiveLaunchOptions({ options, instanceCfg: modpackCfg });
+  const config = loadCanonicalLaunchConfig(launchInstance.record);
+  const effective = computeEffectiveLaunchOptions({ options, config });
 
   return {
-    rootPath,
-    modpackId,
-    modpackPath,
-    modpackCfg,
-    // Legacy aliases for backward compatibility
-    instanceId: modpackId,
-    instancePath: modpackPath,
-    instanceCfg: modpackCfg,
+    ...launchInstance,
     effective,
   };
 }
@@ -86,4 +75,3 @@ export async function ensureAuthInjector(params: {
 export function createOfflineSession(nickname: string) {
   return createOfflineUser(nickname);
 }
-

@@ -3,14 +3,15 @@ import { useModpack } from '../../contexts/ModpackContext';
 import { useSettings } from '../../contexts/SettingsContext';
 import { Button } from '../ui/Button';
 import { ModpackBrowser } from '../modpacks/ModpackBrowser';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import { instancesIPC } from '../../services/ipc/instancesIPC';
+import { toModpackMetadata } from '../../contexts/instances/services/instancesService';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { cn } from '../../utils/cn';
 import { DEFAULT_MODPACK_BROWSER_STATE, type ModpackBrowserState } from '../../features/modpacks/hooks/useModpackNavigation';
 import { LazyImage } from '../ui/LazyImage';
 
 export function ModpackSection() {
-  const { t, getAccentStyles, minecraftPath } = useSettings();
+  const { t, getAccentStyles } = useSettings();
   const { selectedId, modpacks } = useModpack();
   const [metadata, setMetadata] = useState<ModpackMetadata | null>(null);
   const [showBrowser, setShowBrowser] = useState(false);
@@ -23,15 +24,16 @@ export function ModpackSection() {
         return;
       }
       try {
-        const meta = await modpacksIPC.getMetadata(selectedId, minecraftPath);
-        setMetadata(meta);
+        const result = await instancesIPC.snapshot({ id: selectedId });
+        if (!result.ok) throw new Error(result.error.message);
+        setMetadata(toModpackMetadata(result.value.id, result.value.name, result.value.config, result.value.metadata));
       } catch (error) {
         console.error('Error loading modpack metadata:', error);
         setMetadata(null);
       }
     };
     loadMetadata();
-  }, [selectedId, minecraftPath]);
+  }, [selectedId]);
 
   const selectedModpack = modpacks.find((m) => m.id === selectedId);
 

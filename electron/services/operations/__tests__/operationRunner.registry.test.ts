@@ -9,6 +9,8 @@ import { OperationRunner } from '../operationRunner';
 import { createUpdateOperationAdapter } from '../updateOperation';
 import { createDeleteOperationAdapter } from '../deleteOperation';
 import { createExportOperationAdapter } from '../exportOperation';
+import type { InstanceCommand } from '../../../domains/instances/instanceTypes';
+import type { OperationAdapter } from '../operationTypes';
 
 describe('OperationRunner import registry', () => {
   const tempDirs: string[] = [];
@@ -21,7 +23,7 @@ describe('OperationRunner import registry', () => {
     fs.writeFileSync(path.join(rootPath, 'modpacks.json'), JSON.stringify({ selectedModpack: 'default', modpacks: {} }));
     fs.writeFileSync(path.join(rootPath, 'modpacks-metadata.json'), JSON.stringify({ selectedModpack: 'default', modpacks: {} }));
     const archivePath = await writeArchive(rootPath);
-    const runner = new OperationRunner([createImportOperationAdapter()]);
+    const runner = createCanonicalRunner([createImportOperationAdapter()]);
 
     const started = runner.start({ kind: 'import', rootPath, filePath: archivePath, destinationId: 'registry-import' });
     const completed = await runner.waitFor(started.id);
@@ -39,7 +41,7 @@ describe('OperationRunner import registry', () => {
     fs.mkdirSync(path.join(rootPath, 'modpacks'), { recursive: true });
     fs.writeFileSync(path.join(rootPath, 'modpacks.json'), JSON.stringify({ selectedModpack: 'default', modpacks: {} }));
     fs.writeFileSync(path.join(rootPath, 'modpacks-metadata.json'), JSON.stringify({ selectedModpack: 'default', modpacks: {} }));
-    const runner = new OperationRunner(createProviderInstallOperationAdapters({
+    const runner = createCanonicalRunner(createProviderInstallOperationAdapters({
       installers: {
         curseforge: async ({ rootPath: stageRoot, destinationId }) => stage(stageRoot, destinationId),
         modrinth: async ({ rootPath: stageRoot, destinationId }) => stage(stageRoot, destinationId),
@@ -59,7 +61,7 @@ describe('OperationRunner import registry', () => {
     tempDirs.push(rootPath);
     fs.mkdirSync(path.join(rootPath, 'modpacks', 'updated-pack'), { recursive: true });
     fs.writeFileSync(path.join(rootPath, 'modpacks', 'updated-pack', 'modpack.json'), JSON.stringify({ id: 'updated-pack', name: 'Updated', runtime: { minecraft: '1.20.1' } }));
-    const runner = new OperationRunner([createUpdateOperationAdapter({ sync: async () => undefined })]);
+    const runner = createCanonicalRunner([createUpdateOperationAdapter({ sync: async () => undefined })]);
 
     const started = runner.start({ kind: 'update', rootPath, instanceId: 'updated-pack', manifestUrl: 'https://updates.example.com/manifest.json' });
 
@@ -73,7 +75,7 @@ describe('OperationRunner import registry', () => {
     fs.writeFileSync(path.join(rootPath, 'modpacks', 'delete-me', 'modpack.json'), JSON.stringify({ id: 'delete-me', name: 'Delete me', runtime: { minecraft: '1.20.1' }, memory: { maxMb: 4096 }, vmOptions: [] }));
     fs.writeFileSync(path.join(rootPath, 'modpacks.json'), JSON.stringify({ selectedModpack: 'delete-me', modpacks: { 'delete-me': { name: 'Delete me' } } }));
     fs.writeFileSync(path.join(rootPath, 'modpacks-metadata.json'), JSON.stringify({ selectedModpack: 'delete-me', modpacks: { 'delete-me': { id: 'delete-me' } } }));
-    const runner = new OperationRunner([createDeleteOperationAdapter()]);
+    const runner = createCanonicalRunner([createDeleteOperationAdapter()]);
 
     const started = runner.start({ kind: 'delete', rootPath, instanceId: 'delete-me' });
     await expect(runner.waitFor(started.id)).resolves.toMatchObject({ kind: 'delete', status: 'succeeded', result: { status: 'succeeded', instanceId: 'delete-me' } });
@@ -86,7 +88,7 @@ describe('OperationRunner import registry', () => {
     fs.mkdirSync(sourcePath, { recursive: true });
     fs.writeFileSync(path.join(sourcePath, 'payload.txt'), 'archive bytes');
     const outputPath = path.join(rootPath, 'export.zip');
-    const runner = new OperationRunner([createExportOperationAdapter()]);
+    const runner = createCanonicalRunner([createExportOperationAdapter()]);
 
     const started = runner.start({ kind: 'export', rootPath, instanceId: 'export-me', format: 'zip', outputPath });
 
@@ -110,11 +112,49 @@ describe('OperationRunner import registry', () => {
   });
 });
 
+function createCanonicalRunner(adapters: OperationAdapter[]): OperationRunner {
+  const source = record('source', 'Source');
+  return new OperationRunner(adapters, {
+    rootMutationCoordinator: {
+      forRoot: () => ({
+        read: async () => ({ status: 'ready' as const, snapshot: { selectedId: source.id, records: [source] } }),
+        prepare: async () => ({ status: 'ready' as const, source: 'canonical' as const, snapshot: { selectedId: source.id, records: [source] } }),
+        execute: async (command: InstanceCommand) => ({
+          status: 'committed' as const,
+          snapshot: snapshotForCommand(command, source),
+        }),
+      }),
+    },
+  });
+}
+
+function snapshotForCommand(command: InstanceCommand, source: ReturnType<typeof record>) {
+  switch (command.type) {
+    case 'commit-published':
+    case 'reconcile-update':
+      return { selectedId: command.record.id, records: [command.record] };
+    case 'delete':
+      return { selectedId: null, records: [] };
+    default:
+      return { selectedId: source.id, records: [source] };
+  }
+}
+
+function record(id: string, name: string) {
+  return {
+    id,
+    name,
+    source: { source: 'local' as const, createdAt: '2026-08-04T00:00:00.000Z', updatedAt: '2026-08-04T00:00:00.000Z' },
+    config: { runtime: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } } },
+    summary: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } },
+  };
+}
+
 function stage(rootPath: string, destinationId: string) {
   const config = { id: destinationId, name: 'Provider', runtime: { minecraft: '1.20.1', modLoader: { type: 'vanilla' as const } }, memory: { maxMb: 4096 }, vmOptions: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
   fs.mkdirSync(path.join(rootPath, 'modpacks', destinationId), { recursive: true });
   fs.writeFileSync(path.join(rootPath, 'modpacks', destinationId, 'modpack.json'), JSON.stringify(config));
-  return { config, metadata: { id: destinationId, name: 'Provider' }, missing: [] };
+  return { config, source: { source: 'modrinth' as const, sourceId: 'provider', sourceVersionId: 'version' }, content: { instanceId: destinationId, descriptor: 'modrinth.index.json' as const }, missing: [] };
 }
 
 async function writeArchive(rootPath: string): Promise<string> {

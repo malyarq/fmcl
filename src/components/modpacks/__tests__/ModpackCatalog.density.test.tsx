@@ -3,14 +3,15 @@
 import type { ComponentProps } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ProviderCatalogAPI } from '@shared/contracts';
 import { ModpackBrowser } from '../ModpackBrowser';
 import { ModpackList } from '../ModpackList';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
+import { instancesFromListFixture } from './instancesListFixture';
 import { createTranslator } from '../../../contexts/settings/i18n';
 
-const searchModrinthMock = vi.fn();
-const getCurseForgeVersionsMock = vi.fn();
-const getModrinthVersionsMock = vi.fn();
+const searchMock = vi.fn<ProviderCatalogAPI['search']>();
+const versionsMock = vi.fn<ProviderCatalogAPI['versions']>();
 const listWithMetadataMock = vi.fn();
 const selectMock = vi.fn();
 const refreshMock = vi.fn();
@@ -63,12 +64,10 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    searchModrinth: (...args: unknown[]) => searchModrinthMock(...args),
-    getCurseForgeVersions: (...args: unknown[]) => getCurseForgeVersionsMock(...args),
-    getModrinthVersions: (...args: unknown[]) => getModrinthVersionsMock(...args),
-    listWithMetadata: (...args: unknown[]) => listWithMetadataMock(...args),
+vi.mock('../../../services/ipc/providerCatalogIPC', () => ({
+  providerCatalogIPC: {
+    search: (...args: Parameters<ProviderCatalogAPI['search']>) => searchMock(...args),
+    versions: (...args: Parameters<ProviderCatalogAPI['versions']>) => versionsMock(...args),
   },
 }));
 
@@ -102,17 +101,17 @@ describe('Modpack catalog density', () => {
   const denseInstalledTitle = 'Dense Alpha Pack for Fourteen Players and Three Runtime Profiles';
 
   beforeEach(() => {
+    Object.defineProperty(window, 'api', { configurable: true, value: { instances: instancesFromListFixture(() => listWithMetadataMock()) } });
     cleanup();
     localStorage.clear();
     selectedIdState = 'beta';
-    searchModrinthMock.mockReset();
-    getCurseForgeVersionsMock.mockReset();
-    getModrinthVersionsMock.mockReset();
+    searchMock.mockReset();
+    versionsMock.mockReset();
     listWithMetadataMock.mockReset();
     selectMock.mockReset();
     refreshMock.mockReset();
 
-    searchModrinthMock.mockResolvedValue({
+    searchMock.mockResolvedValue({
       items: [
         {
           platform: 'modrinth',
@@ -137,8 +136,7 @@ describe('Modpack catalog density', () => {
       offset: 0,
       limit: 12,
     });
-    getCurseForgeVersionsMock.mockResolvedValue([]);
-    getModrinthVersionsMock.mockResolvedValue([]);
+    versionsMock.mockResolvedValue([]);
     selectMock.mockResolvedValue(undefined);
     refreshMock.mockResolvedValue(undefined);
     listWithMetadataMock.mockResolvedValue([

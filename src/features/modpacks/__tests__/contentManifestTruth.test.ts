@@ -11,7 +11,7 @@ const getModVersionsMock = vi.fn();
 const installModFileMock = vi.fn();
 const getMetadataMock = vi.fn();
 const getConfigMock = vi.fn();
-const addModMock = vi.fn();
+const registerModMock = vi.fn();
 
 function mockMatchMedia() {
   Object.defineProperty(window, 'matchMedia', {
@@ -71,12 +71,15 @@ vi.mock('../../../services/ipc/modsIPC', () => ({
   },
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getMetadata: (...args: unknown[]) => getMetadataMock(...args),
-    getConfig: (...args: unknown[]) => getConfigMock(...args),
-    addMod: (...args: unknown[]) => addModMock(...args),
+vi.mock('../../../services/ipc/instanceModsIPC', () => ({
+  instanceModsIPC: {
+    register: (...args: unknown[]) => registerModMock(...args),
   },
+}));
+
+vi.mock('../../../contexts/instances/services/instancesService', () => ({
+  fetchModpackMetadata: (...args: unknown[]) => getMetadataMock(...args),
+  fetchModpackConfig: (...args: unknown[]) => getConfigMock(...args),
 }));
 
 describe('guided content manifest truth', () => {
@@ -88,7 +91,7 @@ describe('guided content manifest truth', () => {
     installModFileMock.mockReset();
     getMetadataMock.mockReset();
     getConfigMock.mockReset();
-    addModMock.mockReset();
+    registerModMock.mockReset();
 
     searchModsMock.mockResolvedValue({
       items: [
@@ -110,7 +113,7 @@ describe('guided content manifest truth', () => {
       },
     ]);
     installModFileMock.mockResolvedValue({ status: 'success', issues: [] });
-    addModMock.mockResolvedValue(undefined);
+    registerModMock.mockResolvedValue({ ok: true });
     getMetadataMock.mockResolvedValue({
       id: 'alpha',
       name: 'Alpha Pack',
@@ -153,7 +156,7 @@ describe('guided content manifest truth', () => {
         instanceId: 'alpha',
       }));
       expect(installModFileMock).toHaveBeenCalledTimes(1);
-      expect(addModMock).not.toHaveBeenCalled();
+      expect(registerModMock).not.toHaveBeenCalled();
     },
   );
 
@@ -171,11 +174,11 @@ describe('guided content manifest truth', () => {
       expect(onBack).toHaveBeenCalledTimes(1);
     });
 
-    expect(addModMock).toHaveBeenCalledTimes(1);
-    expect(addModMock).toHaveBeenCalledWith('alpha', {
+    expect(registerModMock).toHaveBeenCalledTimes(1);
+    expect(registerModMock).toHaveBeenCalledWith('alpha', {
       platform: 'modrinth',
       projectId: 'fancy-content',
       versionId: 'fancy-content-1.0.0',
-    }, '/minecraft');
+    });
   });
 });

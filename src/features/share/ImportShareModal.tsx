@@ -5,15 +5,13 @@ import { Modal } from '../../components/ui/Modal';
 import { Button } from '../../components/ui/Button';
 import { Textarea } from '../../components/ui/Textarea';
 import { Download } from 'lucide-react';
-import { ModpackManifest } from '@shared/types';
-import { shareIPC } from '../../services/ipc/shareIPC';
 import { DegradedStateView } from '../../components/layout/DegradedStateView';
 import { toDisplayErrorMessage } from '../../utils/displayError';
 
 interface ImportShareModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onImport: (manifest: ModpackManifest) => Promise<void>;
+    onImport: (code: string) => Promise<void>;
 }
 
 export function ImportShareModal({ isOpen, onClose, onImport }: ImportShareModalProps) {
@@ -38,8 +36,7 @@ export function ImportShareModal({ isOpen, onClose, onImport }: ImportShareModal
         setError(null);
 
         try {
-            const manifest = await shareIPC.importCode(code.trim());
-            await onImport(manifest);
+            await onImport(code.trim());
             handleClose();
         } catch (err: unknown) {
             console.error(err);

@@ -2,13 +2,11 @@
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ModpackManifest } from '@shared/types';
 import { ShareModal } from '../ShareModal';
 import { ImportShareModal } from '../ImportShareModal';
 import { createTranslator } from '../../../contexts/settings/i18n';
 
 const generateCodeMock = vi.fn();
-const importCodeMock = vi.fn();
 const toastErrorMock = vi.fn();
 const writeTextMock = vi.fn();
 const t = createTranslator('en');
@@ -29,10 +27,16 @@ vi.mock('../../../contexts/ToastContext', () => ({
   }),
 }));
 
+const startMock = vi.fn();
 vi.mock('../../../services/ipc/shareIPC', () => ({
   shareIPC: {
     generateCode: (...args: unknown[]) => generateCodeMock(...args),
-    importCode: (...args: unknown[]) => importCodeMock(...args),
+  },
+}));
+
+vi.mock('../../../services/ipc/operationsIPC', () => ({
+  operationsIPC: {
+    start: (...args: unknown[]) => startMock(...args),
   },
 }));
 
@@ -57,7 +61,7 @@ describe('share flows', () => {
     cleanup();
     mockMatchMedia(false);
     generateCodeMock.mockReset();
-    importCodeMock.mockReset();
+    startMock.mockReset();
     toastErrorMock.mockReset();
     writeTextMock.mockReset();
 
@@ -97,26 +101,8 @@ describe('share flows', () => {
     expect(alert.textContent).not.toContain('${file.jarVersion}');
   });
 
-  it('keeps import disabled until a code is provided and imports through the typed IPC wrapper', async () => {
+  it('keeps import disabled until a code is provided and forwards only the share code to the operation owner', async () => {
     const onImportMock = vi.fn().mockResolvedValue(undefined);
-    const manifest: ModpackManifest = {
-      formatVersion: 1,
-      minecraft: {
-        version: '1.20.1',
-        modLoaders: [
-          {
-            id: 'fabric-0.16.9',
-            primary: true,
-          },
-        ],
-      },
-      name: 'Alpha Pack',
-      version: '1.0.0',
-      author: 'FMCL',
-      files: [],
-    };
-
-    importCodeMock.mockResolvedValue(manifest);
 
     render(<ImportShareModal isOpen={true} onClose={vi.fn()} onImport={onImportMock} />);
 
@@ -132,17 +118,17 @@ describe('share flows', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Import' }));
 
     await waitFor(() => {
-      expect(importCodeMock).toHaveBeenCalledWith('fmcl://share/alpha-pack');
+      expect(onImportMock).toHaveBeenCalledWith('fmcl://share/alpha-pack');
     });
 
     await waitFor(() => {
-      expect(onImportMock).toHaveBeenCalledWith(manifest);
+      expect(onImportMock).toHaveBeenCalledTimes(1);
     });
   });
 
   it('sanitizes import wrapper failures before showing them inline', async () => {
     const onImportMock = vi.fn().mockResolvedValue(undefined);
-    importCodeMock.mockRejectedValue(new Error('[shareIPC] importCode failed: ${file.jarVersion}'));
+    onImportMock.mockRejectedValue(new Error('[operationsIPC] start failed: ${file.jarVersion}'));
 
     render(<ImportShareModal isOpen={true} onClose={vi.fn()} onImport={onImportMock} />);
 
@@ -154,7 +140,7 @@ describe('share flows', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('Failed to import the modpack. The code may be invalid or incomplete.');
-    expect(alert.textContent).not.toContain('importCode failed');
+    expect(alert.textContent).not.toContain('start failed');
     expect(alert.textContent).not.toContain('${file.jarVersion}');
   });
 });

@@ -14,27 +14,88 @@ import type {
   OperationProgress,
   OperationResult,
   OperationSnapshot,
+  RootMutationCommandResult,
+  RootMutationCoordinator,
+  RootMutationCoordinatorFactory,
+  RootMutationFailure,
+  RootMutationPreparationResult,
 } from './operationTypes';
+import type { InstanceCommand, InstanceControlPlaneRead } from '../../domains/instances/instanceTypes';
+
+export type OperationRunnerOptions = Readonly<{
+  registryPath?: string;
+  rootMutationLock?: RootMutationLock;
+  rootMutationCoordinator?: RootMutationCoordinatorFactory;
+}>;
+
+type RootMutationScope = Readonly<{
+  current?: InstanceControlPlaneRead;
+  commit(command: InstanceCommand): Promise<RootMutationCommandResult>;
+}>;
 
 export class OperationRunner {
   private readonly adapters = new Map<OperationInput['kind'], OperationAdapter>();
   private readonly locks = new OperationLocks();
-  private readonly rootMutationLock = new RootMutationLock();
+  private readonly rootMutationLock: RootMutationLock;
+  private readonly rootMutationCoordinator?: RootMutationCoordinatorFactory;
   private readonly snapshots = new Map<string, OperationSnapshot>();
   private readonly completions = new Map<string, Promise<OperationSnapshot>>();
   private readonly listeners = new Map<string, Set<(snapshot: OperationSnapshot) => void>>();
 
-  constructor(adapters: OperationAdapter[], options: { registryPath?: string } = {}) {
+  constructor(adapters: OperationAdapter[], options: OperationRunnerOptions = {}) {
     this.registry = options.registryPath ? new OperationRootRegistry(options.registryPath) : undefined;
+    this.rootMutationLock = options.rootMutationLock ?? new RootMutationLock();
+    this.rootMutationCoordinator = options.rootMutationCoordinator;
     for (const adapter of adapters) this.adapters.set(adapter.kind, adapter);
   }
   private readonly registry?: OperationRootRegistry;
 
   public async prepareRoot(rootPath: string): Promise<void> {
-    await this.rootMutationLock.run(rootPath, async () => {
+    await this.runRootMutation(rootPath, async () => {
       this.registry?.register(rootPath);
-      await this.recoverUnlocked(rootPath);
     });
+  }
+
+  /** A non-mutating canonical read. It intentionally bypasses the writer queue. */
+  public async readControlPlane(rootPath: string): Promise<InstanceControlPlaneRead | RootMutationFailure> {
+    const coordinator = this.coordinatorFor(rootPath);
+    if (!coordinator) return rootMutationFailure('ROOT_MUTATION_COORDINATOR_UNAVAILABLE', 'Canonical control-plane coordinator is unavailable');
+    try {
+      return await coordinator.read();
+    } catch (error) {
+      return rootMutationFailure('ROOT_MUTATION_FAILED', toSafeMessage(error));
+    }
+  }
+
+  /** Explicitly prepares canonical state while holding the Phase 39 root scope. */
+  public async prepareControlPlane(rootPath: string): Promise<RootMutationPreparationResult | RootMutationFailure> {
+    try {
+      return await this.runRootMutation(rootPath, async (scope) => {
+        if (!scope.coordinator) return rootMutationFailure('ROOT_MUTATION_COORDINATOR_UNAVAILABLE', 'Canonical control-plane coordinator is unavailable');
+        if (scope.current?.status === 'ready') {
+          return { status: 'ready', source: 'canonical', snapshot: scope.current.snapshot };
+        }
+        const prepared = await scope.coordinator.prepare();
+        return prepared.status === 'recovery-required'
+          ? rootMutationFailure('ROOT_MUTATION_PREPARE_FAILED', prepared.reason)
+          : prepared;
+      });
+    } catch (error) {
+      return rootMutationFailure('ROOT_MUTATION_PREPARE_FAILED', toSafeMessage(error));
+    }
+  }
+
+  /**
+   * Executes one short canonical command in the same root scope as staged
+   * operations. Only create may prepare legacy state; ordinary commands never
+   * turn a read into a migration write.
+   */
+  public async commitControlPlane(rootPath: string, command: InstanceCommand): Promise<RootMutationCommandResult> {
+    try {
+      return await this.runRootMutation(rootPath, async (scope) => await scope.commit(command));
+    } catch (error) {
+      return rootMutationFailure('ROOT_MUTATION_FAILED', toSafeMessage(error));
+    }
   }
 
   public async recoverRegistered(defaultRootPath: string): Promise<void> {
@@ -63,7 +124,7 @@ export class OperationRunner {
         ? input.sourceId
         : input.kind === 'update' || input.kind === 'delete' || input.kind === 'export'
           ? input.instanceId
-          : input.destinationId,
+          : input.kind === 'import-share' ? undefined : input.destinationId,
       status: 'queued',
       phase: 'started',
       progress: { completed: 0, total: 1 },
@@ -72,14 +133,9 @@ export class OperationRunner {
       input: clone(input),
     };
     this.snapshots.set(snapshot.id, snapshot);
-    const completion = Promise.resolve().then(() => this.locks.run(
-      // Every mutation edits root-level control-plane files. Keep the local
-      // queue root-wide, then reinforce it with the filesystem lock below.
-      { rootPath: snapshot.rootPath },
-      async () => await this.rootMutationLock.run(snapshot.rootPath, async () => {
-        await this.recoverUnlocked(snapshot.rootPath);
-        return this.execute(adapter, snapshot.id);
-      }),
+    const completion = Promise.resolve().then(() => this.runRootMutation(
+      snapshot.rootPath,
+      async (scope) => this.execute(adapter, snapshot.id, scope),
     ));
     this.completions.set(snapshot.id, completion);
     return clone(snapshot);
@@ -125,10 +181,10 @@ export class OperationRunner {
   }
 
   public async recover(rootPath: string): Promise<void> {
-    await this.rootMutationLock.run(rootPath, async () => this.recoverUnlocked(rootPath));
+    await this.runRootMutation(rootPath, async () => undefined);
   }
 
-  private async recoverUnlocked(rootPath: string): Promise<void> {
+  private async recoverUnlocked(rootPath: string, scope?: RootMutationScope): Promise<void> {
     const journal = new OperationJournal(rootPath);
     for (const record of journal.list()) {
       if (isTerminal(record)) {
@@ -154,6 +210,17 @@ export class OperationRunner {
       const adapter = this.adapters.get(record.kind);
       const workspace = new StagingWorkspace(record.rootPath, record.id);
       this.snapshots.set(record.id, record);
+      if (hasCanonicalRecoveryCommand(record) && (record.phase === 'published' || record.phase === 'control-plane-committed')) {
+        const context = this.createContext(record, journal, scope);
+        try {
+          const result = await context.replayCanonicalCommand();
+          if (result.status === 'recovered') workspace.cleanupBackups();
+          this.finishRecovery(record, result);
+        } catch {
+          this.finishRecovery(record, { status: 'recovery-required', message: 'Published canonical command could not be replayed' });
+        }
+        continue;
+      }
       if (!adapter || !record.recovery) {
         if (adapter && record.phase === 'started') {
           // No adapter reaches a destructive rename before recording recovery
@@ -211,7 +278,7 @@ export class OperationRunner {
     }
   }
 
-  private async execute(adapter: OperationAdapter, id: string): Promise<OperationSnapshot> {
+  private async execute(adapter: OperationAdapter, id: string, scope?: RootMutationScope): Promise<OperationSnapshot> {
     const snapshot = this.requireSnapshot(id);
     if (isCancelled(snapshot)) {
       this.complete(snapshot, { status: 'cancelled' });
@@ -229,7 +296,7 @@ export class OperationRunner {
       return clone(snapshot);
     }
     this.notify(snapshot);
-    const context = this.createContext(snapshot, journal);
+    const context = this.createContext(snapshot, journal, scope);
     try {
       const result = await adapter.run(context);
       this.complete(snapshot, result);
@@ -241,7 +308,7 @@ export class OperationRunner {
     return clone(snapshot);
   }
 
-  private createContext(snapshot: OperationSnapshot, journal: OperationJournal): OperationContext {
+  private createContext(snapshot: OperationSnapshot, journal: OperationJournal, scope?: RootMutationScope): OperationContext {
     return {
       snapshot,
       isCancelled: () => isCancelled(snapshot),
@@ -266,7 +333,80 @@ export class OperationRunner {
         journal.save(snapshot);
         this.notify(snapshot);
       },
+      recordCanonicalCommand: (command) => {
+        snapshot.recovery = {
+          ...(snapshot.recovery ?? {}),
+          canonicalCommand: {
+            version: 1,
+            rootPath: snapshot.rootPath,
+            operationId: snapshot.id,
+            command: structuredClone(command),
+          },
+        } as typeof snapshot.recovery;
+        snapshot.updatedAt = new Date().toISOString();
+        journal.save(snapshot);
+        this.notify(snapshot);
+      },
+      commitControlPlane: async (command) => {
+        if (isCancelled(snapshot)) throw new Error('Operation cancelled');
+        if (!scope) return rootMutationFailure('ROOT_MUTATION_COORDINATOR_UNAVAILABLE', 'Canonical control-plane scope is unavailable');
+        const recorded = snapshot.recovery?.canonicalCommand;
+        if (recorded && !sameJson(recorded.command, command)) {
+          throw new Error('Canonical control-plane command differs from durable recovery command');
+        }
+        return await scope.commit(command);
+      },
+      replayCanonicalCommand: async () => {
+        const command = snapshot.recovery?.canonicalCommand;
+        if (!command) return { status: 'recovery-required', message: 'Canonical recovery command is missing' };
+        if (!scope) return { status: 'recovery-required', message: 'Canonical control-plane scope is unavailable' };
+        const result = await scope.commit(command.command);
+        if ('code' in result) return { status: 'recovery-required', message: 'Canonical control-plane replay failed' };
+        snapshot.phase = 'control-plane-committed';
+        snapshot.updatedAt = new Date().toISOString();
+        journal.save(snapshot);
+        this.notify(snapshot);
+        return { status: 'recovered', instanceId: canonicalCommandInstanceId(command.command, result) };
+      },
     };
+  }
+
+  private async runRootMutation<T>(rootPath: string, work: (scope: RootMutationScope & { coordinator?: RootMutationCoordinator }) => Promise<T>): Promise<T> {
+    return await this.locks.run(
+      // Every mutation edits root-level control-plane files. Keep the local
+      // queue root-wide, then reinforce it with the filesystem lock below.
+      { rootPath },
+      async () => await this.rootMutationLock.run(rootPath, async () => {
+        const coordinator = this.coordinatorFor(rootPath);
+        // Every contender must reread after both Phase 39 gates. This is also
+        // what makes a second first-use caller observe a published migration.
+        const current = coordinator ? await coordinator.read() : undefined;
+        const scope: RootMutationScope & { coordinator?: RootMutationCoordinator } = {
+          current,
+          coordinator,
+          commit: async (command) => {
+            if (!coordinator) return rootMutationFailure('ROOT_MUTATION_COORDINATOR_UNAVAILABLE', 'Canonical control-plane coordinator is unavailable');
+            if (command.type === 'create' && current?.status === 'uninitialized') {
+              const prepared = await coordinator.prepare();
+              if (prepared.status === 'recovery-required') {
+                return rootMutationFailure('ROOT_MUTATION_PREPARE_FAILED', prepared.reason);
+              }
+            }
+            try {
+              return await coordinator.execute(command);
+            } catch (error) {
+              return rootMutationFailure('ROOT_MUTATION_FAILED', toSafeMessage(error));
+            }
+          },
+        };
+        await this.recoverUnlocked(rootPath, scope);
+        return await work(scope);
+      }),
+    );
+  }
+
+  private coordinatorFor(rootPath: string): RootMutationCoordinator | undefined {
+    return this.rootMutationCoordinator?.forRoot(rootPath);
   }
 
   private complete(snapshot: OperationSnapshot, result: OperationResult, persist = true): void {
@@ -341,8 +481,33 @@ function isArchiveExportRecovery(snapshot: OperationSnapshot): boolean {
     && 'outputPath' in snapshot.recovery;
 }
 
+function hasCanonicalRecoveryCommand(snapshot: OperationSnapshot): boolean {
+  return snapshot.recovery?.canonicalCommand !== undefined;
+}
+
+function canonicalCommandInstanceId(command: InstanceCommand, result: RootMutationCommandResult): string | undefined {
+  if ('code' in result) return undefined;
+  switch (command.type) {
+    case 'commit-published':
+    case 'reconcile-update':
+      return command.record.id;
+    case 'create':
+      return result.snapshot.selectedId ?? undefined;
+    default:
+      return command.id;
+  }
+}
+
+function sameJson(left: unknown, right: unknown): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 function toSafeMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'Operation failed';
+}
+
+function rootMutationFailure(code: RootMutationFailure['code'], message: string): RootMutationFailure {
+  return { status: 'failed', code, message };
 }
 
 function clone<T>(value: T): T {

@@ -11,8 +11,9 @@ import { Select } from '../ui/Select';
 import { DegradedStateView } from '../layout/DegradedStateView';
 import { cn } from '../../utils/cn';
 import { modsIPC } from '../../services/ipc/modsIPC';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
-import type { ModpackMetadata } from '@shared/types/modpack';
+import { instanceModsIPC } from '../../services/ipc/instanceModsIPC';
+import { instancesIPC } from '../../services/ipc/instancesIPC';
+import type { InstanceSnapshotDto } from '@shared/contracts';
 import { MINECRAFT_VERSIONS } from '../../utils/minecraftVersionsList';
 import { PackagePlus } from 'lucide-react';
 import { sanitizeUiText } from '../../utils/safeUiText';
@@ -74,7 +75,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   defaultMCVersion,
   defaultLoader,
 }) => {
-  const { t, getAccentStyles, formatNumber, minecraftPath } = useSettings();
+  const { t, getAccentStyles, formatNumber } = useSettings();
   const toast = useToast();
   const [query, setQuery] = useState('');
   const [platform, setPlatform] = useState<'curseforge' | 'modrinth'>('modrinth');
@@ -83,7 +84,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   const [searchError, setSearchError] = useState<string | null>(null);
   const [checkedMods, setCheckedMods] = useState<Map<string, CheckedEntry>>(new Map());
   const [installing, setInstalling] = useState(false);
-  const [modpackMetadata, setModpackMetadata] = useState<ModpackMetadata | null>(null);
+  const [modpackSnapshot, setModpackSnapshot] = useState<InstanceSnapshotDto | null>(null);
   const [filtersReadyFor, setFiltersReadyFor] = useState<string | null>(null);
   const [filterMCVersion, setFilterMCVersion] = useState<string>('');
   const [filterLoader, setFilterLoader] = useState<string>('');
@@ -95,24 +96,23 @@ export const AddModModal: React.FC<AddModModalProps> = ({
   const searchRequestIdRef = useRef(0);
   const metadataRequestIdRef = useRef(0);
   const PAGE_SIZE = 20;
-  const filterContextKey = [modpackId, minecraftPath, defaultMCVersion ?? '', defaultLoader ?? ''].join('\0');
+  const filterContextKey = [modpackId, defaultMCVersion ?? '', defaultLoader ?? ''].join('\0');
 
-  const effectiveLoader = filterLoader || defaultLoader || modpackMetadata?.modLoader?.type || '';
-  const effectiveMCVersion = filterMCVersion || defaultMCVersion || modpackMetadata?.minecraftVersion || '';
+  const effectiveLoader = filterLoader || defaultLoader || modpackSnapshot?.config.runtime.modLoader?.type || '';
+  const effectiveMCVersion = filterMCVersion || defaultMCVersion || modpackSnapshot?.config.runtime.minecraftVersion || '';
 
   const loadModpackMetadataAndConfig = useCallback(async () => {
     const requestId = metadataRequestIdRef.current + 1;
     metadataRequestIdRef.current = requestId;
     setFiltersReadyFor(null);
     try {
-      const [metadata, config] = await Promise.all([
-        modpacksIPC.getMetadata(modpackId, minecraftPath),
-        modpacksIPC.getConfig(modpackId, minecraftPath),
-      ]);
+      const snapshotResult = await instancesIPC.snapshot({ id: modpackId });
+      if (!snapshotResult.ok) throw new Error(snapshotResult.error.message);
       if (requestId !== metadataRequestIdRef.current) return;
-      setModpackMetadata(metadata);
-      const mcVersion = defaultMCVersion || config?.runtime?.minecraft || metadata?.minecraftVersion || '';
-      const loader = defaultLoader || config?.runtime?.modLoader?.type || metadata?.modLoader?.type || '';
+      const snapshot = snapshotResult.value;
+      setModpackSnapshot(snapshot);
+      const mcVersion = defaultMCVersion || snapshot.config.runtime.minecraftVersion || '';
+      const loader = defaultLoader || snapshot.config.runtime.modLoader?.type || '';
       setFilterMCVersion(mcVersion);
       setFilterLoader(loader);
     } catch (error) {
@@ -125,7 +125,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
         setFiltersReadyFor(filterContextKey);
       }
     }
-  }, [modpackId, minecraftPath, defaultMCVersion, defaultLoader, filterContextKey]);
+  }, [modpackId, defaultMCVersion, defaultLoader, filterContextKey]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -310,8 +310,8 @@ export const AddModModal: React.FC<AddModModalProps> = ({
     }
     setCheckedMods((prev) => new Map(prev).set(key, 'loading'));
     try {
-      const mcVersion = filterMCVersion || defaultMCVersion || modpackMetadata?.minecraftVersion || undefined;
-      const loader = filterLoader || defaultLoader || modpackMetadata?.modLoader?.type || undefined;
+      const mcVersion = filterMCVersion || defaultMCVersion || modpackSnapshot?.config.runtime.minecraftVersion || undefined;
+      const loader = filterLoader || defaultLoader || modpackSnapshot?.config.runtime.modLoader?.type || undefined;
       const versionsResult = await modsIPC.getModVersions({
         platform: mod.platform,
         projectId: mod.projectId,
@@ -384,14 +384,14 @@ export const AddModModal: React.FC<AddModModalProps> = ({
             projectId: mod.projectId,
             versionId: version.versionId,
             instanceId: modpackId,
-            rootPath: minecraftPath,
+            contentType: 'mod',
           });
           installedToInstance = true;
-          await modpacksIPC.addMod(modpackId, {
+          await instanceModsIPC.register(modpackId, {
             platform: mod.platform,
-            projectId: mod.platform === 'curseforge' ? Number(mod.projectId) : mod.projectId,
-            versionId: mod.platform === 'curseforge' ? Number(version.versionId) : version.versionId,
-          }, minecraftPath);
+            projectId: mod.projectId,
+            versionId: version.versionId,
+          });
           added++;
         } catch {
           failed++;
@@ -496,7 +496,7 @@ export const AddModModal: React.FC<AddModModalProps> = ({
         <div className="surface-muted flex flex-wrap items-center gap-4 p-4 text-sm text-secondary">
           <div className="min-w-0 flex-1">
             <p className="text-xs uppercase tracking-[0.18em] text-muted">
-              {modpackMetadata?.name || t('modpacks.title') || 'Modpacks'}
+              {modpackSnapshot?.name || t('modpacks.title') || 'Modpacks'}
             </p>
             <p className="mt-1 text-sm text-foreground">
               {effectiveMCVersion || t('general.unknown') || 'Unknown'} • {effectiveLoader || t('modpacks.loader_vanilla') || 'Vanilla'}

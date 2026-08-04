@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { StorageSettings } from '../tabs/StorageTab';
 
-const getContentStatsMock = vi.fn();
+const getStatsMock = vi.fn();
 
 vi.mock('../../../contexts/ConfirmContext', () => ({
   useConfirm: () => ({
@@ -14,8 +14,8 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
 
 describe('StorageTab layout', () => {
   beforeEach(() => {
-    getContentStatsMock.mockReset();
-    getContentStatsMock.mockResolvedValue({
+    getStatsMock.mockReset();
+    getStatsMock.mockResolvedValue({
       totalSize: 1024 * 1024,
       dedupedSize: 512 * 1024,
       totalFiles: 42,
@@ -42,14 +42,15 @@ describe('StorageTab layout', () => {
           }[key] ?? key)
         }
         getAccentStyles={() => ({ className: '', style: undefined })}
-        modpacksIPC={{
-          getContentStats: (...args: unknown[]) => getContentStatsMock(...args),
-          cleanupContent: vi.fn(),
+        storageMaintenanceIPC={{
+          isAvailable: () => true,
+          getStats: (...args: unknown[]) => getStatsMock(...args),
+          cleanup: vi.fn(),
         } as never}
       />,
     );
 
-    await waitFor(() => expect(getContentStatsMock).toHaveBeenCalledOnce());
+    await waitFor(() => expect(getStatsMock).toHaveBeenCalledOnce());
     await screen.findByText('Cleanup');
 
     expect(screen.queryByRole('heading', { name: 'Storage' })).toBeNull();

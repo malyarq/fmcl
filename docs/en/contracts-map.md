@@ -11,7 +11,7 @@ Goal: document the live IPC, preload, and renderer contract surface for FMCL.
 - Unified renderer API type: `shared/contracts/windowApi.ts`
 - Renderer wrappers: `src/services/ipc/*`
 
-Snapshot: **v0.8.0 development line, 2026-08-03**. `npm run contracts:check` verifies that each language map contains exactly the allowlisted channels; `npm run architecture:check` verifies the renderer boundary.
+Snapshot: **v0.8.0 development line, 2026-08-04**. `npm run contracts:check` verifies that each language map contains exactly the allowlisted channels; `npm run architecture:check` verifies the renderer boundary.
 
 ---
 
@@ -22,8 +22,13 @@ Snapshot: **v0.8.0 development line, 2026-08-03**. `npm run contracts:check` ver
 `electron/preload.ts` exposes exactly one global: `window.api`. It contains:
 
 - `window.api.launcher`
-- `window.api.modpacks`
+- `window.api.instances`
+- `window.api.archiveInspection`
+- `window.api.providerCatalog`
+- `window.api.storageMaintenance`
+- `window.api.javaRuntime`
 - `window.api.mods`
+- `window.api.instanceMods`
 - `window.api.appUpdater`
 - `window.api.windowControls`
 - `window.api.network`
@@ -53,23 +58,28 @@ There is no generic `invoke/send/on/off` capability and no top-level Electron al
 
 - `src/services/ipc/accountIPC.ts` → `window.api.account`
 - `src/services/ipc/appUpdaterIPC.ts` → `window.api.appUpdater`
+- `src/services/ipc/archiveInspectionIPC.ts` → `window.api.archiveInspection`
 - `src/services/ipc/assetsIPC.ts` → `window.api.assets`
 - `src/services/ipc/cacheIPC.ts` → `window.api.cache`
 - `src/services/ipc/datapacksIPC.ts` → `window.api.datapacks`
 - `src/services/ipc/dialogIPC.ts` → `window.api.dialogs`
 - `src/services/ipc/externalLinksIPC.ts` → `window.api.externalLinks`
 - `src/services/ipc/launcherIPC.ts` → `window.api.launcher`
+- `src/services/ipc/instancesIPC.ts` → `window.api.instances`
+- `src/services/ipc/javaRuntimeIPC.ts` → `window.api.javaRuntime`
 - `src/services/ipc/mirrorsIPC.ts` → `window.api.mirrors`
-- `src/services/ipc/modpacksIPC.ts` → `window.api.modpacks`
+- `src/services/ipc/instanceModsIPC.ts` → `window.api.instanceMods`
 - `src/services/ipc/operationsIPC.ts` → `window.api.operations`
 - `src/services/ipc/modsIPC.ts` → `window.api.mods`
 - `src/services/ipc/networkIPC.ts` → `window.api.network`
+- `src/services/ipc/providerCatalogIPC.ts` → `window.api.providerCatalog`
 - `src/services/ipc/resourcePacksIPC.ts` → `window.api.resourcePacks`
 - `src/services/ipc/screenshotsIPC.ts` → `window.api.screenshots`
 - `src/services/ipc/settingsIPC.ts` → `window.api.settings`
 - `src/services/ipc/shadersIPC.ts` → `window.api.shaders`
 - `src/services/ipc/shareIPC.ts` → `window.api.share`
 - `src/services/ipc/statisticsIPC.ts` → `window.api.statistics`
+- `src/services/ipc/storageMaintenanceIPC.ts` → `window.api.storageMaintenance`
 - `src/services/ipc/windowControlsIPC.ts` → `window.api.windowControls`
 - `src/services/ipc/worldsIPC.ts` → `window.api.worlds`
 
@@ -106,23 +116,57 @@ There is no generic `invoke/send/on/off` capability and no top-level Electron al
 - `launcher:progress`
 - `launcher:close`
 
+`window.api.launcher.launch` accepts a logical `instanceId` plus bounded launch preferences. Launcher roots, instance paths, Java executables, VM options, and the retired `modpackId` alias are not part of the renderer contract; main resolves native launch authority from the composition root and canonical instance record.
+
 ### 3.3 Mods
 
 - `mods:searchMods`
 - `mods:getModVersions`
 - `mods:installModFile`
 
+`window.api.mods.installModFile` accepts only an opaque instance ID, content type, and provider platform/project/version identifiers. The main process validates them, resolves the approved launcher root, and returns a path-free install outcome.
+
 ### 3.4 Instances
 
 - `instances:list`
-- `instances:bootstrap`
-- `instances:getSelected`
-- `instances:setSelected`
+- `instances:snapshot`
+- `instances:select`
 - `instances:create`
 - `instances:rename`
-- `instances:delete`
-- `instances:getConfig`
-- `instances:saveConfig`
+- `instances:config`
+- `instances:metadata`
+- `instances:prepare`
+
+### 3.4.1 Instance mods
+
+- `instance-mods:list`
+- `instance-mods:remove`
+- `instance-mods:setEnabled`
+- `instance-mods:register`
+
+`window.api.instanceMods` accepts only an opaque instance ID plus logical mod filenames or provider project/version identifiers for manifest registration. The main process resolves the launcher root and instance directory; no filesystem paths cross the preload boundary.
+
+On the first registration for a newly created instance, main derives the manifest from the canonical `InstanceApplication` record. It does not require or recreate a legacy instance configuration store.
+
+### 3.4.2 Java runtime
+
+- `javaRuntime:scan`
+- `javaRuntime:select`
+
+`window.api.javaRuntime` returns opaque, short-lived installation IDs with runtime metadata and accepts only an ID when selecting Java for the canonical selected instance. Java executable details and launcher roots remain in the main process.
+
+### 3.4.3 Archive inspection
+
+- `archiveInspection:select`
+
+`window.api.archiveInspection` opens and inspects a local archive in the main process. Its selected response contains manifest metadata and an opaque, sender-bound, expiring single-use archive reference; it never exposes a filesystem path.
+
+### 3.4.4 Storage maintenance
+
+- `storageMaintenance:getStats`
+- `storageMaintenance:cleanup`
+
+`window.api.storageMaintenance` returns aggregate content-store statistics and cleanup results only. Storage roots, file paths, and deletion policy remain in the main process.
 
 ### 3.5 Network
 
@@ -168,36 +212,10 @@ There is no generic `invoke/send/on/off` capability and no top-level Electron al
 - `app-updater:progress`
 - `app-updater:downloaded`
 
-### 3.9 Modpacks
+### 3.9 Provider catalog
 
-- `modpacks:list`
-- `modpacks:listWithMetadata`
-- `modpacks:bootstrap`
-- `modpacks:getSelected`
-- `modpacks:setSelected`
-- `modpacks:create`
-- `modpacks:rename`
-- `modpacks:getConfig`
-- `modpacks:saveConfig`
-- `modpacks:getMetadata`
-- `modpacks:updateMetadata`
-- `modpacks:searchCurseForge`
-- `modpacks:searchModrinth`
-- `modpacks:getCurseForgeVersions`
-- `modpacks:getModrinthVersions`
-- `modpacks:createLocal`
-- `modpacks:getModpackInfoFromFile`
-- `modpacks:addMod`
-- `modpacks:removeMod`
-- `modpacks:setModEnabled`
-- `modpacks:updateOverrides`
-- `modpacks:getMods`
-- `modpacks:backup`
-- `modpacks:createFromManifest`
-- `modpacks:cleanupContent`
-- `modpacks:getContentStats`
-- `modpacks:resolvePath`
-- `modpacks:scanJava`
+- `providerCatalog:search`
+- `providerCatalog:versions`
 
 ### 3.10 Resource packs, shaders, worlds, datapacks
 
@@ -215,23 +233,25 @@ There is no generic `invoke/send/on/off` capability and no top-level Electron al
 - `shaders:delete`
 - `shaders:openFolder`
 - `shaders:add`
-- `worlds:list`
-- `worlds:delete`
-- `worlds:backup`
-- `worlds:duplicate`
-- `worlds:openFolder`
-- `datapacks:list`
-- `datapacks:enable`
-- `datapacks:disable`
-- `datapacks:delete`
+- `worlds:listByInstanceId`
+- `worlds:deleteByInstanceId`
+- `worlds:backupByInstanceId`
+- `worlds:duplicateByInstanceId`
+- `worlds:openFolderByInstanceId`
 - `datapacks:search`
-- `datapacks:install`
 - `datapacks:getVersions`
+- `datapacks:listByInstanceId`
+- `datapacks:enableByInstanceId`
+- `datapacks:disableByInstanceId`
+- `datapacks:deleteByInstanceId`
+- `datapacks:installByInstanceId`
 
 Outcome notes:
 
 - `resourcePacks:import` and `resourcePacks:add` now return `ResourcePackAcquisitionResult` with named statuses instead of booleans.
 - `shaders:add` now returns `ShaderPackAcquisitionResult` with named statuses instead of booleans.
+- Shader calls accept an opaque instance ID; the main process resolves the shaderpacks directory.
+- Worlds and Datapacks accept only opaque instance IDs and logical child names; their former path methods are removed.
 
 ### 3.11 App, account, mirrors, screenshots
 
@@ -261,7 +281,6 @@ Outcome notes:
 ### 3.12 Share, statistics, external links
 
 - `share:generateCode`
-- `share:importCode`
 - `stats:get`
 - `stats:export`
 - `externalLinks:open`
@@ -276,7 +295,11 @@ Outcome notes:
 - `operations:unsubscribe`
 - `operations:update`
 
-`window.api.operations` exposes typed start, read, cancellation and subscription calls. Active operations are readable, cancellable and subscribable only by their originating renderer. Recovered terminal snapshots are sanitized read-only records available after restart and cannot be cancelled or replayed.
+`window.api.operations` exposes typed start, read, cancellation and subscription calls. `OperationStartRequest` and the renderer wrapper cannot contain `rootPath` or `filePath`; main resolves the approved root for every request. Import consumes the opaque `archiveRef` created by `archiveInspection` and resolves its path only after sender and lifetime validation.
+
+Archive `outputPath` is the narrow exception: it is an untrusted value returned by a main-owned native save dialog, accepted only while the sender-bound one-time authorization is live, and consumed before the operation starts. It is not general renderer filesystem authority.
+
+Active operations are readable, cancellable and subscribable only by their originating renderer. Recovered terminal snapshots are sanitized read-only records available after restart: internal roots, inputs, archive paths, output paths, and recovery data are not returned, and recovered operations cannot be cancelled or replayed.
 
 ---
 

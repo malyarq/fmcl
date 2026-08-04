@@ -8,7 +8,8 @@ import { Input } from '../ui/Input';
 import { Textarea } from '../ui/Textarea';
 import { Select } from '../ui/Select';
 import { ErrorMessage } from '../ui/ErrorMessage';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import { instanceModsIPC } from '../../services/ipc/instanceModsIPC';
+import { instancesIPC } from '../../services/ipc/instancesIPC';
 import type { ModLoaderType } from '../../contexts/instances/types';
 import { useVersions } from '../../features/launcher/hooks/useVersions';
 import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
@@ -49,7 +50,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
   onBack,
   onCreated,
 }) => {
-  const { t, getAccentStyles, minecraftPath } = useSettings();
+  const { t, getAccentStyles } = useSettings();
   const { refresh } = useModpack();
   const toast = useToast();
   const confirm = useConfirm();
@@ -156,28 +157,6 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     }));
   };
 
-  const persistCreatedGameSettings = useCallback(async (modpackId: string) => {
-    if (!runtimeDependencies.useOptiFine) {
-      return;
-    }
-
-    const createdConfig = await modpacksIPC.getConfig(modpackId, minecraftPath);
-    if (!createdConfig) {
-      return;
-    }
-
-    await modpacksIPC.saveConfig(
-      {
-        ...createdConfig,
-        game: {
-          ...(createdConfig.game ?? {}),
-          useOptiFine: true,
-        },
-      },
-      minecraftPath,
-    );
-  }, [minecraftPath, runtimeDependencies.useOptiFine]);
-
   const refreshCreatedModpack = useCallback(async (): Promise<boolean> => {
     try {
       await refresh();
@@ -194,42 +173,33 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
       return { id: null, needsFollowUp: false };
     }
 
-    const result = await modpacksIPC.createLocal(
-      draft.name.trim(),
-      draft.version.trim(),
-      draft.minecraftVersion.trim(),
-      runtimeDependencies.modLoader,
-      minecraftPath,
-    );
-    const committedId = result?.id ?? null;
-    let needsFollowUp = false;
-
-    if (committedId && draft.description.trim()) {
-      try {
-        await modpacksIPC.updateMetadata(committedId, { description: draft.description.trim() }, minecraftPath);
-      } catch (error) {
-        console.error('Error saving created modpack metadata:', error);
-        needsFollowUp = true;
-      }
-    }
-    if (committedId) {
-      try {
-        await persistCreatedGameSettings(committedId);
-      } catch (error) {
-        console.error('Error saving created modpack game settings:', error);
-        needsFollowUp = true;
-      }
+    const result = await instancesIPC.create({
+      name: draft.name.trim(),
+      source: {
+        source: 'local',
+        version: draft.version.trim(),
+        ...(draft.description.trim() ? { description: draft.description.trim() } : {}),
+      },
+      config: {
+        runtime: {
+          minecraftVersion: draft.minecraftVersion.trim(),
+          modLoader: { type: modLoaderType },
+        },
+        ...(runtimeDependencies.useOptiFine ? { game: { useOptiFine: true } } : {}),
+      },
+    });
+    if (!result.ok) {
+      throw new Error(result.error.message);
     }
 
-    return { id: committedId, needsFollowUp };
+    return { id: result.value.selectedId, needsFollowUp: false };
   }, [
     draft.description,
     draft.minecraftVersion,
     draft.name,
     draft.version,
-    minecraftPath,
-    persistCreatedGameSettings,
-    runtimeDependencies.modLoader,
+    modLoaderType,
+    runtimeDependencies.useOptiFine,
     validateName,
   ]);
 
@@ -237,7 +207,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     if (!step3ModpackId) return;
     setStep3LoadingMods(true);
     try {
-      const modsList = await modpacksIPC.getMods(step3ModpackId, minecraftPath);
+      const modsList = await instanceModsIPC.list(step3ModpackId);
       const modsWithStatus: ModpackModEntry[] = modsList.map((mod) => ({
         ...mod,
         enabled: !mod.file.name.endsWith('.disabled'),
@@ -249,7 +219,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     } finally {
       setStep3LoadingMods(false);
     }
-  }, [step3ModpackId, minecraftPath]);
+  }, [step3ModpackId]);
 
   useEffect(() => {
     if (currentStep === 3 && step3ModpackId) {
@@ -394,7 +364,7 @@ export const ModpackCreationWizard: React.FC<ModpackCreationWizardProps> = ({
     });
     if (confirmed) {
       try {
-        await modpacksIPC.removeMod(step3ModpackId, mod.file.name, minecraftPath);
+        await instanceModsIPC.remove(step3ModpackId, mod.file.name);
         await loadStep3Mods();
       } catch (err) {
         console.error('Error removing mod:', err);

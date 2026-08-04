@@ -13,10 +13,10 @@ import { DegradedStateView } from '../../../components/layout/DegradedStateView'
 import { toDisplayErrorMessage } from '../../../utils/displayError';
 
 interface ScreenshotsTabProps {
-    instancePath: string;
+    instanceId: string;
 }
 
-export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
+export function ScreenshotsTab({ instanceId }: ScreenshotsTabProps) {
     const { t, formatDate, formatNumber } = useSettings();
     const toast = useToast();
     const confirm = useConfirm();
@@ -29,7 +29,7 @@ export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
         setLoading(true);
         setLoadError(null);
         try {
-            const list = await screenshotsIPC.list(instancePath);
+            const list = await screenshotsIPC.list(instanceId);
             setScreenshots(list);
         } catch (error) {
             console.error('Failed to load screenshots:', error);
@@ -38,7 +38,7 @@ export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
         } finally {
             setLoading(false);
         }
-    }, [instancePath, t, toast]);
+    }, [instanceId, t, toast]);
     const screenshotsErrorDescription = loadError
         ? toDisplayErrorMessage(loadError, t('error.inline_fallback'))
         : t('error.inline_fallback');
@@ -61,7 +61,7 @@ export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
         }
 
         try {
-            await screenshotsIPC.delete(screenshot.name, instancePath);
+            await screenshotsIPC.delete(screenshot.name, instanceId);
             setScreenshots((prev) => prev.filter((item) => item.name !== screenshot.name));
             toast.success(t('screenshots.deleteSuccess'));
             return true;
@@ -70,16 +70,16 @@ export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
             toast.error(t('screenshots.deleteError'));
             return false;
         }
-    }, [confirm, instancePath, t, toast]);
+    }, [confirm, instanceId, t, toast]);
 
     const handleOpenFolder = useCallback(async () => {
         try {
-            await screenshotsIPC.openFolder(instancePath);
+            await screenshotsIPC.openFolder(instanceId);
         } catch (error) {
             console.error('Failed to open screenshots folder:', error);
             toast.error(t('screenshots.folderError'));
         }
-    }, [instancePath, t, toast]);
+    }, [instanceId, t, toast]);
 
     const handleRename = useCallback((_screenshot: Screenshot, _newName: string) => {
         void loadScreenshots();
@@ -228,7 +228,7 @@ export function ScreenshotsTab({ instancePath }: ScreenshotsTabProps) {
                 <ScreenshotLightbox
                     screenshots={screenshots}
                     initialIndex={lightboxIndex}
-                    instancePath={instancePath}
+                    instanceId={instanceId}
                     onClose={() => setLightboxIndex(null)}
                     onDelete={handleDelete}
                     onOpenFolder={handleOpenFolder}

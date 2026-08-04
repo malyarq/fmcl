@@ -1,58 +1,66 @@
-import fs from 'fs';
-import path from 'path';
 import { CLASSIC_MODPACK_ID } from '../../../../shared/constants';
-import type { ModpackService } from '../../modpacks/modpackService';
-import { resolveApprovedInstancePath, resolveApprovedLauncherRootPath } from '../../instances/paths';
+import type { CanonicalInstanceRecord, LauncherRoot } from '../../../domains/instances/instanceTypes';
+import type { InstanceReadPort, LauncherRootResolver } from '../../../domains/instances/ports';
+import type { LaunchAdapters } from '../../../infrastructure/instances/launchAdapters';
 
-export function resolveRootAndModpack(params: {
-  modpacks: ModpackService;
-  options: {
-    gamePath?: string;
-    modpackId?: string;
-    modpackPath?: string;
+export type ResolvedLaunchInstance = Readonly<{
+  root: LauncherRoot;
+  rootPath: string;
+  instanceId: string;
+  instancePath: string;
+  record: CanonicalInstanceRecord;
+}>;
+
+function transientClassicRecord(options: { version: string; ram: number }): CanonicalInstanceRecord {
+  return {
+    id: CLASSIC_MODPACK_ID,
+    name: 'Classic',
+    source: {
+      source: 'local',
+      createdAt: 'transient',
+      updatedAt: 'transient',
+    },
+    config: {
+      runtime: { minecraftVersion: options.version },
+      memory: { maxMb: options.ram * 1024 },
+    },
+    summary: { minecraftVersion: options.version },
   };
-}) {
-  const { modpacks, options } = params;
-
-  // `rootPath` is the shared Minecraft "resource" location (assets/libraries/versions).
-  const rootPath = resolveApprovedLauncherRootPath(options.gamePath || modpacks.getDefaultRootPath());
-  modpacks.ensureXmclFolders(rootPath);
-  modpacks.ensureModpacksMigrated(rootPath);
-
-  // Modpack directory is the per-modpack "game" directory (mods/saves/config).
-  // This keeps modpacks isolated while still sharing the heavy runtime cache.
-  let modpackPath = options.modpackPath?.trim() || '';
-  let modpackId = options.modpackId?.trim() || '';
-  if (modpackPath) {
-    const safeModpackPath = resolveApprovedInstancePath(modpackPath);
-    if (path.basename(path.dirname(safeModpackPath)) !== 'modpacks') {
-      throw new Error('Modpack path must point to a FriendLauncher modpack directory');
-    }
-    modpackId = modpackId || path.basename(safeModpackPath);
-    const expectedPath = resolveApprovedInstancePath(modpacks.getModpackDir(rootPath, modpackId));
-    if (safeModpackPath !== expectedPath) {
-      throw new Error('Modpack path does not match the selected launcher root and modpack id');
-    }
-    modpackPath = safeModpackPath;
-  } else {
-    const selected = modpackId || modpacks.getSelectedModpackId(rootPath);
-    modpackId = selected;
-    // Persist selection when the caller explicitly passes modpackId. Skip for classic — hidden instance, not in index.
-    if (options.modpackId && modpackId !== CLASSIC_MODPACK_ID) {
-      try {
-        modpacks.setSelectedModpack(rootPath, selected);
-      } catch {
-        /* ignore */
-      }
-    }
-    modpackPath = modpacks.getModpackDir(rootPath, selected);
-  }
-
-  fs.mkdirSync(modpackPath, { recursive: true });
-  fs.mkdirSync(path.join(modpackPath, 'mods'), { recursive: true });
-
-  return { rootPath, modpackId, modpackPath };
 }
 
-// Legacy alias for backward compatibility
-export const resolveRootAndInstance = resolveRootAndModpack;
+export async function resolveLaunchInstance(params: {
+  instances: InstanceReadPort;
+  rootResolver: LauncherRootResolver;
+  native: LaunchAdapters;
+  launcherRootPath: string;
+  options: {
+    instanceId?: string;
+    version: string;
+    ram: number;
+  };
+}): Promise<ResolvedLaunchInstance> {
+  const { instances, rootResolver, native, launcherRootPath, options } = params;
+  const root = await rootResolver.resolve(launcherRootPath);
+  const rootPath = native.rootPath(root);
+  const requestedId = options.instanceId?.trim();
+  const record = requestedId === CLASSIC_MODPACK_ID
+    ? transientClassicRecord(options)
+    : await canonicalRecord(instances, root, requestedId);
+  const instancePath = native.instancePath(root, record.id);
+  native.ensureInstanceDirectory(instancePath);
+
+  return { root, rootPath, instanceId: record.id, instancePath, record };
+}
+
+async function canonicalRecord(instances: InstanceReadPort, root: LauncherRoot, requestedId?: string): Promise<CanonicalInstanceRecord> {
+  const state = await instances.read(root);
+  if (state.status === 'uninitialized') {
+    throw new Error('Canonical instance state is uninitialized');
+  }
+
+  const instanceId = requestedId ?? state.snapshot.selectedId;
+  if (!instanceId) throw new Error('Canonical instance state has no selected instance');
+  const record = state.snapshot.records.find((candidate) => candidate.id === instanceId);
+  if (!record) throw new Error(`Canonical instance does not exist: ${instanceId}`);
+  return record;
+}

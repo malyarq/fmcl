@@ -1,10 +1,11 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createExportOperationAdapter } from '../exportOperation';
+import { OperationJournal } from '../operationJournal';
 import { OperationRunner } from '../operationRunner';
+import type { InstanceCommand } from '../../../domains/instances/instanceTypes';
 
 describe('staged archive export operation', () => {
   const tempDirs: string[] = [];
@@ -72,9 +73,9 @@ describe('journaled manifest export operation', () => {
 
   afterEach(() => { for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
 
-  it('stages a manifest and commits metadata only after publishing the verified instance copy', async () => {
+  it('records and commits the exact canonical manifest command only after publishing the verified instance copy', async () => {
     const rootPath = seedManifestInstance(tempDirs);
-    const runner = new OperationRunner([createExportOperationAdapter()]);
+    const { runner, execute } = createManifestRunner();
 
     const started = runner.start(manifestRequest(rootPath));
 
@@ -88,17 +89,67 @@ describe('journaled manifest export operation', () => {
       name: 'Published pack',
       version: '2.0.0',
     });
-    expect(JSON.parse(fs.readFileSync(path.join(rootPath, 'modpacks-metadata.json'), 'utf8'))).toMatchObject({
-      modpacks: { 'export-me': { name: 'Published pack', version: '2.0.0', author: 'Friend' } },
-    });
+    expect(execute).toHaveBeenCalledWith(expect.objectContaining({
+      version: 1,
+      type: 'reconcile-update',
+      record: expect.objectContaining({
+        id: 'export-me',
+        name: 'Published pack',
+        source: expect.objectContaining({ source: 'local', version: '2.0.0', author: 'Friend' }),
+      }),
+    }));
     expect(fs.existsSync(path.join(rootPath, 'modpacks', 'export-me', '.fmcl-operation-publish.json'))).toBe(false);
+  });
+
+  it('persists the exact root-bound manifest command before publish and replays it once after a post-publish crash', async () => {
+    const rootPath = seedManifestInstance(tempDirs);
+    let startedId = '';
+    let durable: unknown;
+    const { runner } = createManifestRunner({
+      faults: {
+        'control-plane': () => {
+          durable = new OperationJournal(rootPath).get(startedId)?.recovery?.canonicalCommand;
+          throw new Error('simulated post-publish crash');
+        },
+      },
+    });
+    const started = runner.start(manifestRequest(rootPath));
+    startedId = started.id;
+
+    await expect(runner.waitFor(started.id)).resolves.toMatchObject({ status: 'failed' });
+    expect(durable).toMatchObject({
+      version: 1,
+      rootPath,
+      operationId: started.id,
+      command: {
+        version: 1,
+        type: 'reconcile-update',
+        record: { id: 'export-me', name: 'Published pack' },
+      },
+    });
+
+    const journal = new OperationJournal(rootPath);
+    const interrupted = journal.get(started.id)!;
+    const published = { ...interrupted };
+    delete published.result;
+    journal.save({ ...published, status: 'running', phase: 'published' });
+    const { runner: recoveryRunner, execute } = createManifestRunner();
+
+    await recoveryRunner.recover(rootPath);
+
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(execute).toHaveBeenCalledWith((durable as { command: InstanceCommand }).command);
+    expect(recoveryRunner.get(started.id)).toMatchObject({
+      status: 'recovered',
+      result: { status: 'recovered', instanceId: 'export-me' },
+    });
   });
 
   it.each(['validation', 'publish', 'control-plane'] as const)('never mutates live manifest or metadata when %s fails', async (fault) => {
     const rootPath = seedManifestInstance(tempDirs);
-    const runner = new OperationRunner([createExportOperationAdapter({
+    const { runner } = createManifestRunner({
       faults: { [fault]: () => { throw new Error(`${fault} failed`); } },
-    })]);
+    });
 
     const started = runner.start(manifestRequest(rootPath));
 
@@ -112,9 +163,9 @@ describe('journaled manifest export operation', () => {
   it('restores the prior instance and metadata when cancellation arrives after backup', async () => {
     const rootPath = seedManifestInstance(tempDirs);
     let cancel: (() => boolean) | undefined;
-    const runner = new OperationRunner([createExportOperationAdapter({
+    const { runner } = createManifestRunner({
       hooks: { afterBackup: () => { cancel?.(); } },
-    })]);
+    });
     const started = runner.start(manifestRequest(rootPath));
     cancel = () => runner.cancel(started.id);
 
@@ -124,26 +175,43 @@ describe('journaled manifest export operation', () => {
       modpacks: { 'export-me': { name: 'Old pack', version: '1.0.0' } },
     });
   });
-
-  it('has no legacy mutable manifest IPC chain', () => {
-    const projectRoot = fileURLToPath(new URL('../../../../', import.meta.url));
-    for (const relativePath of [
-      'shared/contracts/modpacks.ts',
-      'shared/contracts/ipcChannels.ts',
-      'electron/ipc/handlers/modpacksHandlers.ts',
-      'electron/preload/bridges/ModpacksBridge.ts',
-      'src/services/ipc/modpacksIPC.ts',
-      'src/verification/manual/mockEnvironment.ts',
-      'docs/en/contracts-map.md',
-      'docs/ru/contracts-map.md',
-    ]) {
-      expect(fs.readFileSync(path.join(projectRoot, relativePath), 'utf8')).not.toContain('exportFromInstance');
-    }
-  });
 });
 
 function request(rootPath: string, outputPath: string) {
   return { kind: 'export' as const, rootPath, instanceId: 'export-me', format: 'zip' as const, outputPath };
+}
+
+function createManifestRunner(options: Parameters<typeof createExportOperationAdapter>[0] = {}) {
+  const record = canonicalRecord();
+  const snapshot = { selectedId: record.id, records: [record] };
+  const execute = vi.fn(async (command: InstanceCommand) => ({
+    status: 'committed' as const,
+    snapshot: command.type === 'reconcile-update'
+      ? { selectedId: record.id, records: [command.record] }
+      : snapshot,
+  }));
+  return {
+    execute,
+    runner: new OperationRunner([createExportOperationAdapter(options)], {
+      rootMutationCoordinator: {
+        forRoot: () => ({
+          read: async () => ({ status: 'ready' as const, snapshot }),
+          prepare: async () => ({ status: 'ready' as const, source: 'canonical' as const, snapshot }),
+          execute,
+        }),
+      },
+    }),
+  };
+}
+
+function canonicalRecord() {
+  return {
+    id: 'export-me',
+    name: 'Old pack',
+    source: { source: 'local' as const, createdAt: '2026-08-03T00:00:00.000Z', updatedAt: '2026-08-03T00:00:00.000Z' },
+    config: { runtime: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } }, memory: { maxMb: 4096 }, vmOptions: [] },
+    summary: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } },
+  };
 }
 
 function seedOutput(tempDirs: string[]): { rootPath: string; outputPath: string } {

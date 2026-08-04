@@ -1,123 +1,51 @@
-import fs from 'node:fs';
 import path from 'node:path';
-import os from 'node:os';
-import { download } from '@xmcl/file-transfer';
-import { CurseforgeV1Client } from '@xmcl/curseforge';
-import { ModpackService } from '../modpackService';
+import type { CurseforgeV1Client } from '@xmcl/curseforge';
 import { parseCurseForgeManifest } from '../parsers/curseforgeParser';
-import { ensureDir } from '../../mods/platform/fsUtils';
-import type { ModpackMetadata } from '@shared/types/modpack';
-import { createModpackMetadataFromConfig } from '../storage';
-import { extractZipSafely, openValidatedZip } from '../../../security/archivePolicy';
 import { assertChildName, resolvePathWithinRoot } from '../../../security/pathGuards';
-import { assertPublicHttpsUrl } from '../../../security/remoteUrls';
+import type { ModpackConfig, ModLoaderType } from '../../instances/types';
+import type { ProviderArchivePort, ProviderContentPort, ProviderDownloadPort, ProviderStagedInstall } from '.';
 
-export interface CurseForgeModpackInstallOptions {
+export type CurseForgeInstallerPorts = Readonly<{
+  provider: Pick<CurseforgeV1Client, 'getModFile' | 'getMod'>;
+  download: ProviderDownloadPort;
+  archive: ProviderArchivePort;
+  content: ProviderContentPort;
+}>;
+
+export type CurseForgeStagingInput = Readonly<{
   projectId: number;
   fileId: number;
-  targetModpackId?: string;
-  rootPath?: string;
-  onProgress?: (progress: { downloaded: number; total: number; stage: string }) => void;
+  destinationId: string;
+  stagingRoot: string;
   checkCancelled?: () => void;
-}
+}>;
 
-export interface CurseForgeModpackInstallResult {
-  modpackId: string;
-  config: unknown;
-  metadata: ModpackMetadata;
-  missing: Array<{ path: string; reason: string }>;
-}
-
-/**
- * Установка модпака с CurseForge
- */
-export async function downloadCurseForgeModpack(
-  curseforge: CurseforgeV1Client,
-  modpackService: ModpackService,
-  options: CurseForgeModpackInstallOptions,
-): Promise<CurseForgeModpackInstallResult> {
-  const { projectId, fileId, targetModpackId, rootPath, onProgress, checkCancelled } = options;
-  const throwIfCancelled = () => checkCancelled?.();
-  const root = rootPath ?? modpackService.getDefaultRootPath();
-  modpackService.ensureModpacksMigrated(root);
-
-  onProgress?.({ downloaded: 0, total: 100, stage: 'Получение информации о модпаке...' });
-
-  // Получить информацию о файле модпака
-  throwIfCancelled();
-  const modpackFile = await curseforge.getModFile(projectId, fileId);
-  const downloadUrl = modpackFile.downloadUrl;
-  if (!downloadUrl) {
-    throw new Error('CurseForge modpack file has no downloadUrl');
-  }
-
-  // Получить информацию о модпаке для метаданных
-  const modpackInfo = await curseforge.getMod(projectId);
-
-  onProgress?.({ downloaded: 10, total: 100, stage: 'Скачивание модпака...' });
-
-  // Скачать ZIP архив во временную папку
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'modpack-'));
-  const tempZipPath = path.join(tempDir, 'modpack.zip');
-
+/** Downloads provider content into the caller-owned staging workspace only. */
+export async function stageCurseForgeModpack(ports: CurseForgeInstallerPorts, input: CurseForgeStagingInput): Promise<ProviderStagedInstall> {
+  const checkCancelled = () => input.checkCancelled?.();
+  checkCancelled();
+  const packFile = await ports.provider.getModFile(input.projectId, input.fileId);
+  if (!packFile.downloadUrl) throw new Error('CurseForge modpack file has no downloadUrl');
+  const pack = await ports.provider.getMod(input.projectId);
+  const temporaryDirectory = ports.content.createTemporaryDirectory('fmcl-curseforge-');
+  const stagePath = resolvePathWithinRoot(input.stagingRoot, `modpacks/${input.destinationId}`, 'CurseForge staged modpack');
+  const archivePath = path.join(temporaryDirectory, 'modpack.zip');
+  const extractPath = path.join(temporaryDirectory, 'extracted');
   try {
-    const sha1 = modpackFile.hashes?.find((h) => h.algo === 1 /* sha1 */)?.value;
-    await download({
-      url: assertPublicHttpsUrl(downloadUrl, 'CurseForge modpack download URL'),
-      destination: tempZipPath,
-      validator: sha1 ? { algorithm: 'sha1', hash: sha1 } : undefined,
-    });
-    throwIfCancelled();
-
-    onProgress?.({ downloaded: 30, total: 100, stage: 'Распаковка модпака...' });
-
-    // Распаковать ZIP
-    const zip = await openValidatedZip(tempZipPath, 'CurseForge modpack');
-    const extractDir = path.join(tempDir, 'extracted');
-    try {
-      await extractZipSafely(zip, extractDir);
-    } finally {
-      zip.close();
-    }
-
-    onProgress?.({ downloaded: 40, total: 100, stage: 'Парсинг манифеста...' });
-
-    // Найти и распарсить manifest.json
-    const manifestPath = path.join(extractDir, 'manifest.json');
-    if (!fs.existsSync(manifestPath)) {
-      throw new Error('CurseForge modpack does not contain manifest.json');
-    }
-
-    const manifestJson = fs.readFileSync(manifestPath, 'utf-8');
-    const manifest = parseCurseForgeManifest(manifestJson);
-
-    // Определить модлоадер
-    const primaryLoader = manifest.minecraft.modLoaders.find((l) => l.primary);
-    const loaderId = primaryLoader?.id || manifest.minecraft.modLoaders[0]?.id || '';
-    const loaderType = loaderId.includes('forge') ? 'forge' : loaderId.includes('fabric') ? 'fabric' : loaderId.includes('quilt') ? 'quilt' : loaderId.includes('neoforge') ? 'neoforge' : 'vanilla';
-    const loaderVersion = loaderId.split('-')[1];
-
-    // Создать модпак
-    const modpackName = targetModpackId || manifest.name || modpackInfo.name;
-    const { id: modpackId, config } = modpackService.createModpack(root, modpackName, {
-      runtime: {
-        minecraft: manifest.minecraft.version,
-        modLoader: loaderType !== 'vanilla' ? { type: loaderType, version: loaderVersion } : undefined,
-      },
-    });
-
-    const modpackDir = modpackService.getModpackDir(root, modpackId);
-
-    onProgress?.({ downloaded: 50, total: 100, stage: 'Установка модов...' });
-
-    // Установить все моды из манифеста
-    const modsDir = path.join(modpackDir, 'mods');
-    ensureDir(modsDir);
-
-    const totalMods = manifest.files.length;
-    let installedMods = 0;
+    await ports.download.download({ urls: [packFile.downloadUrl], destination: archivePath, sha1: packFile.hashes?.find((hash) => hash.algo === 1)?.value, label: 'CurseForge modpack download URL' });
+    checkCancelled();
+    await ports.archive.extract(archivePath, extractPath, 'CurseForge modpack');
+    checkCancelled();
+    const manifestPath = resolvePathWithinRoot(extractPath, 'manifest.json', 'CurseForge manifest');
+    if (!ports.content.exists(manifestPath)) throw new Error('CurseForge modpack does not contain manifest.json');
+    const manifest = parseCurseForgeManifest(ports.content.readText(manifestPath));
+    const loader = parseLoader(manifest.minecraft.modLoaders.find((entry) => entry.primary)?.id ?? manifest.minecraft.modLoaders[0]?.id);
+    const config = configFor(input.destinationId, manifest.name || pack.name, manifest.minecraft.version, loader);
+    ports.content.ensureDirectory(stagePath);
+    ports.content.writeText(resolvePathWithinRoot(stagePath, 'modpack.json', 'CurseForge staged config'), JSON.stringify(config));
     const missing: Array<{ path: string; reason: string }> = [];
-
+    const modsPath = resolvePathWithinRoot(stagePath, 'mods', 'CurseForge staged mods');
+    ports.content.ensureDirectory(modsPath);
     for (const file of manifest.files) {
       const missingPath = `curseforge:${file.projectID ?? 'missing'}/${file.fileID ?? 'missing'}`;
       if (!file.projectID || !file.fileID) {
@@ -126,102 +54,49 @@ export async function downloadCurseForgeModpack(
         continue;
       }
       try {
-        throwIfCancelled();
-        const modFile = await curseforge.getModFile(file.projectID, file.fileID);
-        const modDownloadUrl = modFile.downloadUrl;
-        if (!modDownloadUrl) {
-          throw new Error('provider did not return a download URL');
-        }
-
-        const modDestination = resolvePathWithinRoot(modsDir, assertChildName(modFile.fileName, 'CurseForge mod filename'), 'CurseForge mod destination');
-        const modSha1 = modFile.hashes?.find((h) => h.algo === 1 /* sha1 */)?.value;
-
-        await download({
-          url: assertPublicHttpsUrl(modDownloadUrl, `CurseForge mod ${file.projectID}/${file.fileID} download URL`),
-          destination: modDestination,
-          validator: modSha1 ? { algorithm: 'sha1', hash: modSha1 } : undefined,
-        });
-
-        throwIfCancelled();
-        installedMods++;
-        onProgress?.({
-          downloaded: 50 + Math.floor((installedMods / totalMods) * 40),
-          total: 100,
-          stage: `Установка модов (${installedMods}/${totalMods})...`,
-        });
+        checkCancelled();
+        const mod = await ports.provider.getModFile(file.projectID, file.fileID);
+        if (!mod.downloadUrl) throw new Error('provider did not return a download URL');
+        const destination = resolvePathWithinRoot(modsPath, assertChildName(mod.fileName ?? `${file.fileID}.jar`, 'CurseForge mod filename'), 'CurseForge mod destination');
+        await ports.download.download({ urls: [mod.downloadUrl], destination, sha1: mod.hashes?.find((hash) => hash.algo === 1)?.value, label: `CurseForge mod ${file.projectID}/${file.fileID} download URL` });
+        checkCancelled();
       } catch (error) {
         if (file.required) throw error;
         missing.push({ path: missingPath, reason: error instanceof Error ? error.message : 'optional provider download failed' });
       }
     }
-
-    onProgress?.({ downloaded: 90, total: 100, stage: 'Копирование конфигов...' });
-
-    // Скопировать overrides
-    const overridesDir = resolvePathWithinRoot(extractDir, manifest.overrides || 'overrides', 'CurseForge overrides directory');
-    if (fs.existsSync(overridesDir)) {
-      // Рекурсивно скопировать все файлы из overrides
-      const copyRecursive = (src: string, dest: string) => {
-        const entries = fs.readdirSync(src, { withFileTypes: true });
-        for (const entry of entries) {
-          throwIfCancelled();
-          const safeName = assertChildName(entry.name, 'CurseForge override entry');
-          const srcPath = resolvePathWithinRoot(src, safeName, 'CurseForge override source');
-          const destPath = resolvePathWithinRoot(dest, safeName, 'CurseForge override destination');
-          if (entry.isDirectory()) {
-            ensureDir(destPath);
-            copyRecursive(srcPath, destPath);
-          } else {
-            ensureDir(path.dirname(destPath));
-            fs.copyFileSync(srcPath, destPath);
-          }
-        }
-      };
-      copyRecursive(overridesDir, modpackDir);
-    }
-
-    // Сохранить манифест в папке модпака
-    const modpackManifestPath = path.join(modpackDir, 'manifest.json');
-    fs.copyFileSync(manifestPath, modpackManifestPath);
-
-    onProgress?.({ downloaded: 95, total: 100, stage: 'Создание метаданных...' });
-
-    // Создать метаданные
-    const metadata = createModpackMetadataFromConfig(
-      config,
-      'curseforge',
-      String(projectId),
-      String(fileId),
-    );
-
-    // Обновить метаданные с информацией из API
-    const updatedMetadata = {
-      ...metadata,
-      name: modpackInfo.name,
-      version: manifest.version,
-      description: modpackInfo.summary,
-      iconUrl: modpackInfo.logo?.thumbnailUrl,
-      author: manifest.author || (modpackInfo.authors && Array.isArray(modpackInfo.authors) 
-        ? modpackInfo.authors.map((a: { name?: string }) => a.name || '').filter(Boolean).join(', ')
-        : undefined),
-    };
-
-    modpackService.updateModpackMetadata(root, modpackId, updatedMetadata);
-
-    onProgress?.({ downloaded: 100, total: 100, stage: 'Готово!' });
-
+    copyDirectory(ports.content, resolvePathWithinRoot(extractPath, manifest.overrides || 'overrides', 'CurseForge overrides'), stagePath, checkCancelled);
+    ports.content.copyFile(manifestPath, resolvePathWithinRoot(stagePath, 'manifest.json', 'CurseForge staged manifest'));
     return {
-      modpackId,
       config,
-      metadata: updatedMetadata,
+      source: { source: 'curseforge', sourceId: String(input.projectId), sourceVersionId: String(input.fileId), version: manifest.version, description: pack.summary, iconUrl: pack.logo?.thumbnailUrl, author: manifest.author ?? (pack.authors?.map((author) => author.name ?? '').filter(Boolean).join(', ') || undefined) },
+      content: { instanceId: input.destinationId, descriptor: 'manifest.json' },
       missing,
     };
   } finally {
-    // Удалить временные файлы
-    try {
-      fs.rmSync(tempDir, { recursive: true, force: true });
-    } catch (error) {
-      console.warn('Failed to clean up temp directory:', error);
-    }
+    ports.content.removeDirectory(temporaryDirectory);
+  }
+}
+
+function configFor(id: string, name: string, minecraft: string, modLoader?: { type: ModLoaderType; version?: string }): ModpackConfig {
+  const now = new Date().toISOString();
+  return { id, name: name.trim() || id, runtime: { minecraft, ...(modLoader === undefined ? {} : { modLoader }) }, memory: { maxMb: 4096 }, vmOptions: [], createdAt: now, updatedAt: now };
+}
+
+function parseLoader(id?: string): { type: ModLoaderType; version?: string } | undefined {
+  if (!id) return undefined;
+  const match = /^(forge|fabric|quilt|neoforge)(?:-(.+))?$/i.exec(id);
+  return match ? { type: match[1].toLowerCase() as ModLoaderType, ...(match[2] === undefined ? {} : { version: match[2] }) } : { type: 'vanilla' };
+}
+
+function copyDirectory(content: ProviderContentPort, source: string, destination: string, checkCancelled: () => void): void {
+  if (!content.exists(source)) return;
+  for (const entry of content.readDirectory(source)) {
+    checkCancelled();
+    const safeName = assertChildName(entry.name, 'CurseForge override entry');
+    const sourcePath = resolvePathWithinRoot(source, safeName, 'CurseForge override source');
+    const destinationPath = resolvePathWithinRoot(destination, safeName, 'CurseForge override destination');
+    if (entry.directory) { content.ensureDirectory(destinationPath); copyDirectory(content, sourcePath, destinationPath, checkCancelled); }
+    else content.copyFile(sourcePath, destinationPath);
   }
 }

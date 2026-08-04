@@ -1,8 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { ModpackService } from '../instanceService';
 import type { ModpackConfig } from '../types';
 import { SafeZipWriter } from '../../../security/zipWriter';
+import type { InstanceReadPort } from '../../../domains/instances/ports';
+import type { CanonicalInstanceRecord, LauncherRoot } from '../../../domains/instances/instanceTypes';
+
+/** Main-process content authority required to export a canonical instance. */
+export interface ArchiveExportContentPort {
+    resolveRoot(rootPath: string): Promise<LauncherRoot>;
+    getInstanceDirectory(root: LauncherRoot, instanceId: string): string;
+}
 
 export interface ExportOptions {
     includeSaves?: boolean;
@@ -13,7 +20,10 @@ export interface ExportOptions {
 }
 
 export class InstanceExporterService {
-    constructor(private modpackService: ModpackService) { }
+    constructor(
+        private readonly instanceReadPort: InstanceReadPort,
+        private readonly content: ArchiveExportContentPort,
+    ) { }
 
     /**
      * Export an instance to a specific format
@@ -21,16 +31,21 @@ export class InstanceExporterService {
     public async exportInstance(
         rootPath: string,
         instanceId: string,
-        format: 'multimc' | 'zip', // We can add curseforge/modrinth later via ModpackService logic if needed, but for now focus on raw instance export
+        format: 'multimc' | 'zip', // Other archive formats remain outside this raw instance adapter.
         outputPath: string,
         options: ExportOptions = {}
     ): Promise<void> {
-        const config = this.modpackService.loadModpackConfig(rootPath, instanceId);
-        if (!config) {
+        const root = await this.content.resolveRoot(rootPath);
+        const state = await this.instanceReadPort.read(root);
+        const record = state.status === 'ready'
+            ? state.snapshot.records.find((candidate) => candidate.id === instanceId)
+            : undefined;
+        if (!record) {
             throw new Error(`Instance not found: ${instanceId}`);
         }
+        const config = toExportConfig(record);
 
-        const instanceDir = this.modpackService.getModpackDir(rootPath, instanceId);
+        const instanceDir = this.content.getInstanceDirectory(root, instanceId);
 
         if (format === 'multimc') {
             await this.exportAsMultiMC(config, instanceDir, outputPath, options);
@@ -165,4 +180,15 @@ export class InstanceExporterService {
             }
         }
     }
+}
+
+function toExportConfig(record: CanonicalInstanceRecord): ModpackConfig {
+    return {
+        id: record.id,
+        name: record.name,
+        runtime: {
+            minecraft: record.config.runtime.minecraftVersion,
+            ...(record.config.runtime.modLoader ? { modLoader: { ...record.config.runtime.modLoader } } : {}),
+        },
+    };
 }

@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useModpack } from '../../../contexts/ModpackContext';
-import { useSettings } from '../../../contexts/SettingsContext';
-import { modpacksIPC } from '../../../services/ipc/modpacksIPC';
-import type { ModpackVersionDescriptor } from '@shared/contracts';
+import { fetchModpackMetadata } from '../../../contexts/instances/services/instancesService';
+import { providerCatalogIPC } from '../../../services/ipc/providerCatalogIPC';
+import type { ProviderCatalogVersionDescriptor } from '@shared/contracts';
 import type { ModpackMetadata } from '@shared/types/modpack';
 
 export interface ModpackUpdateInfo {
   modpackId: string;
   modpackName: string;
   currentVersion: string;
-  latestVersion: ModpackVersionDescriptor;
+  latestVersion: ProviderCatalogVersionDescriptor;
   source: 'curseforge' | 'modrinth';
   sourceId: string;
 }
@@ -22,20 +22,19 @@ type ModpackUpdateTarget = {
 
 export async function resolveModpackUpdateInfo(
   target: ModpackUpdateTarget,
-  minecraftPath: string,
 ): Promise<ModpackUpdateInfo | null> {
-  const metadata = target.metadata ?? await modpacksIPC.getMetadata(target.id, minecraftPath);
+  const metadata = target.metadata ?? await fetchModpackMetadata(target.id);
 
   if (!metadata.source || metadata.source === 'local' || !metadata.sourceId) {
     return null;
   }
 
-  let versions: ModpackVersionDescriptor[];
+  let versions: readonly ProviderCatalogVersionDescriptor[];
 
   if (metadata.source === 'curseforge') {
-    versions = await modpacksIPC.getCurseForgeVersions(Number(metadata.sourceId));
+    versions = await providerCatalogIPC.versions({ platform: 'curseforge', projectId: metadata.sourceId });
   } else if (metadata.source === 'modrinth') {
-    versions = await modpacksIPC.getModrinthVersions(metadata.sourceId);
+    versions = await providerCatalogIPC.versions({ platform: 'modrinth', projectId: metadata.sourceId });
   } else {
     return null;
   }
@@ -63,12 +62,11 @@ export async function resolveModpackUpdateInfo(
 
 export async function resolveInstalledModpackUpdates(
   modpacks: ModpackUpdateTarget[],
-  minecraftPath: string,
 ): Promise<ModpackUpdateInfo[]> {
   const results = await Promise.all(
     modpacks.map(async (modpack) => {
       try {
-        return await resolveModpackUpdateInfo(modpack, minecraftPath);
+        return await resolveModpackUpdateInfo(modpack);
       } catch (error) {
         console.error(`Error checking updates for modpack ${modpack.id}:`, error);
         return null;
@@ -81,7 +79,6 @@ export async function resolveInstalledModpackUpdates(
 
 export function useModpackUpdates(autoCheck = false) {
   const { modpacks } = useModpack();
-  const { minecraftPath } = useSettings();
   const [updates, setUpdates] = useState<ModpackUpdateInfo[]>([]);
   const [checking, setChecking] = useState(false);
 
@@ -89,7 +86,7 @@ export function useModpackUpdates(autoCheck = false) {
     setChecking(true);
 
     try {
-      const availableUpdates = await resolveInstalledModpackUpdates(modpacks, minecraftPath);
+      const availableUpdates = await resolveInstalledModpackUpdates(modpacks);
       setUpdates(availableUpdates);
       return availableUpdates;
     } finally {

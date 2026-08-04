@@ -1,40 +1,58 @@
 import { ipcMain, shell } from 'electron';
 import { worldsService } from '../../services/worlds/worldService';
 import { assertChildName } from '../../security/pathGuards';
-import { resolveApprovedInstancePath, resolveWorldPath } from '../../services/instances/paths';
+import {
+    getDefaultRootPath,
+    getModpackDir,
+    resolveApprovedInstancePath,
+    resolveWorldPath,
+} from '../../services/instances/paths';
+import { validateIdentifier } from '../validation/privilegedPayloads';
+
+function resolveInstancePath(instanceId: unknown): string {
+    const safeInstanceId = assertChildName(
+        validateIdentifier(instanceId, 'Instance ID'),
+        'Instance ID',
+    );
+    return resolveApprovedInstancePath(getModpackDir(getDefaultRootPath(), safeInstanceId));
+}
 
 export function registerWorldsHandlers() {
-    ipcMain.removeHandler('worlds:list');
-    ipcMain.handle('worlds:list', async (_evt, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
-        return await worldsService.list(safeInstancePath);
+    ipcMain.removeHandler('worlds:listByInstanceId');
+    ipcMain.handle('worlds:listByInstanceId', async (_evt, instanceId: unknown) => {
+        return await worldsService.list(resolveInstancePath(instanceId));
     });
 
-    ipcMain.removeHandler('worlds:delete');
-    ipcMain.handle('worlds:delete', async (_evt, folderName: string, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
-        const safeFolderName = assertChildName(folderName, 'World name');
-        return await worldsService.delete(safeFolderName, safeInstancePath);
+    ipcMain.removeHandler('worlds:deleteByInstanceId');
+    ipcMain.handle('worlds:deleteByInstanceId', async (_evt, folderName: unknown, instanceId: unknown) => {
+        await worldsService.delete(
+            assertChildName(validateIdentifier(folderName, 'World name'), 'World name'),
+            resolveInstancePath(instanceId),
+        );
     });
 
-    ipcMain.removeHandler('worlds:backup');
-    ipcMain.handle('worlds:backup', async (_evt, folderName: string, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
-        const safeFolderName = assertChildName(folderName, 'World name');
-        return await worldsService.backup(safeFolderName, safeInstancePath);
+    ipcMain.removeHandler('worlds:backupByInstanceId');
+    ipcMain.handle('worlds:backupByInstanceId', async (_evt, folderName: unknown, instanceId: unknown) => {
+        await worldsService.backup(
+            assertChildName(validateIdentifier(folderName, 'World name'), 'World name'),
+            resolveInstancePath(instanceId),
+        );
     });
 
-    ipcMain.removeHandler('worlds:duplicate');
-    ipcMain.handle('worlds:duplicate', async (_evt, folderName: string, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
-        const safeFolderName = assertChildName(folderName, 'World name');
-        return await worldsService.duplicate(safeFolderName, safeInstancePath);
+    ipcMain.removeHandler('worlds:duplicateByInstanceId');
+    ipcMain.handle('worlds:duplicateByInstanceId', async (_evt, folderName: unknown, instanceId: unknown) => {
+        return await worldsService.duplicate(
+            assertChildName(validateIdentifier(folderName, 'World name'), 'World name'),
+            resolveInstancePath(instanceId),
+        );
     });
 
-    ipcMain.removeHandler('worlds:openFolder');
-    ipcMain.handle('worlds:openFolder', async (_evt, folderName: string, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
-        const worldPath = resolveWorldPath(safeInstancePath, folderName);
+    ipcMain.removeHandler('worlds:openFolderByInstanceId');
+    ipcMain.handle('worlds:openFolderByInstanceId', async (_evt, folderName: unknown, instanceId: unknown) => {
+        const worldPath = resolveWorldPath(
+            resolveInstancePath(instanceId),
+            assertChildName(validateIdentifier(folderName, 'World name'), 'World name'),
+        );
         await shell.openPath(worldPath);
     });
 }

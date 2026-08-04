@@ -24,7 +24,6 @@ export interface ModpackDetailsSettingsTabProps {
   neoForgeVersions: string[];
   optiFineVersions: string[];
   onRefresh: () => Promise<void>;
-  minecraftPath: string;
   t: (key: string) => string;
   getAccentStyles: (type: 'bg' | 'text' | 'border' | 'ring' | 'hover' | 'accent' | 'title' | 'soft-bg' | 'soft-border') => {
     className?: string;
@@ -42,7 +41,6 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
   neoForgeVersions,
   optiFineVersions,
   onRefresh: _onRefresh,
-  minecraftPath: _minecraftPath,
   t,
   getAccentStyles,
 }) => {
@@ -126,7 +124,6 @@ export const ModpackDetailsSettingsTab: React.FC<ModpackDetailsSettingsTabProps>
           modpackConfig={effectiveConfig}
           setMemoryGb={(gb) => setters.setMemoryGb(gb)}
           setMinMemoryGb={(gb) => setters.setMinMemoryGb(gb)}
-          setJavaPath={(path) => setters.setJavaPath(path)}
           setVmOptions={(options) => setters.setVmOptions(options)}
           setGameExtraArgs={(args) => setters.setGameExtraArgs(args)}
           setGameResolution={setters.setGameResolution}

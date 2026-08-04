@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { Boxes, Settings2, Sparkles } from 'lucide-react';
 import { useSettings, useUIMode } from '../contexts/SettingsContext';
 import { useModpack } from '../contexts/ModpackContext';
-import { modpacksIPC } from '../services/ipc/modpacksIPC';
+import { instancesIPC } from '../services/ipc/instancesIPC';
 import type { ModpackMetadata } from '@shared/types/modpack';
 import { ModsTab } from './modpacks/details/ModsTab';
 import { Button } from './ui/Button';
@@ -78,37 +78,20 @@ function generateParticles(baseId: number): Particle[] {
 }
 
 export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDashboardProps) {
-  const { t, getAccentStyles, getAccentHex, minecraftPath, disableAnimations } = useSettings();
+  const { t, getAccentStyles, getAccentHex, disableAnimations } = useSettings();
   const { setMode } = useUIMode();
   const {
     effectiveModpackId,
     config: modpackConfig,
     setMemoryGb,
     setMinMemoryGb,
-    setJavaPath,
     setVmOptions,
     setGameExtraArgs,
     setGameResolution,
     setAutoConnectServer,
-    modpacks, // Use modpacks to find the path
   } = useModpack(); // в Classic — classic config и setters
   const modpackId = effectiveModpackId;
-  const currentModpack = modpacks.find((m) => m.id === modpackId);
-  const targetPath = currentModpack?.path || minecraftPath || undefined;
-
-  const [resolvedPath, setResolvedPath] = useState<string>('');
   const [metadata, setMetadata] = useState<ModpackMetadata | null>(null);
-
-  useEffect(() => {
-    if (!targetPath && modpackId) {
-      modpacksIPC.resolvePath(modpackId)
-        .then((path: string) => {
-          console.log('[SimplePlayDashboard] Resolved path via IPC:', path);
-          setResolvedPath(path);
-        })
-        .catch((err: Error) => console.error('Failed to resolve path:', err));
-    }
-  }, [targetPath, modpackId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,7 +103,27 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
       }
 
       try {
-        const nextMetadata = await modpacksIPC.getMetadata(modpackId, minecraftPath);
+        const response = await instancesIPC.snapshot({ id: modpackId });
+        if (!response.ok) {
+          throw new Error(response.error.message);
+        }
+
+        const { metadata: instanceMetadata, name, summary } = response.value;
+        const nextMetadata: ModpackMetadata = {
+          id: modpackId,
+          name,
+          source: instanceMetadata.source,
+          ...(instanceMetadata.sourceId === undefined ? {} : { sourceId: instanceMetadata.sourceId }),
+          ...(instanceMetadata.sourceVersionId === undefined ? {} : { sourceVersionId: instanceMetadata.sourceVersionId }),
+          ...(instanceMetadata.version === undefined ? {} : { version: instanceMetadata.version }),
+          ...(instanceMetadata.iconUrl === undefined ? {} : { iconUrl: instanceMetadata.iconUrl }),
+          ...(instanceMetadata.description === undefined ? {} : { description: instanceMetadata.description }),
+          ...(instanceMetadata.author === undefined ? {} : { author: instanceMetadata.author }),
+          minecraftVersion: summary.minecraftVersion,
+          ...(summary.modLoader === undefined ? {} : { modLoader: { ...summary.modLoader } }),
+          createdAt: instanceMetadata.createdAt,
+          updatedAt: instanceMetadata.updatedAt,
+        };
         if (!cancelled) {
           setMetadata(nextMetadata);
         }
@@ -137,9 +140,7 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
     return () => {
       cancelled = true;
     };
-  }, [minecraftPath, modpackId]);
-
-  const effectivePath = targetPath || resolvedPath || undefined;
+  }, [modpackId]);
 
   // Debug logs removed
 
@@ -197,7 +198,6 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
   );
   const heroName =
     metadata?.name ||
-    currentModpack?.name ||
     modpackConfig?.name ||
     (t('ui_mode.simple') || 'Classic');
   const heroSubtitle = `${classicRuntime.minecraftVersion} • ${loaderLabel}`;
@@ -207,7 +207,6 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
       modpackConfig={modpackConfig}
       setMemoryGb={setMemoryGb}
       setMinMemoryGb={setMinMemoryGb}
-      setJavaPath={setJavaPath}
       setVmOptions={setVmOptions}
       setGameExtraArgs={setGameExtraArgs}
       setGameResolution={setGameResolution}
@@ -613,7 +612,6 @@ export function SimplePlayDashboard({ launch, runtime, actions }: SimplePlayDash
         className="w-full max-w-2xl mt-4"
       >
           <ContentManagerSection
-            minecraftPath={effectivePath}
             t={t}
             showMods={showMods}
             modpackId={modpackId}
@@ -672,7 +670,6 @@ function InfoCard({
 type ContentTab = 'mods' | 'resourcepacks' | 'shaders' | 'worlds';
 
 function ContentManagerSection({
-  minecraftPath,
   t,
   showMods = false,
   modpackId,
@@ -681,7 +678,6 @@ function ContentManagerSection({
   runtimeSummary,
   onOpenGuidedContent,
 }: {
-  minecraftPath?: string;
   t: (k: string) => string;
   showMods?: boolean;
   modpackId?: string;
@@ -693,15 +689,7 @@ function ContentManagerSection({
   const { getAccentHex } = useSettings();
   const accentHex = getAccentHex();
   const [activeTab, setActiveTab] = useState<ContentTab>(showMods ? 'mods' : 'resourcepacks');
-  const instancePath = minecraftPath || '';
-
-  if (!instancePath) {
-    return (
-      <div className="surface-muted py-4 text-center text-sm text-secondary">
-        {t('dashboard.no_minecraft_path') || 'Minecraft path not set'}
-      </div>
-    );
-  }
+  if (!modpackId) return null;
 
   const tabs: { key: ContentTab; label: string }[] = [
     ...(showMods ? [{ key: 'mods' as ContentTab, label: t('modpacks.tab_mods') || 'Моды' }] : []),
@@ -757,27 +745,26 @@ function ContentManagerSection({
       <div className="w-full" role="tabpanel" id={`simple-content-panel-${activeTab}`} aria-labelledby={`simple-content-tab-${activeTab}`}>
         {activeTab === 'mods' && modpackId && (
           <ModsTab
-            modpackId={modpackId}
-            instancePath={instancePath}
+            instanceId={modpackId}
             showAddButton={true}
             defaultMCVersion={defaultMCVersion}
             defaultLoader={defaultLoader}
           />
         )}
-        {activeTab === 'resourcepacks' && (
+        {activeTab === 'resourcepacks' && modpackId && (
           <ResourcePacksTab
-            instancePath={instancePath}
+            instanceId={modpackId}
             onAddResourcePack={() => onOpenGuidedContent('resourcepack')}
           />
         )}
-        {activeTab === 'shaders' && (
+        {activeTab === 'shaders' && modpackId && (
           <ShadersTab
-            instancePath={instancePath}
+            instanceId={modpackId}
             runtimeSummary={runtimeSummary}
             onAddShader={() => onOpenGuidedContent('shader')}
           />
         )}
-        {activeTab === 'worlds' && <WorldsTab instancePath={instancePath} mcVersion={defaultMCVersion} />}
+        {activeTab === 'worlds' && modpackId && <WorldsTab instanceId={modpackId} mcVersion={defaultMCVersion} />}
       </div>
     </div>
   );

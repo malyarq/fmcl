@@ -8,8 +8,6 @@ export interface ResourcePack {
     description?: string;
     /** Pack format version */
     packFormat: number;
-    /** Absolute path to the file */
-    path: string;
     /** Icon in base64 or file:// url */
     iconUrl?: string;
     /** Whether the pack is enabled in options.txt */

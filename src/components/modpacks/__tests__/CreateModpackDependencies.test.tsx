@@ -6,10 +6,7 @@ import { createTranslator } from '../../../contexts/settings/i18n';
 import { CreateModpackModal } from '../CreateModpackModal';
 import { ModpackCreationWizard } from '../ModpackCreationWizard';
 
-const createLocalMock = vi.fn();
-const updateMetadataMock = vi.fn();
-const getConfigMock = vi.fn();
-const saveConfigMock = vi.fn();
+const createMock = vi.fn();
 const refreshMock = vi.fn();
 
 let currentLanguage: 'en' | 'ru' = 'en';
@@ -58,15 +55,8 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    createLocal: (...args: unknown[]) => createLocalMock(...args),
-    updateMetadata: (...args: unknown[]) => updateMetadataMock(...args),
-    getConfig: (...args: unknown[]) => getConfigMock(...args),
-    saveConfig: (...args: unknown[]) => saveConfigMock(...args),
-    getMods: vi.fn().mockResolvedValue([]),
-    removeMod: vi.fn(),
-  },
+vi.mock('../../../services/ipc/instancesIPC', () => ({
+  instancesIPC: { create: (...args: unknown[]) => createMock(...args) },
 }));
 
 vi.mock('../../../features/launcher/hooks/useVersions', () => ({
@@ -100,23 +90,9 @@ describe('Create-modpack dependency truth', () => {
     currentLanguage = 'en';
     mockMatchMedia();
     localStorage.clear();
-    createLocalMock.mockReset();
-    updateMetadataMock.mockReset();
-    getConfigMock.mockReset();
-    saveConfigMock.mockReset();
+    createMock.mockReset();
     refreshMock.mockReset();
-    createLocalMock.mockResolvedValue({ id: 'pack-1' });
-    updateMetadataMock.mockResolvedValue(undefined);
-    getConfigMock.mockResolvedValue({
-      id: 'pack-1',
-      name: 'Alpha Pack',
-      runtime: {
-        minecraft: '1.20.1',
-        modLoader: { type: 'forge' },
-      },
-      game: {},
-    });
-    saveConfigMock.mockResolvedValue({ ok: true });
+    createMock.mockResolvedValue({ ok: true, value: { status: 'committed', selectedId: 'pack-1', instances: [] } });
     refreshMock.mockResolvedValue(undefined);
   });
 
@@ -149,21 +125,15 @@ describe('Create-modpack dependency truth', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
     await waitFor(() => {
-      expect(createLocalMock).toHaveBeenCalledWith(
-        'Alpha Pack',
-        '1.0.0',
-        '1.20.1',
-        { type: 'forge', version: undefined },
-        '/minecraft',
-      );
+      expect(createMock).toHaveBeenCalledWith({
+        name: 'Alpha Pack',
+        source: { source: 'local', version: '1.0.0' },
+        config: {
+          runtime: { minecraftVersion: '1.20.1', modLoader: { type: 'forge', version: undefined } },
+          game: { useOptiFine: true },
+        },
+      });
     });
-    expect(getConfigMock).toHaveBeenCalledWith('pack-1', '/minecraft');
-    expect(saveConfigMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        game: expect.objectContaining({ useOptiFine: true }),
-      }),
-      '/minecraft',
-    );
   });
 
   it('shows the wizard step-two summary with the same selected runtime dependency truth', () => {

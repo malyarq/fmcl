@@ -5,11 +5,11 @@ import { useDebounce } from '../../hooks/useDebounce';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { cn } from '../../utils/cn';
-import type { ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts';
+import type { ProviderCatalogSearchResultItem, ProviderCatalogVersionDescriptor } from '@shared/contracts';
 import { Button } from '../ui/Button';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { LazyImage } from '../ui/LazyImage';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import { providerCatalogIPC } from '../../services/ipc/providerCatalogIPC';
 import { MINECRAFT_VERSIONS } from '../../utils/minecraftVersionsList';
 import { DEFAULT_MODPACK_BROWSER_STATE, normalizeModpackBrowserState, type ModpackBrowserState } from '../../features/modpacks/hooks/useModpackNavigation';
 import { ArrowLeft, FolderOpen, History, Star } from 'lucide-react';
@@ -32,8 +32,7 @@ interface ModpackBrowserProps {
   onBack: () => void;
   onNavigate: (
     view:
-      | { type: 'install'; modpack: ModpackSearchResultItem; versions: ModpackVersionDescriptor[]; platform: 'curseforge' | 'modrinth' }
-      | { type: 'importPreview'; filePath: string }
+      | { type: 'install'; modpack: ProviderCatalogSearchResultItem; versions: ProviderCatalogVersionDescriptor[]; platform: 'curseforge' | 'modrinth' }
   ) => void;
   onStateChange: (state: ModpackBrowserState) => void;
 }
@@ -41,7 +40,7 @@ interface ModpackBrowserProps {
 const MODPACK_FAVORITES_STORAGE_KEY = 'modpack-favorites';
 const MODPACK_HISTORY_STORAGE_KEY = 'modpack-history';
 
-function getModpackIdentity(modpack: Pick<ModpackSearchResultItem, 'projectId' | 'platform'>): string {
+function getModpackIdentity(modpack: Pick<ProviderCatalogSearchResultItem, 'projectId' | 'platform'>): string {
   return `${modpack.platform}:${modpack.projectId}`;
 }
 
@@ -82,7 +81,7 @@ function formatLoaderLabel(
   return getModloaderDisplayLabel({ type: loader.toLowerCase() as ModLoaderType }, t);
 }
 
-function resolveResultMinecraftVersion(modpack: ModpackSearchResultItem, activeFilter: FilterMCVersion): string | null {
+function resolveResultMinecraftVersion(modpack: ProviderCatalogSearchResultItem, activeFilter: FilterMCVersion): string | null {
   const explicitVersion = modpack.minecraftVersion?.trim();
   if (explicitVersion) {
     return explicitVersion;
@@ -93,15 +92,24 @@ function resolveResultMinecraftVersion(modpack: ModpackSearchResultItem, activeF
     : null;
 }
 
+function toProviderCatalogVersionDescriptor(version: ProviderCatalogVersionDescriptor): ProviderCatalogVersionDescriptor {
+  return {
+    ...version,
+    mcVersions: [...version.mcVersions],
+    loaders: [...version.loaders],
+    files: version.files.map((file) => ({ ...file })),
+  };
+}
+
 export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, onBack, onNavigate, onStateChange }) => {
   const { t, getAccentStyles, formatDate, formatNumber } = useSettings();
   const normalizedInitialState = normalizeModpackBrowserState(initialState);
   const [platform] = useState<Platform>(normalizedInitialState.platform);
   const [query, setQuery] = useState(normalizedInitialState.query);
-  const [searchResults, setSearchResults] = useState<ModpackSearchResultItem[]>([]);
+  const [searchResults, setSearchResults] = useState<ProviderCatalogSearchResultItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [, setSelectedModpack] = useState<ModpackSearchResultItem | null>(null);
-  const [, setVersions] = useState<ModpackVersionDescriptor[]>([]);
+  const [, setSelectedModpack] = useState<ProviderCatalogSearchResultItem | null>(null);
+  const [, setVersions] = useState<ProviderCatalogVersionDescriptor[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>(normalizedInitialState.sortBy);
   const [filterMCVersion, setFilterMCVersion] = useState<FilterMCVersion>(normalizedInitialState.filterMCVersion);
   const [filterLoader, setFilterLoader] = useState<FilterLoader>(normalizedInitialState.filterLoader);
@@ -122,7 +130,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
     return Number.isFinite(parsed) && parsed > 0 ? parsed : normalizedInitialState.itemsPerPage;
   });
   const [showHistory, setShowHistory] = useState(normalizedInitialState.showHistory);
-  const [history, setHistory] = useState<ModpackSearchResultItem[]>([]);
+  const [history, setHistory] = useState<ProviderCatalogSearchResultItem[]>([]);
   const [searchError, setSearchError] = useState<unknown | null>(null);
   const didHydratePageResetRef = useRef(false);
 
@@ -169,7 +177,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
     }
   }, []);
 
-  const addToHistory = useCallback((modpack: ModpackSearchResultItem) => {
+  const addToHistory = useCallback((modpack: ProviderCatalogSearchResultItem) => {
     setHistory(prev => {
       const filtered = prev.filter((candidate) => getModpackIdentity(candidate) !== getModpackIdentity(modpack));
       const newHistory = [modpack, ...filtered].slice(0, 50);
@@ -202,12 +210,12 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
     localStorage.setItem(MODPACK_FAVORITES_STORAGE_KEY, JSON.stringify(Array.from(newFavorites)));
   }, []);
 
-  const isFavorite = useCallback((modpack: Pick<ModpackSearchResultItem, 'projectId' | 'platform'>) => {
+  const isFavorite = useCallback((modpack: Pick<ProviderCatalogSearchResultItem, 'projectId' | 'platform'>) => {
     const identity = getModpackIdentity(modpack);
     return favorites.has(identity) || favorites.has(modpack.projectId);
   }, [favorites]);
 
-  const toggleFavorite = useCallback((modpack: Pick<ModpackSearchResultItem, 'projectId' | 'platform'>) => {
+  const toggleFavorite = useCallback((modpack: Pick<ProviderCatalogSearchResultItem, 'projectId' | 'platform'>) => {
     const newFavorites = new Set(favorites);
     const identity = getModpackIdentity(modpack);
 
@@ -238,28 +246,17 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
       const mcVersion = filterMCVersion !== 'all' ? filterMCVersion : undefined;
       const loader = filterLoader !== 'all' ? filterLoader : undefined;
 
-      let results;
-      if (platform === 'curseforge') {
-        results = await modpacksIPC.searchCurseForge(
-          searchQuery,
-          mcVersion,
-          loader,
-          sortBy,
-          offset,
-          itemsPerPage
-        );
-      } else {
-        results = await modpacksIPC.searchModrinth(
-          searchQuery,
-          mcVersion,
-          loader,
-          sortBy,
-          offset,
-          itemsPerPage
-        );
-      }
+      const results = await providerCatalogIPC.search({
+        platform,
+        query: searchQuery,
+        ...(mcVersion ? { minecraftVersion: mcVersion } : {}),
+        ...(loader ? { loader } : {}),
+        sort: sortBy,
+        offset,
+        limit: itemsPerPage,
+      });
 
-      const items = results.items || [];
+      const items = [...results.items];
       setSearchResults(items);
       setTotalResults(results.total || items.length);
     } catch (error) {
@@ -287,19 +284,16 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
     searchModpacks();
   }, [debouncedQuery, platform, filterMCVersion, filterLoader, sortBy, currentPage, searchModpacks]);
 
-  const handleModpackClick = useCallback(async (modpack: ModpackSearchResultItem) => {
+  const handleModpackClick = useCallback(async (modpack: ProviderCatalogSearchResultItem) => {
     addToHistory(modpack);
     setSelectedModpack(modpack);
     setLoading(true);
     try {
-      let versionsList: ModpackVersionDescriptor[];
       const modpackPlatform = modpack.platform;
-
-      if (modpackPlatform === 'curseforge') {
-        versionsList = await modpacksIPC.getCurseForgeVersions(Number(modpack.projectId));
-      } else {
-        versionsList = await modpacksIPC.getModrinthVersions(modpack.projectId);
-      }
+      const versionsList = (await providerCatalogIPC.versions({
+        platform: modpackPlatform,
+        projectId: modpack.projectId,
+      })).map(toProviderCatalogVersionDescriptor);
 
       setVersions(versionsList);
       onNavigate({ type: 'install', modpack, versions: versionsList, platform: modpackPlatform });
@@ -357,7 +351,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
     return tokens;
   }, [filterLoader, filterMCVersion, query, sortBy, t]);
 
-  const handleCardKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>, modpack: ModpackSearchResultItem) => {
+  const handleCardKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>, modpack: ProviderCatalogSearchResultItem) => {
     if (!isActivationKey(event.key)) {
       return;
     }
@@ -366,7 +360,7 @@ export const ModpackBrowser: React.FC<ModpackBrowserProps> = ({ initialState, on
     void handleModpackClick(modpack);
   }, [handleModpackClick]);
 
-  const renderModpackCard = useCallback((modpack: ModpackSearchResultItem) => {
+  const renderModpackCard = useCallback((modpack: ProviderCatalogSearchResultItem) => {
     const isFavorited = isFavorite(modpack);
     const minecraftVersion = resolveResultMinecraftVersion(modpack, filterMCVersion);
     const updatedLabel = formatDateLabel(modpack.dateModified ?? modpack.dateCreated, formatDate);

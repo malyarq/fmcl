@@ -2,9 +2,11 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { ZipFile } from 'yazl';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createImportOperationAdapter } from '../importOperation';
 import { OperationRunner } from '../operationRunner';
+import { OperationJournal } from '../operationJournal';
+import type { InstanceCommand } from '../../../domains/instances/instanceTypes';
 
 describe('staged archive import operation', () => {
   const tempDirs: string[] = [];
@@ -17,7 +19,7 @@ describe('staged archive import operation', () => {
       tempDirs.push(rootPath);
       const before = capture(rootPath);
       const archivePath = await writeMultiMCArchive(rootPath);
-      const runner = new OperationRunner([createImportOperationAdapter({ faults: { [fault]: () => { throw new Error(`${fault} failed`); } } })]);
+      const { runner } = createRunner({ faults: { [fault]: () => { throw new Error(`${fault} failed`); } } });
 
       const started = runner.start({ kind: 'import', rootPath, filePath: archivePath, destinationId: 'destination' });
       const completed = await runner.waitFor(started.id);
@@ -34,7 +36,7 @@ describe('staged archive import operation', () => {
     const before = capture(rootPath);
     const archivePath = await writeMultiMCArchive(rootPath);
     let cancel: (() => boolean) | undefined;
-    const runner = new OperationRunner([createImportOperationAdapter({ faults: { validation: () => { cancel?.(); } } })]);
+    const { runner } = createRunner({ faults: { validation: () => { cancel?.(); } } });
     const started = runner.start({ kind: 'import', rootPath, filePath: archivePath, destinationId: 'destination' });
     cancel = () => runner.cancel(started.id);
 
@@ -46,7 +48,7 @@ describe('staged archive import operation', () => {
     const rootPath = seedRoot();
     tempDirs.push(rootPath);
     const archivePath = await writeModrinthArchive(rootPath);
-    const runner = new OperationRunner([createImportOperationAdapter()]);
+    const { runner, execute } = createRunner();
 
     const started = runner.start({ kind: 'import', rootPath, filePath: archivePath, destinationId: 'modrinth-import' });
     const completed = await runner.waitFor(started.id);
@@ -56,6 +58,12 @@ describe('staged archive import operation', () => {
       result: { status: 'degraded', missing: ['mods/optional.jar'] },
     });
     expect(fs.readFileSync(path.join(rootPath, 'modpacks', 'modrinth-import', 'config', 'required.txt'), 'utf8')).toBe('required bytes');
+    expect(execute).toHaveBeenCalledWith(expect.objectContaining({
+      version: 1,
+      type: 'commit-published',
+      select: true,
+      record: expect.objectContaining({ id: 'modrinth-import', name: 'Test pack' }),
+    }));
   });
 
   it('rejects traversal archives before they reach the live destination', async () => {
@@ -63,12 +71,34 @@ describe('staged archive import operation', () => {
     tempDirs.push(rootPath);
     const before = capture(rootPath);
     const archivePath = await writeTraversalArchive(rootPath);
-    const runner = new OperationRunner([createImportOperationAdapter()]);
+    const { runner } = createRunner();
 
     const started = runner.start({ kind: 'import', rootPath, filePath: archivePath, destinationId: 'destination' });
     expect(await runner.waitFor(started.id)).toMatchObject({ status: 'failed', result: { status: 'failed' } });
     expect(capture(rootPath)).toEqual(before);
     expect(fs.existsSync(path.join(rootPath, 'escape.txt'))).toBe(false);
+  });
+
+  it('persists the complete canonical command before a post-publish fault', async () => {
+    const rootPath = seedRoot();
+    tempDirs.push(rootPath);
+    const archivePath = await writeMultiMCArchive(rootPath);
+    let recorded: unknown;
+    const { runner } = createRunner({ faults: {
+      'control-plane': () => {
+        recorded = new OperationJournal(rootPath).get(started.id)?.recovery?.canonicalCommand;
+        throw new Error('simulated crash after publish');
+      },
+    } });
+    const started = runner.start({ kind: 'import', rootPath, filePath: archivePath, destinationId: 'published-import' });
+
+    await expect(runner.waitFor(started.id)).resolves.toMatchObject({ status: 'failed' });
+    expect(recorded).toMatchObject({
+      version: 1,
+      rootPath,
+      operationId: started.id,
+      command: { version: 1, type: 'commit-published', select: true, record: { id: 'published-import' } },
+    });
   });
 });
 
@@ -80,6 +110,37 @@ function seedRoot(): string {
   fs.writeFileSync(path.join(rootPath, 'modpacks.json'), JSON.stringify({ selectedModpack: 'destination', modpacks: { destination: { name: 'Original' } } }));
   fs.writeFileSync(path.join(rootPath, 'modpacks-metadata.json'), JSON.stringify({ selectedModpack: 'destination', modpacks: {} }));
   return rootPath;
+}
+
+function createRunner(options: Parameters<typeof createImportOperationAdapter>[0] = {}) {
+  const execute = vi.fn(async (command: InstanceCommand) => ({
+    status: 'committed' as const,
+    snapshot: command.type === 'commit-published'
+      ? { selectedId: command.record.id, records: [command.record] }
+      : { selectedId: 'destination', records: [record('destination', 'Original')] },
+  }));
+  return {
+    execute,
+    runner: new OperationRunner([createImportOperationAdapter(options)], {
+      rootMutationCoordinator: {
+        forRoot: () => ({
+          read: async () => ({ status: 'ready' as const, snapshot: { selectedId: 'destination', records: [record('destination', 'Original')] } }),
+          prepare: async () => ({ status: 'ready' as const, source: 'canonical' as const, snapshot: { selectedId: 'destination', records: [record('destination', 'Original')] } }),
+          execute,
+        }),
+      },
+    }),
+  };
+}
+
+function record(id: string, name: string) {
+  return {
+    id,
+    name,
+    source: { source: 'local' as const, createdAt: '2026-08-04T00:00:00.000Z', updatedAt: '2026-08-04T00:00:00.000Z' },
+    config: { runtime: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } } },
+    summary: { minecraftVersion: '1.20.1', modLoader: { type: 'vanilla' as const } },
+  };
 }
 
 function capture(rootPath: string): Record<string, string> {

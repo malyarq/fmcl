@@ -1,4 +1,4 @@
-import type { ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts';
+import type { ProviderCatalogSearchResultItem, ProviderCatalogVersionDescriptor } from '@shared/contracts';
 import React, { useEffect, useMemo, useState } from 'react';
 import { SettingsProvider, useSettings } from '../../contexts/SettingsContext';
 import { ToastProvider } from '../../contexts/ToastContext';
@@ -146,7 +146,7 @@ const MANUAL_DASHBOARD_LAUNCH = {
   isOffline: true,
 };
 
-const MANUAL_BROWSER_RESULT: ModpackSearchResultItem = {
+const MANUAL_BROWSER_RESULT: ProviderCatalogSearchResultItem = {
   platform: 'modrinth',
   projectId: 'alpha-pack',
   slug: 'alpha-pack',
@@ -158,7 +158,7 @@ const MANUAL_BROWSER_RESULT: ModpackSearchResultItem = {
   dateModified: '2026-04-13T08:30:00.000Z',
 };
 
-const MANUAL_BROWSER_VERSIONS: ModpackVersionDescriptor[] = [
+const MANUAL_BROWSER_VERSIONS: ProviderCatalogVersionDescriptor[] = [
   {
     platform: 'modrinth',
     versionId: 'alpha-pack-1.4.2',
@@ -176,7 +176,17 @@ const MANUAL_BROWSER_VERSIONS: ModpackVersionDescriptor[] = [
   },
 ];
 
-const MANUAL_IMPORT_FILE_PATH = '/mock/Desktop/alpha-pack-1.4.2.mrpack';
+const MANUAL_ARCHIVE_REFERENCE = 'manual-archive-reference';
+const MANUAL_ARCHIVE_INSPECTION = {
+  format: 'modrinth' as const,
+  manifest: {
+    formatVersion: 1,
+    name: 'Alpha Pack',
+    version: '1.4.2',
+    minecraft: { version: '1.20.1', modLoaders: [] },
+    files: [],
+  },
+};
 
 function useReadyByText(onReady: (message: string) => void, needles: string[], message: string) {
   const readyKey = needles.join('|');
@@ -1492,7 +1502,16 @@ function ImportPreviewScenario({ onReady }: ManualVerificationScenarioProps) {
 
   return (
     <Phase19ShellFrame mode="modpacks" ownership="route">
-      <ImportModpackPreviewPage filePath={MANUAL_IMPORT_FILE_PATH} onBack={() => undefined} />
+      <>
+        <div className="mx-6 mt-4 rounded-md border border-border/70 bg-card/70 p-3 text-sm text-secondary" data-testid="archive-reference-proof">
+          Archive references are single-use and sender-bound: forged, reused, or expired references are rejected before import starts. After restarting the app, inspect the archive again to obtain a new reference.
+        </div>
+        <ImportModpackPreviewPage
+          archiveRef={MANUAL_ARCHIVE_REFERENCE}
+          inspection={MANUAL_ARCHIVE_INSPECTION}
+          onBack={() => undefined}
+        />
+      </>
     </Phase19ShellFrame>
   );
 }
@@ -1552,7 +1571,7 @@ function ResourcePacksScenario({ onReady }: ManualVerificationScenarioProps) {
         />
         <div className="min-h-0 flex-1 overflow-y-auto pr-1">
           <ResourcePacksTab
-            instancePath="/mock/.minecraft/instances/alpha"
+            instanceId="alpha"
             onUpdate={() => undefined}
             onAddResourcePack={() => undefined}
           />
@@ -1581,7 +1600,7 @@ function Phase21SecondaryDensityScenario({ onReady }: ManualVerificationScenario
           />
           <div className="min-h-0 flex-1 overflow-y-auto pr-1">
             <ResourcePacksTab
-              instancePath="/mock/.minecraft/instances/alpha"
+              instanceId="alpha"
               onUpdate={() => undefined}
               onAddResourcePack={() => undefined}
             />
@@ -1617,7 +1636,7 @@ function Phase22LocaleEnScenario({ onReady }: ManualVerificationScenarioProps) {
         <WorldDatapacksModal
           isOpen={true}
           onClose={() => undefined}
-          instancePath="/mock/.minecraft/instances/alpha"
+          instanceId="alpha"
           worldFolder="AlphaWorld"
           worldName="Alpha World"
         />
@@ -1651,7 +1670,7 @@ function Phase24LocaleEnScenario({ onReady }: ManualVerificationScenarioProps) {
         <WorldDatapacksModal
           isOpen={true}
           onClose={() => undefined}
-          instancePath="/mock/.minecraft/instances/alpha"
+          instanceId="alpha"
           worldFolder="AlphaWorld"
           worldName="Alpha World"
         />
@@ -1685,7 +1704,7 @@ function Phase24LocaleRuScenario({ onReady }: ManualVerificationScenarioProps) {
         <WorldDatapacksModal
           isOpen={true}
           onClose={() => undefined}
-          instancePath="/mock/.minecraft/instances/alpha"
+          instanceId="alpha"
           worldFolder="AlphaWorld"
           worldName="Alpha World"
         />
@@ -1719,7 +1738,7 @@ function Phase22LocaleRuScenario({ onReady }: ManualVerificationScenarioProps) {
         <WorldDatapacksModal
           isOpen={true}
           onClose={() => undefined}
-          instancePath="/mock/.minecraft/instances/alpha"
+          instanceId="alpha"
           worldFolder="AlphaWorld"
           worldName="Alpha World"
         />
@@ -1747,7 +1766,7 @@ function Phase24DegradedCloseoutScenario({ onReady }: ManualVerificationScenario
             <AddModPage modpackId="alpha" onBack={() => undefined} />
           </div>
           <div className="min-h-0 overflow-hidden rounded-3xl border border-border/70 bg-card/60">
-            <ScreenshotsTab instancePath="/mock/.minecraft/instances/alpha" />
+            <ScreenshotsTab instanceId="alpha" />
           </div>
         </div>
       </div>
@@ -1779,7 +1798,7 @@ function ScreenshotsScenario({ onReady }: ManualVerificationScenarioProps) {
   return (
     <SettingsProviders>
       <div className="mx-auto max-w-6xl p-6">
-        <ScreenshotsTab instancePath="/mock/.minecraft/instances/alpha" />
+        <ScreenshotsTab instanceId="alpha" />
       </div>
     </SettingsProviders>
   );
@@ -1814,7 +1833,7 @@ function ContentScenario({ onReady }: ManualVerificationScenarioProps) {
       <WorldDatapacksModal
         isOpen={true}
         onClose={() => undefined}
-        instancePath="/mock/.minecraft/instances/alpha"
+        instanceId="alpha"
         worldFolder="AlphaWorld"
         worldName="Alpha World"
       />

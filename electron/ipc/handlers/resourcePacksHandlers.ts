@@ -3,10 +3,39 @@ import * as fs from 'fs';
 import type { ResourcePackAcquisitionResult } from '../../../shared/contracts/resourcePacks';
 import { assertChildName, assertChildNameList } from '../../security/pathGuards';
 import {
+    getDefaultRootPath,
+    getModpackDir,
     resolveApprovedInstancePath,
     resolveResourcePacksDir,
 } from '../../services/instances/paths';
 import { resourcePacksService } from '../../services/resourcePacks/resourcePackService';
+import { validateIdentifier } from '../validation/privilegedPayloads';
+
+function resolveInstancePath(instanceId: unknown): string {
+    const safeInstanceId = assertChildName(
+        validateIdentifier(instanceId, 'Instance ID'),
+        'Instance ID',
+    );
+    return resolveApprovedInstancePath(getModpackDir(getDefaultRootPath(), safeInstanceId));
+}
+
+function validateResourcePackName(value: unknown): string {
+    return assertChildName(
+        validateIdentifier(value, 'Resource pack name'),
+        'Resource pack name',
+    );
+}
+
+function validateResourcePackNames(values: unknown): string[] {
+    if (!Array.isArray(values)) {
+        throw new Error('Resource pack names must be a list of names');
+    }
+
+    return assertChildNameList(
+        values.map((value) => validateIdentifier(value, 'Resource pack name')),
+        'Resource pack name',
+    );
+}
 
 function summarizeResourcePackAcquisition(
     results: ResourcePackAcquisitionResult[],
@@ -42,46 +71,41 @@ function summarizeResourcePackAcquisition(
 }
 
 export function registerResourcePacksHandlers() {
-    ipcMain.handle('resourcePacks:list', async (_, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
+    ipcMain.handle('resourcePacks:list', async (_, instanceId: unknown) => {
+        const safeInstancePath = resolveInstancePath(instanceId);
         return await resourcePacksService.list(safeInstancePath);
     });
 
-    ipcMain.handle('resourcePacks:enable', async (_, fileName: string, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
-        const safeFileName = assertChildName(fileName, 'Resource pack name');
+    ipcMain.handle('resourcePacks:enable', async (_, instanceId: unknown, fileName: unknown) => {
+        const safeFileName = validateResourcePackName(fileName);
+        const safeInstancePath = resolveInstancePath(instanceId);
         const ok = await resourcePacksService.enable(safeFileName, safeInstancePath);
         return { ok };
     });
 
-    ipcMain.handle('resourcePacks:disable', async (_, fileName: string, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
-        const safeFileName = assertChildName(fileName, 'Resource pack name');
+    ipcMain.handle('resourcePacks:disable', async (_, instanceId: unknown, fileName: unknown) => {
+        const safeFileName = validateResourcePackName(fileName);
+        const safeInstancePath = resolveInstancePath(instanceId);
         const ok = await resourcePacksService.disable(safeFileName, safeInstancePath);
         return { ok };
     });
 
-    ipcMain.handle('resourcePacks:reorder', async (_, fileNames: string[], instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
-        const safeFileNames = assertChildNameList(fileNames, 'Resource pack name');
+    ipcMain.handle('resourcePacks:reorder', async (_, instanceId: unknown, fileNames: unknown) => {
+        const safeFileNames = validateResourcePackNames(fileNames);
+        const safeInstancePath = resolveInstancePath(instanceId);
         const ok = await resourcePacksService.reorder(safeFileNames, safeInstancePath);
         return { ok };
     });
 
-    ipcMain.handle('resourcePacks:import', async (_, filePath: string, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
-        return await resourcePacksService.import(filePath, safeInstancePath);
-    });
-
-    ipcMain.handle('resourcePacks:delete', async (_, fileName: string, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
-        const safeFileName = assertChildName(fileName, 'Resource pack name');
+    ipcMain.handle('resourcePacks:delete', async (_, instanceId: unknown, fileName: unknown) => {
+        const safeFileName = validateResourcePackName(fileName);
+        const safeInstancePath = resolveInstancePath(instanceId);
         const ok = await resourcePacksService.delete(safeFileName, safeInstancePath);
         return { ok };
     });
 
-    ipcMain.handle('resourcePacks:openFolder', async (_, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
+    ipcMain.handle('resourcePacks:openFolder', async (_, instanceId: unknown) => {
+        const safeInstancePath = resolveInstancePath(instanceId);
         const folder = resolveResourcePacksDir(safeInstancePath);
 
         if (!fs.existsSync(folder)) {
@@ -96,8 +120,8 @@ export function registerResourcePacksHandlers() {
         return { ok: true };
     });
 
-    ipcMain.handle('resourcePacks:add', async (_, instancePath: string) => {
-        const safeInstancePath = resolveApprovedInstancePath(instancePath);
+    ipcMain.handle('resourcePacks:add', async (_, instanceId: unknown) => {
+        const safeInstancePath = resolveInstancePath(instanceId);
 
         const { canceled, filePaths } = await dialog.showOpenDialog({
             properties: ['openFile', 'multiSelections'],

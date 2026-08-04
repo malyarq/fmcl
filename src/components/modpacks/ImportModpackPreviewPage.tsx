@@ -1,73 +1,33 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
-import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { Button } from '../ui/Button';
 import { DegradedStateView } from '../layout/DegradedStateView';
 import { cn } from '../../utils/cn';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
-import type { ModpackManifest } from '@shared/types/modpack';
+import type { ArchiveManifestMetadata } from '@shared/contracts/archiveInspection';
 import { useModpackListContext } from '../../contexts/ModpackContext';
-import { toDisplayErrorMessage } from '../../utils/displayError';
 import { ImportOperationStatus } from './ImportOperationStatus';
 import { isPublished, useArchiveImportOperation } from './useArchiveImportOperation';
 
 interface ImportModpackPreviewPageProps {
-  filePath: string;
+  archiveRef: string;
+  inspection: ArchiveManifestMetadata;
   onBack: () => void;
 }
 
-const path = {
-  basename: (filePath: string) => {
-    const parts = filePath.split(/[/\\]/);
-    return parts[parts.length - 1] || filePath;
-  },
-};
-
 export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> = ({
-  filePath,
+  archiveRef,
+  inspection,
   onBack,
 }) => {
   const { t, getAccentStyles, formatNumber } = useSettings();
-  const translationRef = useRef(t);
-  translationRef.current = t;
   const toast = useToast();
   const { refresh } = useModpackListContext();
-  const [loading, setLoading] = useState(true);
-  const [info, setInfo] = useState<{
-    format: 'curseforge' | 'modrinth' | 'zip' | 'multimc' | null;
-    manifest: ModpackManifest | null;
-    error?: string;
-  } | null>(null);
   const publishedToastRef = useRef<string | null>(null);
   const onPublished = useCallback(async () => {
     await refresh();
   }, [refresh]);
-  const { operation, error: operationError, isActive: importing, start } = useArchiveImportOperation({ filePath, onPublished });
-
-  useEffect(() => {
-    const loadInfo = async () => {
-      setLoading(true);
-      try {
-        const result = await modpacksIPC.getModpackInfoFromFile(filePath);
-        setInfo(result as typeof info);
-      } catch (error) {
-        console.error('Error loading modpack info:', error);
-        setInfo({
-          format: null,
-          manifest: null,
-          error: toDisplayErrorMessage(
-            error,
-            translationRef.current('modpacks.unable_to_load_info') || 'Unable to load modpack information',
-          ),
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadInfo();
-  }, [filePath]);
+  const { operation, error: operationError, isActive: importing, start } = useArchiveImportOperation({ archiveRef, onPublished });
 
   const handleImport = async () => {
     await start();
@@ -100,87 +60,80 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
 
       <div className="flex-1 overflow-y-auto p-6 min-h-0">
         <div className="space-y-4 max-w-2xl mx-auto">
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3">
-              <LoadingSpinner size="lg" />
-              <p className="text-sm text-secondary">
-                {t('modpacks.loading')}
-              </p>
-            </div>
-          ) : info?.error ? (
+          {inspection.error ? (
             <DegradedStateView
               variant="error"
               label={t('degraded.error_label')}
               title={t('modpacks.unable_to_load_info') || 'Unable to load modpack information'}
-              description={info.error}
+              description={inspection.error}
               footer={(
                 <Button variant="secondary" size="sm" onClick={onBack}>
                   {t('general.back') || 'Back'}
                 </Button>
               )}
             />
-          ) : info?.manifest ? (
+          ) : inspection.manifest ? (
             <>
               <ImportOperationStatus operation={operation} error={operationError} t={t} />
               <div className="surface-soft p-4">
                 <h3 className="mb-4 text-lg font-bold text-foreground">
-                  {info.manifest.name || path.basename(filePath)}
+                  {inspection.manifest.name || t('modpacks.import_preview') || 'Import preview'}
                 </h3>
 
                 <div className="space-y-3">
-                  {info.manifest.version && (
+                  {inspection.manifest.version && (
                     <div>
                       <p className="helper-text mb-1">
                         {t('modpacks.version')}
                       </p>
                       <p className="text-sm font-medium text-foreground">
-                        {info.manifest.version}
+                        {inspection.manifest.version}
                       </p>
                     </div>
                   )}
 
-                  {info.manifest.minecraft?.version && (
+                  {inspection.manifest.minecraft?.version && (
                     <div>
                       <p className="helper-text mb-1">
                         {t('modpacks.minecraft_version')}
                       </p>
                       <p className="text-sm font-medium text-foreground">
-                        {info.manifest.minecraft.version}
+                        {inspection.manifest.minecraft.version}
                       </p>
                     </div>
                   )}
 
-                  {info.manifest.minecraft?.modLoaders && info.manifest.minecraft.modLoaders.length > 0 && (
+                  {inspection.manifest.minecraft?.modLoaders && inspection.manifest.minecraft.modLoaders.length > 0 && (
                     <div>
                       <p className="helper-text mb-1">
                         {t('modpacks.loader')}
                       </p>
                       <p className="text-sm font-medium text-foreground">
-                        {info.manifest.minecraft.modLoaders
+                        {inspection.manifest.minecraft.modLoaders
                           .map((loader) => loader.id.replace(/^(forge|fabric|quilt|neoforge)-/, ''))
                           .join(', ')}
                       </p>
                     </div>
                   )}
 
-                  {info.manifest.author && (
+                  {inspection.manifest.author && (
                     <div>
                       <p className="helper-text mb-1">
                         {t('modpacks.author')}
                       </p>
                       <p className="text-sm font-medium text-foreground">
-                        {info.manifest.author}
+                        {inspection.manifest.author}
                       </p>
                     </div>
                   )}
 
-                  {info.manifest.files && info.manifest.files.length > 0 && (
+                  {inspection.manifest.files && inspection.manifest.files.length > 0 && (
                     <div>
                       <p className="helper-text mb-1">
                         {t('modpacks.mods_count')}
                       </p>
                       <p className="text-sm font-medium text-foreground">
-                        {formatNumber(info.manifest.files.length)} {t('modpacks.mods') || 'модов'}
+                        {formatNumber(inspection.manifest.files.length)} {t('modpacks.mods') || 'модов'}
                       </p>
                     </div>
                   )}
@@ -190,10 +143,10 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
                       {t('modpacks.format') || 'Формат'}
                     </p>
                     <p className="text-sm font-medium text-foreground capitalize">
-                      {info.format === 'curseforge' ? t('modpacks.platform_curseforge') :
-                        info.format === 'modrinth' ? t('modpacks.platform_modrinth') :
-                          info.format === 'multimc' ? 'MultiMC / Prism / FriendLauncher' :
-                            info.format || 'Unknown'}
+                      {inspection.format === 'curseforge' ? t('modpacks.platform_curseforge') :
+                        inspection.format === 'modrinth' ? t('modpacks.platform_modrinth') :
+                          inspection.format === 'multimc' ? 'MultiMC / Prism / FriendLauncher' :
+                            inspection.format || 'Unknown'}
                     </p>
                   </div>
                 </div>

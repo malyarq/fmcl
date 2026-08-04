@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { readFile } from 'node:fs/promises';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OperationSnapshot } from '@shared/contracts';
@@ -29,8 +30,8 @@ vi.mock('../../../contexts/ToastContext', () => ({
   useToast: () => ({ success: successMock, error: vi.fn(), info: vi.fn() }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: { setSelected: (...args: unknown[]) => setSelectedMock(...args) },
+vi.mock('../../../services/ipc/instancesIPC', () => ({
+  instancesIPC: { select: (...args: unknown[]) => setSelectedMock(...args) },
 }));
 
 vi.mock('../../../services/ipc/operationsIPC', () => ({
@@ -97,6 +98,18 @@ describe('InstallModpackPage provider operations', () => {
 
   afterEach(() => vi.useRealTimers());
 
+  it('keeps install completion selection on the canonical instances boundary', async () => {
+    const [page, modal] = await Promise.all([
+      readFile(`${process.cwd()}/src/components/modpacks/InstallModpackPage.tsx`, 'utf8'),
+      readFile(`${process.cwd()}/src/components/modpacks/InstallModpackModal.tsx`, 'utf8'),
+    ]);
+
+    for (const source of [page, modal]) {
+      expect(source).toMatch(/instancesIPC\.select/);
+      expect(source).not.toMatch(/operationsIPC\.select/);
+    }
+  });
+
   it('keeps one operation id, renders truthful terminal states, and unsubscribes once', async () => {
     const { unmount } = renderPage();
     fireEvent.click(screen.getByRole('button', { name: 'Install' }));
@@ -129,6 +142,9 @@ describe('InstallModpackPage provider operations', () => {
       expect(screen.getByTestId('provider-install-operation').getAttribute('data-operation-status')).toBe(status);
       if (status === 'cancelled' || status === 'degraded') {
         expect(successMock).not.toHaveBeenCalled();
+        expect(setSelectedMock).not.toHaveBeenCalled();
+      } else {
+        await waitFor(() => expect(setSelectedMock).toHaveBeenCalledWith({ id: 'installed-pack' }));
       }
     },
   );

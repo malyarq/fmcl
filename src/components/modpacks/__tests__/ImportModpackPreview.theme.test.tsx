@@ -6,10 +6,8 @@ import { ImportModpackPreviewModal } from '../ImportModpackPreviewModal';
 import { ImportModpackPreviewPage } from '../ImportModpackPreviewPage';
 import { InstallModpackModal } from '../InstallModpackModal';
 import type { ModpackManifest } from '@shared/types/modpack';
-import type { ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts';
+import type { ProviderCatalogSearchResultItem, ProviderCatalogVersionDescriptor } from '@shared/contracts';
 
-const getModpackInfoFromFileMock = vi.fn();
-const importMock = vi.fn();
 const refreshMock = vi.fn();
 
 const translations: Record<string, string> = {
@@ -66,14 +64,6 @@ vi.mock('../../../contexts/ModpackContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getModpackInfoFromFile: (...args: unknown[]) => getModpackInfoFromFileMock(...args),
-    import: (...args: unknown[]) => importMock(...args),
-    setSelected: vi.fn(),
-  },
-}));
-
 const manifest: ModpackManifest = {
   formatVersion: 1,
   minecraft: {
@@ -85,8 +75,9 @@ const manifest: ModpackManifest = {
   author: 'FriendLauncher',
   files: [{ projectID: 1, fileID: 2, required: true }],
 };
+const inspection = { format: 'modrinth' as const, manifest };
 
-const modpack: ModpackSearchResultItem = {
+const modpack: ProviderCatalogSearchResultItem = {
   platform: 'modrinth',
   projectId: 'alpha-pack',
   title: 'Alpha Pack',
@@ -94,7 +85,7 @@ const modpack: ModpackSearchResultItem = {
   iconUrl: 'https://example.test/icon.png',
 };
 
-const versions: ModpackVersionDescriptor[] = [
+const versions: ProviderCatalogVersionDescriptor[] = [
   {
     platform: 'modrinth',
     versionId: 'version-1',
@@ -123,13 +114,7 @@ function mockMatchMedia() {
 
 describe('Modpack import theme seams', () => {
   beforeEach(() => {
-    getModpackInfoFromFileMock.mockReset();
-    importMock.mockReset();
     refreshMock.mockReset();
-    getModpackInfoFromFileMock.mockResolvedValue({
-      format: 'modrinth',
-      manifest,
-    });
 
     mockMatchMedia();
   });
@@ -137,7 +122,8 @@ describe('Modpack import theme seams', () => {
   it('renders the preview modal with semantic metadata surfaces and accent-content actions', async () => {
     render(
       <ImportModpackPreviewModal
-        filePath="/packs/alpha.mrpack"
+        archiveRef="archive-ref"
+        inspection={inspection}
         isOpen
         onClose={vi.fn()}
         onImport={vi.fn()}
@@ -151,7 +137,7 @@ describe('Modpack import theme seams', () => {
   });
 
   it('renders the full preview page with semantic header and readable metadata card', async () => {
-    render(<ImportModpackPreviewPage filePath="/packs/alpha.mrpack" onBack={vi.fn()} />);
+    render(<ImportModpackPreviewPage archiveRef="archive-ref" inspection={inspection} onBack={vi.fn()} />);
 
     expect(await screen.findByText('Alpha Pack')).toBeTruthy();
 

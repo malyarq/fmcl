@@ -1,4 +1,11 @@
-export type OperationKind = 'duplicate' | 'import' | 'install-curseforge' | 'install-modrinth' | 'update' | 'delete' | 'export';
+import type {
+  CanonicalInstanceSnapshot,
+  InstanceCommand,
+  InstanceCommandResult,
+  InstanceControlPlaneRead,
+} from '../../domains/instances/instanceTypes';
+
+export type OperationKind = 'duplicate' | 'import' | 'import-share' | 'install-curseforge' | 'install-modrinth' | 'update' | 'delete' | 'export';
 
 export type OperationMissingItem = string | { path: string; reason: string };
 
@@ -54,6 +61,12 @@ export type ImportOperationInput = {
   filePath: string;
   destinationId?: string;
   name?: string;
+};
+
+export type ShareImportOperationInput = {
+  kind: 'import-share';
+  rootPath: string;
+  shareCode: string;
 };
 
 export type CurseForgeInstallOperationInput = {
@@ -114,7 +127,7 @@ export type ManifestExportOperationInput = {
 
 export type ExportOperationInput = ArchiveExportOperationInput | ManifestExportOperationInput;
 
-export type OperationInput = DuplicateOperationInput | ImportOperationInput | CurseForgeInstallOperationInput | ModrinthInstallOperationInput | UpdateOperationInput | DeleteOperationInput | ExportOperationInput;
+export type OperationInput = DuplicateOperationInput | ImportOperationInput | ShareImportOperationInput | CurseForgeInstallOperationInput | ModrinthInstallOperationInput | UpdateOperationInput | DeleteOperationInput | ExportOperationInput;
 
 export type DuplicateRecoveryData = {
   sourceId: string;
@@ -147,9 +160,23 @@ export type ArchiveRecoveryData = {
   digest?: string;
 };
 
+/**
+ * Durable, root-bound intent for a canonical control-plane mutation. It is
+ * persisted before publication, then replayed verbatim after a crash instead
+ * of deriving a replacement command from mutable files or metadata.
+ */
+export type CanonicalRecoveryCommand = Readonly<{
+  version: 1;
+  rootPath: string;
+  operationId: string;
+  command: InstanceCommand;
+}>;
+
 export type OperationRecoveryData = (DuplicateRecoveryData | ImportRecoveryData | UpdateRecoveryData | DeleteRecoveryData | ArchiveRecoveryData) & {
   /** Durable evidence needed to undo a pre-control-plane destination swap. */
   publishIntent?: { destinationId: string; destinationExisted: boolean };
+  /** Present for adapters migrated to the canonical instance control plane. */
+  canonicalCommand?: CanonicalRecoveryCommand;
 };
 
 export type OperationSnapshot = {
@@ -173,6 +200,12 @@ export type OperationContext = {
   transition(phase: OperationPhase, progress?: Partial<OperationProgress>): void;
   setRecoveryData(data: OperationRecoveryData): void;
   setPublishIntent(destinationId: string, destinationExisted: boolean, progress?: Partial<OperationProgress>): void;
+  /** Records one complete command before publication; replay may execute only this durable value. */
+  recordCanonicalCommand(command: InstanceCommand): void;
+  /** Uses the runner's already-held root scope; adapters never lock or journal this commit themselves. */
+  commitControlPlane(command: InstanceCommand): Promise<RootMutationCommandResult>;
+  /** Replays the operation's previously recorded command through the runner-owned scope. */
+  replayCanonicalCommand(): Promise<OperationResult>;
 };
 
 export type OperationAdapter = {
@@ -180,6 +213,39 @@ export type OperationAdapter = {
   run(context: OperationContext): Promise<OperationResult>;
   recoverPublished?(context: OperationContext): Promise<OperationResult>;
 };
+
+export type RootMutationPreparationResult =
+  | Readonly<{ status: 'uninitialized' }>
+  | Readonly<{
+    status: 'ready';
+    source: 'canonical' | 'legacy-migration';
+    snapshot: CanonicalInstanceSnapshot;
+  }>
+  | Readonly<{ status: 'recovery-required'; reason: string }>;
+
+export type RootMutationFailure = Readonly<{
+  status: 'failed';
+  code: 'ROOT_MUTATION_COORDINATOR_UNAVAILABLE' | 'ROOT_MUTATION_PREPARE_FAILED' | 'ROOT_MUTATION_FAILED';
+  message: string;
+}>;
+
+/** Serializable result returned by runner-owned canonical control-plane commands. */
+export type RootMutationCommandResult = InstanceCommandResult | RootMutationFailure;
+
+/**
+ * Main-process adapter for one resolved launcher root. The runner owns the
+ * queue, lock, journal and lifecycle around it; this adapter only maps typed
+ * canonical reads, explicit legacy preparation and commands to infrastructure.
+ */
+export type RootMutationCoordinator = Readonly<{
+  read(): Promise<InstanceControlPlaneRead>;
+  prepare(): Promise<RootMutationPreparationResult>;
+  execute(command: InstanceCommand): Promise<InstanceCommandResult>;
+}>;
+
+export type RootMutationCoordinatorFactory = Readonly<{
+  forRoot(rootPath: string): RootMutationCoordinator | undefined;
+}>;
 
 export function isTerminalStatus(status: OperationStatus): boolean {
   return ['succeeded', 'recovered', 'degraded', 'cancelled', 'failed', 'recovery-required'].includes(status);

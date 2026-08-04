@@ -10,10 +10,9 @@ const getModVersionsMock = vi.fn();
 const installModFileMock = vi.fn();
 const getMetadataMock = vi.fn();
 const getConfigMock = vi.fn();
-const resolvePathMock = vi.fn();
 const resourcePackAddMock = vi.fn();
 const shaderAddMock = vi.fn();
-const addModMock = vi.fn();
+const registerModMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
 const marketplaceFramingPattern = /\b(marketplace|wishlist|store|storefront)\b/i;
@@ -64,13 +63,15 @@ vi.mock('../../../services/ipc/modsIPC', () => ({
   ),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getMetadata: (...args: unknown[]) => getMetadataMock(...args),
-    getConfig: (...args: unknown[]) => getConfigMock(...args),
-    resolvePath: (...args: unknown[]) => resolvePathMock(...args),
-    addMod: (...args: unknown[]) => addModMock(...args),
+vi.mock('../../../services/ipc/instanceModsIPC', () => ({
+  instanceModsIPC: {
+    register: (...args: unknown[]) => registerModMock(...args),
   },
+}));
+
+vi.mock('../../../contexts/instances/services/instancesService', () => ({
+  fetchModpackMetadata: (...args: unknown[]) => getMetadataMock(...args),
+  fetchModpackConfig: (...args: unknown[]) => getConfigMock(...args),
 }));
 
 vi.mock('../../../services/ipc/resourcePacksIPC', () => ({
@@ -104,10 +105,9 @@ describe('content install recovery', () => {
     installModFileMock.mockReset();
     getMetadataMock.mockReset();
     getConfigMock.mockReset();
-    resolvePathMock.mockReset();
     resourcePackAddMock.mockReset();
     shaderAddMock.mockReset();
-    addModMock.mockReset();
+    registerModMock.mockReset();
     toastSuccessMock.mockReset();
     toastErrorMock.mockReset();
 
@@ -129,7 +129,6 @@ describe('content install recovery', () => {
         modLoader: { type: 'fabric' },
       },
     });
-    resolvePathMock.mockResolvedValue('/instances/alpha');
   });
 
   it('names local resource-pack recovery issues instead of collapsing them into a failed count', async () => {
@@ -155,8 +154,7 @@ describe('content install recovery', () => {
 
     const notice = await screen.findByTestId('add-mod-page-notice');
 
-    expect(resolvePathMock).toHaveBeenCalledWith('alpha', '/minecraft');
-    expect(resourcePackAddMock).toHaveBeenCalledWith('/instances/alpha');
+    expect(resourcePackAddMock).toHaveBeenCalledWith('alpha');
     expect(notice.getAttribute('data-tone')).toBe('warning');
     expect(notice.textContent).toContain('Added 1 resource packs.');
     expect(notice.textContent).toContain('retro-broken.zip');
@@ -215,7 +213,7 @@ describe('content install recovery', () => {
       projectId: 'faithful',
       versionId: 'faithful-1.0.0',
     }));
-    expect(addModMock).not.toHaveBeenCalled();
+    expect(registerModMock).not.toHaveBeenCalled();
     expect(notice.getAttribute('data-tone')).toBe('warning');
     expect(notice.textContent).toContain('Faithful 64x');
     expect(notice.textContent).toContain('Already in this modpack');

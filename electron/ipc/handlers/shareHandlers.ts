@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
 import { ShareService } from '../../services/sharing/shareService';
-import { validateIdentifier, validateShareCode } from '../validation/privilegedPayloads';
+import { validateIdentifier } from '../validation/privilegedPayloads';
 
 export function registerShareHandlers(deps: { shareService: ShareService }) {
     const { shareService } = deps;
@@ -9,7 +9,5 @@ export function registerShareHandlers(deps: { shareService: ShareService }) {
         return await shareService.generateShareCode(validateIdentifier(modpackId, 'Modpack id'));
     });
 
-    ipcMain.handle('share:importCode', async (_evt, code: unknown) => {
-        return await shareService.resolveShareCode(validateShareCode(code));
-    });
+    ipcMain.removeHandler('share:importCode');
 }

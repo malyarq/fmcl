@@ -6,7 +6,6 @@ import { ImportModpackPreviewModal } from '../ImportModpackPreviewModal';
 import { ImportModpackPreviewPage } from '../ImportModpackPreviewPage';
 import type { OperationSnapshot } from '@shared/contracts';
 
-const getModpackInfoFromFileMock = vi.fn();
 const refreshMock = vi.fn();
 const toastSuccessMock = vi.fn();
 const toastErrorMock = vi.fn();
@@ -17,8 +16,11 @@ const operationId = '11111111-1111-1111-1111-111111111111';
 const manifest = {
   formatVersion: 1,
   name: 'Alpha Pack',
+  version: '1.0.0',
   minecraft: { version: '1.20.1', modLoaders: [] },
+  files: [],
 };
+const inspection = { format: 'modrinth' as const, manifest };
 
 vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
@@ -44,12 +46,6 @@ vi.mock('../../../contexts/ToastContext', () => ({
 
 vi.mock('../../../contexts/ModpackContext', () => ({
   useModpackListContext: () => ({ refresh: refreshMock }),
-}));
-
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getModpackInfoFromFile: (...args: unknown[]) => getModpackInfoFromFileMock(...args),
-  },
 }));
 
 vi.mock('../../../services/ipc/operationsIPC', () => ({
@@ -88,20 +84,18 @@ function snapshot(status: OperationSnapshot['status']): OperationSnapshot {
 
 async function startImport(): Promise<(next: OperationSnapshot) => void> {
   fireEvent.click(screen.getByRole('button', { name: 'Import' }));
-  await waitFor(() => expect(startMock).toHaveBeenCalledWith({ kind: 'import', filePath: '/packs/alpha.mrpack' }));
+  await waitFor(() => expect(startMock).toHaveBeenCalledWith({ kind: 'import', archiveRef: 'archive-ref' }));
   await waitFor(() => expect(subscribeMock).toHaveBeenCalledWith(operationId, expect.any(Function)));
   return subscribeMock.mock.calls[0][1] as (next: OperationSnapshot) => void;
 }
 
 describe('ImportModpackPreview operation state', () => {
   beforeEach(() => {
-    getModpackInfoFromFileMock.mockReset();
     refreshMock.mockReset();
     toastSuccessMock.mockReset();
     toastErrorMock.mockReset();
     startMock.mockReset();
     subscribeMock.mockReset();
-    getModpackInfoFromFileMock.mockResolvedValue({ format: 'modrinth', manifest });
     startMock.mockResolvedValue(snapshot('queued'));
     Object.defineProperty(window, 'matchMedia', {
       writable: true,
@@ -122,7 +116,7 @@ describe('ImportModpackPreview operation state', () => {
       const unsubscribe = vi.fn();
       subscribeMock.mockResolvedValue(unsubscribe);
       const onBack = vi.fn();
-      render(<ImportModpackPreviewPage filePath="/packs/alpha.mrpack" onBack={onBack} />);
+      render(<ImportModpackPreviewPage archiveRef="archive-ref" inspection={inspection} onBack={onBack} />);
 
       await screen.findByText('Alpha Pack');
       const listener = await startImport();
@@ -143,7 +137,7 @@ describe('ImportModpackPreview operation state', () => {
   it('releases the exact page listener once on terminal completion and unmount', async () => {
     const unsubscribe = vi.fn();
     subscribeMock.mockResolvedValue(unsubscribe);
-    const rendered = render(<ImportModpackPreviewPage filePath="/packs/alpha.mrpack" onBack={vi.fn()} />);
+    const rendered = render(<ImportModpackPreviewPage archiveRef="archive-ref" inspection={inspection} onBack={vi.fn()} />);
 
     await screen.findByText('Alpha Pack');
     const listener = await startImport();
@@ -160,7 +154,8 @@ describe('ImportModpackPreview operation state', () => {
     const onImport = vi.fn();
     const rendered = render(
       <ImportModpackPreviewModal
-        filePath="/packs/alpha.mrpack"
+        archiveRef="archive-ref"
+        inspection={inspection}
         isOpen
         onClose={onClose}
         onImport={onImport}

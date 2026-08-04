@@ -6,9 +6,9 @@ export interface WorldInfo {
 }
 
 export interface WorldsAPI {
-    list: (instancePath: string) => Promise<WorldInfo[]>;
-    delete: (folderName: string, instancePath: string) => Promise<void>;
-    backup: (folderName: string, instancePath: string) => Promise<string>;
-    duplicate: (folderName: string, instancePath: string) => Promise<string>;
-    openFolder: (folderName: string, instancePath: string) => Promise<void>;
+    listByInstanceId: (instanceId: string) => Promise<WorldInfo[]>;
+    deleteByInstanceId: (folderName: string, instanceId: string) => Promise<void>;
+    backupByInstanceId: (folderName: string, instanceId: string) => Promise<void>;
+    duplicateByInstanceId: (folderName: string, instanceId: string) => Promise<string>;
+    openFolderByInstanceId: (folderName: string, instanceId: string) => Promise<void>;
 }

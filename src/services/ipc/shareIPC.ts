@@ -33,9 +33,6 @@ export const shareIPC = {
     return call('generateCode', () => requireShareApi('generateCode').generateCode(modpackId))
   },
 
-  importCode(code: string): ReturnType<ShareAPI['importCode']> {
-    return call('importCode', () => requireShareApi('importCode').importCode(code))
-  },
 }
 
 export type ShareIPC = typeof shareIPC

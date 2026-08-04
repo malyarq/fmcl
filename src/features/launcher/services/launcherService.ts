@@ -1,6 +1,127 @@
 import { toDisplayErrorMessage } from '../../../utils/displayError';
 
 export type LauncherProgressEvent = { type: string; task: number; total: number };
+export type LoaderType = 'vanilla' | 'forge' | 'fabric' | 'neoforge' | 'quilt';
+
+export interface RecentLaunch {
+  versionId: string;
+  nickname: string;
+  loader: Exclude<LoaderType, 'quilt'>;
+  /** Resolved launch version used for the one-click repeat action. */
+  launchVersion: string;
+  timestamp: number;
+}
+
+const RECENT_LAUNCH_STORAGE_PREFIX = 'lastGame_';
+const CLASSIC_RECENT_LAUNCH_LEGACY_KEY = 'simple_play_lastGame';
+
+export function loadPlayerNickname(): string {
+  try {
+    return localStorage.getItem('nickname') || 'Player';
+  } catch {
+    return 'Player';
+  }
+}
+
+export function savePlayerNickname(nickname: string): void {
+  try {
+    localStorage.setItem('nickname', nickname);
+  } catch {
+    // A disabled storage backend must not make launching unusable.
+  }
+}
+
+function isRecentLaunch(value: unknown): value is RecentLaunch {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as RecentLaunch;
+  return (
+    typeof candidate.versionId === 'string'
+    && typeof candidate.nickname === 'string'
+    && typeof candidate.timestamp === 'number'
+    && typeof candidate.launchVersion === 'string'
+    && ['vanilla', 'forge', 'fabric', 'neoforge'].includes(candidate.loader)
+  );
+}
+
+export function loadRecentLaunch(instanceId: string): RecentLaunch | null {
+  try {
+    let raw = localStorage.getItem(RECENT_LAUNCH_STORAGE_PREFIX + instanceId);
+    if (!raw && instanceId === 'classic') {
+      raw = localStorage.getItem(CLASSIC_RECENT_LAUNCH_LEGACY_KEY);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw) as unknown;
+          if (parsed && typeof parsed === 'object' && typeof (parsed as RecentLaunch).timestamp === 'number') {
+            saveRecentLaunch(instanceId, parsed as RecentLaunch);
+            localStorage.removeItem(CLASSIC_RECENT_LAUNCH_LEGACY_KEY);
+          }
+        } catch {
+          // Invalid compatibility data is ignored below.
+        }
+      }
+    }
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as unknown;
+    return isRecentLaunch(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveRecentLaunch(instanceId: string, data: RecentLaunch): void {
+  try {
+    localStorage.setItem(RECENT_LAUNCH_STORAGE_PREFIX + instanceId, JSON.stringify(data));
+  } catch {
+    // Launch success must not be downgraded by optional history persistence.
+  }
+}
+
+export function formatLastLaunch(timestamp: number, t: (key: string) => string): string {
+  const launchedAt = new Date(timestamp);
+  const now = new Date();
+  const time = launchedAt.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  if (launchedAt.toDateString() === now.toDateString()) {
+    return `${t('dashboard.last_launch_today') || 'Today'}, ${time}`;
+  }
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (launchedAt.toDateString() === yesterday.toDateString()) {
+    return `${t('dashboard.last_launch_yesterday') || 'Yesterday'}, ${time}`;
+  }
+  return launchedAt.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+}
+
+export function isLoaderSupported(params: {
+  loaderType: LoaderType;
+  mcVersion: string;
+  forgeVersions: string[];
+  fabricVersions: string[];
+  neoForgeVersions: string[];
+}): boolean {
+  const { loaderType, mcVersion, forgeVersions, fabricVersions, neoForgeVersions } = params;
+  if (loaderType === 'forge') return forgeVersions.includes(mcVersion);
+  if (loaderType === 'fabric') return fabricVersions.includes(mcVersion);
+  if (loaderType === 'neoforge') return neoForgeVersions.includes(mcVersion);
+  return true;
+}
+
+export function computeLaunchVersion(params: { loaderType: LoaderType; mcVersion: string }): string {
+  const { loaderType, mcVersion } = params;
+  if (loaderType === 'neoforge') return `${mcVersion}-NeoForge`;
+  if (loaderType === 'forge') return `${mcVersion}-Forge`;
+  if (loaderType === 'fabric') return `${mcVersion}-Fabric`;
+  return mcVersion;
+}
+
+export function shouldDisableOptiFine(params: {
+  useOptiFine: boolean;
+  mcVersion: string;
+  loaderType: LoaderType;
+  optiFineVersions: string[];
+}): boolean {
+  const { useOptiFine, mcVersion, loaderType, optiFineVersions } = params;
+  return useOptiFine && (loaderType !== 'forge' || !optiFineVersions.includes(mcVersion));
+}
 
 export type LaunchStage = 'idle' | 'preparing' | 'downloading' | 'launching' | 'waiting' | 'running' | 'failed';
 export type LaunchStatusSource = 'lifecycle' | 'progress' | 'log';

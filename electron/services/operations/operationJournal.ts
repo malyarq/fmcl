@@ -1,7 +1,8 @@
 import path from 'node:path';
 import { AtomicJsonStore } from '../storage/atomicJsonStore';
 import { assertAbsolutePath, assertChildName, assertPathWithinRoot } from '../../security/pathGuards';
-import type { OperationInput, OperationRecoveryData, OperationResult, OperationSnapshot } from './operationTypes';
+import type { InstanceCommand } from '../../domains/instances/instanceTypes';
+import type { CanonicalRecoveryCommand, OperationInput, OperationRecoveryData, OperationResult, OperationSnapshot } from './operationTypes';
 import { isTerminalStatus } from './operationTypes';
 
 type OperationJournalDocument = { operations: Record<string, OperationSnapshot> };
@@ -9,7 +10,7 @@ type OperationJournalDocument = { operations: Record<string, OperationSnapshot> 
 const MAX_TERMINAL_SNAPSHOTS = 100;
 const MAX_TERMINAL_AGE_MS = 30 * 24 * 60 * 60 * 1000;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const OPERATION_KINDS = ['duplicate', 'import', 'install-curseforge', 'install-modrinth', 'update', 'delete', 'export'] as const;
+const OPERATION_KINDS = ['duplicate', 'import', 'import-share', 'install-curseforge', 'install-modrinth', 'update', 'delete', 'export'] as const;
 const OPERATION_STATUSES = ['queued', 'running', 'cancelling', 'succeeded', 'recovered', 'degraded', 'cancelled', 'failed', 'recovery-required'] as const;
 const OPERATION_PHASES = ['started', 'staged', 'validated', 'publish-intent', 'backup-created', 'published', 'control-plane-committed', 'completed', 'failed', 'cancelled', 'recovery-required'] as const;
 
@@ -94,6 +95,7 @@ function isOperationInput(value: unknown, kind: unknown, rootPath: string): valu
     && isChildId(value.sourceId) && optionalChildId(value.destinationId) && optionalName(value.name);
   if (kind === 'import') return hasOnlyKeys(value, ['kind', 'rootPath', 'filePath', 'destinationId', 'name'])
     && isAbsolutePath(value.filePath) && optionalChildId(value.destinationId) && optionalName(value.name);
+  if (kind === 'import-share') return hasOnlyKeys(value, ['kind', 'rootPath', 'shareCode']) && isShareCode(value.shareCode);
   if (kind === 'install-curseforge') return hasOnlyKeys(value, ['kind', 'rootPath', 'projectId', 'fileId', 'destinationId', 'name'])
     && isPositiveInteger(value.projectId) && isPositiveInteger(value.fileId) && optionalChildId(value.destinationId) && optionalName(value.name);
   if (kind === 'install-modrinth') return hasOnlyKeys(value, ['kind', 'rootPath', 'projectId', 'versionId', 'destinationId', 'name'])
@@ -111,19 +113,106 @@ function isOperationInput(value: unknown, kind: unknown, rootPath: string): valu
 
 function isRecoveryData(value: unknown, input: OperationInput, operationId: string): value is OperationRecoveryData {
   if (!isRecord(value)) return false;
-  if (isArchiveInput(input)) return isArchiveRecovery(value, input.outputPath, operationId);
-  if (input.kind === 'duplicate') return hasOnlyKeys(value, ['sourceId', 'destinationId', 'destinationName', 'publishIntent'])
+  const canonical = value.canonicalCommand;
+  if (canonical !== undefined && !isCanonicalRecoveryCommand(canonical, canonicalRootPath(input.rootPath), operationId)) return false;
+  if (isArchiveInput(input)) return hasOnlyKeys(value, ['outputPath', 'workspacePath', 'stagedPath', 'backupPath', 'hadOutput', 'digest', 'canonicalCommand'])
+    && isArchiveRecovery(value, input.outputPath, operationId);
+  if (input.kind === 'duplicate') return hasOnlyKeys(value, ['sourceId', 'destinationId', 'destinationName', 'publishIntent', 'canonicalCommand'])
     && value.sourceId === input.sourceId && isChildId(value.destinationId) && isName(value.destinationName, 120)
     && (!input.destinationId || value.destinationId === input.destinationId) && optionalPublishIntent(value.publishIntent, value.destinationId);
-  if (input.kind === 'import' || input.kind === 'install-curseforge' || input.kind === 'install-modrinth') {
-    return hasOnlyKeys(value, ['destinationId', 'destinationName', 'missing', 'metadata', 'publishIntent'])
+  if (input.kind === 'import' || input.kind === 'import-share' || input.kind === 'install-curseforge' || input.kind === 'install-modrinth') {
+    const requestedDestinationId = 'destinationId' in input ? input.destinationId : undefined;
+    return hasOnlyKeys(value, ['destinationId', 'destinationName', 'missing', 'metadata', 'publishIntent', 'canonicalCommand'])
       && isChildId(value.destinationId) && isName(value.destinationName, 120) && isMissingList(value.missing)
-      && (!input.destinationId || value.destinationId === input.destinationId) && optionalJsonRecord(value.metadata)
+      && (!requestedDestinationId || value.destinationId === requestedDestinationId) && optionalJsonRecord(value.metadata)
       && optionalPublishIntent(value.publishIntent, value.destinationId);
   }
   const destinationId = input.kind === 'update' || input.kind === 'delete' || input.kind === 'export' ? input.instanceId : undefined;
-  return destinationId !== undefined && hasOnlyKeys(value, ['destinationId', 'publishIntent'])
+  return destinationId !== undefined && hasOnlyKeys(value, ['destinationId', 'publishIntent', 'canonicalCommand'])
     && value.destinationId === destinationId && optionalPublishIntent(value.publishIntent, destinationId);
+}
+
+function isCanonicalRecoveryCommand(value: unknown, rootPath: string, operationId: string): value is CanonicalRecoveryCommand {
+  return isExactRecord(value, ['version', 'rootPath', 'operationId', 'command'])
+    && value.version === 1
+    && canonicalPathEquals(value.rootPath, rootPath)
+    && value.operationId === operationId
+    && isInstanceCommand(value.command);
+}
+
+function isInstanceCommand(value: unknown): value is InstanceCommand {
+  if (!isRecord(value) || value.version !== 1 || typeof value.type !== 'string') return false;
+  switch (value.type) {
+    case 'create':
+      return hasOnlyKeys(value, ['version', 'type', 'name', 'source', 'config'])
+        && isName(value.name, 120) && isSource(value.source, false) && isInstanceConfig(value.config);
+    case 'rename':
+      return hasOnlyKeys(value, ['version', 'type', 'id', 'name']) && isChildId(value.id) && isName(value.name, 120);
+    case 'select':
+    case 'delete':
+      return hasOnlyKeys(value, ['version', 'type', 'id']) && isChildId(value.id);
+    case 'save-config':
+      return hasOnlyKeys(value, ['version', 'type', 'id', 'config']) && isChildId(value.id) && isInstanceConfig(value.config);
+    case 'update-metadata':
+      return hasOnlyKeys(value, ['version', 'type', 'id', 'description'])
+        && isChildId(value.id) && optionalDescription(value.description);
+    case 'commit-published':
+      return hasOnlyKeys(value, ['version', 'type', 'record', 'select'])
+        && isCanonicalRecord(value.record) && (value.select === undefined || typeof value.select === 'boolean');
+    case 'reconcile-update':
+      return hasOnlyKeys(value, ['version', 'type', 'record']) && isCanonicalRecord(value.record);
+    default:
+      return false;
+  }
+}
+
+function isCanonicalRecord(value: unknown): boolean {
+  return isExactRecord(value, ['id', 'name', 'source', 'config', 'summary'])
+    && isChildId(value.id) && isName(value.name, 120) && isSource(value.source, true)
+    && isInstanceConfig(value.config) && isSummary(value.summary, value.config);
+}
+
+function isSource(value: unknown, timestampsRequired: boolean): boolean {
+  if (!isRecord(value)) return false;
+  const keys = ['source', 'sourceId', 'sourceVersionId', 'version', 'iconUrl', 'description', 'author', ...(timestampsRequired ? ['createdAt', 'updatedAt'] : [])];
+  if (!hasOnlyKeys(value, keys) || !['local', 'curseforge', 'modrinth'].includes(value.source as string)) return false;
+  for (const key of ['sourceId', 'sourceVersionId', 'version', 'iconUrl', 'description', 'author']) {
+    if (value[key] !== undefined && !isText(value[key], 4096)) return false;
+  }
+  return !timestampsRequired || (isIsoTimestamp(value.createdAt) && isIsoTimestamp(value.updatedAt));
+}
+
+function isInstanceConfig(value: unknown): value is Record<string, unknown> {
+  if (!isRecord(value) || !hasOnlyKeys(value, ['runtime', 'java', 'memory', 'vmOptions', 'game', 'server', 'networkMode']) || !isRecord(value.runtime)) return false;
+  if (!hasOnlyKeys(value.runtime, ['minecraftVersion', 'modLoader']) || !isText(value.runtime.minecraftVersion, 120)) return false;
+  if (value.runtime.modLoader !== undefined && (!isRecord(value.runtime.modLoader) || !hasOnlyKeys(value.runtime.modLoader, ['type', 'version'])
+    || !['vanilla', 'forge', 'fabric', 'quilt', 'neoforge'].includes(value.runtime.modLoader.type as string)
+    || (value.runtime.modLoader.version !== undefined && !isText(value.runtime.modLoader.version, 120)))) return false;
+  if (value.java !== undefined && (!isRecord(value.java) || !hasOnlyKeys(value.java, ['executable']) || (value.java.executable !== undefined && !isText(value.java.executable, 4096)))) return false;
+  if (value.memory !== undefined && (!isRecord(value.memory) || !hasOnlyKeys(value.memory, ['maxMb', 'minMb']) || !isPositiveInteger(value.memory.maxMb)
+    || (value.memory.minMb !== undefined && !isPositiveInteger(value.memory.minMb)))) return false;
+  if (value.vmOptions !== undefined && (!Array.isArray(value.vmOptions) || value.vmOptions.some((item) => !isText(item, 4096)))) return false;
+  if (value.game !== undefined && !isGameConfig(value.game)) return false;
+  if (value.server !== undefined && (!isRecord(value.server) || !hasOnlyKeys(value.server, ['host', 'port']) || !isText(value.server.host, 255) || !isPositiveInteger(value.server.port))) return false;
+  return value.networkMode === undefined || ['hyperswarm', 'xmcl_lan', 'xmcl_upnp_host'].includes(value.networkMode as string);
+}
+
+function isGameConfig(value: unknown): boolean {
+  if (!isRecord(value) || !hasOnlyKeys(value, ['resolution', 'extraArgs'])) return false;
+  if (value.resolution !== undefined && (!isRecord(value.resolution) || !hasOnlyKeys(value.resolution, ['width', 'height', 'fullscreen'])
+    || (value.resolution.width !== undefined && !isPositiveInteger(value.resolution.width))
+    || (value.resolution.height !== undefined && !isPositiveInteger(value.resolution.height))
+    || (value.resolution.fullscreen !== undefined && typeof value.resolution.fullscreen !== 'boolean'))) return false;
+  return value.extraArgs === undefined || (Array.isArray(value.extraArgs) && value.extraArgs.every((item) => isText(item, 4096)));
+}
+
+function isSummary(value: unknown, config: Record<string, unknown>): boolean {
+  if (!isRecord(value) || !hasOnlyKeys(value, ['minecraftVersion', 'modLoader']) || value.minecraftVersion !== (config.runtime as Record<string, unknown>).minecraftVersion) return false;
+  const configLoader = (config.runtime as Record<string, unknown>).modLoader;
+  if (configLoader === undefined) return value.modLoader === undefined;
+  return isRecord(value.modLoader) && isRecord(configLoader)
+    && hasOnlyKeys(value.modLoader, ['type', 'version'])
+    && value.modLoader.type === configLoader.type && value.modLoader.version === configLoader.version;
 }
 
 function isArchiveRecovery(value: Record<string, unknown>, outputPath: string, operationId: string): boolean {
@@ -226,10 +315,16 @@ function isOperationPhase(value: unknown): value is OperationSnapshot['phase'] {
 function isPositiveInteger(value: unknown): boolean { return Number.isSafeInteger(value) && (value as number) > 0; }
 function isNonNegativeInteger(value: unknown): boolean { return Number.isSafeInteger(value) && (value as number) >= 0; }
 function isIdentifier(value: unknown): boolean { return typeof value === 'string' && /^[a-zA-Z0-9._-]{1,160}$/.test(value); }
+function isShareCode(value: unknown): boolean {
+  if (typeof value !== 'string' || value.length < 4 || value.length > 32_768) return false;
+  const payload = value.startsWith('fmcl://share/v1/') ? value.slice('fmcl://share/v1/'.length) : value;
+  return /^[A-Za-z0-9+/=_-]+$/.test(payload);
+}
 function isErrorCode(value: unknown): boolean { return typeof value === 'string' && /^[A-Z0-9_]{1,64}$/.test(value); }
 function isText(value: unknown, maxLength: number): boolean { return typeof value === 'string' && value.length > 0 && value.length <= maxLength; }
 function isName(value: unknown, maxLength: number): boolean { return isText(value, maxLength) && Boolean((value as string).trim()); }
 function optionalName(value: unknown): boolean { return value === undefined || isName(value, 120); }
+function optionalDescription(value: unknown): boolean { return value === undefined || typeof value === 'string' && isText(value, 4_000) && Boolean(value.trim()); }
 function optionalChildId(value: unknown): boolean { return value === undefined || isChildId(value); }
 function optionalJsonRecord(value: unknown): boolean { return value === undefined || isRecord(value) && isJsonValue(value, 0); }
 function isJsonValue(value: unknown, depth: number): boolean {

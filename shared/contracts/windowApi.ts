@@ -1,9 +1,12 @@
 import type { AppUpdaterAPI } from './appUpdater'
 import type { AssetsAPI } from './assets'
 import type { CacheAPI } from './cache'
-import type { ModpacksAPI } from './modpacks'
+import type { ProviderCatalogAPI } from './providerCatalog'
+import type { StorageMaintenanceAPI } from './storageMaintenance'
+import type { JavaRuntimeAPI } from './javaRuntime'
 import type { LauncherAPI } from './launcher'
 import type { ModsAPI } from './mods'
+import type { InstanceModsAPI } from './instanceMods'
 import type { NetworkAPI } from './network'
 import type { SettingsAPI } from './settings'
 import type { WindowControlsAPI } from './windowControls'
@@ -19,6 +22,8 @@ import type { WorldsAPI } from './worlds'
 import type { DatapacksAPI } from './datapacks'
 import type { DialogsAPI } from './dialogs'
 import type { OperationsAPI } from './operations'
+import type { InstancesAPI } from './instances'
+import type { ArchiveInspectionAPI } from './archiveInspection'
 
 /**
  * Supported, namespaced preload surface for renderer code.
@@ -27,8 +32,11 @@ import type { OperationsAPI } from './operations'
  */
 export type FriendLauncherApi = {
   launcher: LauncherAPI
-  modpacks: ModpacksAPI
+  providerCatalog: ProviderCatalogAPI
+  storageMaintenance: StorageMaintenanceAPI
+  javaRuntime: JavaRuntimeAPI
   mods: ModsAPI
+  instanceMods: InstanceModsAPI
   windowControls: WindowControlsAPI
   network: NetworkAPI
   cache: CacheAPI
@@ -47,4 +55,6 @@ export type FriendLauncherApi = {
   share: ShareAPI
   externalLinks: ExternalLinksAPI
   operations: OperationsAPI
+  instances: InstancesAPI
+  archiveInspection: ArchiveInspectionAPI
 }

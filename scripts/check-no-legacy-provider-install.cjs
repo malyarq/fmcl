@@ -12,13 +12,15 @@ const forbidden = [
   ['src/verification/manual/mockEnvironment.ts', /\binstallCurseForgeModpack\b|\binstallModrinthModpack\b|\bonInstallProgress\b/],
   ['docs/en/contracts-map.md', /`modpacks:(?:installCurseForge|installModrinth|updateProgress)`/],
   ['docs/ru/contracts-map.md', /`modpacks:(?:installCurseForge|installModrinth|updateProgress)`/],
-  ['src/components/modpacks/InstallModpackPage.tsx', /modpacksIPC\.(?:installCurseForge|installModrinth|onInstallProgress)/],
-  ['src/components/modpacks/InstallModpackModal.tsx', /modpacksIPC\.(?:installCurseForge|installModrinth|onInstallProgress)/],
-  ['src/components/modpacks/ModpackUpdateModal.tsx', /modpacksIPC\.(?:installCurseForge|installModrinth|onInstallProgress)/],
+  ['src/components/modpacks/InstallModpackPage.tsx', /installCurseForgeModpack|installModrinthModpack|onInstallProgress/],
+  ['src/components/modpacks/InstallModpackModal.tsx', /installCurseForgeModpack|installModrinthModpack|onInstallProgress/],
+  ['src/components/modpacks/ModpackUpdateModal.tsx', /installCurseForgeModpack|installModrinthModpack|onInstallProgress/],
 ]
 
 const violations = forbidden.flatMap(([relativePath, pattern]) => {
-  const source = fs.readFileSync(path.join(root, relativePath), 'utf8')
+  const absolutePath = path.join(root, relativePath)
+  if (!fs.existsSync(absolutePath)) return []
+  const source = fs.readFileSync(absolutePath, 'utf8')
   return pattern.test(source) ? [`${relativePath} retains legacy provider install IPC`] : []
 })
 

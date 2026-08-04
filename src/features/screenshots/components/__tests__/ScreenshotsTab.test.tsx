@@ -74,7 +74,7 @@ describe('ScreenshotsTab locale formatting', () => {
   });
 
   it('uses locale-aware helpers for screenshot count and created dates', async () => {
-    render(<ScreenshotsTab instancePath="/instance" />);
+    render(<ScreenshotsTab instanceId="alpha" />);
 
     const summary = await screen.findByTestId('screenshots-summary');
     expect(summary.textContent).toContain('Saved');

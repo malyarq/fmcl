@@ -18,13 +18,13 @@ import {
 } from '../../../features/modpacks/hooks/useModpackRuntimeSummary';
 
 interface ShadersTabProps {
-    instancePath: string;
+    instanceId: string;
     runtimeSummary?: ModpackRuntimeSummary | null;
     onUpdate?: () => void;
     onAddShader?: () => void;
 }
 
-export function ShadersTab({ instancePath, runtimeSummary, onUpdate, onAddShader }: ShadersTabProps) {
+export function ShadersTab({ instanceId, runtimeSummary, onUpdate, onAddShader }: ShadersTabProps) {
     const { t } = useSettings();
     const confirm = useConfirm();
     const [packs, setPacks] = useState<ShaderPack[]>([]);
@@ -36,7 +36,7 @@ export function ShadersTab({ instancePath, runtimeSummary, onUpdate, onAddShader
         setLoading(true);
         setLoadError(null);
         try {
-            const list = await shadersIPC.list(instancePath);
+            const list = await shadersIPC.list(instanceId);
             setPacks(list);
         } catch (err) {
             console.error(err);
@@ -45,7 +45,7 @@ export function ShadersTab({ instancePath, runtimeSummary, onUpdate, onAddShader
         } finally {
             setLoading(false);
         }
-    }, [instancePath, t, toast]);
+    }, [instanceId, t, toast]);
 
     useEffect(() => {
         void loadPacks();
@@ -54,7 +54,7 @@ export function ShadersTab({ instancePath, runtimeSummary, onUpdate, onAddShader
     const handleSetActive = useCallback(
         async (pack: ShaderPack) => {
             try {
-                await shadersIPC.setActive(pack.fileName, instancePath);
+                await shadersIPC.setActive(pack.fileName, instanceId);
                 await loadPacks();
                 onUpdate?.();
                 toast.success(t('modpacks.shader_active_success', { name: pack.name }));
@@ -62,19 +62,19 @@ export function ShadersTab({ instancePath, runtimeSummary, onUpdate, onAddShader
                 toast.error(t('modpacks.shader_set_error'));
             }
         },
-        [instancePath, loadPacks, onUpdate, t, toast]
+        [instanceId, loadPacks, onUpdate, t, toast]
     );
 
     const handleDisable = useCallback(async () => {
         try {
-            await shadersIPC.disable(instancePath);
+            await shadersIPC.disable(instanceId);
             await loadPacks();
             onUpdate?.();
             toast.success(t('modpacks.shader_disable_success'));
         } catch {
             toast.error(t('modpacks.shader_disable_error'));
         }
-    }, [instancePath, loadPacks, onUpdate, t, toast]);
+    }, [instanceId, loadPacks, onUpdate, t, toast]);
 
     const handleDelete = useCallback(
         async (pack: ShaderPack) => {
@@ -91,14 +91,14 @@ export function ShadersTab({ instancePath, runtimeSummary, onUpdate, onAddShader
             }
 
             try {
-                await shadersIPC.delete(pack.fileName, instancePath);
+                await shadersIPC.delete(pack.fileName, instanceId);
                 await loadPacks();
                 onUpdate?.();
             } catch {
                 toast.error(t('modpacks.shader_delete_error'));
             }
         },
-        [confirm, instancePath, loadPacks, onUpdate, t, toast]
+        [confirm, instanceId, loadPacks, onUpdate, t, toast]
     );
 
     const activeShader = useMemo(() => packs.find((pack) => pack.isActive), [packs]);

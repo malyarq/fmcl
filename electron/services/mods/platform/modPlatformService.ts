@@ -3,18 +3,20 @@ import fs from 'fs-extra';
 import { download } from '@xmcl/file-transfer';
 import { ModrinthV2Client } from '@xmcl/modrinth';
 import { CurseforgeV1Client, type File as CurseforgeFile, type Mod as CurseforgeMod } from '@xmcl/curseforge';
-import { ModpackService } from '../../modpacks/modpackService';
+import type { InstanceApplication } from '../../../domains/instances/instanceApplication';
+import type { LauncherRoot } from '../../../domains/instances/instanceTypes';
+import type { ModInstallRequest } from '../../../../shared/contracts/mods';
 import { ensureDir } from './fsUtils';
 import { CF_SORT_POPULARITY, CF_SORT_LAST_UPDATED, CF_SORT_NAME, mapLoaderToCurseforge, mapLoaderToModrinth } from './loaderMapping';
 import { pickPrimaryModrinthFile } from './modrinthUtils';
 import { InstanceManifestManager } from '../../instances/manifestManager';
 import { openValidatedZip } from '../../../security/archivePolicy';
+import { assertChildName } from '../../../security/pathGuards';
 import {
   type GuidedContentInstallIssue,
   type GuidedContentInstallIssueStatus,
   type GuidedContentInstallResult,
   isManifestManagedContentType,
-  type ModInstallRequest,
   type ModInstallResult,
   type ModSearchQuery,
   type ModSearchResult,
@@ -36,6 +38,12 @@ type CurseforgeSearchMod = CurseforgeMod & {
 type ModrinthSearchHitWithVersions = Awaited<ReturnType<ModrinthV2Client['searchProjects']>>['hits'][number] & {
   versions?: string[];
 };
+
+/** Filesystem-backed instance access remains at the provider infrastructure edge. */
+export interface ModPlatformContentPort {
+  resolveRoot(rootPath: string): Promise<LauncherRoot>;
+  getModpackDir(rootPath: string, instanceId: string): string;
+}
 
 function isReleaseMinecraftVersion(value: string | null | undefined): value is string {
   return typeof value === 'string' && /^\d+\.\d+(?:\.\d+)?$/.test(value.trim());
@@ -74,9 +82,12 @@ function isGuidedContentType(contentType: ModInstallRequest['contentType']): con
 export class ModPlatformService {
   private readonly modrinth: ModrinthV2Client;
   private readonly curseforge: CurseforgeV1Client | null;
-  private readonly instances = new ModpackService();
 
-  constructor(options?: { curseforgeApiKey?: string }) {
+  constructor(
+    private readonly instanceApplication: InstanceApplication,
+    private readonly content: ModPlatformContentPort,
+    options?: { curseforgeApiKey?: string },
+  ) {
     this.modrinth = new ModrinthV2Client();
     const key = options?.curseforgeApiKey ?? process.env.CURSEFORGE_API_KEY;
     this.curseforge = key ? new CurseforgeV1Client(key) : null;
@@ -356,11 +367,12 @@ export class ModPlatformService {
     }));
   }
 
-  public async installModFile(req: ModInstallRequest): Promise<ModInstallResult> {
-    const rootPath =
-      (req.rootPath != null && String(req.rootPath).trim() !== '')
-        ? req.rootPath
-        : this.instances.getDefaultRootPath();
+  public async installModFile(req: ModInstallRequest, rootPath: string): Promise<ModInstallResult> {
+    const root = await this.content.resolveRoot(rootPath);
+    const state = await this.instanceApplication.read(root);
+    if (state.status !== 'ready' || !state.snapshot.records.some((record) => record.id === req.instanceId)) {
+      throw new Error(`Canonical instance does not exist: ${req.instanceId}`);
+    }
 
     // Determine destination folder based on contentType
     const contentType = req.contentType ?? 'mod';
@@ -368,19 +380,10 @@ export class ModPlatformService {
       : contentType === 'shader' ? 'shaderpacks'
         : 'mods';
 
-    // Per-instance installation:
-    // - instancePath/<folder> (highest priority)
-    // - instances/<id>/<folder>
-    // - rootPath/<folder> (legacy fallback)
-    this.instances.ensureModpacksMigrated(rootPath);
-    const destDir = req.instancePath
-      ? path.join(req.instancePath, folderName)
-      : req.instanceId
-        ? path.join(this.instances.getModpackDir(rootPath, req.instanceId), folderName)
-        : path.join(rootPath, folderName);
-    ensureDir(destDir);
+    // IPC installs are always scoped to a canonical instance resolved by main.
+    const instanceDir = this.content.getModpackDir(rootPath, req.instanceId);
+    const destDir = path.join(instanceDir, folderName);
 
-    const instanceDir = req.instancePath || (req.instanceId ? this.instances.getModpackDir(rootPath, req.instanceId) : null);
     const guidedContentType = isGuidedContentType(contentType) ? contentType : null;
 
     const finalizeInstall = async (params: {
@@ -502,13 +505,14 @@ export class ModPlatformService {
       const file = pickPrimaryModrinthFile(version);
       if (!file?.url || !file.filename) throw new Error('Modrinth version has no downloadable file.');
 
-      const destination = path.join(destDir, file.filename);
+      const filename = assertChildName(file.filename, 'Provider filename');
+      const destination = path.join(destDir, filename);
+      ensureDir(destDir);
       const sha1 = file.hashes?.sha1;
       return finalizeInstall({
         destination,
         primaryUrl: file.url,
-        fallbackUrls: req.fallbackUrls,
-        filename: file.filename,
+        filename,
         sha1,
         trackSource: 'modrinth',
         trackProjectId: req.projectId,
@@ -531,13 +535,14 @@ export class ModPlatformService {
     if (!url) {
       throw new Error('CurseForge file has no downloadUrl (distribution might be disabled).');
     }
-    const destination = path.join(destDir, file.fileName);
+    const filename = assertChildName(file.fileName, 'Provider filename');
+    const destination = path.join(destDir, filename);
+    ensureDir(destDir);
     const sha1 = file.hashes?.find((h) => h.algo === 1 /* sha1 */)?.value;
     return finalizeInstall({
       destination,
       primaryUrl: url,
-      fallbackUrls: req.fallbackUrls,
-      filename: file.fileName,
+      filename,
       sha1,
       trackSource: 'curseforge',
       trackProjectId: String(modId),

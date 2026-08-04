@@ -13,12 +13,12 @@ import { DegradedStateView } from '../../layout/DegradedStateView';
 import { toDisplayErrorMessage } from '../../../utils/displayError';
 
 interface ResourcePacksTabProps {
-    instancePath: string;
+    instanceId: string;
     onUpdate?: () => void;
     onAddResourcePack?: () => void;
 }
 
-export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: ResourcePacksTabProps) {
+export function ResourcePacksTab({ instanceId, onUpdate, onAddResourcePack }: ResourcePacksTabProps) {
     const { t } = useSettings();
     const confirm = useConfirm();
     const [packs, setPacks] = useState<ResourcePack[]>([]);
@@ -30,7 +30,7 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
         setLoading(true);
         setLoadError(null);
         try {
-            const list = await resourcePacksIPC.list(instancePath);
+            const list = await resourcePacksIPC.list(instanceId);
             setPacks(list);
         } catch (err) {
             console.error(err);
@@ -39,7 +39,7 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
         } finally {
             setLoading(false);
         }
-    }, [instancePath, t, toast]);
+    }, [instanceId, t, toast]);
 
     useEffect(() => {
         void loadPacks();
@@ -49,9 +49,9 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
         async (pack: ResourcePack) => {
             try {
                 if (pack.isEnabled) {
-                    await resourcePacksIPC.disable(pack.fileName, instancePath);
+                    await resourcePacksIPC.disable(instanceId, pack.fileName);
                 } else {
-                    await resourcePacksIPC.enable(pack.fileName, instancePath);
+                    await resourcePacksIPC.enable(instanceId, pack.fileName);
                 }
                 await loadPacks();
                 onUpdate?.();
@@ -59,7 +59,7 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
                 toast.error(t('modpacks.resourcepack_toggle_error'));
             }
         },
-        [instancePath, loadPacks, onUpdate, t, toast]
+        [instanceId, loadPacks, onUpdate, t, toast]
     );
 
     const handleDelete = useCallback(
@@ -77,14 +77,14 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
             }
 
             try {
-                await resourcePacksIPC.delete(pack.fileName, instancePath);
+                await resourcePacksIPC.delete(instanceId, pack.fileName);
                 await loadPacks();
                 onUpdate?.();
             } catch {
                 toast.error(t('modpacks.resourcepack_delete_error'));
             }
         },
-        [confirm, instancePath, loadPacks, onUpdate, t, toast]
+        [confirm, instanceId, loadPacks, onUpdate, t, toast]
     );
 
     const enabledPacks = useMemo(() => packs.filter((pack) => pack.isEnabled), [packs]);
@@ -114,15 +114,15 @@ export function ResourcePacksTab({ instancePath, onUpdate, onAddResourcePack }: 
 
             try {
                 await resourcePacksIPC.reorder(
+                    instanceId,
                     reordered.map((entry) => entry.fileName),
-                    instancePath
                 );
                 await loadPacks();
             } catch {
                 toast.error(t('modpacks.resourcepack_reorder_error'));
             }
         },
-        [enabledPacks, instancePath, loadPacks, t, toast]
+        [enabledPacks, instanceId, loadPacks, t, toast]
     );
 
     return (

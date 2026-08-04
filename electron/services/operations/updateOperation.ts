@@ -3,6 +3,7 @@ import { assertChildName, resolvePathWithinRoot } from '../../security/pathGuard
 import { assertPublicHttpsUrl } from '../../security/remoteUrls';
 import { getModpackDir, resolveLauncherRootPath } from '../instances/paths';
 import { Updater } from '../updater/instanceUpdater';
+import { readCanonicalRecordFromContent } from './canonicalRecord';
 import { StagingWorkspace } from './stagingWorkspace';
 import type { OperationAdapter, OperationContext, OperationResult } from './operationTypes';
 
@@ -45,6 +46,8 @@ export function createUpdateOperationAdapter(options: UpdateOperationOptions = {
         options.faults?.validation?.();
         checkCancelled();
         validateStagedUpdate(stagePath, destinationId);
+        const command = { version: 1 as const, type: 'reconcile-update' as const, record: readCanonicalRecordFromContent(stagePath, destinationId) };
+        context.recordCanonicalCommand(command);
         context.transition('validated', { completed: 2, total: 4, message: 'validated' });
         checkCancelled();
 
@@ -56,6 +59,7 @@ export function createUpdateOperationAdapter(options: UpdateOperationOptions = {
         context.transition('published', { completed: 3, total: 4, message: 'published' });
 
         options.faults?.['control-plane']?.();
+        await commitControlPlane(context, command);
         context.transition('control-plane-committed', { completed: 4, total: 4, message: 'control-plane-committed' });
         workspace.removePublishMarker(destinationPath);
         workspace.cleanupStaging();
@@ -69,16 +73,7 @@ export function createUpdateOperationAdapter(options: UpdateOperationOptions = {
       }
     },
     async recoverPublished(context): Promise<OperationResult> {
-      const recovery = context.snapshot.recovery;
-      if (!recovery || !('destinationId' in recovery)) {
-        return { status: 'recovery-required', message: 'Update recovery data is missing' };
-      }
-      const destinationPath = getModpackDir(context.snapshot.rootPath, recovery.destinationId);
-      if (!isValidPublishedUpdate(destinationPath, recovery.destinationId)) {
-        return { status: 'recovery-required', message: 'Published update cannot be verified' };
-      }
-      context.transition('control-plane-committed', { completed: 4, total: 4, message: 'recovered-control-plane' });
-      return { status: 'recovered', instanceId: recovery.destinationId };
+      return await context.replayCanonicalCommand();
     },
   };
 }
@@ -92,13 +87,9 @@ function validateStagedUpdate(stagedPath: string, destinationId: string): void {
   }
 }
 
-function isValidPublishedUpdate(destinationPath: string, destinationId: string): boolean {
-  try {
-    validateStagedUpdate(destinationPath, destinationId);
-    return true;
-  } catch {
-    return false;
-  }
+async function commitControlPlane(context: OperationContext, command: Parameters<OperationContext['commitControlPlane']>[0]): Promise<void> {
+  const result = await context.commitControlPlane(command);
+  if ('code' in result) throw new Error(result.message);
 }
 
 function throwIfCancelled(context: OperationContext): void {

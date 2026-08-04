@@ -1,4 +1,4 @@
-import type { ModpackConfig } from '../../modpacks/modpackService';
+import type { InstanceEditableConfig } from '../../../domains/instances/instanceTypes';
 
 export type EffectiveResolution = { width: number; height: number } | { fullscreen: true };
 export type EffectiveServer = { ip: string; port: number };
@@ -7,16 +7,14 @@ export function computeEffectiveLaunchOptions(params: {
   options: {
     version: string;
     ram: number;
-    javaPath?: string;
-    vmOptions?: string[];
     useOptiFine?: boolean;
   };
-  instanceCfg?: ModpackConfig;
+  config: InstanceEditableConfig;
 }) {
-  const { options, instanceCfg } = params;
+  const { options, config } = params;
 
-  const runtimeMinecraft = instanceCfg?.runtime?.minecraft?.trim();
-  const runtimeLoader = instanceCfg?.runtime?.modLoader?.type?.toLowerCase();
+  const runtimeMinecraft = config.runtime.minecraftVersion.trim();
+  const runtimeLoader = config.runtime.modLoader?.type.toLowerCase();
   let requestedVersion = options.version;
   if (runtimeMinecraft) {
     if (runtimeLoader === 'neoforge') requestedVersion = `${runtimeMinecraft}-NeoForge`;
@@ -26,24 +24,24 @@ export function computeEffectiveLaunchOptions(params: {
   }
 
   const ramGb = (() => {
-    const mb = instanceCfg?.memory?.maxMb;
+    const mb = config.memory?.maxMb;
     if (typeof mb === 'number' && Number.isFinite(mb) && mb > 0) return mb / 1024;
     return options.ram;
   })();
 
   const minRamGb = (() => {
-    const mb = instanceCfg?.memory?.minMb;
+    const mb = config.memory?.minMb;
     if (typeof mb === 'number' && Number.isFinite(mb) && mb > 0) return mb / 1024;
     return undefined;
   })();
 
-  const effectiveJavaPath = (instanceCfg?.java?.path ?? options.javaPath)?.trim() || '';
-  const effectiveVmOptions = (instanceCfg?.vmOptions ?? options.vmOptions ?? []).filter(
+  const effectiveJavaPath = config.java?.executable?.trim() || '';
+  const effectiveVmOptions = (config.vmOptions ?? []).filter(
     (s) => typeof s === 'string' && s.trim().length > 0
   );
-  const effectiveMcArgs = (instanceCfg?.game?.extraArgs ?? []).filter((s) => typeof s === 'string' && s.trim().length > 0);
+  const effectiveMcArgs = (config.game?.extraArgs ?? []).filter((s) => typeof s === 'string' && s.trim().length > 0);
 
-  const resolution = instanceCfg?.game?.resolution;
+  const resolution = config.game?.resolution;
   const effectiveResolution = (() => {
     const fullscreen = Boolean(resolution?.fullscreen);
     if (fullscreen) return { fullscreen: true } as const;
@@ -56,8 +54,8 @@ export function computeEffectiveLaunchOptions(params: {
   })();
 
   const effectiveServer = (() => {
-    const host = instanceCfg?.server?.host?.trim();
-    const port = instanceCfg?.server?.port;
+    const host = config.server?.host.trim();
+    const port = config.server?.port;
     if (!host) return undefined;
     if (typeof port !== 'number' || !Number.isFinite(port) || port <= 0) return undefined;
     return { ip: host, port };
@@ -74,4 +72,3 @@ export function computeEffectiveLaunchOptions(params: {
     minRamGb,
   };
 }
-

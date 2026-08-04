@@ -7,7 +7,7 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Modal } from '../ui/Modal';
 import { ErrorMessage } from '../ui/ErrorMessage';
-import { modpacksIPC } from '../../services/ipc/modpacksIPC';
+import { instancesIPC } from '../../services/ipc/instancesIPC';
 import type { ModLoaderType } from '../../contexts/instances/types';
 import { useVersions } from '../../features/launcher/hooks/useVersions';
 import { useModSupportedVersions } from '../../features/launcher/hooks/useModSupportedVersions';
@@ -30,7 +30,7 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
   onClose,
   onCreated,
 }) => {
-  const { t, getAccentStyles, minecraftPath } = useSettings();
+  const { t, getAccentStyles } = useSettings();
   const { refresh } = useModpack();
   const toast = useToast();
   const { versions } = useVersions();
@@ -68,28 +68,6 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
     }
   };
 
-  const persistCreatedGameSettings = async (modpackId: string) => {
-    if (!runtimeDependencies.useOptiFine) {
-      return;
-    }
-
-    const createdConfig = await modpacksIPC.getConfig(modpackId, minecraftPath);
-    if (!createdConfig) {
-      return;
-    }
-
-    await modpacksIPC.saveConfig(
-      {
-        ...createdConfig,
-        game: {
-          ...(createdConfig.game ?? {}),
-          useOptiFine: true,
-        },
-      },
-      minecraftPath,
-    );
-  };
-
   const validateName = (value: string): string | null => {
     if (!value.trim()) {
       return t('modpacks.name_required') || 'Имя модпака обязательно';
@@ -116,24 +94,26 @@ export const CreateModpackModal: React.FC<CreateModpackModalProps> = ({
     setNameError(null);
 
     try {
-      const result = await modpacksIPC.createLocal(
-        name.trim(),
-        version.trim(),
-        minecraftVersion.trim(),
-        runtimeDependencies.modLoader,
-        minecraftPath
-      );
-
-      if (result?.id && description.trim()) {
-        // Сохраняем описание в метаданных модпака
-        await modpacksIPC.updateMetadata(result.id, { description: description.trim() }, minecraftPath);
-      }
-      if (result?.id) {
-        await persistCreatedGameSettings(result.id);
-      }
+      const result = await instancesIPC.create({
+        name: name.trim(),
+        source: {
+          source: 'local',
+          ...(version.trim() ? { version: version.trim() } : {}),
+          ...(description.trim() ? { description: description.trim() } : {}),
+        },
+        config: {
+          runtime: {
+            minecraftVersion: minecraftVersion.trim(),
+            ...(runtimeDependencies.modLoader ? { modLoader: runtimeDependencies.modLoader } : {}),
+          },
+          ...(runtimeDependencies.useOptiFine ? { game: { useOptiFine: true } } : {}),
+        },
+      });
+      if (!result.ok) throw new Error(result.error.message);
+      if (!result.value.selectedId) throw new Error('Created instance was not selected');
 
       await refresh();
-      onCreated?.(result.id);
+      onCreated?.(result.value.selectedId);
       onClose();
       
       // Reset form

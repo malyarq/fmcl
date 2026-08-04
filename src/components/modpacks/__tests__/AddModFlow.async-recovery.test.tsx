@@ -10,7 +10,7 @@ const getModVersionsMock = vi.fn();
 const installModFileMock = vi.fn();
 const getMetadataMock = vi.fn();
 const getConfigMock = vi.fn();
-const addModMock = vi.fn();
+const registerModMock = vi.fn();
 
 function mockMatchMedia() {
   Object.defineProperty(window, 'matchMedia', {
@@ -48,6 +48,11 @@ vi.mock('../../../contexts/SettingsContext', () => ({
   }),
 }));
 
+vi.mock('../../../contexts/instances/services/instancesService', () => ({
+  fetchModpackMetadata: (...args: unknown[]) => getMetadataMock(...args),
+  fetchModpackConfig: (...args: unknown[]) => getConfigMock(...args),
+}));
+
 vi.mock('../../../contexts/ToastContext', () => ({
   useToast: () => ({
     success: vi.fn(),
@@ -67,11 +72,9 @@ vi.mock('../../../services/ipc/modsIPC', () => ({
   },
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getMetadata: (...args: unknown[]) => getMetadataMock(...args),
-    getConfig: (...args: unknown[]) => getConfigMock(...args),
-    addMod: (...args: unknown[]) => addModMock(...args),
+vi.mock('../../../services/ipc/instanceModsIPC', () => ({
+  instanceModsIPC: {
+    register: (...args: unknown[]) => registerModMock(...args),
   },
 }));
 
@@ -84,7 +87,7 @@ describe('Add-mod async recovery', () => {
     installModFileMock.mockReset();
     getMetadataMock.mockReset();
     getConfigMock.mockReset();
-    addModMock.mockReset();
+    registerModMock.mockReset();
 
     getMetadataMock.mockResolvedValue({
       id: 'alpha',
@@ -198,7 +201,7 @@ describe('Add-mod async recovery', () => {
     installModFileMock
       .mockImplementationOnce(() => installDeferred.promise)
       .mockResolvedValueOnce(undefined);
-    addModMock
+    registerModMock
       .mockResolvedValueOnce(undefined)
       .mockRejectedValueOnce(new Error('manifest write failed'));
 
@@ -235,17 +238,17 @@ describe('Add-mod async recovery', () => {
     const notice = screen.getByTestId('add-mod-page-notice');
     const actionRail = screen.getByTestId('add-mod-page-actions');
 
-    expect(addModMock).toHaveBeenCalledTimes(2);
-    expect(addModMock).toHaveBeenNthCalledWith(1, 'alpha', {
+    expect(registerModMock).toHaveBeenCalledTimes(2);
+    expect(registerModMock).toHaveBeenNthCalledWith(1, 'alpha', {
       platform: 'modrinth',
       projectId: 'sodium',
       versionId: 'sodium-1.0.0',
-    }, '/minecraft');
-    expect(addModMock).toHaveBeenNthCalledWith(2, 'alpha', {
+    });
+    expect(registerModMock).toHaveBeenNthCalledWith(2, 'alpha', {
       platform: 'modrinth',
       projectId: 'iris',
       versionId: 'iris-1.0.0',
-    }, '/minecraft');
+    });
     expect(actionRail.contains(notice)).toBe(true);
     expect(notice.getAttribute('data-tone')).toBe('warning');
     expect(notice.textContent).toContain('Iris');

@@ -11,14 +11,13 @@ import {
 import { operationsIPC } from '../../../services/ipc/operationsIPC';
 
 export function useInstanceCrudActions(params: {
-  rootPath?: string;
   selectedId: string;
   setSelectedId: (id: string) => void;
   setConfig: Dispatch<SetStateAction<ModpackConfig | null>>;
   refresh: () => Promise<void>;
   loadSelected: () => Promise<void>;
 }) {
-  const { rootPath, selectedId, setSelectedId, setConfig, refresh, loadSelected } = params;
+  const { selectedId, setSelectedId, setConfig, refresh, loadSelected } = params;
   const [duplicateOperation, setDuplicateOperation] = useState<OperationSnapshot | null>(null);
   const [deleteOperation, setDeleteOperation] = useState<OperationSnapshot | null>(null);
   const unsubscribeDuplicateRef = useRef<(() => void) | null>(null);
@@ -38,18 +37,18 @@ export function useInstanceCrudActions(params: {
 
   const select = useCallback(
     async (id: string) => {
-      await setSelectedModpackId(id, rootPath);
+      await setSelectedModpackId(id);
       setSelectedId(id);
-      const cfg = await fetchModpackConfig(id, rootPath);
+      const cfg = await fetchModpackConfig(id);
       setConfig(cfg);
       await refresh();
     },
-    [refresh, rootPath, setConfig, setSelectedId]
+    [refresh, setConfig, setSelectedId]
   );
 
   const create = useCallback(
     async (name: string) => {
-      const created = await createModpackSvc(name, rootPath);
+      const created = await createModpackSvc(name);
       if (created?.id) {
         await select(created.id);
       } else {
@@ -57,24 +56,24 @@ export function useInstanceCrudActions(params: {
         await loadSelected();
       }
     },
-    [loadSelected, refresh, rootPath, select]
+    [loadSelected, refresh, select]
   );
 
   const rename = useCallback(
     async (id: string, name: string) => {
-      await renameModpackSvc(id, name, rootPath);
+      await renameModpackSvc(id, name);
       await refresh();
       if (id === selectedId) {
-        const cfg = await fetchModpackConfig(id, rootPath);
+        const cfg = await fetchModpackConfig(id);
         setConfig(cfg);
       }
     },
-    [refresh, rootPath, selectedId, setConfig]
+    [refresh, selectedId, setConfig]
   );
 
   const duplicate = useCallback(
     async (sourceId: string, name?: string) => {
-      const started = await operationsIPC.start({ kind: 'duplicate', rootPath, sourceId, name });
+      const started = await operationsIPC.start({ kind: 'duplicate', sourceId, name });
       setDuplicateOperation(started);
 
       await new Promise<void>((resolve, reject) => {
@@ -121,12 +120,12 @@ export function useInstanceCrudActions(params: {
         }, reject);
       });
     },
-    [rootPath, select]
+    [select]
   );
 
   const remove = useCallback(
     async (id: string) => {
-      const started = await operationsIPC.start({ kind: 'delete', rootPath, instanceId: id });
+      const started = await operationsIPC.start({ kind: 'delete', instanceId: id });
       setDeleteOperation(started);
 
       await new Promise<void>((resolve, reject) => {
@@ -172,7 +171,7 @@ export function useInstanceCrudActions(params: {
         }, reject);
       });
     },
-    [loadSelected, refresh, rootPath]
+    [loadSelected, refresh]
   );
 
   return { select, create, rename, duplicate, duplicateOperation, remove, deleteOperation };

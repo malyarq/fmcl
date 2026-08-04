@@ -17,13 +17,12 @@ import {
 import { saveModpackConfig as saveModpackConfigSvc } from '../services/instancesService';
 
 export function useInstanceConfigPersistence(params: {
-  rootPath?: string;
   setConfig: Dispatch<SetStateAction<ModpackConfig | null>>;
 }) {
-  const { rootPath, setConfig } = params;
+  const { setConfig } = params;
 
   const saveTimer = useRef<number | null>(null);
-  const pendingSave = useRef<{ cfg: ModpackConfig; rootPath?: string } | null>(null);
+  const pendingSave = useRef<ModpackConfig | null>(null);
   const saveQueue = useRef<Promise<void>>(Promise.resolve());
 
   const flushSave = useCallback((): Promise<void> => {
@@ -33,21 +32,21 @@ export function useInstanceConfigPersistence(params: {
     pendingSave.current = null;
     if (!pending) return saveQueue.current;
 
-    const persist = () => saveModpackConfigSvc(pending.cfg, pending.rootPath);
+    const persist = () => saveModpackConfigSvc(pending);
     saveQueue.current = saveQueue.current.then(persist, persist);
     return saveQueue.current;
   }, []);
 
   const scheduleSave = useCallback(
     (cfg: ModpackConfig) => {
-      pendingSave.current = { cfg, rootPath };
+      pendingSave.current = cfg;
       if (saveTimer.current) window.clearTimeout(saveTimer.current);
       saveTimer.current = window.setTimeout(() => {
         saveTimer.current = null;
         void flushSave();
       }, 250);
     },
-    [flushSave, rootPath]
+    [flushSave]
   );
 
   // Flush the previous root before switching and flush pending work on unmount.
@@ -55,7 +54,7 @@ export function useInstanceConfigPersistence(params: {
     return () => {
       void flushSave();
     };
-  }, [flushSave, rootPath]);
+  }, [flushSave]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {

@@ -137,7 +137,7 @@ describe('screenshots experience', () => {
   it('renders the empty screenshot state with a shared open-folder action', async () => {
     listMock.mockResolvedValue([]);
 
-    render(<ScreenshotsTab instancePath="/instance" />);
+    render(<ScreenshotsTab instanceId="alpha" />);
 
     expect(screen.getByTestId('screenshots-workspace-shell')).toBeTruthy();
     expect(await screen.findByRole('heading', { name: 'No screenshots yet' })).toBeTruthy();
@@ -145,14 +145,14 @@ describe('screenshots experience', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Open Folder' })[0]);
 
     await waitFor(() => {
-      expect(openFolderMock).toHaveBeenCalledWith('/instance');
+      expect(openFolderMock).toHaveBeenCalledWith('alpha');
     });
   });
 
   it('shows a degraded error state for failed screenshot loads and retries into the empty state', async () => {
     listMock.mockRejectedValue(new Error('[IPC] screenshots failed: Screenshots folder unavailable'));
 
-    render(<ScreenshotsTab instancePath="/instance" />);
+    render(<ScreenshotsTab instanceId="alpha" />);
 
     const errorState = await screen.findByRole('status');
     expect(screen.getByRole('heading', { name: t('screenshots.loadError') })).toBeTruthy();
@@ -165,7 +165,7 @@ describe('screenshots experience', () => {
   it('confirms screenshot deletion through the shared confirm flow and updates the gallery', async () => {
     listMock.mockResolvedValue([screenshots[0]]);
 
-    render(<ScreenshotsTab instancePath="/instance" />);
+    render(<ScreenshotsTab instanceId="alpha" />);
 
     expect(await screen.findByRole('button', { name: 'Open screenshot: first.png' })).toBeTruthy();
 
@@ -178,7 +178,7 @@ describe('screenshots experience', () => {
     });
 
     await waitFor(() => {
-      expect(deleteMock).toHaveBeenCalledWith('first.png', '/instance');
+      expect(deleteMock).toHaveBeenCalledWith('first.png', 'alpha');
     });
 
     await waitFor(() => {
@@ -193,7 +193,7 @@ describe('screenshots experience', () => {
       <ScreenshotLightbox
         screenshots={screenshots}
         initialIndex={0}
-        instancePath="/instance"
+        instanceId="alpha"
         onClose={vi.fn()}
         onDelete={vi.fn()}
         onOpenFolder={vi.fn()}
@@ -221,7 +221,7 @@ describe('screenshots experience', () => {
     });
 
     await waitFor(() => {
-      expect(renameMock).toHaveBeenCalledWith('second.png', 'second-renamed.png', '/instance');
+      expect(renameMock).toHaveBeenCalledWith('second.png', 'second-renamed.png', 'alpha');
     });
 
     expect(onRenameMock).toHaveBeenCalledWith(expect.objectContaining({ name: 'second.png' }), 'second-renamed.png');

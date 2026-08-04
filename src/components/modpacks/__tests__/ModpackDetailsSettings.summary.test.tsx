@@ -16,12 +16,6 @@ vi.mock('../../ui/LazyImage', () => ({
   ),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    scanJava: vi.fn().mockResolvedValue([]),
-  },
-}));
-
 const t = createTranslator('en');
 
 const baseConfig: ModpackConfig = {
@@ -140,7 +134,6 @@ function SettingsHarness() {
         neoForgeVersions={['1.20.1']}
         optiFineVersions={['1.20.1']}
         onRefresh={vi.fn(async () => undefined)}
-        minecraftPath="/minecraft"
         t={t}
         getAccentStyles={() => ({ className: '', style: undefined })}
       />

@@ -47,7 +47,7 @@ describe('ShadersTab degraded states', () => {
   it('shows an unavailable state when shader packs fail to load', async () => {
     listMock.mockRejectedValue(new Error('[IPC] shaders failed: Shader folder unavailable'));
 
-    render(<ShadersTab instancePath="/instances/alpha" />);
+    render(<ShadersTab instanceId="alpha" />);
 
     const errorState = await screen.findByRole('status');
     expect(screen.getByRole('heading', { name: t('modpacks.shader_load_error') })).toBeTruthy();

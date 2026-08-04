@@ -1,4 +1,4 @@
-export type OperationKind = 'duplicate' | 'import' | 'install-curseforge' | 'install-modrinth' | 'update' | 'delete' | 'export';
+export type OperationKind = 'duplicate' | 'import' | 'import-share' | 'install-curseforge' | 'install-modrinth' | 'update' | 'delete' | 'export';
 
 export type OperationMissingItem = string | { path: string; reason: string };
 
@@ -43,7 +43,6 @@ export type OperationResult =
 
 export type DuplicateOperationRequest = {
   kind: 'duplicate';
-  rootPath?: string;
   sourceId: string;
   destinationId?: string;
   name?: string;
@@ -51,15 +50,20 @@ export type DuplicateOperationRequest = {
 
 export type ImportOperationRequest = {
   kind: 'import';
-  rootPath?: string;
-  filePath: string;
+  /** Opaque capability returned by main-owned archive inspection. */
+  archiveRef: string;
   destinationId?: string;
   name?: string;
 };
 
+/** A share code is untrusted renderer text; main resolves its manifest internally. */
+export type ShareImportOperationRequest = {
+  kind: 'import-share';
+  code: string;
+};
+
 export type CurseForgeInstallOperationRequest = {
   kind: 'install-curseforge';
-  rootPath?: string;
   projectId: number;
   fileId: number;
   destinationId?: string;
@@ -68,7 +72,6 @@ export type CurseForgeInstallOperationRequest = {
 
 export type ModrinthInstallOperationRequest = {
   kind: 'install-modrinth';
-  rootPath?: string;
   projectId: string;
   versionId: string;
   destinationId?: string;
@@ -77,20 +80,17 @@ export type ModrinthInstallOperationRequest = {
 
 export type UpdateOperationRequest = {
   kind: 'update';
-  rootPath?: string;
   instanceId: string;
   manifestUrl: string;
 };
 
 export type DeleteOperationRequest = {
   kind: 'delete';
-  rootPath?: string;
   instanceId: string;
 };
 
 export type ArchiveExportOperationRequest = {
   kind: 'export';
-  rootPath?: string;
   instanceId: string;
   format: 'zip' | 'multimc';
   /** Untrusted native-dialog path proof; the main process consumes its authorization before use. */
@@ -107,7 +107,6 @@ export type ArchiveExportOperationRequest = {
 /** Generates and publishes manifest metadata for an existing instance without a renderer file path. */
 export type ManifestExportOperationRequest = {
   kind: 'export';
-  rootPath?: string;
   instanceId: string;
   format: 'manifest';
   name: string;
@@ -117,7 +116,7 @@ export type ManifestExportOperationRequest = {
 
 export type ExportOperationRequest = ArchiveExportOperationRequest | ManifestExportOperationRequest;
 
-export type OperationStartRequest = DuplicateOperationRequest | ImportOperationRequest | CurseForgeInstallOperationRequest | ModrinthInstallOperationRequest | UpdateOperationRequest | DeleteOperationRequest | ExportOperationRequest;
+export type OperationStartRequest = DuplicateOperationRequest | ImportOperationRequest | ShareImportOperationRequest | CurseForgeInstallOperationRequest | ModrinthInstallOperationRequest | UpdateOperationRequest | DeleteOperationRequest | ExportOperationRequest;
 
 /** Serializable snapshot intentionally excludes internal roots, inputs and recovery data. */
 export type OperationSnapshot = {

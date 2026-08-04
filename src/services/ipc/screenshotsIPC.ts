@@ -11,8 +11,8 @@ const call = async <T>(method: string, fn: () => Promise<T>): Promise<T> => {
 const api = (): ScreenshotsAPI => window.api.screenshots;
 
 export const screenshotsIPC = {
-    list: (instancePath: string) => call('list', () => api().list(instancePath)),
-    delete: (fileName: string, instancePath: string) => call('delete', () => api().delete(fileName, instancePath)),
-    rename: (oldName: string, newName: string, instancePath: string) => call('rename', () => api().rename(oldName, newName, instancePath)),
-    openFolder: (instancePath: string) => call('openFolder', () => api().openFolder(instancePath)),
+    list: (instanceId: string) => call('list', () => api().list(instanceId)),
+    delete: (fileName: string, instanceId: string) => call('delete', () => api().delete(fileName, instanceId)),
+    rename: (oldName: string, newName: string, instanceId: string) => call('rename', () => api().rename(oldName, newName, instanceId)),
+    openFolder: (instanceId: string) => call('openFolder', () => api().openFolder(instanceId)),
 };

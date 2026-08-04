@@ -4,7 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import SettingsPage from '../SettingsPage';
 
-const getContentStatsMock = vi.fn();
+const getStatsMock = vi.fn();
 
 vi.mock('../../contexts/SettingsContext', () => ({
   useSettings: () => ({
@@ -92,17 +92,17 @@ vi.mock('../../contexts/ConfirmContext', () => ({
   }),
 }));
 
-vi.mock('../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    getContentStats: (...args: unknown[]) => getContentStatsMock(...args),
-    cleanupContent: vi.fn(),
+vi.mock('../../services/ipc/storageMaintenanceIPC', () => ({
+  storageMaintenanceIPC: {
+    getStats: (...args: unknown[]) => getStatsMock(...args),
+    cleanup: vi.fn(),
   },
 }));
 
 describe('SettingsPage storage route', () => {
   beforeEach(() => {
-    getContentStatsMock.mockReset();
-    getContentStatsMock.mockResolvedValue({
+    getStatsMock.mockReset();
+    getStatsMock.mockResolvedValue({
       totalSize: 1024 * 1024,
       dedupedSize: 512 * 1024,
       totalFiles: 42,
@@ -125,7 +125,7 @@ describe('SettingsPage storage route', () => {
     expect(screen.queryByRole('heading', { name: 'Storage' })).toBeNull();
 
     await waitFor(() => {
-      expect(getContentStatsMock).toHaveBeenCalledOnce();
+      expect(getStatsMock).toHaveBeenCalledOnce();
     });
 
     expect(await screen.findByText('Cleanup')).toBeTruthy();

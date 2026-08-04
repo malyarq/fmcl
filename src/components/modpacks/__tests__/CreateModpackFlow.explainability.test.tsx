@@ -6,8 +6,7 @@ import { createTranslator } from '../../../contexts/settings/i18n';
 import { ModpackCreationWizard } from '../ModpackCreationWizard';
 
 const refreshMock = vi.fn();
-const createLocalMock = vi.fn();
-const updateMetadataMock = vi.fn();
+const createMock = vi.fn();
 const getModsMock = vi.fn();
 
 function mockMatchMedia() {
@@ -54,14 +53,9 @@ vi.mock('../../../contexts/ConfirmContext', () => ({
   }),
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    createLocal: (...args: unknown[]) => createLocalMock(...args),
-    updateMetadata: (...args: unknown[]) => updateMetadataMock(...args),
-    getMods: (...args: unknown[]) => getModsMock(...args),
-    removeMod: vi.fn(),
-    getConfig: vi.fn(),
-    saveConfig: vi.fn(),
+vi.mock('../../../services/ipc/instancesIPC', () => ({
+  instancesIPC: {
+    create: (...args: unknown[]) => createMock(...args),
   },
 }));
 
@@ -96,17 +90,16 @@ describe('ModpackCreationWizard explainability', () => {
     mockMatchMedia();
     localStorage.clear();
     refreshMock.mockReset();
-    createLocalMock.mockReset();
-    updateMetadataMock.mockReset();
+    createMock.mockReset();
     getModsMock.mockReset();
 
     refreshMock.mockResolvedValue(undefined);
-    updateMetadataMock.mockResolvedValue(undefined);
+    createMock.mockResolvedValue({ ok: true, value: { status: 'committed', selectedId: 'pack-1', instances: [] } });
     getModsMock.mockResolvedValue([]);
   });
 
   it('turns runtime warnings into explicit next-step guidance before and after a failed create attempt', async () => {
-    createLocalMock.mockRejectedValue(new Error('blocked by runtime'));
+    createMock.mockRejectedValue(new Error('blocked by runtime'));
 
     render(<ModpackCreationWizard onBack={vi.fn()} />);
 
@@ -135,7 +128,7 @@ describe('ModpackCreationWizard explainability', () => {
   });
 
   it('keeps the generic create error as the fallback when the runtime summary has no actionable cause', async () => {
-    createLocalMock.mockRejectedValue(new Error('unknown create failure'));
+    createMock.mockRejectedValue(new Error('unknown create failure'));
 
     render(<ModpackCreationWizard onBack={vi.fn()} />);
 
@@ -151,8 +144,7 @@ describe('ModpackCreationWizard explainability', () => {
   });
 
   it('separates optional follow-up guidance from the successful create boundary', async () => {
-    createLocalMock.mockResolvedValue({ id: 'pack-1' });
-    updateMetadataMock.mockRejectedValue(new Error('metadata failed'));
+    refreshMock.mockRejectedValue(new Error('refresh failed'));
 
     render(<ModpackCreationWizard onBack={vi.fn()} />);
 

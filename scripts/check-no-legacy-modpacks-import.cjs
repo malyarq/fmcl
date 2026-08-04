@@ -12,13 +12,15 @@ const forbidden = [
   ['src/verification/manual/mockEnvironment.ts', /\bimportModpack\b/],
   ['docs/en/contracts-map.md', /`modpacks:import`/],
   ['docs/ru/contracts-map.md', /`modpacks:import`/],
-  ['src/components/modpacks/ImportModpackPreviewPage.tsx', /modpacksIPC\.import/],
-  ['src/components/modpacks/ImportModpackPreviewModal.tsx', /modpacksIPC\.import/],
-  ['src/components/modpacks/ModpackList.tsx', /modpacksIPC\.import/],
+  ['src/components/modpacks/ImportModpackPreviewPage.tsx', /\bimportModpack\b|operationsIPC\.import/],
+  ['src/components/modpacks/ImportModpackPreviewModal.tsx', /\bimportModpack\b|operationsIPC\.import/],
+  ['src/components/modpacks/ModpackList.tsx', /\bimportModpack\b|operationsIPC\.import/],
 ]
 
 const violations = forbidden.flatMap(([relativePath, pattern]) => {
-  const source = fs.readFileSync(path.join(root, relativePath), 'utf8')
+  const absolutePath = path.join(root, relativePath)
+  if (!fs.existsSync(absolutePath)) return []
+  const source = fs.readFileSync(absolutePath, 'utf8')
   return pattern.test(source) ? [`${relativePath} retains legacy archive import IPC`] : []
 })
 

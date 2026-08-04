@@ -12,16 +12,20 @@ const XMCL_FOLDERS = ['assets', 'libraries', 'versions', 'modpacks'] as const;
 
 function hasLauncherRootMarkers(rootPath: string): boolean {
   const safeRootPath = path.resolve(rootPath);
-  if (safeRootPath === path.resolve(getDefaultRootPath())) {
-    return true;
-  }
-
   const markers = [
     'modpacks.json',
     ...XMCL_FOLDERS,
   ];
 
-  return markers.some((entryName) => fs.existsSync(path.join(safeRootPath, entryName)));
+  if (markers.some((entryName) => fs.existsSync(path.join(safeRootPath, entryName)))) {
+    return true;
+  }
+
+  try {
+    return safeRootPath === path.resolve(getDefaultRootPath());
+  } catch {
+    return false;
+  }
 }
 
 export function getDefaultRootPath() {
@@ -41,32 +45,12 @@ export function resolveApprovedLauncherRootPath(rootPath?: string) {
   return safeRootPath;
 }
 
-export function ensureXmclFolders(rootPath: string) {
-  const base = resolveLauncherRootPath(rootPath);
-  fs.mkdirSync(base, { recursive: true });
-  for (const folder of XMCL_FOLDERS) {
-    try {
-      fs.mkdirSync(resolvePathWithinRoot(base, folder, `${folder} folder`), { recursive: true });
-    } catch {
-      // Folder already exists or creation failed, continue
-    }
-  }
-}
-
-export function getModpacksIndexPath(rootPath: string) {
-  return resolvePathWithinRoot(resolveLauncherRootPath(rootPath), 'modpacks.json', 'Modpacks index path');
-}
-
 export function getModpackDir(rootPath: string, modpackId: string) {
   return resolvePathWithinRoot(
     resolvePathWithinRoot(resolveLauncherRootPath(rootPath), 'modpacks', 'Modpacks directory'),
     assertChildName(modpackId, 'Modpack id'),
     'Modpack directory',
   );
-}
-
-export function getModpackConfigPath(rootPath: string, modpackId: string) {
-  return resolvePathWithinRoot(getModpackDir(rootPath, modpackId), 'modpack.json', 'Modpack config path');
 }
 
 export function resolveApprovedInstancePath(instancePath: string) {
@@ -112,8 +96,3 @@ export function resolveShaderPacksDir(instancePath: string) {
 export function resolveScreenshotsDir(instancePath: string) {
   return resolvePathWithinRoot(resolveApprovedInstancePath(instancePath), 'screenshots', 'Screenshots directory');
 }
-
-// Legacy aliases for backward compatibility with file system
-export const getInstancesIndexPath = getModpacksIndexPath;
-export const getInstanceDir = getModpackDir;
-export const getInstanceConfigPath = getModpackConfigPath;

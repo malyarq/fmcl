@@ -39,8 +39,9 @@ vi.mock('../../contexts/ModpackContext', () => ({
   }),
 }));
 
-vi.mock('../../features/launch/services/lastGame', () => ({
-  loadLastGame: vi.fn(() => null),
+vi.mock('../../features/launcher/services/launcherService', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../features/launcher/services/launcherService')>(),
+  loadRecentLaunch: vi.fn(() => null),
   formatLastLaunch: vi.fn(() => 'Never'),
 }));
 

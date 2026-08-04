@@ -1,8 +1,18 @@
 import path from 'node:path'
 import type { ExportOptions } from '../../services/instances/exporter/InstanceExporterService'
-import type { ModpackConfig } from '../../services/modpacks/modpackService'
-import type { ModLoaderType, NetworkMode } from '../../services/instances/types'
+import type { ModpackConfig, ModLoaderType, NetworkMode } from '../../services/instances/types'
 import type { ModpackManifest, ModpackMetadata } from '../../../shared/types/modpack'
+import type {
+  InstanceConfigDto,
+  InstanceConfigRequest,
+  InstanceCreateRequest,
+  InstanceMetadataRequest,
+  InstancePrepareRequest,
+  InstanceRenameRequest,
+  InstanceSelectRequest,
+  InstanceSnapshotRequest,
+  InstanceSourceDto,
+} from '../../../shared/contracts/instances'
 import { assertTrustedEndpointUrl } from '../../security/trustedEndpoints'
 
 type PlainObject = Record<string, unknown>
@@ -26,6 +36,7 @@ const MODPACK_SOURCES = ['local', 'curseforge', 'modrinth'] as const
 const EXPORT_FORMATS = ['curseforge', 'modrinth', 'zip', 'multimc'] as const
 const MODRINTH_ENV_VALUES = ['required', 'optional', 'unsupported'] as const
 const OPEN_DIALOG_PROPERTIES = ['openFile', 'openDirectory', 'multiSelections'] as const
+const INSTANCE_LOADERS = ['vanilla', 'forge', 'fabric', 'quilt', 'neoforge'] as const
 
 export class PrivilegedPayloadError extends Error {
   constructor(message: string) {
@@ -401,6 +412,211 @@ export function validateIdentifier(value: unknown, label: string): string {
   return validateBoundedString(value, label, {
     maxLength: 128,
   })
+}
+
+function assertNotPathShaped(value: string, label: string): string {
+  if (
+    value.includes('/')
+    || value.includes('\\')
+    || value.startsWith('~')
+    || value === '.'
+    || value === '..'
+    || /^[a-z]:/i.test(value)
+    || /^file:/i.test(value)
+  ) {
+    fail(`${label} must not contain a filesystem location.`)
+  }
+
+  return value
+}
+
+function validateInstanceText(value: unknown, label: string, maxLength: number): string {
+  return assertNotPathShaped(validateBoundedString(value, label, { maxLength }), label)
+}
+
+function validateOptionalInstanceText(value: unknown, label: string, maxLength: number): string | undefined {
+  const candidate = validateOptionalBoundedString(value, label, { maxLength })
+  return candidate === undefined ? undefined : assertNotPathShaped(candidate, label)
+}
+
+function validateInstanceIdentifier(value: unknown, label: string): string {
+  return validateInstanceText(value, label, 128)
+}
+
+function validateInstanceRuntime(value: unknown, label: string): InstanceConfigDto['runtime'] {
+  const record = requirePlainObject(value, label)
+  assertAllowedKeys(record, ['minecraftVersion', 'modLoader'], label)
+  const modLoader = record.modLoader === undefined
+    ? undefined
+    : (() => {
+      const loader = requirePlainObject(record.modLoader, `${label}.modLoader`)
+      assertAllowedKeys(loader, ['type', 'version'], `${label}.modLoader`)
+      return {
+        type: validateEnum(loader.type, `${label}.modLoader.type`, INSTANCE_LOADERS),
+        version: validateOptionalInstanceText(loader.version, `${label}.modLoader.version`, 64),
+      }
+    })()
+
+  return {
+    minecraftVersion: validateInstanceText(record.minecraftVersion, `${label}.minecraftVersion`, 64),
+    modLoader,
+  }
+}
+
+export function validateInstanceConfig(value: unknown, label = 'Instance config'): InstanceConfigDto {
+  const record = requirePlainObject(value, label)
+  assertAllowedKeys(record, ['runtime', 'memory', 'vmOptions', 'game', 'server', 'networkMode'], label)
+
+  const memory = record.memory === undefined
+    ? undefined
+    : (() => {
+      const entry = requirePlainObject(record.memory, `${label}.memory`)
+      assertAllowedKeys(entry, ['maxMb', 'minMb'], `${label}.memory`)
+      const maxMb = validateInteger(entry.maxMb, `${label}.memory.maxMb`, { min: 256, max: 262_144 })
+      return { maxMb, minMb: validateOptionalInteger(entry.minMb, `${label}.memory.minMb`, { min: 128, max: maxMb }) }
+    })()
+  const game = record.game === undefined
+    ? undefined
+    : (() => {
+      const entry = requirePlainObject(record.game, `${label}.game`)
+      assertAllowedKeys(entry, ['resolution', 'extraArgs', 'useOptiFine'], `${label}.game`)
+      const resolution = entry.resolution === undefined
+        ? undefined
+        : (() => {
+          const values = requirePlainObject(entry.resolution, `${label}.game.resolution`)
+          assertAllowedKeys(values, ['width', 'height', 'fullscreen'], `${label}.game.resolution`)
+          return {
+            width: validateOptionalInteger(values.width, `${label}.game.resolution.width`, { min: 1, max: 16_384 }),
+            height: validateOptionalInteger(values.height, `${label}.game.resolution.height`, { min: 1, max: 16_384 }),
+            fullscreen: validateOptionalBoolean(values.fullscreen, `${label}.game.resolution.fullscreen`),
+          }
+        })()
+      const extraArgs = entry.extraArgs === undefined
+        ? undefined
+        : validateStringArray(entry.extraArgs, `${label}.game.extraArgs`, { maxItems: MAX_ARGUMENT_COUNT, maxItemLength: 256 })
+          .map((argument, index) => assertNotPathShaped(argument, `${label}.game.extraArgs[${index}]`))
+      return {
+        resolution,
+        extraArgs,
+        useOptiFine: validateOptionalBoolean(entry.useOptiFine, `${label}.game.useOptiFine`),
+      }
+    })()
+  const server = record.server === undefined
+    ? undefined
+    : (() => {
+      const entry = requirePlainObject(record.server, `${label}.server`)
+      assertAllowedKeys(entry, ['host', 'port'], `${label}.server`)
+      return {
+        host: validateInstanceText(entry.host, `${label}.server.host`, 255),
+        port: validateInteger(entry.port, `${label}.server.port`, { min: 1, max: 65_535 }),
+      }
+    })()
+  const vmOptions = record.vmOptions === undefined
+    ? undefined
+    : validateStringArray(record.vmOptions, `${label}.vmOptions`, { maxItems: MAX_ARGUMENT_COUNT, maxItemLength: 256 })
+      .map((option, index) => assertNotPathShaped(option, `${label}.vmOptions[${index}]`))
+
+  return {
+    runtime: validateInstanceRuntime(record.runtime, `${label}.runtime`),
+    memory,
+    vmOptions,
+    game,
+    server,
+    networkMode: record.networkMode === undefined ? undefined : validateEnum(record.networkMode, `${label}.networkMode`, NETWORK_MODES),
+  }
+}
+
+function validateInstanceSource(value: unknown, label: string): InstanceSourceDto {
+  const record = requirePlainObject(value, label)
+  assertAllowedKeys(record, ['source', 'sourceId', 'sourceVersionId', 'version', 'iconUrl', 'description', 'author'], label)
+  const iconUrl = validateOptionalBoundedString(record.iconUrl, `${label}.iconUrl`, { maxLength: MAX_URL_LENGTH })
+  if (iconUrl !== undefined && (!/^https?:\/\//i.test(iconUrl) || /^(?:file|data):/i.test(iconUrl))) {
+    fail(`${label}.iconUrl must be an HTTP URL.`)
+  }
+
+  return {
+    source: validateEnum(record.source, `${label}.source`, MODPACK_SOURCES),
+    sourceId: record.sourceId === undefined ? undefined : validateInstanceIdentifier(record.sourceId, `${label}.sourceId`),
+    sourceVersionId: record.sourceVersionId === undefined ? undefined : validateInstanceIdentifier(record.sourceVersionId, `${label}.sourceVersionId`),
+    version: validateOptionalInstanceText(record.version, `${label}.version`, 64),
+    iconUrl,
+    description: validateOptionalInstanceText(record.description, `${label}.description`, MAX_DESCRIPTION_LENGTH),
+    author: validateOptionalInstanceText(record.author, `${label}.author`, 120),
+  }
+}
+
+export function validateInstanceListRequest(value: unknown): Record<never, never> {
+  const record = requirePlainObject(value, 'Instance list request')
+  assertAllowedKeys(record, [], 'Instance list request')
+  return {}
+}
+
+export function validateInstanceSnapshotRequest(value: unknown): InstanceSnapshotRequest {
+  const record = requirePlainObject(value, 'Instance snapshot request')
+  assertAllowedKeys(record, ['id'], 'Instance snapshot request')
+  return { id: validateInstanceIdentifier(record.id, 'Instance snapshot request.id') }
+}
+
+export function validateInstanceSelectRequest(value: unknown): InstanceSelectRequest {
+  const record = requirePlainObject(value, 'Instance select request')
+  assertAllowedKeys(record, ['id'], 'Instance select request')
+  return { id: validateInstanceIdentifier(record.id, 'Instance select request.id') }
+}
+
+export function validateInstanceCreateRequest(value: unknown): InstanceCreateRequest {
+  const record = requirePlainObject(value, 'Instance create request')
+  assertAllowedKeys(record, ['name', 'source', 'config'], 'Instance create request')
+  return {
+    name: validateInstanceText(record.name, 'Instance create request.name', 120),
+    source: validateInstanceSource(record.source, 'Instance create request.source'),
+    config: validateInstanceConfig(record.config, 'Instance create request.config'),
+  }
+}
+
+export function validateInstanceRenameRequest(value: unknown): InstanceRenameRequest {
+  const record = requirePlainObject(value, 'Instance rename request')
+  assertAllowedKeys(record, ['id', 'name'], 'Instance rename request')
+  return {
+    id: validateInstanceIdentifier(record.id, 'Instance rename request.id'),
+    name: validateInstanceText(record.name, 'Instance rename request.name', 120),
+  }
+}
+
+export function validateInstanceConfigRequest(value: unknown): InstanceConfigRequest {
+  const record = requirePlainObject(value, 'Instance config request')
+  assertAllowedKeys(record, ['action', 'id', 'config'], 'Instance config request')
+  const action = validateEnum(record.action, 'Instance config request.action', ['get', 'save'] as const)
+  const id = validateInstanceIdentifier(record.id, 'Instance config request.id')
+  if (action === 'get') {
+    if (record.config !== undefined) fail('Instance config request.config is not allowed for reads.')
+    return { action, id }
+  }
+  return { action, id, config: validateInstanceConfig(record.config, 'Instance config request.config') }
+}
+
+export function validateInstanceMetadataRequest(value: unknown): InstanceMetadataRequest {
+  const record = requirePlainObject(value, 'Instance metadata request')
+  assertAllowedKeys(record, ['action', 'id', 'metadata'], 'Instance metadata request')
+  const id = validateInstanceIdentifier(record.id, 'Instance metadata request.id')
+  if (record.action === undefined) {
+    if (record.metadata !== undefined) fail('Instance metadata request.metadata is not allowed for reads.')
+    return { id }
+  }
+  const action = validateEnum(record.action, 'Instance metadata request.action', ['save'] as const)
+  const metadata = requirePlainObject(record.metadata, 'Instance metadata request.metadata')
+  assertAllowedKeys(metadata, ['description'], 'Instance metadata request.metadata')
+  if (!Object.hasOwn(metadata, 'description')) fail('Instance metadata request.metadata.description is required.')
+  const description = metadata.description
+  if (description !== null && (typeof description !== 'string' || description.length > 4_000)) {
+    fail('Instance metadata request.metadata.description must be a string up to 4000 characters or null.')
+  }
+  return { action, id, metadata: { description } }
+}
+
+export function validateInstancePrepareRequest(value: unknown): InstancePrepareRequest {
+  const record = requirePlainObject(value, 'Instance prepare request')
+  assertAllowedKeys(record, [], 'Instance prepare request')
+  return {}
 }
 
 function validateModLoader(value: unknown, label: string): { type: ModLoaderType; version?: string } {

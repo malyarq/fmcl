@@ -1,12 +1,7 @@
-import type { BrowserWindow } from 'electron'
-import type { LauncherManager } from '../services/launcher/orchestrator'
-import type { ModPlatformService } from '../services/mods/platform/modPlatformService'
-import type { ModpackService } from '../services/modpacks/modpackService'
-import type { NetworkService } from '../services/network/networkService'
+import { ipcMain, type BrowserWindow } from 'electron'
 import { registerAssetsHandlers } from './handlers/assetsHandlers'
 import { registerAppUpdaterHandlers } from './handlers/appUpdaterHandlers'
 import { registerCacheHandlers } from './handlers/cacheHandlers'
-import { registerModpacksHandlers } from './handlers/modpacksHandlers'
 import { registerLauncherHandlers } from './handlers/launcherHandlers'
 import { registerModsHandlers } from './handlers/modsHandlers'
 import { registerNetworkHandlers } from './handlers/networkHandlers'
@@ -19,18 +14,21 @@ import { registerDatapacksHandlers } from './handlers/datapacksHandlers'
 import { registerScreenshotsHandlers } from './handlers/screenshotsHandlers'
 import { registerAppHandlers } from './handlers/appHandlers'
 import { createThrottledLauncherLogSender } from './logThrottler'
-import { AccountService } from '../services/account/accountService'
 import { registerAccountHandlers } from './handlers/accountHandlers'
 import { registerMirrorsHandlers } from './handlers/mirrorsHandlers'
-import { MirrorsService } from '../services/mirrors/mirrorsService'
 import { registerStatisticsHandlers } from './handlers/statisticsHandlers'
 import { registerExternalLinksHandlers } from './handlers/externalLinksHandlers'
-import { StatisticsService } from '../services/stats/statisticsService'
-import type { OperationRunner } from '../services/operations/operationRunner'
 import { registerOperationsHandlers } from './handlers/operationsHandlers'
+import { createInstancesHandlers } from './handlers/instancesHandlers'
+import { registerArchiveInspectionHandlers } from './handlers/archiveInspectionHandlers'
+import { registerProviderCatalogHandlers } from './handlers/providerCatalogHandlers'
+import { registerStorageMaintenanceHandlers } from './handlers/storageMaintenanceHandlers'
+import { registerJavaRuntimeHandlers } from './handlers/javaRuntimeHandlers'
+import { registerInstanceModsHandlers } from './handlers/instanceModsHandlers'
+import { INSTANCE_CHANNELS } from '../../shared/contracts/instances'
 
 import { registerShareHandlers } from './handlers/shareHandlers'
-import { ShareService } from '../services/sharing/shareService'
+import type { HandlerComposition } from '../app/compositionRoot'
 
 /**
  * Centralized Manager for Electron Inter-Process Communication (IPC).
@@ -48,26 +46,23 @@ export class IPCManager {
      * Thin wiring layer: registers domain handlers.
      * Dependencies are created in bootstrap and passed in.
      */
-    public static registerAllHandlers(params: {
-        window: BrowserWindow,
-        launcher: LauncherManager,
-        modPlatforms: ModPlatformService,
-        networkService: NetworkService,
-        modpacks: ModpackService,
-        accountService: AccountService,
-        mirrorsService: MirrorsService,
-        statisticsService: StatisticsService,
-        shareService: ShareService,
-        operations: OperationRunner,
-    }) {
-        const { window, launcher, networkService, modPlatforms, modpacks, accountService, mirrorsService, statisticsService, shareService, operations } = params
+    public static registerAllHandlers(params: { window: BrowserWindow; composition: HandlerComposition }) {
+        const { window, composition } = params
+        const { application, getDefaultRootPath, getDefaultInstanceRoot, scanJava, inspectArchive, launcher, networkService, modPlatforms, instanceMods, storageMaintenance, accountService, mirrorsService, statisticsService, shareService, operations, consumeArchiveReference } = composition
         const sendLog = createThrottledLauncherLogSender()
 
         registerWindowHandlers({ window })
         registerLauncherHandlers({ window, launcher, sendLog })
         registerCacheHandlers({ window })
-        registerModsHandlers({ modPlatforms })
-        registerModpacksHandlers({ modpacks, modPlatforms })
+        registerModsHandlers({ modPlatforms, getDefaultRootPath })
+        registerProviderCatalogHandlers({ providerCatalog: modPlatforms })
+        registerStorageMaintenanceHandlers({ storageMaintenance })
+        registerJavaRuntimeHandlers({
+            application,
+            getDefaultInstanceRoot,
+            scanJava,
+        })
+        registerInstanceModsHandlers({ instanceMods })
         registerNetworkHandlers({ window, networkService, sendLog })
         registerSettingsHandlers({ window })
         registerAssetsHandlers()
@@ -83,6 +78,13 @@ export class IPCManager {
         registerStatisticsHandlers({ statisticsService })
         registerShareHandlers({ shareService })
         registerExternalLinksHandlers()
-        registerOperationsHandlers({ runner: operations })
+        registerOperationsHandlers({ runner: operations, consumeArchiveReference })
+        registerArchiveInspectionHandlers({ window, inspectArchive })
+
+        const instancesHandlers = createInstancesHandlers({ application, getDefaultInstanceRoot })
+        for (const channel of Object.values(INSTANCE_CHANNELS)) {
+            ipcMain.removeHandler(channel)
+            ipcMain.handle(channel, async (_event, request: unknown) => await instancesHandlers[channel](request))
+        }
     }
 }

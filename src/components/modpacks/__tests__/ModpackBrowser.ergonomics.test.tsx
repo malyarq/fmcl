@@ -3,14 +3,14 @@
 import type { ComponentProps } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ProviderCatalogAPI } from '@shared/contracts';
 import { ModpackBrowser } from '../ModpackBrowser';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
 import { createTranslator } from '../../../contexts/settings/i18n';
 import { MEDIA_FALLBACK_PATH } from '../../../app/assets/branding';
 
-const searchModrinthMock = vi.fn();
-const getCurseForgeVersionsMock = vi.fn();
-const getModrinthVersionsMock = vi.fn();
+const searchMock = vi.fn<ProviderCatalogAPI['search']>();
+const versionsMock = vi.fn<ProviderCatalogAPI['versions']>();
 const t = createTranslator('en');
 
 vi.mock('../../../contexts/SettingsContext', () => ({
@@ -27,11 +27,10 @@ vi.mock('../../../hooks/useDebounce', () => ({
   useDebounce: <T,>(value: T) => value,
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    searchModrinth: (...args: unknown[]) => searchModrinthMock(...args),
-    getCurseForgeVersions: (...args: unknown[]) => getCurseForgeVersionsMock(...args),
-    getModrinthVersions: (...args: unknown[]) => getModrinthVersionsMock(...args),
+vi.mock('../../../services/ipc/providerCatalogIPC', () => ({
+  providerCatalogIPC: {
+    search: (...args: Parameters<ProviderCatalogAPI['search']>) => searchMock(...args),
+    versions: (...args: Parameters<ProviderCatalogAPI['versions']>) => versionsMock(...args),
   },
 }));
 
@@ -61,11 +60,10 @@ describe('ModpackBrowser ergonomics', () => {
   beforeEach(() => {
     cleanup();
     localStorage.clear();
-    searchModrinthMock.mockReset();
-    getCurseForgeVersionsMock.mockReset();
-    getModrinthVersionsMock.mockReset();
+    searchMock.mockReset();
+    versionsMock.mockReset();
 
-    searchModrinthMock.mockResolvedValue({
+    searchMock.mockResolvedValue({
       items: [
         {
           platform: 'modrinth',
@@ -81,8 +79,7 @@ describe('ModpackBrowser ergonomics', () => {
       offset: 0,
       limit: 12,
     });
-    getCurseForgeVersionsMock.mockResolvedValue([]);
-    getModrinthVersionsMock.mockResolvedValue([]);
+    versionsMock.mockResolvedValue([]);
   });
 
   it('keeps unavailable provider state honest and exposes recent recall without leaving browse mode', async () => {
@@ -113,7 +110,7 @@ describe('ModpackBrowser ergonomics', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open recent modpack CurseForge Pack' }));
 
     await waitFor(() => {
-      expect(getCurseForgeVersionsMock).toHaveBeenCalledWith(42);
+      expect(versionsMock).toHaveBeenCalledWith({ platform: 'curseforge', projectId: '42' });
     });
     expect(onNavigate).toHaveBeenCalledWith(expect.objectContaining({
       type: 'install',

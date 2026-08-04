@@ -7,7 +7,7 @@ import { SimplePlayDashboard } from '../SimplePlayDashboard';
 import { APP_ICON_PATH } from '../../app/assets/branding';
 
 const setModeMock = vi.fn();
-const getMetadataMock = vi.fn();
+const snapshotMock = vi.fn();
 
 vi.mock('../../contexts/SettingsContext', () => ({
   useSettings: () => ({
@@ -56,14 +56,12 @@ vi.mock('../../contexts/ModpackContext', () => ({
     setGameExtraArgs: vi.fn(),
     setGameResolution: vi.fn(),
     setAutoConnectServer: vi.fn(),
-    modpacks: [{ id: 'classic-pack', path: '/minecraft' }],
   }),
 }));
 
-vi.mock('../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    resolvePath: vi.fn(),
-    getMetadata: (...args: unknown[]) => getMetadataMock(...args),
+vi.mock('../../services/ipc/instancesIPC', () => ({
+  instancesIPC: {
+    snapshot: (...args: unknown[]) => snapshotMock(...args),
   },
 }));
 
@@ -132,14 +130,25 @@ describe('SimplePlayDashboard launch-state seam', () => {
   beforeEach(() => {
     localStorage.clear();
     setModeMock.mockReset();
-    getMetadataMock.mockReset();
-    getMetadataMock.mockResolvedValue({
-      id: 'classic-pack',
-      name: 'Classic Pack',
-      source: 'local',
-      minecraftVersion: '1.20.1',
-      createdAt: '2026-04-14T00:00:00.000Z',
-      updatedAt: '2026-04-14T00:00:00.000Z',
+    snapshotMock.mockReset();
+    snapshotMock.mockResolvedValue({
+      ok: true,
+      value: {
+        id: 'classic-pack',
+        name: 'Classic Pack',
+        metadata: {
+          source: 'local',
+          createdAt: '2026-04-14T00:00:00.000Z',
+          updatedAt: '2026-04-14T00:00:00.000Z',
+        },
+        config: {
+          runtime: { minecraftVersion: '1.20.1' },
+        },
+        summary: {
+          minecraftVersion: '1.20.1',
+          modLoader: { type: 'fabric' },
+        },
+      },
     });
     window.matchMedia = vi.fn().mockImplementation(() => ({
       matches: false,
@@ -200,5 +209,6 @@ describe('SimplePlayDashboard launch-state seam', () => {
     expect(screen.queryByTestId('app-update-notification')).toBeNull();
     expect(screen.queryByText('Review update')).toBeNull();
     expect(screen.queryByText('Launcher update available')).toBeNull();
+    expect(snapshotMock).toHaveBeenCalledWith({ id: 'classic-pack' });
   });
 });

@@ -22,10 +22,7 @@ vi.mock('electron', () => ({
 }));
 
 vi.mock('../../../services/instances/paths', () => ({
-  resolveApprovedLauncherRootPath: (value: string) => {
-    if (value === 'relative') throw new Error('Operation root path must be absolute');
-    return value;
-  },
+  resolveApprovedLauncherRootPath: () => '/approved/root',
 }));
 
 import { registerOperationsHandlers } from '../operationsHandlers';
@@ -33,6 +30,10 @@ import {
   authorizeSavePath,
   clearSavePathAuthorizationsForTests,
 } from '../../../security/savePathAuthorizations';
+import {
+  authorizeArchiveReference,
+  clearArchiveReferenceAuthorizationsForTests,
+} from '../../../security/archiveReferenceAuthorizations';
 import { OperationJournal } from '../../../services/operations/operationJournal';
 import { OperationRunner } from '../../../services/operations/operationRunner';
 
@@ -62,6 +63,7 @@ describe('operations IPC security boundary', () => {
     mocked.handlers.clear();
     mocked.listeners.clear();
     clearSavePathAuthorizationsForTests();
+    clearArchiveReferenceAuthorizationsForTests();
     vi.restoreAllMocks();
   });
 
@@ -73,11 +75,71 @@ describe('operations IPC security boundary', () => {
     registerOperationsHandlers({ runner: runner as never });
     const start = mocked.handlers.get('operations:start');
 
-    await expect(start?.({ sender: { id: 7 } }, { kind: 'unknown', rootPath: '/root', sourceId: 'source' })).rejects.toThrow(/kind/i);
-    await expect(start?.({ sender: { id: 7 } }, { kind: 'duplicate', rootPath: 'relative', sourceId: 'source' })).rejects.toThrow(/root/i);
-    await expect(start?.({ sender: { id: 7 } }, { kind: 'duplicate', rootPath: '/root', sourceId: '../escape' })).rejects.toThrow(/source/i);
-    await expect(start?.({ sender: { id: 7 } }, { kind: 'import', rootPath: '/root', filePath: 'relative.mrpack' })).rejects.toThrow(/import path/i);
+    await expect(start?.({ sender: { id: 7 } }, { kind: 'unknown', sourceId: 'source' })).rejects.toThrow(/kind/i);
+    await expect(start?.({ sender: { id: 7 } }, { kind: 'duplicate', sourceId: '../escape' })).rejects.toThrow(/source/i);
+    await expect(start?.({ sender: { id: 7 } }, { kind: 'import', archiveRef: 'forged-reference' })).rejects.toThrow(/authorized/i);
     expect(runner.start).not.toHaveBeenCalled();
+  });
+
+  it('accepts only a validated share code and never forwards renderer paths or manifests', async () => {
+    const runner = {
+      prepareRoot: vi.fn().mockResolvedValue(undefined),
+      start: vi.fn(() => activeSnapshot), get: vi.fn(), cancel: vi.fn(), subscribe: vi.fn(), listRecovered: vi.fn(() => []),
+    };
+    registerOperationsHandlers({ runner: runner as never });
+    const start = mocked.handlers.get('operations:start');
+
+    await expect(start?.({ sender: { id: 7 } }, {
+      kind: 'import-share',
+      code: 'H4s=',
+      rootPath: '/renderer-controlled/root',
+      manifest: { name: 'renderer-controlled' },
+    })).resolves.toMatchObject({ kind: 'duplicate' });
+    expect(runner.start).toHaveBeenCalledWith({
+      kind: 'import-share',
+      rootPath: '/approved/root',
+      shareCode: 'H4s=',
+    });
+
+    await expect(start?.({ sender: { id: 7 } }, {
+      kind: 'import-share',
+      code: 'not-a-gzip-share',
+    })).rejects.toThrow(/share code/i);
+    expect(runner.start).toHaveBeenCalledOnce();
+  });
+
+  it('consumes archive references once, for their owner, immediately before starting', async () => {
+    const runner = {
+      prepareRoot: vi.fn().mockResolvedValue(undefined),
+      start: vi.fn(() => activeSnapshot), get: vi.fn(), cancel: vi.fn(), subscribe: vi.fn(), listRecovered: vi.fn(() => []),
+    };
+    registerOperationsHandlers({ runner: runner as never });
+    const start = mocked.handlers.get('operations:start');
+    const owner = { sender: { id: 7 } };
+    const foreign = { sender: { id: 8 } };
+    const reference = authorizeArchiveReference(7, '/private/imports/alpha.mrpack');
+
+    await expect(start?.(foreign, { kind: 'import', archiveRef: reference })).rejects.toThrow(/authorized/i);
+    await expect(start?.(owner, { kind: 'import', archiveRef: reference })).resolves.toMatchObject({ kind: 'duplicate' });
+    expect(runner.start).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'import', rootPath: '/approved/root', filePath: '/private/imports/alpha.mrpack',
+    }));
+    await expect(start?.(owner, { kind: 'import', archiveRef: reference })).rejects.toThrow(/authorized/i);
+    expect(runner.start).toHaveBeenCalledOnce();
+
+    const racedReference = authorizeArchiveReference(7, '/private/imports/race.mrpack');
+    const raced = await Promise.allSettled([
+      start?.(owner, { kind: 'import', archiveRef: racedReference }),
+      start?.(owner, { kind: 'import', archiveRef: racedReference }),
+    ]);
+    expect(raced.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+    expect(raced.filter((result) => result.status === 'rejected')).toHaveLength(1);
+
+    vi.useFakeTimers();
+    const expiredReference = authorizeArchiveReference(7, '/private/imports/expired.mrpack');
+    vi.advanceTimersByTime(5 * 60 * 1_000);
+    await expect(start?.(owner, { kind: 'import', archiveRef: expiredReference })).rejects.toThrow(/authorized/i);
+    vi.useRealTimers();
   });
 
   it('keeps active operations sender-scoped while exposing only sanitized recovered terminal records', async () => {
@@ -98,7 +160,7 @@ describe('operations IPC security boundary', () => {
     const subscribe = mocked.handlers.get('operations:subscribe');
     const listRecovered = mocked.handlers.get('operations:listRecovered');
 
-    await start?.(owner, { kind: 'duplicate', rootPath: '/secret/root', sourceId: 'source-pack' });
+    await start?.(owner, { kind: 'duplicate', sourceId: 'source-pack' });
     await expect(get?.(foreign, '11111111-1111-1111-1111-111111111111')).rejects.toThrow(/origin renderer/i);
     await expect(cancel?.(foreign, '11111111-1111-1111-1111-111111111111')).rejects.toThrow(/origin renderer/i);
     await expect(subscribe?.(foreign, '11111111-1111-1111-1111-111111111111')).rejects.toThrow(/origin renderer/i);
@@ -171,7 +233,7 @@ describe('operations IPC security boundary', () => {
     registerOperationsHandlers({ runner: runner as never });
     const start = mocked.handlers.get('operations:start');
 
-    const snapshot = await start?.({ sender: { id: 7 } }, { kind: 'duplicate', rootPath: '/secret/root', sourceId: 'source-pack' }) as Record<string, unknown>;
+    const snapshot = await start?.({ sender: { id: 7 } }, { kind: 'duplicate', sourceId: 'source-pack' }) as Record<string, unknown>;
 
     expect(snapshot).toMatchObject({
       result: { status: 'degraded', instanceId: 'optional-item', missing: [{ path: 'optional-item', reason: 'download-failed' }] },
@@ -194,7 +256,7 @@ describe('operations IPC security boundary', () => {
     registerOperationsHandlers({ runner: runner as never });
     const start = mocked.handlers.get('operations:start');
 
-    const snapshot = await start?.({ sender: { id: 7 } }, { kind: 'duplicate', rootPath: '/secret/root', sourceId: 'source-pack' }) as Record<string, unknown>;
+    const snapshot = await start?.({ sender: { id: 7 } }, { kind: 'duplicate', sourceId: 'source-pack' }) as Record<string, unknown>;
 
     expect(snapshot).toMatchObject({
       result: { status: 'degraded', instanceId: 'optional-item', missing: [{ path: 'mods/optional.jar', reason: 'download-failed' }] },
@@ -212,7 +274,7 @@ describe('operations IPC security boundary', () => {
     const owner = { sender: { id: 7 } };
     const foreign = { sender: { id: 8 } };
     const outputPath = path.join(os.tmpdir(), 'fmcl-operation-export.zip');
-    const request = { kind: 'export', rootPath: '/root', instanceId: 'source-pack', format: 'zip', outputPath };
+    const request = { kind: 'export', instanceId: 'source-pack', format: 'zip', outputPath };
 
     await expect(start?.(owner, request)).rejects.toThrow(/not authorized/i);
     expect(runner.start).not.toHaveBeenCalled();
@@ -225,7 +287,12 @@ describe('operations IPC security boundary', () => {
     expect(runner.start).not.toHaveBeenCalled();
 
     await expect(start?.(owner, request)).resolves.toEqual(expect.objectContaining({ kind: 'export' }));
-    expect(runner.start).toHaveBeenCalledWith({ ...request, outputPath: path.normalize(outputPath) });
+    expect(runner.start).toHaveBeenCalledWith({
+      ...request,
+      rootPath: '/approved/root',
+      outputPath: path.normalize(outputPath),
+      options: undefined,
+    });
 
     await expect(start?.(owner, request)).rejects.toThrow(/not authorized/i);
     expect(runner.start).toHaveBeenCalledOnce();

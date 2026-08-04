@@ -6,18 +6,12 @@ export interface LauncherLaunchOptions {
   version: string;
   ram: number;
   hideLauncher?: boolean;
-  gamePath?: string;
-  modpackId?: string;
-  modpackPath?: string;
-  javaPath?: string;
+  instanceId?: string;
   downloadProvider?: DownloadProviderId;
   autoDownloadThreads?: boolean;
   downloadThreads?: number;
   maxSockets?: number;
   useOptiFine?: boolean;
-  // Legacy aliases for backward compatibility
-  instanceId?: string;
-  instancePath?: string;
 }
 
 export interface LauncherVersionListResponse {
@@ -35,9 +29,9 @@ export type LauncherProgressEvent = TaskProgressData;
 /**
  * Core launcher API (launch + versions + events).
  *
- * Mods and Modpacks are exposed via dedicated domain APIs:
+ * Mods and instance/provider capabilities are exposed via dedicated domain APIs:
  * - `window.api.mods` (see `shared/contracts/mods.ts`)
- * - `window.api.modpacks` (see `shared/contracts/modpacks.ts`)
+ * - `window.api.instances` and `window.api.providerCatalog`
  *
  * The renderer reaches this contract through `window.api.launcher` only.
  */

@@ -9,7 +9,7 @@ export type ModLoaderType = 'vanilla' | 'forge' | 'fabric' | 'quilt' | 'neoforge
 export type ModpackSource = 'local' | 'curseforge' | 'modrinth';
 
 /**
- * Метаданные модпака (хранятся в modpacks.json)
+ * Legacy metadata shape accepted only by the canonical migration reader.
  */
 export interface ModpackMetadata {
   /** Локальный уникальный ID модпака */

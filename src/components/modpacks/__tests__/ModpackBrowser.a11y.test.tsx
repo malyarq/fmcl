@@ -3,13 +3,13 @@
 import type { ComponentProps } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ProviderCatalogAPI } from '@shared/contracts';
 import { ModpackBrowser } from '../ModpackBrowser';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
 import { createTranslator } from '../../../contexts/settings/i18n';
 
-const searchModrinthMock = vi.fn();
-const getCurseForgeVersionsMock = vi.fn();
-const getModrinthVersionsMock = vi.fn();
+const searchMock = vi.fn<ProviderCatalogAPI['search']>();
+const versionsMock = vi.fn<ProviderCatalogAPI['versions']>();
 const t = createTranslator('en');
 
 vi.mock('../../../contexts/SettingsContext', () => ({
@@ -26,11 +26,10 @@ vi.mock('../../../hooks/useDebounce', () => ({
   useDebounce: <T,>(value: T) => value,
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    searchModrinth: (...args: unknown[]) => searchModrinthMock(...args),
-    getCurseForgeVersions: (...args: unknown[]) => getCurseForgeVersionsMock(...args),
-    getModrinthVersions: (...args: unknown[]) => getModrinthVersionsMock(...args),
+vi.mock('../../../services/ipc/providerCatalogIPC', () => ({
+  providerCatalogIPC: {
+    search: (...args: Parameters<ProviderCatalogAPI['search']>) => searchMock(...args),
+    versions: (...args: Parameters<ProviderCatalogAPI['versions']>) => versionsMock(...args),
   },
 }));
 
@@ -59,11 +58,10 @@ describe('ModpackBrowser accessibility', () => {
   beforeEach(() => {
     cleanup();
     localStorage.clear();
-    searchModrinthMock.mockReset();
-    getCurseForgeVersionsMock.mockReset();
-    getModrinthVersionsMock.mockReset();
+    searchMock.mockReset();
+    versionsMock.mockReset();
 
-    searchModrinthMock.mockResolvedValue({
+    searchMock.mockResolvedValue({
       items: [
         {
           platform: 'modrinth',
@@ -77,8 +75,7 @@ describe('ModpackBrowser accessibility', () => {
       offset: 0,
       limit: 12,
     });
-    getCurseForgeVersionsMock.mockResolvedValue([]);
-    getModrinthVersionsMock.mockResolvedValue([]);
+    versionsMock.mockResolvedValue([]);
   });
 
   it('exposes accessible search, favorite, and result activation controls', async () => {
@@ -101,7 +98,7 @@ describe('ModpackBrowser accessibility', () => {
     fireEvent.keyDown(resultButton, { key: 'Enter' });
 
     await waitFor(() => {
-      expect(getModrinthVersionsMock).toHaveBeenCalledWith('alpha-pack');
+      expect(versionsMock).toHaveBeenCalledWith({ platform: 'modrinth', projectId: 'alpha-pack' });
     });
     expect(onNavigate).toHaveBeenCalledWith(expect.objectContaining({
       type: 'install',

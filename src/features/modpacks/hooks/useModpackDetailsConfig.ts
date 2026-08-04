@@ -42,7 +42,6 @@ function buildUpdatedRuntimeConfig(
 
 export interface UseModpackDetailsConfigParams {
   modpackId: string;
-  minecraftPath: string;
 }
 
 export interface ModpackDetailsConfigSetters {
@@ -72,7 +71,6 @@ export interface UseModpackDetailsConfigResult {
  */
 export function useModpackDetailsConfig({
   modpackId,
-  minecraftPath,
 }: UseModpackDetailsConfigParams): UseModpackDetailsConfigResult {
   const {
     selectedId,
@@ -95,12 +93,12 @@ export function useModpackDetailsConfig({
 
   const loadModpackConfig = useCallback(async () => {
     try {
-      const cfg = await fetchModpackConfig(modpackId, minecraftPath);
+      const cfg = await fetchModpackConfig(modpackId);
       setModpackConfig(cfg);
     } catch (error) {
       console.error('Error loading modpack config:', error);
     }
-  }, [modpackId, minecraftPath]);
+  }, [modpackId]);
 
   const setMemoryGb = useCallback(
     async (gb: number) => {

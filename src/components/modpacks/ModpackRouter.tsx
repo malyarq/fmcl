@@ -137,7 +137,8 @@ const ModpackRouterInner: React.FC<ModpackRouterProps> = ({ onLaunch }) => {
     case 'importPreview':
       return (
         <ImportModpackPreviewPage
-          filePath={view.filePath}
+          archiveRef={view.archiveRef}
+          inspection={view.inspection}
           onBack={goBack}
         />
       );

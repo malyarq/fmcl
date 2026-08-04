@@ -2,20 +2,20 @@
 
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts/modpacks';
+import type { ProviderCatalogSearchResultItem, ProviderCatalogVersionDescriptor } from '@shared/contracts/providerCatalog';
 import {
   DEFAULT_MODPACK_BROWSER_STATE,
   type ModpackBrowserState,
   useModpackNavigation,
 } from '../hooks/useModpackNavigation';
 
-const sampleModpack: ModpackSearchResultItem = {
+const sampleModpack: ProviderCatalogSearchResultItem = {
   platform: 'modrinth',
   projectId: 'adventure-pack',
   title: 'Adventure Pack',
 };
 
-const sampleVersion: ModpackVersionDescriptor = {
+const sampleVersion: ProviderCatalogVersionDescriptor = {
   platform: 'modrinth',
   versionId: '1.0.0',
   name: '1.0.0',
@@ -103,7 +103,7 @@ describe('useModpackNavigation', () => {
     });
 
     act(() => {
-      result.current.navigate({ type: 'importPreview', filePath: '/tmp/modpack.mrpack' });
+      result.current.navigate({ type: 'importPreview', archiveRef: 'archive-ref', inspection: { format: 'modrinth', manifest: null } });
     });
 
     act(() => {

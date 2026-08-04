@@ -3,13 +3,13 @@
 import type { ComponentProps } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ProviderCatalogAPI } from '@shared/contracts';
 import { ModpackBrowser } from '../ModpackBrowser';
 import { DEFAULT_MODPACK_BROWSER_STATE } from '../../../features/modpacks/hooks/useModpackNavigation';
 import { createTranslator } from '../../../contexts/settings/i18n';
 
-const searchModrinthMock = vi.fn();
-const getCurseForgeVersionsMock = vi.fn();
-const getModrinthVersionsMock = vi.fn();
+const searchMock = vi.fn<ProviderCatalogAPI['search']>();
+const versionsMock = vi.fn<ProviderCatalogAPI['versions']>();
 const showOpenDialogMock = vi.fn();
 const t = createTranslator('en');
 
@@ -27,11 +27,10 @@ vi.mock('../../../hooks/useDebounce', () => ({
   useDebounce: <T,>(value: T) => value,
 }));
 
-vi.mock('../../../services/ipc/modpacksIPC', () => ({
-  modpacksIPC: {
-    searchModrinth: (...args: unknown[]) => searchModrinthMock(...args),
-    getCurseForgeVersions: (...args: unknown[]) => getCurseForgeVersionsMock(...args),
-    getModrinthVersions: (...args: unknown[]) => getModrinthVersionsMock(...args),
+vi.mock('../../../services/ipc/providerCatalogIPC', () => ({
+  providerCatalogIPC: {
+    search: (...args: Parameters<ProviderCatalogAPI['search']>) => searchMock(...args),
+    versions: (...args: Parameters<ProviderCatalogAPI['versions']>) => versionsMock(...args),
   },
 }));
 
@@ -61,18 +60,16 @@ describe('ModpackBrowser degraded states', () => {
   beforeEach(() => {
     cleanup();
     localStorage.clear();
-    searchModrinthMock.mockReset();
-    getCurseForgeVersionsMock.mockReset();
-    getModrinthVersionsMock.mockReset();
+    searchMock.mockReset();
+    versionsMock.mockReset();
     showOpenDialogMock.mockReset();
 
-    getCurseForgeVersionsMock.mockResolvedValue([]);
-    getModrinthVersionsMock.mockResolvedValue([]);
+    versionsMock.mockResolvedValue([]);
     showOpenDialogMock.mockResolvedValue({ canceled: true, filePaths: [] });
   });
 
   it('shows an explicit error state for failed remote search and retries into normal results', async () => {
-    searchModrinthMock
+    searchMock
       .mockRejectedValueOnce(new Error('[MODRINTH] search failed: Remote catalogue unavailable'))
       .mockResolvedValueOnce({
         items: [
@@ -104,7 +101,7 @@ describe('ModpackBrowser degraded states', () => {
   });
 
   it('keeps zero-result filters distinct from the neutral empty browse state', async () => {
-    searchModrinthMock
+    searchMock
       .mockResolvedValueOnce({
         items: [],
         total: 0,

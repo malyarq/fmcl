@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import { act, render, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { installManualVerificationEnvironment } from '../mockEnvironment';
 import { ManualVerificationScenarios } from '../scenarios';
 
 let renderBehaviorReady = true;
@@ -57,6 +58,10 @@ vi.mock('../../../components/SettingsPage', () => ({
 }));
 
 describe('manual appearance proof', () => {
+  beforeEach(() => {
+    installManualVerificationEnvironment();
+  });
+
   afterEach(() => {
     renderBehaviorReady = true;
     vi.useRealTimers();

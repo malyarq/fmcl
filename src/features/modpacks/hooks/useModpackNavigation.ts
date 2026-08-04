@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import type { ModpackSearchResultItem, ModpackVersionDescriptor } from '@shared/contracts/modpacks';
+import type { ProviderCatalogSearchResultItem, ProviderCatalogVersionDescriptor } from '@shared/contracts/providerCatalog';
+import type { ArchiveManifestMetadata } from '@shared/contracts/archiveInspection';
 
 export type ModpackPlatform = 'curseforge' | 'modrinth';
 export type ModpackBrowserSortOption = 'popularity' | 'date' | 'alphabetical';
@@ -49,8 +50,8 @@ export type ModpackView =
   | { type: 'addResourcePack'; modpackId: string }
   | { type: 'addShader'; modpackId: string }
   | { type: 'export'; modpackId: string }
-  | { type: 'install'; modpack: ModpackSearchResultItem; versions: ModpackVersionDescriptor[]; platform: ModpackPlatform }
-  | { type: 'importPreview'; filePath: string }
+  | { type: 'install'; modpack: ProviderCatalogSearchResultItem; versions: ProviderCatalogVersionDescriptor[]; platform: ModpackPlatform }
+  | { type: 'importPreview'; archiveRef: string; inspection: ArchiveManifestMetadata }
   | { type: 'create' };
 
 let queuedInitialModpackView: ModpackView | null = null;

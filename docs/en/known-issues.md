@@ -1,6 +1,6 @@
 # Known issues
 
-Reviewed on 2026-08-03 for the current stable FriendLauncher release. This list contains confirmed limitations, not speculative feature requests.
+Reviewed on 2026-08-04 against the current code and packaging configuration. This list contains confirmed limitations, not speculative feature requests.
 
 ## Distribution and security
 
@@ -22,7 +22,6 @@ Checksums detect corruption or asset replacement only when users compare them wi
 
 ## Architecture and maintenance debt
 
-- `electron/services/modpacks/modpackService.ts` is still an oversized facade and should be split into lifecycle, metadata, import/export, and content-transaction services.
 - Some renderer IPC wrappers still contain defensive availability checks even though `window.api` is now the only preload surface; these can be simplified as their owning features are refactored.
 - The XMCL bytebuffer compatibility correction is applied by a validated postinstall script. It should be replaced by an upstream fix or a managed package patch.
 - Visual regression baselines are owned on macOS Chromium only.
@@ -30,7 +29,7 @@ Checksums detect corruption or asset replacement only when users compare them wi
 
 ## Not bugs
 
-- An unknown-developer warning on Windows or macOS is expected for the current unsigned artifacts.
+- An unknown-developer warning on Windows or macOS is expected for unsigned artifacts.
 - `npm run verify` does not package the application and does not run visual or real installation tests; see [Testing](testing.md).
 
 Planned work is prioritized in the [roadmap](roadmap.md). Report an ordinary regression through [GitHub Issues](https://github.com/malyarq/fmcl/issues/new) and a vulnerability according to [SECURITY.md](../../SECURITY.md).

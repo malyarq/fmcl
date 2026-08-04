@@ -17,7 +17,7 @@ import { DownloadsTab } from './settings/tabs/DownloadsTab';
 import { LauncherTab } from './settings/tabs/LauncherTab';
 import { UpdateModal } from './UpdateModal';
 import { StorageSettings } from './settings/tabs/StorageTab';
-import { modpacksIPC } from '../services/ipc/modpacksIPC';
+import { storageMaintenanceIPC } from '../services/ipc/storageMaintenanceIPC';
 import { AccountsPage } from '../features/accounts/AccountsPage';
 import { StatisticsTab } from '../features/settings/statistics/StatisticsTab';
 
@@ -109,7 +109,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
                 <StorageSettings
                     t={t}
                     getAccentStyles={getAccentStyles}
-                    modpacksIPC={modpacksIPC}
+                    storageMaintenanceIPC={storageMaintenanceIPC}
                     embedded
                 />
             );
