@@ -17,22 +17,29 @@ afterEach(() => {
 });
 
 function fixture(overrides: Partial<Record<'ci' | 'release', string>> = {}) {
-  return {
+  const workflows = {
     ci: `on:\n  pull_request:\njobs:\n  checks:\n    steps:\n      - run: npx playwright install --with-deps chromium\n      - run: npm run quality:check -- --profile=pr\n`,
     release: `on:\n  workflow_dispatch:\n    inputs:\n      tag:\n        required: true\njobs:\n  verify:\n    steps:\n      - run: git checkout "refs/tags/${'${{ inputs.tag }}'}"\n      - run: test "$(git cat-file -t "refs/tags/${'${{ inputs.tag }}'}")" = tag\n      - run: npx playwright install --with-deps chromium\n  build:\n    env:\n      CSC_IDENTITY_AUTO_DISCOVERY: false\n    steps:\n      - run: node scripts/package-smoke.js --output "${'${{ runner.temp }}'}/smoke.json"\n      - run: node scripts/release-evidence.js --output "${'${{ runner.temp }}'}/evidence.json"\n      - run: cp SHA256SUMS.txt SHA256SUMS-${'${{ runner.os }}'}.txt\n      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7\n        with:\n          name: release-package-${'${{ runner.os }}'}\n  verify-evidence:\n    needs: build\n    steps:\n      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7\n        with:\n          pattern: release-package-*\n          path: ${'${{ runner.temp }}'}/release-assets/${'${{ needs.verify.outputs.version }}'}\n      - run: sha256sum --check "$(basename "$manifest")"\n      - run: npm run quality:check -- --profile=release --releaseDir "${'${{ runner.temp }}'}/release-assets/${'${{ needs.verify.outputs.version }}'}" --version 0.8.0-rc.1 --tag "${'${{ inputs.tag }}'}" --commit "${'${{ github.sha }}'}" --report "${'${{ runner.temp }}'}/verified/release-evidence.json"\n      - run: node scripts/aggregate-platform-smoke.js --input "${'${{ runner.temp }}'}/evidence" --output "${'${{ runner.temp }}'}/verified/platform-smoke.json"\n      - run: node scripts/prepush-release-report.js --tag "${'${{ inputs.tag }}'}" --commit "${'${{ github.sha }}'}" --version 0.8.0-rc.1 --quality quality/evidence/quality-contract.json --release-evidence "${'${{ runner.temp }}'}/verified/release-evidence.json" --platform-smoke "${'${{ runner.temp }}'}/verified/platform-smoke.json" --output "${'${{ runner.temp }}'}/verified/prepush-release-report.json"\n      - run: test -f quality/schemas/prepush-release-report.schema.json\n      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7\n        with:\n          name: verified-release-assets\n  publish:\n    needs: verify-evidence\n    environment: release-publication\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7\n      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7\n        with:\n          name: verified-release-assets\n      - run: git ls-remote origin && sha256sum --check SHA256SUMS.txt && gh release create "${'${{ inputs.tag }}'}" --prerelease --latest=false\n`,
-    ...overrides,
   };
+  workflows.release = workflows.release.replace(
+    '      - run: npm run quality:check -- --profile=release',
+    '      - run: xvfb-run --auto-servernum npm run quality:check -- --profile=release',
+  );
+  return { ...workflows, ...overrides };
 }
 
 describe('offline workflow structure enforcement', () => {
-  it('accepts a dispatch-only protected release flow with shared contract, evidence, and non-overwriting prerelease publication', () => {
-    expect(checker.checkWorkflowStructure(fixture())).toEqual({ valid: true, errors: [] });
+  it('accepts a dispatch-only protected release flow with stable and prerelease publication policy', () => {
+    const workflows = fixture();
+    workflows.release += `\nVITE_POSTHOG_PROJECT_TOKEN: ${'${{ vars.POSTHOG_PROJECT_TOKEN }}'}\ntest -n "$VITE_POSTHOG_PROJECT_TOKEN"\nif [[ "$TAG" == *-* ]]; then\n  gh release create "$TAG" --prerelease --latest=false\nelse\n  gh release create "$TAG" --latest\nfi\n`;
+    expect(checker.checkWorkflowStructure(workflows)).toEqual({ valid: true, errors: [] });
   });
 
   it.each([
     ['direct tag trigger', fixture({ release: fixture().release.replace('workflow_dispatch:', "push:\n    tags: ['v*']\n  workflow_dispatch:") })],
     ['missing protected publish environment', fixture({ release: fixture().release.replace('environment: release-publication', '') })],
     ['missing quality contract', fixture({ ci: fixture().ci.replace('npm run quality:check -- --profile=pr', 'npm test') })],
+    ['release artifact smoke without virtual display', fixture({ release: fixture().release.replace('xvfb-run --auto-servernum npm run quality:check', 'npm run quality:check') })],
     ['clobber and latest bypass', fixture({ release: `${fixture().release}\n      - run: gh release upload tag asset --clobber\n      - run: gh release edit tag --latest\n` })],
     ['missing evidence verifier dependency', fixture({ release: fixture().release.replace('needs: verify-evidence', 'needs: build') })],
     ['npm banner redirected into evidence JSON', fixture({ release: `${fixture().release}\n      - run: npm run smoke:package -- --fixture-unsupported-platform > smoke.json\n` })],
@@ -52,8 +59,10 @@ describe('offline workflow structure enforcement', () => {
     roots.push(root);
     const ciPath = path.join(root, 'ci.yml');
     const releasePath = path.join(root, 'release.yml');
-    fs.writeFileSync(ciPath, fixture().ci);
-    fs.writeFileSync(releasePath, fixture().release);
+    const workflows = fixture();
+    workflows.release += `\nVITE_POSTHOG_PROJECT_TOKEN: ${'${{ vars.POSTHOG_PROJECT_TOKEN }}'}\ntest -n "$VITE_POSTHOG_PROJECT_TOKEN"\nif [[ "$TAG" == *-* ]]; then\n  gh release create "$TAG" --prerelease --latest=false\nelse\n  gh release create "$TAG" --latest\nfi\n`;
+    fs.writeFileSync(ciPath, workflows.ci);
+    fs.writeFileSync(releasePath, workflows.release);
     expect(checker.checkWorkflowStructure({ ci: fs.readFileSync(ciPath, 'utf8'), release: fs.readFileSync(releasePath, 'utf8') })).toEqual({ valid: true, errors: [] });
   });
 });

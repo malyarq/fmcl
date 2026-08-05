@@ -69,6 +69,7 @@ npm run build -- --publish never
 | IPC contracts | [Contracts](docs/en/contracts.md) | [Контракты](docs/ru/contracts.md) |
 | Design system | [Design system](docs/en/design-system.md) | [Дизайн-система](docs/ru/design-system.md) |
 | Security model | [Security](docs/en/security.md) | [Безопасность](docs/ru/security.md) |
+| Privacy and analytics | [Privacy](docs/en/privacy.md) | [Приватность](docs/ru/privacy.md) |
 | Release process | [Releasing](docs/en/releasing.md) | [Релизы](docs/ru/releasing.md) |
 | Roadmap | [Roadmap](docs/en/roadmap.md) | [Роадмап](docs/ru/roadmap.md) |
 
@@ -90,4 +91,4 @@ FMCL supports offline and alternative Yggdrasil authentication flows through `au
 
 ## License
 
-This repository does not currently declare an open-source license. Do not assume permission to redistribute or relicense the code until a `LICENSE` file is added by the maintainer.
+FriendLauncher is available under the [MIT License](LICENSE).

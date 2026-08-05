@@ -4,9 +4,9 @@ This file summarizes user-visible and operational changes. Git history remains t
 
 ## Unreleased
 
-No changes after the local release candidate.
+No changes after the local v0.8.0 candidate.
 
-## [0.8.0-rc.1] — 2026-08-05
+## [0.8.0] — 2026-08-05
 
 ### Changed
 
@@ -14,6 +14,8 @@ No changes after the local release candidate.
 - Replaced duplicate renderer contexts and workflow state with focused feature owners, deterministic recovery, and measured lazy boundaries.
 - Split FriendTunnel, LAN discovery, and UPnP mapping into independently owned lifecycles with ordered shutdown and bounded diagnostics.
 - Reorganized and synchronized the player, contributor, maintainer, architecture, security, testing, release, and historical documentation in English and Russian.
+- Added explicit opt-in, personless product analytics with a reviewed event allowlist and an editable privacy-safe GitHub feedback report.
+- Published the project under the MIT License.
 
 ### Reliability and security
 
@@ -30,7 +32,7 @@ No changes after the local release candidate.
 
 - Prepared unsigned Windows, macOS, and Linux packaging, native host smoke, explicit foreign-runner evidence, SHA-256 manifests, rollback rules, and a schema-valid exact-commit pre-push report.
 - Added canonical Linux desktop identity and game category metadata so launchers associate the running window with the installed application entry.
-- The candidate is prepared locally but is not tagged, pushed, or published until the maintainer approves the final report and the protected GitHub release Environment is configured.
+- The stable candidate is prepared locally but is not tagged, pushed, or published until the maintainer approves the final report and the protected GitHub release Environment is configured.
 
 ## [0.7.1] — 2026-08-03
 
@@ -66,7 +68,7 @@ No changes after the local release candidate.
 
 Historical changes before v0.6.0 are available in [GitHub Releases](https://github.com/malyarq/fmcl/releases) and the archived planning records under `.planning/milestones/`.
 
-[0.8.0-rc.1]: https://github.com/malyarq/fmcl/compare/v0.7.1...v0.8.0-rc.1
+[0.8.0]: https://github.com/malyarq/fmcl/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/malyarq/fmcl/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/malyarq/fmcl/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/malyarq/fmcl/compare/v0.5.0...v0.6.0

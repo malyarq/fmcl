@@ -75,8 +75,12 @@ The game-data directory is configurable in Settings. Application configuration i
 
 Back up both the configured game-data directory and `.fmcl` before moving to another computer or doing manual recovery. Do not delete either directory as a generic troubleshooting step.
 
+## Privacy and feedback
+
+Anonymous product analytics is disabled by default. The **Privacy and Feedback** card in Launcher settings shows the exact scope and lets you opt in or out. The GitHub report action previews a safe diagnostic draft and never submits it automatically. See [Privacy and analytics](privacy.md) for the complete event allowlist and data controls.
+
 ## Get help
 
-Start with [Troubleshooting](troubleshooting.md). If the problem remains, open a [GitHub issue](https://github.com/malyarq/fmcl/issues/new) and include the FMCL version, operating system, selected Minecraft/modloader version, reproduction steps, and exported console output with secrets removed.
+Start with [Troubleshooting](troubleshooting.md). If the problem remains, use **Settings → Launcher → Report a problem on GitHub** or open a [GitHub issue](https://github.com/malyarq/fmcl/issues/new). Include reproduction steps and only attach exported console output after removing secrets and personal paths.
 
 Report security vulnerabilities privately according to [SECURITY.md](../../SECURITY.md).

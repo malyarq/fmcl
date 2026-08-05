@@ -1,10 +1,11 @@
 {
   "name": "friend-launcher",
   "private": true,
-  "version": "0.8.0-rc.1",
+  "version": "0.8.0",
   "description": "Desktop Minecraft launcher for vanilla play, modpacks, and FriendTunnel multiplayer.",
   "desktopName": "com.friendlauncher.app",
   "author": "FriendLauncher Contributors",
+  "license": "MIT",
   "type": "module",
   "packageManager": "npm@11.6.2",
   "engines": {

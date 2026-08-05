@@ -34,7 +34,7 @@ function assertReleaseInputs(inputs) {
 }
 
 function createQualityPlan({ profile = 'pr', inputs = {} } = {}) {
-  if (!['pr', 'release'].includes(profile)) throw new Error(`Unknown quality profile: ${profile}`)
+  if (!['pr', 'release', 'release-source'].includes(profile)) throw new Error(`Unknown quality profile: ${profile}`)
   const stages = sourceStages.map(([name, command, args]) => ({ name, command, args: [...args] }))
   if (profile === 'release') {
     assertReleaseInputs(inputs)
@@ -43,7 +43,7 @@ function createQualityPlan({ profile = 'pr', inputs = {} } = {}) {
       { name: 'release-evidence', command: 'npm', args: ['run', 'release:evidence', '--', '--artifacts-dir', inputs.releaseDir, '--version', inputs.version, '--tag', inputs.tag, '--commit', inputs.commit, '--output', inputs.report] },
     )
   }
-  return { schemaVersion: RESULT_VERSION, profile, stages }
+  return { schemaVersion: RESULT_VERSION, profile: profile === 'release-source' ? 'release' : profile, stages }
 }
 
 function validatePlan(plan) {

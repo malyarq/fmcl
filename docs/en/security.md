@@ -54,6 +54,15 @@ Do not broaden the URL allowlist merely to make one provider work. Add a narrow 
 
 On Linux, `safeStorage` security depends on the desktop keyring. This is a platform limitation, not equivalent to hardware-backed storage.
 
+## Analytics and feedback
+
+- Analytics is consent-gated, disabled by default, and uses a compile-time PostHog project token that grants event ingestion only.
+- The renderer sends events directly to the documented HTTPS capture endpoint; there is no SDK autocapture, session replay, identify call, or remote analytics configuration.
+- Event names and properties are a TypeScript allowlist. Raw exceptions, logs, paths, account data, nicknames, server addresses, and form contents are outside the contract.
+- Events set `$process_person_profile` to `false`; disabling analytics deletes the local random installation identifier.
+- Release owners must keep PostHog IP capture disabled and use the EU ingestion region. See [Privacy](privacy.md).
+- GitHub feedback is locally previewed, editable, and submitted only by the user.
+
 ## Releases and updates
 
 - Publication is manual and dispatch-only. The workflow revalidates the exact tag, commit, artifact checksums, platform smoke, and schema-valid pre-push report before its publish job.

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing immutable release tag (for example, v0.8.0-rc.1)'
+        description: 'Existing immutable release tag (for example, v0.8.0)'
         required: true
         type: string
 
@@ -55,12 +55,12 @@ jobs:
           printf 'tag=%s\nversion=%s\ncommit=%s\n' "$TAG" "$VERSION" "$TAG_COMMIT" >> "$GITHUB_OUTPUT"
 
       - name: Run shared source quality contract
-        run: npm run quality:check -- --profile=pr
+        run: npm run quality:check -- --profile=release-source
         env:
           CI: true
 
-      - name: Upload source quality evidence on failure
-        if: failure()
+      - name: Upload source quality evidence
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: release-source-quality-evidence
@@ -99,9 +99,17 @@ jobs:
           test "$(git rev-parse HEAD)" = "${{ needs.verify.outputs.commit }}"
           test "$(node -p "require('./package.json').version")" = "${{ needs.verify.outputs.version }}"
 
+      - name: Require privacy-reviewed analytics configuration
+        shell: bash
+        env:
+          VITE_POSTHOG_PROJECT_TOKEN: ${{ vars.POSTHOG_PROJECT_TOKEN }}
+        run: test -n "$VITE_POSTHOG_PROJECT_TOKEN"
+
       - name: Build release artifacts
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          VITE_POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}
+          VITE_POSTHOG_PROJECT_TOKEN: ${{ vars.POSTHOG_PROJECT_TOKEN }}
         run: npm run build -- --publish never
 
       - name: Capture local release evidence
@@ -110,7 +118,11 @@ jobs:
           EVIDENCE_ROOT: ${{ runner.temp }}/release-evidence
         run: |
           mkdir -p "$EVIDENCE_ROOT"
-          node scripts/package-smoke.js --release-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --output "$EVIDENCE_ROOT/${{ runner.os }}-package-smoke.json"
+          if [ "${{ runner.os }}" = "Linux" ]; then
+            xvfb-run --auto-servernum node scripts/package-smoke.js --release-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --output "$EVIDENCE_ROOT/${{ runner.os }}-package-smoke.json"
+          else
+            node scripts/package-smoke.js --release-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --output "$EVIDENCE_ROOT/${{ runner.os }}-package-smoke.json"
+          fi
           node scripts/release-evidence.js --artifacts-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --tag ${{ needs.verify.outputs.tag }} --commit ${{ needs.verify.outputs.commit }} --output "$EVIDENCE_ROOT/${{ runner.os }}-release-evidence.json"
           cp release/${{ needs.verify.outputs.version }}/SHA256SUMS.txt release/${{ needs.verify.outputs.version }}/SHA256SUMS-${{ runner.os }}.txt
 
@@ -156,8 +168,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Chromium for measured quality gates
-        run: npx playwright install --with-deps chromium
+      - name: Download source quality evidence
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: release-source-quality-evidence
+          path: quality/evidence
 
       - name: Download all platform artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -187,14 +202,14 @@ jobs:
           test "$count" -eq 3
           rm "$RELEASE_ASSETS"/SHA256SUMS-*.txt
 
-      - name: Run the shared release quality contract on verified artifacts
+      - name: Verify downloaded release artifacts
         env:
-          CI: true
           RELEASE_ASSETS: ${{ runner.temp }}/release-assets/${{ needs.verify.outputs.version }}
           VERIFIED_EVIDENCE: ${{ runner.temp }}/verified-release-evidence
         run: |
           mkdir -p "$VERIFIED_EVIDENCE"
-          npm run quality:check -- --profile=release --releaseDir "$RELEASE_ASSETS" --version ${{ needs.verify.outputs.version }} --tag ${{ needs.verify.outputs.tag }} --commit ${{ needs.verify.outputs.commit }} --report "$VERIFIED_EVIDENCE/release-evidence.json"
+          xvfb-run --auto-servernum node scripts/package-smoke.js --release-dir "$RELEASE_ASSETS" --version ${{ needs.verify.outputs.version }} --output "$VERIFIED_EVIDENCE/downloaded-package-smoke.json"
+          node scripts/release-evidence.js --artifacts-dir "$RELEASE_ASSETS" --version ${{ needs.verify.outputs.version }} --tag ${{ needs.verify.outputs.tag }} --commit ${{ needs.verify.outputs.commit }} --output "$VERIFIED_EVIDENCE/release-evidence.json"
 
       - name: Aggregate host smoke evidence
         shell: bash
@@ -228,7 +243,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    name: Publish one prerelease
+    name: Publish approved release
     needs: [verify, verify-evidence]
     runs-on: ubuntu-latest
     permissions:
@@ -255,7 +270,7 @@ jobs:
           name: verified-release-assets
           path: release-assets
 
-      - name: Publish immutable prerelease assets
+      - name: Publish immutable release assets
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.verify.outputs.tag }}
@@ -268,4 +283,8 @@ jobs:
           (cd release-assets && sha256sum --check SHA256SUMS.txt)
           test "$COMMIT" = "$(git ls-remote --tags origin "refs/tags/$TAG^{}" | awk '{print $1}')"
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && { echo 'release already exists; immutable assets cannot be overwritten' >&2; exit 1; }
-          gh release create "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "${TAG#v}" --generate-notes --prerelease --latest=false
+          if [[ "$TAG" == *-* ]]; then
+            gh release create "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "${TAG#v}" --generate-notes --prerelease --latest=false
+          else
+            gh release create "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "${TAG#v}" --generate-notes --latest
+          fi

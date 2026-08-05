@@ -12,7 +12,7 @@ body:
     attributes:
       label: FriendLauncher version
       description: Use the exact version from the application or release filename.
-      placeholder: v0.7.1
+      placeholder: v0.8.0
     validations:
       required: true
 

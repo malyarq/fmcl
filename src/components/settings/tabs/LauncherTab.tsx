@@ -8,12 +8,7 @@ import { MinecraftPathSection } from './game/MinecraftPathSection';
 import type { UpdateInfo, UpdateStatus } from '../../../features/updater/hooks/useAppUpdater';
 import { formatSize } from '../../../utils/format';
 import type { ImageCacheState } from '@shared/contracts/cache';
-import { PrivacyFeedbackCard } from '../../../features/feedback/PrivacyFeedbackCard';
-
-function translateWithFallback(t: (key: string) => string, key: string, fallback: string) {
-  const translated = t(key);
-  return translated === key ? fallback : translated;
-}
+import { translateWithFallback } from '../settingsTabs';
 
 function ToggleRow(props: {
   label: string;
@@ -60,6 +55,7 @@ export interface LauncherTabProps {
   setSidebarPosition: (val: 'left' | 'right') => void;
   compactMode: boolean;
   setCompactMode: (val: boolean) => void;
+  privacyFeedback: React.ReactNode;
 
   status: UpdateStatus;
   updateInfo: UpdateInfo | null;
@@ -82,8 +78,8 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
   setDisableAnimations,
   sidebarPosition,
   setSidebarPosition,
-  compactMode,
-  setCompactMode,
+  compactMode, setCompactMode,
+  privacyFeedback,
   status,
   updateInfo,
   onCheckForUpdates,
@@ -308,7 +304,7 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
       </div>
 
       <div className="min-w-0 space-y-4">
-        <PrivacyFeedbackCard />
+        {privacyFeedback}
 
         {imageCacheState && (
           <div className="surface-card space-y-4 p-5">

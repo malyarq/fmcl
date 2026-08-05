@@ -61,6 +61,8 @@ npm ci
 - Не коммитьте provider keys, account tokens, сертификаты, пароли и локальные абсолютные пути.
 - В официальных сборках каталог CurseForge намеренно отключён. Локальный `CURSEFORGE_API_KEY` подходит только для разработки и не решает вопрос публичного распространения.
 - Секреты подписи необязательны и сейчас не настроены. Не передавайте electron-builder пустые `CSC_*` variables.
+- `VITE_POSTHOG_PROJECT_TOKEN` включает необязательный analytics client, работающий только после согласия пользователя. Это публичный ingestion token, а не персональный API key. `VITE_POSTHOG_HOST` по умолчанию равен `https://eu.i.posthog.com`; разрешены только HTTPS-хосты.
+- Для стабильной release-сборки нужна repository variable `POSTHOG_PROJECT_TOKEN`. В проекте PostHog должен быть выключен сбор IP; это облачное свойство проверяет владелец релиза, а не код репозитория.
 
 ## Renderer и Electron
 

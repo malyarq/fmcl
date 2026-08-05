@@ -1,6 +1,6 @@
 # Release runbook
 
-FriendLauncher releases use immutable SemVer tags and a dispatch-only GitHub workflow. An RC is a prerelease and is never made `latest` by the workflow. A local command can prepare evidence or, with a separate explicit local decision, create a tag; it cannot authorize publication.
+FriendLauncher releases use immutable SemVer tags and a dispatch-only GitHub workflow. A tag with a SemVer prerelease suffix is published as a non-latest prerelease; a normal `vMAJOR.MINOR.PATCH` tag is published as the latest stable release. A local command can prepare evidence or, with a separate explicit local decision, create a tag; it cannot authorize publication.
 
 ## Prepare an exact candidate
 
@@ -45,11 +45,18 @@ Before dispatching publication, a repository administrator must configure **Sett
 2. Restrict deployments to the approved release refs.
 3. Verify that the configured gate applies to the `publish` job.
 
+Official release builds also require these GitHub repository variables:
+
+- `POSTHOG_PROJECT_TOKEN` — the public project token from the PostHog EU project;
+- `POSTHOG_HOST` — optional; leave empty to use `https://eu.i.posthog.com`.
+
+Before the first release, open PostHog **Settings → Project → General**, disable IP data capture, keep person profiles unused, and confirm retention does not exceed 12 months. The workflow refuses to package without the project token, but hosted privacy settings require a manual owner check.
+
 Repository code cannot create or guarantee those protection rules. With the candidate tag available, a maintainer starts **Build and Release** manually through `workflow_dispatch` and supplies that exact tag. The workflow independently checks out the tag, verifies version/commit identity, rebuilds and validates artifact, checksum, smoke, and schema-valid report evidence, then waits for the protected `release-publication` Environment before its only publish job. A tag push alone cannot start publication.
 
 ## Failure and rollback
 
-- An RC stays a prerelease and non-latest until a separately approved stable process says otherwise.
+- Prerelease tags stay non-latest; stable tags become latest only through the same protected publication job.
 - If evidence, smoke, or OS trust behavior fails, withdraw or mark the release non-latest where the host permits, investigate, and publish a new patch when ready.
 - Never move or overwrite an existing stable tag or asset. Do not replace bytes under an existing version.
 - Regenerate the report whenever the candidate commit or artifact set changes; an old report is intentionally rejected as stale.

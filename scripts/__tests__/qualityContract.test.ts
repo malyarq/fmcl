@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 type StageResult = { name: string; command: string; exitCode: number; status: 'passed' | 'failed' | 'skipped'; durationMs: number };
 type QualityContract = Readonly<{
-  createQualityPlan(options: { profile: 'pr' | 'release'; inputs?: Record<string, string> }): { stages: Array<{ name: string; command: string; args: string[] }> };
+  createQualityPlan(options: { profile: 'pr' | 'release' | 'release-source'; inputs?: Record<string, string> }): { profile: string; stages: Array<{ name: string; command: string; args: string[] }> };
   runQualityPlan(options: { plan: { stages: Array<{ name: string; command: string; args: string[] }> }; run: (command: string, args: string[]) => { exitCode: number }; outputFile: string; now?: () => number }): { status: string; stages: StageResult[] };
   validatePackageScripts(scripts: Record<string, string>): string[];
   resolveRuntimeCommand(command: string, args: string[], runtime: { node: string; npmCli: string }): { command: string; args: string[] };
@@ -35,6 +35,13 @@ describe('shared source quality contract', () => {
     const plan = contract.createQualityPlan({ profile: 'release', inputs: { releaseDir: 'release/0.8.0-rc.1', version: '0.8.0-rc.1', tag: 'v0.8.0-rc.1', commit: 'a'.repeat(40), report: 'release-evidence/prepush.json' } });
     expect(plan.stages.slice(-2).map((stage) => stage.name)).toEqual(['package-smoke', 'release-evidence']);
     expect(plan.stages.at(-2)).toMatchObject({ args: ['run', 'smoke:package', '--', '--release-dir', 'release/0.8.0-rc.1', '--version', '0.8.0-rc.1'] });
+  });
+
+  it('records a release-bound source result without rerunning artifact checks', () => {
+    const source = contract.createQualityPlan({ profile: 'release-source' });
+
+    expect(source.profile).toBe('release');
+    expect(source.stages.map((stage) => stage.name)).toEqual(contract.createQualityPlan({ profile: 'pr' }).stages.map((stage) => stage.name));
   });
 
   it('records machine-readable results and stops after the first failed high-severity gate', () => {

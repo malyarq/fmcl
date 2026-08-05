@@ -1,6 +1,6 @@
 # Регламент релиза
 
-FriendLauncher использует неизменяемые SemVer-теги и GitHub workflow, запускаемый только вручную. RC публикуется как prerelease и workflow не назначает его `latest`. Локальная команда может подготовить доказательства или, после отдельного явного решения, создать тег; публиковать релиз она не уполномочена.
+FriendLauncher использует неизменяемые SemVer-теги и GitHub workflow, запускаемый только вручную. Тег с prerelease-суффиксом SemVer публикуется как non-latest prerelease, а обычный `vMAJOR.MINOR.PATCH` — как последний стабильный релиз. Локальная команда может подготовить доказательства или, после отдельного явного решения, создать тег; публиковать релиз она не уполномочена.
 
 ## Подготовить точного кандидата
 
@@ -45,11 +45,18 @@ npm run release -- <version> --report quality/evidence/prepush-release-report.js
 2. Ограничивает deployment разрешёнными release refs.
 3. Проверяет, что gate применяется к job `publish`.
 
+Для официальной release-сборки также нужны GitHub repository variables:
+
+- `POSTHOG_PROJECT_TOKEN` — публичный project token проекта PostHog EU;
+- `POSTHOG_HOST` — необязательно; пустое значение использует `https://eu.i.posthog.com`.
+
+До первого релиза откройте в PostHog **Settings → Project → General**, выключите сбор IP, не используйте person profiles и проверьте, что хранение не превышает 12 месяцев. Workflow не собирает релиз без project token, но облачные privacy-настройки владелец проверяет вручную.
+
 Код репозитория не может создать или гарантировать эти правила защиты. Когда candidate tag уже доступен, maintainer вручную запускает **Build and Release** через `workflow_dispatch` и передаёт точный тег. Workflow самостоятельно checkout'ит тег, проверяет version/commit, заново валидирует artifact, checksum, smoke и schema-valid report, а затем ждёт protected Environment `release-publication` перед единственным publish job. Один push тега не запускает публикацию.
 
 ## Ошибка и откат
 
-- RC остаётся prerelease и non-latest, пока отдельный одобренный stable-процесс не решит иначе.
+- Prerelease-теги остаются non-latest; stable-теги становятся latest только через тот же защищённый publication job.
 - Если evidence, smoke или OS trust-поведение не проходит, отзовите релиз или снимите с `latest`, где это разрешено хостом, разберитесь и выпустите новый patch, когда всё готово.
 - Никогда не перемещайте и не перезаписывайте существующий stable tag или asset. Не заменяйте байты под уже существующей версией.
 - Пересоздавайте report при смене candidate commit или набора артефактов: старый report намеренно отклоняется как устаревший.

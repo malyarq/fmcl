@@ -11,6 +11,7 @@ The documentation is split by audience and language. English and Russian variant
 - [User guide](en/user-guide.md) — installation, first launch, updates, and data safety
 - [Troubleshooting](en/troubleshooting.md) — common launch, Java, content, network, and update failures
 - [Known issues](en/known-issues.md) — confirmed limitations in the current stable release
+- [Privacy and analytics](en/privacy.md) — opt-in telemetry, exact event fields, retention, and feedback behavior
 
 ### Contributors
 
@@ -37,6 +38,7 @@ The documentation is split by audience and language. English and Russian variant
 - [Руководство](ru/user-guide.md) — установка, первый запуск, обновления и сохранность данных
 - [Решение проблем](ru/troubleshooting.md) — запуск, Java, контент, сеть и обновления
 - [Известные проблемы](ru/known-issues.md) — подтверждённые ограничения стабильной версии
+- [Приватность и аналитика](ru/privacy.md) — согласие, точный состав событий, хранение и обратная связь
 
 ### Разработчикам
 

@@ -25,18 +25,15 @@ function configureAppRoot() {
 
 function configureIsolatedTestUserData(): void {
   const testUserDataPath = process.env['FMCL_TEST_USER_DATA'];
-  if (!testUserDataPath) {
-    return;
-  }
+  if (!testUserDataPath) return;
 
   if (process.env['NODE_ENV'] !== 'test' || !path.isAbsolute(testUserDataPath)) {
     throw new Error('FMCL_TEST_USER_DATA requires NODE_ENV=test and an absolute path');
   }
 
   fs.mkdirSync(testUserDataPath, { recursive: true });
-  const testAppDataPath = path.join(testUserDataPath, 'app-data');
-  fs.mkdirSync(testAppDataPath, { recursive: true });
-  app.setPath('appData', testAppDataPath);
+  app.setPath('appData', path.join(testUserDataPath, 'app-data'));
+  fs.mkdirSync(app.getPath('appData'), { recursive: true });
   app.setPath('userData', testUserDataPath);
 }
 

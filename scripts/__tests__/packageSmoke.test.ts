@@ -4,12 +4,14 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { EventEmitter } from 'node:events';
 import { spawnSync } from 'node:child_process';
-import { afterEach, describe, expect, it } from 'vitest';
+import { createServer } from 'node:http';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 type PackageSmoke = Readonly<{
   findPackagedArtifact(options: Readonly<{ releaseDir: string; version: string; platform: NodeJS.Platform }>): Readonly<{ path: string; kind: string; platform: string }>;
   validatePackageSmokeEvidence(value: unknown): Readonly<{ valid: boolean; errors: string[] }>;
   createPlatformAdapter(platform: NodeJS.Platform, options: unknown): Readonly<{ command: string; args: string[]; cleanup(): void }>;
+  requestPlatformQuit(options: unknown): Promise<void> | boolean;
   runPackageSmoke(options: unknown): Promise<Record<string, unknown>>;
 }>;
 
@@ -131,6 +133,32 @@ describe('package smoke artifact contract', () => {
     ]));
   });
 
+  it.each(['win32', 'linux'] as const)('requests a real window close for %s instead of force-killing Electron', async (platform) => {
+    let requestedPath = '';
+    const server = createServer((request, response) => {
+      requestedPath = request.url ?? '';
+      response.writeHead(200).end('Target is closing');
+    });
+    await new Promise<void>((resolveListen) => server.listen(0, '127.0.0.1', resolveListen));
+    const address = server.address();
+    if (!address || typeof address === 'string') throw new Error('test server has no TCP address');
+    let killed = false;
+
+    try {
+      await smoke.requestPlatformQuit({
+        platform,
+        child: { kill: () => { killed = true; } },
+        debugPort: address.port,
+        pages: [{ id: 'renderer/page' }],
+      });
+    } finally {
+      await new Promise<void>((resolveClose) => server.close(() => resolveClose()));
+    }
+
+    expect(requestedPath).toBe('/json/close/renderer%2Fpage');
+    expect(killed).toBe(false);
+  });
+
   it('records readiness timeout and abnormal exit with fake process ports while retaining the caller release directory', async () => {
     const version = '0.7.1';
     const releaseRoot = createRelease(version);
@@ -196,7 +224,11 @@ describe('package smoke artifact contract', () => {
     writeArtifact(releaseRoot, version, `FriendLauncher-Linux-${version}.AppImage`);
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-package-smoke-linux-'));
     roots.push(workspace);
-    const child = Object.assign(new EventEmitter(), { exitCode: 0, stdout: new EventEmitter(), stderr: new EventEmitter(), kill: () => undefined });
+    const stdout = Object.assign(new EventEmitter(), { destroy: vi.fn() });
+    const stderr = Object.assign(new EventEmitter(), { destroy: vi.fn() });
+    const child = Object.assign(new EventEmitter(), {
+      exitCode: 0, stdout, stderr, kill: () => undefined, unref: vi.fn(),
+    });
     let spawnEnvironment: NodeJS.ProcessEnv | undefined;
     const result = await smoke.runPackageSmoke({
       platform: 'linux', hostPlatform: 'linux', releaseDir: releaseRoot, version,
@@ -211,6 +243,9 @@ describe('package smoke artifact contract', () => {
 
     expect(result).toMatchObject({ status: 'passed', quit: { graceful: true, exitCode: 0 } });
     expect(spawnEnvironment?.APPIMAGE_EXTRACT_AND_RUN).toBe('1');
+    expect(stdout.destroy).toHaveBeenCalledOnce();
+    expect(stderr.destroy).toHaveBeenCalledOnce();
+    expect(child.unref).toHaveBeenCalledOnce();
   });
 
   it.each([

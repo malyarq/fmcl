@@ -12,7 +12,7 @@ export type ResolvedSettingsTabConfig = SettingsTabConfig & {
 
 type SettingsTranslator = (key: string) => string;
 
-function translateWithFallback(t: SettingsTranslator, key: string, fallback: string): string {
+export function translateWithFallback(t: SettingsTranslator, key: string, fallback: string): string {
   const translated = t(key);
   return translated === key ? fallback : translated;
 }

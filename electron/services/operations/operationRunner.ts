@@ -77,9 +77,7 @@ export class OperationRunner {
     try {
       return await this.track(this.runRootMutation(rootPath, async (scope) => {
         if (!scope.coordinator) return rootMutationFailure('ROOT_MUTATION_COORDINATOR_UNAVAILABLE', 'Canonical control-plane coordinator is unavailable');
-        if (scope.current?.status === 'ready') {
-          return { status: 'ready', source: 'canonical', snapshot: scope.current.snapshot };
-        }
+        if (scope.current?.status === 'ready') return { status: 'ready', source: 'canonical', snapshot: scope.current.snapshot };
         const prepared = await scope.coordinator.prepare();
         return prepared.status === 'recovery-required'
           ? rootMutationFailure('ROOT_MUTATION_PREPARE_FAILED', prepared.reason)

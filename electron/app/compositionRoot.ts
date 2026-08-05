@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { AccountService } from '../services/account/accountService';
 import { ContentManager } from '../services/content/contentManager';
 import { InstanceApplication } from '../domains/instances/instanceApplication';
-import type { CanonicalInstanceRecord, LauncherRoot } from '../domains/instances/instanceTypes';
+import type { LauncherRoot } from '../domains/instances/instanceTypes';
 import { InstanceExporterService, type ArchiveExportContentPort } from '../services/instances/exporter/InstanceExporterService';
 import { InstanceManifestManager } from '../services/instances/manifestManager';
 import { getDefaultRootPath as getDefaultLauncherRootPath, getModpackDir } from '../services/instances/paths';
@@ -33,7 +33,7 @@ import { createLaunchAdapters, type LaunchAdapters } from '../infrastructure/ins
 import { consumeArchiveReference } from '../security/archiveReferenceAuthorizations';
 import type { ArchiveManifestMetadata } from '../../shared/contracts/archiveInspection';
 import type { StorageMaintenanceCleanupResult, StorageMaintenanceStats } from '../../shared/contracts/storageMaintenance';
-import { CLASSIC_MODPACK_ID } from '../../shared/constants';
+import { recoverOperationsAndEnsureClassic } from './classicSeed';
 
 type StorageMaintenanceAdapter = Readonly<{
   getStats(): Promise<StorageMaintenanceStats>;
@@ -232,32 +232,7 @@ export function createCompositionRoot(options: CompositionRootOptions): MainComp
     controlPlane,
     launchAdapters,
     handlerDependencies,
-    async recoverOperations(): Promise<void> {
-      await operations.recoverRegistered(defaultRootPath);
-      const state = await operations.readControlPlane(defaultRootPath);
-      if ('code' in state) throw new Error(state.message);
-      if (state.status === 'ready' && state.snapshot.records.some(({ id }) => id === CLASSIC_MODPACK_ID)) return;
-
-      const seeded = await operations.commitControlPlane(defaultRootPath, {
-        version: 1,
-        type: 'commit-published',
-        record: createClassicRecord(),
-        // commit-published already selects its record when the snapshot is
-        // empty. Keeping this false preserves a selection created by another
-        // process between the read above and the root-locked commit.
-        select: false,
-      });
-      if ('code' in seeded) {
-        // A concurrent first start may have published Classic with different
-        // timestamps. Treat that conflict as success only after a locked read
-        // proves the canonical record now exists.
-        const current = await operations.readControlPlane(defaultRootPath);
-        if (!('code' in current)
-          && current.status === 'ready'
-          && current.snapshot.records.some(({ id }) => id === CLASSIC_MODPACK_ID)) return;
-        throw new Error(seeded.message);
-      }
-    },
+    async recoverOperations(): Promise<void> { await recoverOperationsAndEnsureClassic(operations, defaultRootPath); },
     async shutdown(): Promise<CompositionShutdownReport> {
       const failures: Array<CompositionShutdownReport['failures'][number]> = [];
       await settleOwner('operations', () => operations.beginShutdown(), failures);
@@ -269,21 +244,6 @@ export function createCompositionRoot(options: CompositionRootOptions): MainComp
       ]);
       return { failures };
     },
-  };
-}
-
-function createClassicRecord(): CanonicalInstanceRecord {
-  const now = new Date().toISOString();
-  return {
-    id: CLASSIC_MODPACK_ID,
-    name: 'Classic',
-    source: { source: 'local', createdAt: now, updatedAt: now },
-    config: {
-      runtime: { minecraftVersion: '1.12.2', modLoader: { type: 'vanilla' } },
-      memory: { maxMb: 4096 },
-      vmOptions: [],
-    },
-    summary: { minecraftVersion: '1.12.2', modLoader: { type: 'vanilla' } },
   };
 }
 

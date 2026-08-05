@@ -11,7 +11,7 @@ This is a direction document, not a promise of dates. Work is ordered by risk an
 - Sign Windows installers and sign/notarize macOS packages.
 - Publish build provenance and a software bill of materials alongside checksums.
 - Exercise fresh installation and updater paths on all supported operating systems before each stable release.
-- Choose and publish a repository license; until then, redistribution rights are not granted.
+- Keep the published MIT license and third-party notices accurate as dependencies change.
 
 ## 2. Security and reliability
 
@@ -29,6 +29,7 @@ This is a direction document, not a promise of dates. Work is ordered by risk an
 
 ## 4. After v0.8.0
 
+- Do not start another architectural milestone until at least 20 external users have tried v0.8.0 and their usage and feedback have been reviewed.
 - Improve account reauthentication and expired-session recovery.
 - Add supported backup and restore for launcher settings and instances.
 - Enable CurseForge browsing only after API credentials, attribution, distribution rules, tests, and failure handling are complete.

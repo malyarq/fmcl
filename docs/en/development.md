@@ -61,6 +61,8 @@ The full process boundary is described in [Architecture](architecture.md).
 - Never commit provider keys, account tokens, signing certificates, passwords, or local absolute paths.
 - Official builds intentionally leave CurseForge browsing disabled; a local `CURSEFORGE_API_KEY` is for development only and does not make the public distribution contract complete.
 - Release signing secrets are optional and currently not configured. Do not pass empty `CSC_*` values to electron-builder.
+- `VITE_POSTHOG_PROJECT_TOKEN` enables the optional, consent-gated analytics client. It is a public ingestion token, not a personal API key. `VITE_POSTHOG_HOST` defaults to `https://eu.i.posthog.com`; only HTTPS hosts are accepted.
+- Stable release builds require the repository variable `POSTHOG_PROJECT_TOKEN`. The PostHog project must discard IP addresses; this hosted setting is checked by the release owner, not by repository code.
 
 ## Renderer and Electron behavior
 

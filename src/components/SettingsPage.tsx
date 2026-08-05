@@ -18,6 +18,7 @@ import { storageMaintenanceIPC } from '../services/ipc/storageMaintenanceIPC';
 
 const DownloadsTab = lazy(() => import('./settings/tabs/DownloadsTab').then((module) => ({ default: module.DownloadsTab })));
 const LauncherTab = lazy(() => import('./settings/tabs/LauncherTab').then((module) => ({ default: module.LauncherTab })));
+const PrivacyFeedbackCard = lazy(() => import('../features/feedback/PrivacyFeedbackCard').then((module) => ({ default: module.PrivacyFeedbackCard })));
 const AccountsPage = lazy(() => import('../features/accounts/AccountsPage').then((module) => ({ default: module.AccountsPage })));
 const StatisticsTab = lazy(() => import('../features/settings/statistics/StatisticsTab').then((module) => ({ default: module.StatisticsTab })));
 
@@ -108,6 +109,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
                     setSidebarPosition={setSidebarPosition}
                     compactMode={compactMode}
                     setCompactMode={setCompactMode}
+                    privacyFeedback={<PrivacyFeedbackCard />}
                     onCheckForUpdates={checkForUpdates}
                     onBeforeCheckForUpdates={() => setShowUpdateModal(false)}
                     embedded
