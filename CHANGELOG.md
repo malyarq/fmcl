@@ -4,8 +4,32 @@ This file summarizes user-visible and operational changes. Git history remains t
 
 ## Unreleased
 
-- Rebuilt the player, contributor, maintainer, architecture, security, testing, release, and historical documentation.
-- Added automated documentation link and EN/RU mirror checks.
+No changes after the local release candidate.
+
+## [0.8.0-rc.1] — 2026-08-05
+
+### Changed
+
+- Rebuilt instance ownership around one canonical control plane, composition root, typed renderer capabilities, and transactional operation engine.
+- Replaced duplicate renderer contexts and workflow state with focused feature owners, deterministic recovery, and measured lazy boundaries.
+- Split FriendTunnel, LAN discovery, and UPnP mapping into independently owned lifecycles with ordered shutdown and bounded diagnostics.
+- Reorganized and synchronized the player, contributor, maintainer, architecture, security, testing, release, and historical documentation in English and Russian.
+
+### Reliability and security
+
+- Added atomic, backup-aware, schema-versioned state; root-serialized journaling; cancellation; recovery; and fault-injection coverage for persistence and destructive operations.
+- Enforced path-free renderer contracts, dependency direction, canonical construction, deleted-owner absence, privileged-loader denial, and path-keyed complexity ratchets.
+- Hardened the release supply chain with allowlisted SHA-pinned Actions, annotated immutable tags, verified per-platform checksum manifests, and a verified-assets-only publish handoff.
+
+### Performance and accessibility
+
+- Added clean Node 24 production bundle budgets and representative median/p95 renderer performance gates.
+- Added real Chromium keyboard, focus-return, semantic naming, computed contrast, EN/RU route, and dialog behavior checks.
+
+### Release candidate
+
+- Prepared unsigned Windows, macOS, and Linux packaging, native host smoke, explicit foreign-runner evidence, SHA-256 manifests, rollback rules, and a schema-valid exact-commit pre-push report.
+- The candidate is prepared locally but is not tagged, pushed, or published until the maintainer approves the final report and the protected GitHub release Environment is configured.
 
 ## [0.7.1] — 2026-08-03
 
@@ -41,6 +65,7 @@ This file summarizes user-visible and operational changes. Git history remains t
 
 Historical changes before v0.6.0 are available in [GitHub Releases](https://github.com/malyarq/fmcl/releases) and the archived planning records under `.planning/milestones/`.
 
+[0.8.0-rc.1]: https://github.com/malyarq/fmcl/compare/v0.7.1...v0.8.0-rc.1
 [0.7.1]: https://github.com/malyarq/fmcl/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/malyarq/fmcl/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/malyarq/fmcl/compare/v0.5.0...v0.6.0

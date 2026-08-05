@@ -40,8 +40,8 @@
     /* emerald-500 */
     --accent-hover: 5 150 105;
     /* emerald-600 */
-    --accent-content: 255 255 255;
-    /* white */
+    --accent-content: 24 24 27;
+    /* zinc-900: readable on the default emerald accent */
 
     --brand-shell-glow: 107 139 111;
     --brand-mark-frame: 238 242 232;
@@ -126,9 +126,11 @@
       [role="tab"],
       [role="menuitem"],
       [tabindex]:not([tabindex="-1"])
-    ):focus-visible {
-    outline: 2px solid rgb(var(--accent-main));
-    outline-offset: 2px;
+    ):focus {
+    outline-color: rgb(var(--accent-main)) !important;
+    outline-style: solid !important;
+    outline-width: 2px !important;
+    outline-offset: 2px !important;
   }
 
   ::selection {
@@ -138,22 +140,42 @@
 }
 
 @layer components {
+  .multiplayer-live-status {
+    @apply text-center text-xs font-medium text-amber-700 dark:text-amber-300;
+  }
+
+  .multiplayer-room-code {
+    @apply w-full rounded-xl border p-4 text-center;
+  }
+
+  .multiplayer-mode-tab {
+    @apply flex-1 rounded-md py-2 text-sm font-bold uppercase transition-all;
+  }
+
+  .multiplayer-mode-tab[aria-selected='true'] {
+    @apply bg-[rgb(var(--accent-main))] text-[rgb(var(--accent-content))] shadow-md;
+  }
+
+  .multiplayer-mode-tab[aria-selected='false'] {
+    @apply text-secondary hover:text-foreground;
+  }
+
   .surface-panel {
-    @apply rounded-3xl border border-border/80 bg-card/92 text-foreground backdrop-blur-xl;
+    @apply rounded-3xl border border-border/85 bg-card/96 text-foreground;
     box-shadow: var(--surface-shadow-panel);
   }
 
   .surface-card {
-    @apply rounded-2xl border border-border/75 bg-card/88 text-foreground backdrop-blur-lg;
+    @apply rounded-2xl border border-border/80 bg-card/94 text-foreground;
     box-shadow: var(--surface-shadow-card);
   }
 
   .surface-muted {
-    @apply rounded-2xl border border-border/70 bg-background/80 text-foreground backdrop-blur-md;
+    @apply rounded-2xl border border-border/75 bg-background/90 text-foreground;
   }
 
   .surface-inline {
-    @apply rounded-xl border border-border/70 bg-card/84 text-foreground backdrop-blur-md;
+    @apply rounded-xl border border-border/75 bg-card/90 text-foreground;
   }
 
   .kicker-label {
@@ -161,7 +183,7 @@
   }
 
   .control-frame {
-    @apply rounded-xl border border-border/70 bg-card/82 text-foreground backdrop-blur-md transition-all;
+    @apply rounded-xl border border-border/75 bg-card/90 text-foreground transition-all;
     box-shadow: var(--surface-shadow-soft);
   }
 

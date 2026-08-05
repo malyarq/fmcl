@@ -1,33 +1,34 @@
 name: Build and Release
 
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Version tag (e.g., v0.0.4)'
+      tag:
+        description: 'Existing immutable release tag (for example, v0.8.0-rc.1)'
         required: true
         type: string
 
 concurrency:
-  group: release-${{ github.ref }}-${{ github.event.inputs.version || '' }}
+  group: release-${{ inputs.tag }}
   cancel-in-progress: false
 
 jobs:
   verify:
-    name: Verify release gates
+    name: Verify immutable release candidate
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.candidate.outputs.tag }}
+      version: ${{ steps.candidate.outputs.version }}
+      commit: ${{ steps.candidate.outputs.commit }}
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
+      - name: Checkout requested tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref }}
+          ref: ${{ inputs.tag }}
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -35,67 +36,39 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Get version from tag
-        id: get_version
+      - name: Install Chromium for measured quality gates
+        run: npx playwright install --with-deps chromium
+
+      - name: Resolve exact tag, version, and commit
+        id: candidate
         shell: bash
         env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
+          TAG: ${{ inputs.tag }}
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            VERSION="$INPUT_VERSION"
-          else
-            VERSION=${GITHUB_REF#refs/tags/}
-          fi
-          if [[ ! "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Invalid release tag: $VERSION" >&2
-            exit 1
-          fi
-          if ! git rev-parse --verify --quiet "refs/tags/$VERSION^{commit}" >/dev/null; then
-            echo "Release tag does not exist: $VERSION" >&2
-            exit 1
-          fi
-          if [ "$(git rev-parse HEAD)" != "$(git rev-parse "refs/tags/$VERSION^{commit}")" ]; then
-            echo "Checked out source does not match release tag: $VERSION" >&2
-            exit 1
-          fi
-          VERSION_NUMBER=${VERSION#v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
+          test "$TAG" = "${TAG#v}" && { echo 'tag must start with v' >&2; exit 1; }
+          git rev-parse --verify --quiet "refs/tags/$TAG^{commit}" >/dev/null
+          test "$(git cat-file -t "refs/tags/$TAG")" = tag
+          TAG_COMMIT=$(git rev-parse "refs/tags/$TAG^{commit}")
+          test "$TAG_COMMIT" = "$(git rev-parse HEAD)"
+          VERSION=${TAG#v}
+          test "$VERSION" = "$(node -p "require('./package.json').version")"
+          printf 'tag=%s\nversion=%s\ncommit=%s\n' "$TAG" "$VERSION" "$TAG_COMMIT" >> "$GITHUB_OUTPUT"
 
-      - name: Update package.json version to match tag
-        shell: bash
-        env:
-          VERSION_NUMBER: ${{ steps.get_version.outputs.version_number }}
-        run: npm version "$VERSION_NUMBER" --no-git-tag-version --allow-same-version
-
-      - name: Test
-        run: npm test
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Typecheck
-        run: npx tsc --noEmit
-
-      - name: Documentation check
-        run: npm run docs:check
-
-      - name: Contracts check
-        run: npm run contracts:check
-
-      - name: IPC allowlist check
-        run: npm run ipc:check
-
-      - name: Production dependency audit
-        run: npm run audit:prod
-
-      - name: Build smoke
-        run: npm run build -- --publish never
+      - name: Run shared source quality contract
+        run: npm run quality:check -- --profile=pr
         env:
           CI: true
 
+      - name: Upload source quality evidence on failure
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-source-quality-evidence
+          path: quality/evidence/
+          if-no-files-found: ignore
+
   build:
-    name: Build artifacts for ${{ matrix.os }}
+    name: Build and smoke ${{ matrix.os }}
     needs: verify
     runs-on: ${{ matrix.os }}
     permissions:
@@ -105,13 +78,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v7
+      - name: Checkout immutable tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.ref }}
+          ref: ${{ needs.verify.outputs.tag }}
+          fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -119,103 +93,179 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Get version from tag
-        id: get_version
+      - name: Prove candidate still matches checkout
         shell: bash
-        env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            VERSION="$INPUT_VERSION"
-          else
-            VERSION=${GITHUB_REF#refs/tags/}
-          fi
-          if [[ ! "$VERSION" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Invalid release tag: $VERSION" >&2
-            exit 1
-          fi
-          # Remove 'v' prefix if present for version
-          VERSION_NUMBER=${VERSION#v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "version_number=$VERSION_NUMBER" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION (number: $VERSION_NUMBER)"
-
-      - name: Update package.json version to match tag
-        shell: bash
-        env:
-          VERSION_NUMBER: ${{ steps.get_version.outputs.version_number }}
-        run: npm version "$VERSION_NUMBER" --no-git-tag-version --allow-same-version
+          test "$(git rev-parse HEAD)" = "${{ needs.verify.outputs.commit }}"
+          test "$(node -p "require('./package.json').version")" = "${{ needs.verify.outputs.version }}"
 
       - name: Build release artifacts
         env:
-          # Releases are intentionally unsigned. Do not pass empty CSC_* variables:
-          # electron-builder interprets an empty CSC_LINK as a filesystem path.
           CSC_IDENTITY_AUTO_DISCOVERY: false
         run: npm run build -- --publish never
 
+      - name: Capture local release evidence
+        shell: bash
+        env:
+          EVIDENCE_ROOT: ${{ runner.temp }}/release-evidence
+        run: |
+          mkdir -p "$EVIDENCE_ROOT"
+          node scripts/package-smoke.js --release-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --output "$EVIDENCE_ROOT/${{ runner.os }}-package-smoke.json"
+          node scripts/release-evidence.js --artifacts-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --tag ${{ needs.verify.outputs.tag }} --commit ${{ needs.verify.outputs.commit }} --output "$EVIDENCE_ROOT/${{ runner.os }}-release-evidence.json"
+          cp release/${{ needs.verify.outputs.version }}/SHA256SUMS.txt release/${{ needs.verify.outputs.version }}/SHA256SUMS-${{ runner.os }}.txt
+
       - name: Upload platform artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: release-${{ matrix.os }}
+          name: release-package-${{ runner.os }}
           path: |
-            release/${{ steps.get_version.outputs.version_number }}/*.dmg
-            release/${{ steps.get_version.outputs.version_number }}/*.exe
-            release/${{ steps.get_version.outputs.version_number }}/*.AppImage
-            release/${{ steps.get_version.outputs.version_number }}/latest*.yml
-            release/${{ steps.get_version.outputs.version_number }}/*.blockmap
+            release/${{ needs.verify.outputs.version }}/*.dmg
+            release/${{ needs.verify.outputs.version }}/*.exe
+            release/${{ needs.verify.outputs.version }}/*.AppImage
+            release/${{ needs.verify.outputs.version }}/latest*.yml
+            release/${{ needs.verify.outputs.version }}/*.blockmap
+            release/${{ needs.verify.outputs.version }}/SHA256SUMS-${{ runner.os }}.txt
+          if-no-files-found: error
+
+      - name: Upload host smoke and contract evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: release-evidence-${{ matrix.os }}
+          path: ${{ runner.temp }}/release-evidence/
+          if-no-files-found: error
+
+  verify-evidence:
+    name: Verify downloaded artifact evidence
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    outputs:
+      report: ${{ steps.report.outputs.path }}
+    steps:
+      - name: Checkout immutable tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.verify.outputs.tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium for measured quality gates
+        run: npx playwright install --with-deps chromium
+
+      - name: Download all platform artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: release-package-*
+          path: ${{ runner.temp }}/release-assets/${{ needs.verify.outputs.version }}
+          merge-multiple: true
+
+      - name: Download platform smoke and contract evidence
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: release-evidence-*
+          path: ${{ runner.temp }}/downloaded-evidence
+
+      - name: Verify build-generated platform manifests
+        shell: bash
+        env:
+          RELEASE_ASSETS: ${{ runner.temp }}/release-assets/${{ needs.verify.outputs.version }}
+        run: |
+          set -euo pipefail
+          count=0
+          for manifest in "$RELEASE_ASSETS"/SHA256SUMS-*.txt; do
+            test -f "$manifest"
+            (cd "$RELEASE_ASSETS" && sha256sum --check "$(basename "$manifest")")
+            count=$((count + 1))
+          done
+          test "$count" -eq 3
+          rm "$RELEASE_ASSETS"/SHA256SUMS-*.txt
+
+      - name: Run the shared release quality contract on verified artifacts
+        env:
+          CI: true
+          RELEASE_ASSETS: ${{ runner.temp }}/release-assets/${{ needs.verify.outputs.version }}
+          VERIFIED_EVIDENCE: ${{ runner.temp }}/verified-release-evidence
+        run: |
+          mkdir -p "$VERIFIED_EVIDENCE"
+          npm run quality:check -- --profile=release --releaseDir "$RELEASE_ASSETS" --version ${{ needs.verify.outputs.version }} --tag ${{ needs.verify.outputs.tag }} --commit ${{ needs.verify.outputs.commit }} --report "$VERIFIED_EVIDENCE/release-evidence.json"
+
+      - name: Aggregate host smoke evidence
+        shell: bash
+        env:
+          DOWNLOADED_EVIDENCE: ${{ runner.temp }}/downloaded-evidence
+          VERIFIED_EVIDENCE: ${{ runner.temp }}/verified-release-evidence
+        run: |
+          node scripts/aggregate-platform-smoke.js --input "$DOWNLOADED_EVIDENCE" --output "$VERIFIED_EVIDENCE/platform-smoke.json"
+
+      - name: Validate schema-bound pre-push report
+        id: report
+        shell: bash
+        env:
+          VERIFIED_EVIDENCE: ${{ runner.temp }}/verified-release-evidence
+        run: |
+          test -f quality/schemas/prepush-release-report.schema.json
+          node scripts/prepush-release-report.js --tag ${{ needs.verify.outputs.tag }} --commit ${{ needs.verify.outputs.commit }} --version ${{ needs.verify.outputs.version }} --quality quality/evidence/quality-contract.json --release-evidence "$VERIFIED_EVIDENCE/release-evidence.json" --platform-smoke "$VERIFIED_EVIDENCE/platform-smoke.json" --output "$VERIFIED_EVIDENCE/prepush-release-report.json"
+          printf 'path=%s\n' "$VERIFIED_EVIDENCE/prepush-release-report.json" >> "$GITHUB_OUTPUT"
+
+      - name: Upload verified release evidence
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: verified-release-evidence
+          path: ${{ runner.temp }}/verified-release-evidence/
+
+      - name: Upload only verified release assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: verified-release-assets
+          path: ${{ runner.temp }}/release-assets/${{ needs.verify.outputs.version }}/
           if-no-files-found: error
 
   publish:
-    name: Publish one GitHub release
-    needs: build
+    name: Publish one prerelease
+    needs: [verify, verify-evidence]
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    # Configure required reviewers and deployment restrictions externally at:
+    # Settings -> Environments -> release-publication. YAML cannot create that protection.
+    environment: release-publication
     steps:
-      - name: Download all platform artifacts
-        uses: actions/download-artifact@v7
+      - name: Checkout the approved immutable tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          pattern: release-*
+          ref: ${{ needs.verify.outputs.tag }}
+          fetch-depth: 0
+
+      - name: Download verified release evidence
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: verified-release-evidence
+          path: release-evidence
+
+      - name: Download verified platform artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: verified-release-assets
           path: release-assets
-          merge-multiple: true
 
-      - name: Resolve release tag
-        id: release_tag
-        shell: bash
+      - name: Publish immutable prerelease assets
         env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            RELEASE_TAG="$INPUT_VERSION"
-          else
-            RELEASE_TAG=${GITHUB_REF#refs/tags/}
-          fi
-          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
-            echo "Invalid release tag: $RELEASE_TAG" >&2
-            exit 1
-          fi
-          echo "tag=$RELEASE_TAG" >> "$GITHUB_OUTPUT"
-
-      - name: Write SHA-256 checksums
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.verify.outputs.tag }}
+          COMMIT: ${{ needs.verify.outputs.commit }}
         shell: bash
         run: |
-          cd release-assets
-          sha256sum * > SHA256SUMS.txt
-
-      - name: Create release and upload artifacts
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
-        shell: bash
-        run: |
-          {
-            echo '> [!WARNING]'
-            echo '> macOS and Windows installers are currently published without code signing. The operating system may show an unknown-developer warning; verify downloads originate from this repository.'
-            echo
-            gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
-              -f tag_name="$RELEASE_TAG" \
-              --jq '.body'
-          } > release-notes.md
-          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --verify-tag --title "${RELEASE_TAG#v}" --notes-file release-notes.md --latest
-          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file release-notes.md --latest
-          gh release upload "$RELEASE_TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --clobber
+          test -f release-evidence/prepush-release-report.json
+          test -f release-assets/SHA256SUMS.txt
+          test "$COMMIT" = "$(git rev-parse HEAD)"
+          (cd release-assets && sha256sum --check SHA256SUMS.txt)
+          test "$COMMIT" = "$(git ls-remote --tags origin "refs/tags/$TAG^{}" | awk '{print $1}')"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && { echo 'release already exists; immutable assets cannot be overwritten' >&2; exit 1; }
+          gh release create "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "${TAG#v}" --generate-notes --prerelease --latest=false

@@ -238,7 +238,12 @@ export class OperationRunner {
         const context = this.createContext(record, journal, scope);
         try {
           const result = await context.replayCanonicalCommand();
-          if (result.status === 'recovered') workspace.cleanupBackups();
+          if (result.status === 'recovered') {
+            if (record.recovery && 'destinationId' in record.recovery) {
+              workspace.removePublishMarker(this.destinationPath(record));
+            }
+            workspace.cleanupBackups();
+          }
           this.finishRecovery(record, result);
         } catch {
           this.finishRecovery(record, { status: 'recovery-required', message: 'Published canonical command could not be replayed' });

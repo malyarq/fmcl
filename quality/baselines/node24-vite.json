@@ -1,0 +1,124 @@
+{
+  "schemaVersion": 1,
+  "environment": {
+    "node": "24.13.0",
+    "npm": "11.6.2",
+    "vite": "7.3.6",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "commit": "d6df1e81017963dbda2c49713ea3be70f0a0b95b",
+    "capturedAt": "2026-08-04T22:14:35.156Z"
+  },
+  "phase41Comparison": {
+    "index": {
+      "rawBytes": 448590,
+      "gzipBytes": 117150
+    },
+    "modpackRouter": {
+      "rawBytes": 96680,
+      "gzipBytes": 26120
+    }
+  },
+  "chunks": [
+    {
+      "logicalPath": "MirrorsSettings",
+      "rawBytes": 10012,
+      "gzipBytes": 2859
+    },
+    {
+      "logicalPath": "ModpackRouter",
+      "rawBytes": 96447,
+      "gzipBytes": 26066
+    },
+    {
+      "logicalPath": "SettingsPage",
+      "rawBytes": 29724,
+      "gzipBytes": 7887
+    },
+    {
+      "logicalPath": "index",
+      "rawBytes": 421997,
+      "gzipBytes": 109399
+    },
+    {
+      "logicalPath": "index.html",
+      "rawBytes": 32700,
+      "gzipBytes": 10820
+    },
+    {
+      "logicalPath": "manual-verification.html",
+      "rawBytes": 98855,
+      "gzipBytes": 24291
+    },
+    {
+      "logicalPath": "src/components/MultiplayerPage.tsx",
+      "rawBytes": 10181,
+      "gzipBytes": 3469
+    },
+    {
+      "logicalPath": "src/components/modpacks/AddModPage.tsx",
+      "rawBytes": 31635,
+      "gzipBytes": 7159
+    },
+    {
+      "logicalPath": "src/components/modpacks/ExportModpackPage.tsx",
+      "rawBytes": 4670,
+      "gzipBytes": 2041
+    },
+    {
+      "logicalPath": "src/components/modpacks/ImportModpackPreviewPage.tsx",
+      "rawBytes": 4363,
+      "gzipBytes": 1589
+    },
+    {
+      "logicalPath": "src/components/modpacks/InstallModpackPage.tsx",
+      "rawBytes": 3959,
+      "gzipBytes": 1677
+    },
+    {
+      "logicalPath": "src/components/modpacks/ModpackBrowser.tsx",
+      "rawBytes": 18412,
+      "gzipBytes": 5907
+    },
+    {
+      "logicalPath": "src/components/modpacks/ModpackCreationWizard.tsx",
+      "rawBytes": 16442,
+      "gzipBytes": 5441
+    },
+    {
+      "logicalPath": "src/components/settings/tabs/DownloadsTab.tsx",
+      "rawBytes": 2390,
+      "gzipBytes": 809
+    },
+    {
+      "logicalPath": "src/components/settings/tabs/LauncherTab.tsx",
+      "rawBytes": 11014,
+      "gzipBytes": 3308
+    },
+    {
+      "logicalPath": "src/features/accounts/AccountsPage.tsx",
+      "rawBytes": 17114,
+      "gzipBytes": 4480
+    },
+    {
+      "logicalPath": "src/features/settings/statistics/StatisticsTab.tsx",
+      "rawBytes": 8192,
+      "gzipBytes": 2380
+    },
+    {
+      "logicalPath": "vendor-icons",
+      "rawBytes": 13526,
+      "gzipBytes": 4835
+    },
+    {
+      "logicalPath": "vendor-particles",
+      "rawBytes": 147089,
+      "gzipBytes": 42261
+    },
+    {
+      "logicalPath": "vendor-react",
+      "rawBytes": 390321,
+      "gzipBytes": 121846
+    }
+  ]
+}

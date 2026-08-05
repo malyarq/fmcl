@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import { createRoot } from 'react-dom/profiling';
 import '../../index.css';
 import { installManualVerificationEnvironment, seedManualVerificationStorage } from './mockEnvironment';
 import { ManualVerificationApp } from './ManualVerificationApp';
@@ -11,7 +11,7 @@ const view = getManualVerificationView(params.get('view'));
 seedManualVerificationStorage(view);
 installManualVerificationEnvironment();
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ManualVerificationApp />
   </React.StrictMode>,

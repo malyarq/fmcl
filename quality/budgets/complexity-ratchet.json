@@ -1,0 +1,3365 @@
+{
+  "schemaVersion": 1,
+  "parser": {
+    "name": "typescript",
+    "version": "5.9.3",
+    "loc": "non-comment physical lines with TypeScript scanner tokens (multiline tokens count every occupied line)",
+    "complexity": "cyclomatic v1: one per function plus if, conditional, loop, catch, case, &&, || and ?? branches"
+  },
+  "ruleVersions": {
+    "loc": "non-comment-physical-lines-v1",
+    "functionComplexity": "cyclomatic-v1",
+    "defaults": "p90-per-category-v1"
+  },
+  "environment": {
+    "node": "24.13.0",
+    "npm": "11.6.2",
+    "typescript": "5.9.3",
+    "platform": "darwin",
+    "architecture": "arm64",
+    "commit": "16598a0750d271755a417010a2a7dbd5dab486cb",
+    "capturedAt": "2026-08-04T21:27:49.373Z"
+  },
+  "defaults": {
+    "electron-app": {
+      "maxLoc": 181,
+      "maxFunctionComplexity": 14
+    },
+    "electron-domain": {
+      "maxLoc": 129,
+      "maxFunctionComplexity": 1
+    },
+    "electron-infrastructure": {
+      "maxLoc": 25,
+      "maxFunctionComplexity": 2
+    },
+    "electron-ipc": {
+      "maxLoc": 135,
+      "maxFunctionComplexity": 10
+    },
+    "electron-preload": {
+      "maxLoc": 28,
+      "maxFunctionComplexity": 1
+    },
+    "electron-service": {
+      "maxLoc": 253,
+      "maxFunctionComplexity": 18
+    },
+    "renderer": {
+      "maxLoc": 298,
+      "maxFunctionComplexity": 22
+    },
+    "shared": {
+      "maxLoc": 104,
+      "maxFunctionComplexity": 1
+    }
+  },
+  "exceptions": {
+    "electron/app/compositionRoot.ts": {
+      "maxLoc": 240,
+      "maxFunctionComplexity": 7
+    },
+    "electron/app/fullInstallationTest.ts": {
+      "maxLoc": 376,
+      "maxFunctionComplexity": 26
+    },
+    "electron/app/tests/modLoaderInstaller.ts": {
+      "maxLoc": 175,
+      "maxFunctionComplexity": 28
+    },
+    "electron/domains/instances/instanceApplication.ts": {
+      "maxLoc": 389,
+      "maxFunctionComplexity": 23
+    },
+    "electron/infrastructure/instances/jsonControlPlaneStore.ts": {
+      "maxLoc": 460,
+      "maxFunctionComplexity": 42
+    },
+    "electron/ipc/handlers/instancesHandlers.ts": {
+      "maxLoc": 244,
+      "maxFunctionComplexity": 8
+    },
+    "electron/ipc/handlers/operationsHandlers.ts": {
+      "maxLoc": 368,
+      "maxFunctionComplexity": 22
+    },
+    "electron/ipc/logThrottler.ts": {
+      "maxLoc": 132,
+      "maxFunctionComplexity": 16
+    },
+    "electron/ipc/validation/privilegedPayloads.ts": {
+      "maxLoc": 1106,
+      "maxFunctionComplexity": 13
+    },
+    "electron/preload.ts": {
+      "maxLoc": 57,
+      "maxFunctionComplexity": 0
+    },
+    "electron/preload/bridges/AppUpdaterBridge.ts": {
+      "maxLoc": 39,
+      "maxFunctionComplexity": 1
+    },
+    "electron/preload/bridges/NetworkBridge.ts": {
+      "maxLoc": 32,
+      "maxFunctionComplexity": 1
+    },
+    "electron/preload/bridges/OperationsBridge.ts": {
+      "maxLoc": 24,
+      "maxFunctionComplexity": 2
+    },
+    "electron/security/archivePolicy.ts": {
+      "maxLoc": 265,
+      "maxFunctionComplexity": 17
+    },
+    "electron/security/remoteUrls.ts": {
+      "maxLoc": 113,
+      "maxFunctionComplexity": 30
+    },
+    "electron/services/account/accountService.ts": {
+      "maxLoc": 311,
+      "maxFunctionComplexity": 12
+    },
+    "electron/services/cache/imageCacheService.ts": {
+      "maxLoc": 477,
+      "maxFunctionComplexity": 18
+    },
+    "electron/services/download/downloadManager.ts": {
+      "maxLoc": 235,
+      "maxFunctionComplexity": 44
+    },
+    "electron/services/launcher/directDownload.ts": {
+      "maxLoc": 174,
+      "maxFunctionComplexity": 31
+    },
+    "electron/services/launcher/forge/mcpConfigRecovery.ts": {
+      "maxLoc": 302,
+      "maxFunctionComplexity": 36
+    },
+    "electron/services/launcher/forgeInstaller.ts": {
+      "maxLoc": 296,
+      "maxFunctionComplexity": 32
+    },
+    "electron/services/launcher/orchestrator.ts": {
+      "maxLoc": 289,
+      "maxFunctionComplexity": 18
+    },
+    "electron/services/launcher/versionDiscovery/forge.ts": {
+      "maxLoc": 93,
+      "maxFunctionComplexity": 19
+    },
+    "electron/services/mirrors/mirrorsService.ts": {
+      "maxLoc": 262,
+      "maxFunctionComplexity": 8
+    },
+    "electron/services/modpacks/exporters/modrinthExporter.ts": {
+      "maxLoc": 190,
+      "maxFunctionComplexity": 21
+    },
+    "electron/services/modpacks/importers/localInstaller.ts": {
+      "maxLoc": 284,
+      "maxFunctionComplexity": 17
+    },
+    "electron/services/modpacks/installers/curseforgeInstaller.ts": {
+      "maxLoc": 98,
+      "maxFunctionComplexity": 19
+    },
+    "electron/services/mods/logInstalledMods.ts": {
+      "maxLoc": 73,
+      "maxFunctionComplexity": 19
+    },
+    "electron/services/mods/platform/modPlatformService.ts": {
+      "maxLoc": 793,
+      "maxFunctionComplexity": 31
+    },
+    "electron/services/operations/canonicalRecord.ts": {
+      "maxLoc": 115,
+      "maxFunctionComplexity": 34
+    },
+    "electron/services/operations/exportOperation.ts": {
+      "maxLoc": 274,
+      "maxFunctionComplexity": 11
+    },
+    "electron/services/operations/operationJournal.ts": {
+      "maxLoc": 337,
+      "maxFunctionComplexity": 39
+    },
+    "electron/services/operations/operationRunner.ts": {
+      "maxLoc": 542,
+      "maxFunctionComplexity": 30
+    },
+    "electron/services/operations/rootMutationLock.ts": {
+      "maxLoc": 345,
+      "maxFunctionComplexity": 10
+    },
+    "electron/services/resourcePacks/resourcePackService.ts": {
+      "maxLoc": 328,
+      "maxFunctionComplexity": 10
+    },
+    "electron/services/storage/atomicJsonStore.ts": {
+      "maxLoc": 305,
+      "maxFunctionComplexity": 10
+    },
+    "electron/services/versions/versionResolver.ts": {
+      "maxLoc": 167,
+      "maxFunctionComplexity": 26
+    },
+    "shared/contracts/index.ts": {
+      "maxLoc": 146,
+      "maxFunctionComplexity": 0
+    },
+    "shared/contracts/ipcChannels.ts": {
+      "maxLoc": 139,
+      "maxFunctionComplexity": 0
+    },
+    "shared/contracts/network.ts": {
+      "maxLoc": 108,
+      "maxFunctionComplexity": 1
+    },
+    "shared/contracts/operations.ts": {
+      "maxLoc": 115,
+      "maxFunctionComplexity": 1
+    },
+    "src/components/modpacks/AddModPage.tsx": {
+      "maxLoc": 350,
+      "maxFunctionComplexity": 12
+    },
+    "src/components/modpacks/browser/ModpackBrowserFilters.tsx": {
+      "maxLoc": 237,
+      "maxFunctionComplexity": 24
+    },
+    "src/components/modpacks/browser/ModpackBrowserResults.tsx": {
+      "maxLoc": 329,
+      "maxFunctionComplexity": 21
+    },
+    "src/components/modpacks/browser/useModpackBrowserCatalog.ts": {
+      "maxLoc": 322,
+      "maxFunctionComplexity": 8
+    },
+    "src/components/modpacks/details/ModpackDetailsModsTab.tsx": {
+      "maxLoc": 524,
+      "maxFunctionComplexity": 18
+    },
+    "src/components/modpacks/details/ShadersTab.tsx": {
+      "maxLoc": 266,
+      "maxFunctionComplexity": 24
+    },
+    "src/components/modpacks/details/WorldDatapacksModal.tsx": {
+      "maxLoc": 461,
+      "maxFunctionComplexity": 16
+    },
+    "src/components/modpacks/ImportModpackPreviewPage.tsx": {
+      "maxLoc": 180,
+      "maxFunctionComplexity": 28
+    },
+    "src/components/modpacks/list/InstalledModpackCatalog.tsx": {
+      "maxLoc": 462,
+      "maxFunctionComplexity": 22
+    },
+    "src/components/modpacks/ModpackCreationWizard.tsx": {
+      "maxLoc": 334,
+      "maxFunctionComplexity": 43
+    },
+    "src/components/modpacks/ModpackDetails.tsx": {
+      "maxLoc": 267,
+      "maxFunctionComplexity": 27
+    },
+    "src/components/modpacks/ModpackUpdateModal.tsx": {
+      "maxLoc": 252,
+      "maxFunctionComplexity": 32
+    },
+    "src/components/MultiplayerPage.tsx": {
+      "maxLoc": 162,
+      "maxFunctionComplexity": 31
+    },
+    "src/components/settings/appearance/AppearancePresets.tsx": {
+      "maxLoc": 350,
+      "maxFunctionComplexity": 30
+    },
+    "src/components/settings/tabs/LauncherTab.tsx": {
+      "maxLoc": 400,
+      "maxFunctionComplexity": 14
+    },
+    "src/components/sidebar/LaunchControls.tsx": {
+      "maxLoc": 152,
+      "maxFunctionComplexity": 36
+    },
+    "src/components/sidebar/SidebarHeader.tsx": {
+      "maxLoc": 180,
+      "maxFunctionComplexity": 26
+    },
+    "src/components/simple-play/ClassicHero.tsx": {
+      "maxLoc": 319,
+      "maxFunctionComplexity": 27
+    },
+    "src/components/simple-play/ClassicLaunchRail.tsx": {
+      "maxLoc": 97,
+      "maxFunctionComplexity": 27
+    },
+    "src/components/ui/LazyImage.tsx": {
+      "maxLoc": 288,
+      "maxFunctionComplexity": 29
+    },
+    "src/contexts/settings/theme-presets.ts": {
+      "maxLoc": 361,
+      "maxFunctionComplexity": 9
+    },
+    "src/contexts/settings/theme.ts": {
+      "maxLoc": 303,
+      "maxFunctionComplexity": 12
+    },
+    "src/contexts/SettingsContext.tsx": {
+      "maxLoc": 367,
+      "maxFunctionComplexity": 10
+    },
+    "src/features/accounts/AccountSkinPanel.tsx": {
+      "maxLoc": 166,
+      "maxFunctionComplexity": 26
+    },
+    "src/features/accounts/AccountsPage.tsx": {
+      "maxLoc": 315,
+      "maxFunctionComplexity": 17
+    },
+    "src/features/console/ConsolePage.tsx": {
+      "maxLoc": 324,
+      "maxFunctionComplexity": 13
+    },
+    "src/features/content/adapters/resourcePackContentAcquisitionAdapter.ts": {
+      "maxLoc": 361,
+      "maxFunctionComplexity": 10
+    },
+    "src/features/content/adapters/shaderContentAcquisitionAdapter.ts": {
+      "maxLoc": 363,
+      "maxFunctionComplexity": 11
+    },
+    "src/features/content/components/ContentAcquisitionSurface.tsx": {
+      "maxLoc": 208,
+      "maxFunctionComplexity": 28
+    },
+    "src/features/content/components/ModContentAcquisition.tsx": {
+      "maxLoc": 206,
+      "maxFunctionComplexity": 43
+    },
+    "src/features/content/components/ResourcePackContentAcquisition.tsx": {
+      "maxLoc": 243,
+      "maxFunctionComplexity": 53
+    },
+    "src/features/content/components/ShaderContentAcquisition.tsx": {
+      "maxLoc": 269,
+      "maxFunctionComplexity": 58
+    },
+    "src/features/content/hooks/useContentAcquisitionState.ts": {
+      "maxLoc": 299,
+      "maxFunctionComplexity": 11
+    },
+    "src/features/launcher/services/launcherService.ts": {
+      "maxLoc": 399,
+      "maxFunctionComplexity": 23
+    },
+    "src/features/modpacks/hooks/useModpackRuntimeSummary.ts": {
+      "maxLoc": 336,
+      "maxFunctionComplexity": 18
+    },
+    "src/features/operations/components/OperationStatusView.tsx": {
+      "maxLoc": 133,
+      "maxFunctionComplexity": 38
+    },
+    "src/features/operations/recovery/OperationRecoveryProvider.tsx": {
+      "maxLoc": 171,
+      "maxFunctionComplexity": 28
+    },
+    "src/features/settings/mirrors/MirrorsSettings.tsx": {
+      "maxLoc": 365,
+      "maxFunctionComplexity": 27
+    },
+    "src/verification/manual/mockEnvironment.ts": {
+      "maxLoc": 1618,
+      "maxFunctionComplexity": 21
+    },
+    "src/verification/manual/scenarios.tsx": {
+      "maxLoc": 2269,
+      "maxFunctionComplexity": 51
+    },
+    "src/verification/manual/views.ts": {
+      "maxLoc": 374,
+      "maxFunctionComplexity": 2
+    }
+  },
+  "inventory": [
+    {
+      "path": "electron/app/applicationLifecycle.ts",
+      "category": "electron-app",
+      "loc": 37,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/app/bootstrap.ts",
+      "category": "electron-app",
+      "loc": 181,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/app/compositionRoot.ts",
+      "category": "electron-app",
+      "loc": 240,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/app/fullInstallationTest.ts",
+      "category": "electron-app",
+      "loc": 376,
+      "maxFunctionComplexity": 26
+    },
+    {
+      "path": "electron/app/fullTestConfig.ts",
+      "category": "electron-app",
+      "loc": 39,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "electron/app/lifecycle.ts",
+      "category": "electron-app",
+      "loc": 29,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/app/tests/modLoaderInstaller.ts",
+      "category": "electron-app",
+      "loc": 175,
+      "maxFunctionComplexity": 28
+    },
+    {
+      "path": "electron/app/tests/testReporter.ts",
+      "category": "electron-app",
+      "loc": 38,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/app/tests/types.ts",
+      "category": "electron-app",
+      "loc": 55,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/app/tests/utils.ts",
+      "category": "electron-app",
+      "loc": 24,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/app/tests/vanillaInstaller.ts",
+      "category": "electron-app",
+      "loc": 26,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "electron/app/tests/versionDiscovery.ts",
+      "category": "electron-app",
+      "loc": 97,
+      "maxFunctionComplexity": 14
+    },
+    {
+      "path": "electron/app/tests/versionValidator.ts",
+      "category": "electron-app",
+      "loc": 81,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "electron/auth/server.ts",
+      "category": "electron-service",
+      "loc": 137,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "electron/declarations.d.ts",
+      "category": "electron-service",
+      "loc": 1,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/declarations/hyperswarm.d.ts",
+      "category": "electron-service",
+      "loc": 16,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/declarations/pump.d.ts",
+      "category": "electron-service",
+      "loc": 5,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/domains/instances/instanceApplication.ts",
+      "category": "electron-domain",
+      "loc": 389,
+      "maxFunctionComplexity": 23
+    },
+    {
+      "path": "electron/domains/instances/instanceTypes.ts",
+      "category": "electron-domain",
+      "loc": 129,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/domains/instances/ports.ts",
+      "category": "electron-domain",
+      "loc": 26,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/electron-env.d.ts",
+      "category": "electron-service",
+      "loc": 6,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/infrastructure/instances/filesystemAdapter.ts",
+      "category": "electron-infrastructure",
+      "loc": 15,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/infrastructure/instances/jsonControlPlaneStore.ts",
+      "category": "electron-infrastructure",
+      "loc": 460,
+      "maxFunctionComplexity": 42
+    },
+    {
+      "path": "electron/infrastructure/instances/launchAdapters.ts",
+      "category": "electron-infrastructure",
+      "loc": 25,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/ipc/handlers/accountHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 40,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/ipc/handlers/appHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 34,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/ipc/handlers/appUpdaterHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 17,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/ipc/handlers/archiveInspectionHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 22,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "electron/ipc/handlers/assetsHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 60,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "electron/ipc/handlers/cacheHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 53,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/ipc/handlers/datapacksHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 114,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/ipc/handlers/externalLinksHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 23,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/ipc/handlers/instanceModsHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 68,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/ipc/handlers/instancesHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 244,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/ipc/handlers/javaRuntimeHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 122,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "electron/ipc/handlers/launcherHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 88,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/ipc/handlers/mirrorsHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 44,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/ipc/handlers/modsHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 56,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/ipc/handlers/networkHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 84,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "electron/ipc/handlers/operationsHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 368,
+      "maxFunctionComplexity": 22
+    },
+    {
+      "path": "electron/ipc/handlers/providerCatalogHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 119,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "electron/ipc/handlers/resourcePacksHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 135,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "electron/ipc/handlers/screenshotsHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 49,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/ipc/handlers/settingsHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 75,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/ipc/handlers/shadersHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 121,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "electron/ipc/handlers/shareHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 10,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/ipc/handlers/statisticsHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 17,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/ipc/handlers/storageMaintenanceHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 41,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/ipc/handlers/windowHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 12,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/ipc/handlers/worldsHandlers.ts",
+      "category": "electron-ipc",
+      "loc": 52,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/ipc/ipcManager.ts",
+      "category": "electron-ipc",
+      "loc": 75,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/ipc/logThrottler.ts",
+      "category": "electron-ipc",
+      "loc": 132,
+      "maxFunctionComplexity": 16
+    },
+    {
+      "path": "electron/ipc/validation/launcherPayloads.ts",
+      "category": "electron-ipc",
+      "loc": 65,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/ipc/validation/privilegedPayloads.ts",
+      "category": "electron-ipc",
+      "loc": 1106,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "electron/main.ts",
+      "category": "electron-service",
+      "loc": 2,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/preload.ts",
+      "category": "electron-preload",
+      "loc": 57,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/preload/bridges/AccountBridge.ts",
+      "category": "electron-preload",
+      "loc": 12,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/AppUpdaterBridge.ts",
+      "category": "electron-preload",
+      "loc": 39,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/ArchiveInspectionBridge.ts",
+      "category": "electron-preload",
+      "loc": 5,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/AssetsBridge.ts",
+      "category": "electron-preload",
+      "loc": 5,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/CacheBridge.ts",
+      "category": "electron-preload",
+      "loc": 10,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/DatapacksBridge.ts",
+      "category": "electron-preload",
+      "loc": 11,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/DialogsBridge.ts",
+      "category": "electron-preload",
+      "loc": 8,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/ExternalLinksBridge.ts",
+      "category": "electron-preload",
+      "loc": 5,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/InstanceModsBridge.ts",
+      "category": "electron-preload",
+      "loc": 17,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/InstancesBridge.ts",
+      "category": "electron-preload",
+      "loc": 12,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/JavaRuntimeBridge.ts",
+      "category": "electron-preload",
+      "loc": 6,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/LauncherBridge.ts",
+      "category": "electron-preload",
+      "loc": 28,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/MirrorsBridge.ts",
+      "category": "electron-preload",
+      "loc": 13,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/ModsBridge.ts",
+      "category": "electron-preload",
+      "loc": 7,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/NetworkBridge.ts",
+      "category": "electron-preload",
+      "loc": 32,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/OperationsBridge.ts",
+      "category": "electron-preload",
+      "loc": 24,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/preload/bridges/ProviderCatalogBridge.ts",
+      "category": "electron-preload",
+      "loc": 6,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/ResourcePacksBridge.ts",
+      "category": "electron-preload",
+      "loc": 11,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/ScreenshotsBridge.ts",
+      "category": "electron-preload",
+      "loc": 8,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/SettingsBridge.ts",
+      "category": "electron-preload",
+      "loc": 7,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/ShadersBridge.ts",
+      "category": "electron-preload",
+      "loc": 10,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/ShareBridge.ts",
+      "category": "electron-preload",
+      "loc": 5,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/StatisticsBridge.ts",
+      "category": "electron-preload",
+      "loc": 6,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/StorageMaintenanceBridge.ts",
+      "category": "electron-preload",
+      "loc": 6,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/WindowControlsBridge.ts",
+      "category": "electron-preload",
+      "loc": 8,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/preload/bridges/WorldsBridge.ts",
+      "category": "electron-preload",
+      "loc": 9,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/security/archivePolicy.ts",
+      "category": "electron-service",
+      "loc": 265,
+      "maxFunctionComplexity": 17
+    },
+    {
+      "path": "electron/security/archiveReferenceAuthorizations.ts",
+      "category": "electron-service",
+      "loc": 51,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/security/externalUrls.ts",
+      "category": "electron-service",
+      "loc": 195,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "electron/security/pathGuards.ts",
+      "category": "electron-service",
+      "loc": 110,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/security/remoteUrls.ts",
+      "category": "electron-service",
+      "loc": 113,
+      "maxFunctionComplexity": 30
+    },
+    {
+      "path": "electron/security/savePathAuthorizations.ts",
+      "category": "electron-service",
+      "loc": 39,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "electron/security/sessionPermissions.ts",
+      "category": "electron-service",
+      "loc": 36,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "electron/security/trustedEndpoints.ts",
+      "category": "electron-service",
+      "loc": 46,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "electron/security/zipWriter.ts",
+      "category": "electron-service",
+      "loc": 69,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/services/account/accountService.ts",
+      "category": "electron-service",
+      "loc": 311,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "electron/services/account/skinProviders.ts",
+      "category": "electron-service",
+      "loc": 80,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/services/account/yggdrasil.ts",
+      "category": "electron-service",
+      "loc": 63,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/services/cache/imageCacheService.ts",
+      "category": "electron-service",
+      "loc": 477,
+      "maxFunctionComplexity": 18
+    },
+    {
+      "path": "electron/services/content/contentManager.ts",
+      "category": "electron-service",
+      "loc": 229,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "electron/services/download/constants.ts",
+      "category": "electron-service",
+      "loc": 12,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/services/download/dispatcherFactory.ts",
+      "category": "electron-service",
+      "loc": 17,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/services/download/downloadManager.ts",
+      "category": "electron-service",
+      "loc": 235,
+      "maxFunctionComplexity": 44
+    },
+    {
+      "path": "electron/services/download/downloadQueue.ts",
+      "category": "electron-service",
+      "loc": 50,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/services/download/etagCache.ts",
+      "category": "electron-service",
+      "loc": 39,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "electron/services/download/etagHttp.ts",
+      "category": "electron-service",
+      "loc": 25,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/services/download/headers.ts",
+      "category": "electron-service",
+      "loc": 11,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "electron/services/download/htmlChallengeDetector.ts",
+      "category": "electron-service",
+      "loc": 76,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/services/download/progressMonitor.ts",
+      "category": "electron-service",
+      "loc": 43,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/services/download/zipValidator.ts",
+      "category": "electron-service",
+      "loc": 24,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/services/instances/datapacksService.ts",
+      "category": "electron-service",
+      "loc": 175,
+      "maxFunctionComplexity": 15
+    },
+    {
+      "path": "electron/services/instances/exporter/InstanceExporterService.ts",
+      "category": "electron-service",
+      "loc": 186,
+      "maxFunctionComplexity": 17
+    },
+    {
+      "path": "electron/services/instances/importer/InstanceImporterService.ts",
+      "category": "electron-service",
+      "loc": 209,
+      "maxFunctionComplexity": 17
+    },
+    {
+      "path": "electron/services/instances/manifestManager.ts",
+      "category": "electron-service",
+      "loc": 50,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/services/instances/paths.ts",
+      "category": "electron-service",
+      "loc": 80,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/services/instances/types.ts",
+      "category": "electron-service",
+      "loc": 37,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/services/java/discovery.ts",
+      "category": "electron-service",
+      "loc": 39,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "electron/services/java/findJavaExecutable.ts",
+      "category": "electron-service",
+      "loc": 30,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "electron/services/java/javaScanner.ts",
+      "category": "electron-service",
+      "loc": 94,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/services/java/pathResolver.ts",
+      "category": "electron-service",
+      "loc": 27,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "electron/services/java/provisioning.ts",
+      "category": "electron-service",
+      "loc": 119,
+      "maxFunctionComplexity": 17
+    },
+    {
+      "path": "electron/services/java/validation.ts",
+      "category": "electron-service",
+      "loc": 61,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/services/launcher/constants.ts",
+      "category": "electron-service",
+      "loc": 6,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/services/launcher/directDownload.ts",
+      "category": "electron-service",
+      "loc": 174,
+      "maxFunctionComplexity": 31
+    },
+    {
+      "path": "electron/services/launcher/forge/createForgeDispatcher.ts",
+      "category": "electron-service",
+      "loc": 9,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/services/launcher/forge/forgeVersionSelection.ts",
+      "category": "electron-service",
+      "loc": 36,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/services/launcher/forge/mcpConfigRecovery.ts",
+      "category": "electron-service",
+      "loc": 302,
+      "maxFunctionComplexity": 36
+    },
+    {
+      "path": "electron/services/launcher/forgeInstaller.ts",
+      "category": "electron-service",
+      "loc": 296,
+      "maxFunctionComplexity": 32
+    },
+    {
+      "path": "electron/services/launcher/forgePatches.ts",
+      "category": "electron-service",
+      "loc": 122,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "electron/services/launcher/launchFlow/computeEffectiveLaunchOptions.ts",
+      "category": "electron-service",
+      "loc": 71,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/services/launcher/launchFlow/createOfflineUser.ts",
+      "category": "electron-service",
+      "loc": 12,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/services/launcher/launchFlow/dpiCompat.ts",
+      "category": "electron-service",
+      "loc": 30,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/services/launcher/launchFlow/loadCanonicalLaunchConfig.ts",
+      "category": "electron-service",
+      "loc": 4,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/services/launcher/launchFlow/prepareAuthInjector.ts",
+      "category": "electron-service",
+      "loc": 48,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "electron/services/launcher/launchFlow/requiredJava.ts",
+      "category": "electron-service",
+      "loc": 9,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/services/launcher/launchFlow/resolveJavaPath.ts",
+      "category": "electron-service",
+      "loc": 55,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "electron/services/launcher/launchFlow/resolveModpack.ts",
+      "category": "electron-service",
+      "loc": 60,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/services/launcher/launchFlow/spawnMinecraft.ts",
+      "category": "electron-service",
+      "loc": 73,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "electron/services/launcher/legacyCompatibility.ts",
+      "category": "electron-service",
+      "loc": 92,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "electron/services/launcher/modLoaderInstaller.ts",
+      "category": "electron-service",
+      "loc": 79,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/services/launcher/modLoaders/installDependencies.ts",
+      "category": "electron-service",
+      "loc": 122,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "electron/services/launcher/modLoaders/installFabricClient.ts",
+      "category": "electron-service",
+      "loc": 40,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/services/launcher/modLoaders/installForgeClient.ts",
+      "category": "electron-service",
+      "loc": 26,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/services/launcher/modLoaders/installNeoForgeClient.ts",
+      "category": "electron-service",
+      "loc": 42,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/services/launcher/modLoaders/installOptifineMod.ts",
+      "category": "electron-service",
+      "loc": 20,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "electron/services/launcher/neoforgeInstaller.ts",
+      "category": "electron-service",
+      "loc": 48,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/services/launcher/optifineInstaller.ts",
+      "category": "electron-service",
+      "loc": 56,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "electron/services/launcher/orchestrator.ts",
+      "category": "electron-service",
+      "loc": 289,
+      "maxFunctionComplexity": 18
+    },
+    {
+      "path": "electron/services/launcher/orchestratorTypes.ts",
+      "category": "electron-service",
+      "loc": 13,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/services/launcher/preLaunchSetup.ts",
+      "category": "electron-service",
+      "loc": 66,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/services/launcher/types.ts",
+      "category": "electron-service",
+      "loc": 1,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/services/launcher/versionDiscovery/fabric.ts",
+      "category": "electron-service",
+      "loc": 61,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/services/launcher/versionDiscovery/forge.ts",
+      "category": "electron-service",
+      "loc": 93,
+      "maxFunctionComplexity": 19
+    },
+    {
+      "path": "electron/services/launcher/versionDiscovery/neoforge.ts",
+      "category": "electron-service",
+      "loc": 105,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "electron/services/launcher/versionDiscovery/optifine.ts",
+      "category": "electron-service",
+      "loc": 42,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/services/launcher/versionResolver.ts",
+      "category": "electron-service",
+      "loc": 38,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/services/mirrors/activeProvider.ts",
+      "category": "electron-service",
+      "loc": 9,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/services/mirrors/mirrorsService.ts",
+      "category": "electron-service",
+      "loc": 262,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/services/mirrors/providers.ts",
+      "category": "electron-service",
+      "loc": 222,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "electron/services/mirrors/scoring.ts",
+      "category": "electron-service",
+      "loc": 38,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "electron/services/modpacks/exporters/curseforgeExporter.ts",
+      "category": "electron-service",
+      "loc": 68,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/services/modpacks/exporters/index.ts",
+      "category": "electron-service",
+      "loc": 4,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/services/modpacks/exporters/manifestGenerator.ts",
+      "category": "electron-service",
+      "loc": 148,
+      "maxFunctionComplexity": 15
+    },
+    {
+      "path": "electron/services/modpacks/exporters/modrinthExporter.ts",
+      "category": "electron-service",
+      "loc": 190,
+      "maxFunctionComplexity": 21
+    },
+    {
+      "path": "electron/services/modpacks/exporters/zipExporter.ts",
+      "category": "electron-service",
+      "loc": 27,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/services/modpacks/importers/index.ts",
+      "category": "electron-service",
+      "loc": 1,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/services/modpacks/importers/localInstaller.ts",
+      "category": "electron-service",
+      "loc": 284,
+      "maxFunctionComplexity": 17
+    },
+    {
+      "path": "electron/services/modpacks/installers/curseforgeInstaller.ts",
+      "category": "electron-service",
+      "loc": 98,
+      "maxFunctionComplexity": 19
+    },
+    {
+      "path": "electron/services/modpacks/installers/index.ts",
+      "category": "electron-service",
+      "loc": 55,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/services/modpacks/installers/modrinthInstaller.ts",
+      "category": "electron-service",
+      "loc": 94,
+      "maxFunctionComplexity": 16
+    },
+    {
+      "path": "electron/services/modpacks/parsers/curseforgeParser.ts",
+      "category": "electron-service",
+      "loc": 110,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "electron/services/modpacks/parsers/index.ts",
+      "category": "electron-service",
+      "loc": 8,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/services/modpacks/parsers/modrinthParser.ts",
+      "category": "electron-service",
+      "loc": 124,
+      "maxFunctionComplexity": 18
+    },
+    {
+      "path": "electron/services/modpacks/types.ts",
+      "category": "electron-service",
+      "loc": 18,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/services/mods/format.ts",
+      "category": "electron-service",
+      "loc": 18,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/services/mods/instanceModContentService.ts",
+      "category": "electron-service",
+      "loc": 130,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/services/mods/logInstalledMods.ts",
+      "category": "electron-service",
+      "loc": 73,
+      "maxFunctionComplexity": 19
+    },
+    {
+      "path": "electron/services/mods/manifestContentInstaller.ts",
+      "category": "electron-service",
+      "loc": 105,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "electron/services/mods/platform/fsUtils.ts",
+      "category": "electron-service",
+      "loc": 4,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/services/mods/platform/loaderMapping.ts",
+      "category": "electron-service",
+      "loc": 36,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "electron/services/mods/platform/modPlatformService.ts",
+      "category": "electron-service",
+      "loc": 793,
+      "maxFunctionComplexity": 31
+    },
+    {
+      "path": "electron/services/mods/platform/modrinthUtils.ts",
+      "category": "electron-service",
+      "loc": 5,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/services/mods/platform/types.ts",
+      "category": "electron-service",
+      "loc": 82,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/services/mods/scanner.ts",
+      "category": "electron-service",
+      "loc": 253,
+      "maxFunctionComplexity": 15
+    },
+    {
+      "path": "electron/services/mods/types.ts",
+      "category": "electron-service",
+      "loc": 1,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/services/network/friendTunnelService.ts",
+      "category": "electron-service",
+      "loc": 181,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/services/network/hostPeer.ts",
+      "category": "electron-service",
+      "loc": 28,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/services/network/joinPeer.ts",
+      "category": "electron-service",
+      "loc": 72,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/services/network/lanDiscoveryService.ts",
+      "category": "electron-service",
+      "loc": 129,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "electron/services/network/muxer.ts",
+      "category": "electron-service",
+      "loc": 165,
+      "maxFunctionComplexity": 17
+    },
+    {
+      "path": "electron/services/network/networkState.ts",
+      "category": "electron-service",
+      "loc": 30,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/services/network/portMappingService.ts",
+      "category": "electron-service",
+      "loc": 90,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/services/network/types.ts",
+      "category": "electron-service",
+      "loc": 8,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/services/operations/canonicalRecord.ts",
+      "category": "electron-service",
+      "loc": 115,
+      "maxFunctionComplexity": 34
+    },
+    {
+      "path": "electron/services/operations/deleteOperation.ts",
+      "category": "electron-service",
+      "loc": 81,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/services/operations/duplicateOperation.ts",
+      "category": "electron-service",
+      "loc": 118,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "electron/services/operations/exportOperation.ts",
+      "category": "electron-service",
+      "loc": 274,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "electron/services/operations/importOperation.ts",
+      "category": "electron-service",
+      "loc": 122,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "electron/services/operations/operationJournal.ts",
+      "category": "electron-service",
+      "loc": 337,
+      "maxFunctionComplexity": 39
+    },
+    {
+      "path": "electron/services/operations/operationLocks.ts",
+      "category": "electron-service",
+      "loc": 53,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "electron/services/operations/operationRunner.ts",
+      "category": "electron-service",
+      "loc": 542,
+      "maxFunctionComplexity": 30
+    },
+    {
+      "path": "electron/services/operations/operationTypes.ts",
+      "category": "electron-service",
+      "loc": 205,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/services/operations/providerInstallOperation.ts",
+      "category": "electron-service",
+      "loc": 149,
+      "maxFunctionComplexity": 14
+    },
+    {
+      "path": "electron/services/operations/rootMutationLock.ts",
+      "category": "electron-service",
+      "loc": 345,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "electron/services/operations/rootRegistry.ts",
+      "category": "electron-service",
+      "loc": 34,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/services/operations/shareImportOperation.ts",
+      "category": "electron-service",
+      "loc": 103,
+      "maxFunctionComplexity": 14
+    },
+    {
+      "path": "electron/services/operations/stagingWorkspace.ts",
+      "category": "electron-service",
+      "loc": 132,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "electron/services/operations/updateOperation.ts",
+      "category": "electron-service",
+      "loc": 93,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "electron/services/resourcePacks/resourcePackService.ts",
+      "category": "electron-service",
+      "loc": 328,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "electron/services/runtime/downloadService.ts",
+      "category": "electron-service",
+      "loc": 202,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "electron/services/runtime/http.ts",
+      "category": "electron-service",
+      "loc": 17,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "electron/services/runtime/taskRunner.ts",
+      "category": "electron-service",
+      "loc": 203,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "electron/services/runtime/vanillaService.ts",
+      "category": "electron-service",
+      "loc": 34,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "electron/services/screenshots/screenshotService.ts",
+      "category": "electron-service",
+      "loc": 81,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "electron/services/shaders/shaderService.ts",
+      "category": "electron-service",
+      "loc": 221,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/services/sharing/shareService.ts",
+      "category": "electron-service",
+      "loc": 194,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/services/stats/statisticsService.ts",
+      "category": "electron-service",
+      "loc": 216,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "electron/services/storage/atomicJsonStore.ts",
+      "category": "electron-service",
+      "loc": 305,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "electron/services/updater/appUpdater.ts",
+      "category": "electron-service",
+      "loc": 45,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "electron/services/updater/instanceUpdater.ts",
+      "category": "electron-service",
+      "loc": 228,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "electron/services/versions/versionListService.ts",
+      "category": "electron-service",
+      "loc": 10,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/services/versions/versionResolver.ts",
+      "category": "electron-service",
+      "loc": 167,
+      "maxFunctionComplexity": 26
+    },
+    {
+      "path": "electron/services/worlds/worldService.ts",
+      "category": "electron-service",
+      "loc": 199,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "electron/shared/types.ts",
+      "category": "electron-service",
+      "loc": 1,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "electron/tray/trayManager.ts",
+      "category": "electron-service",
+      "loc": 23,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "electron/utils/undiciPatcher.ts",
+      "category": "electron-service",
+      "loc": 75,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "electron/window/windowManager.ts",
+      "category": "electron-service",
+      "loc": 190,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "shared/constants.ts",
+      "category": "shared",
+      "loc": 19,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/contracts/account.ts",
+      "category": "shared",
+      "loc": 19,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/appUpdater.ts",
+      "category": "shared",
+      "loc": 23,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/archiveInspection.ts",
+      "category": "shared",
+      "loc": 18,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/assets.ts",
+      "category": "shared",
+      "loc": 3,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/cache.ts",
+      "category": "shared",
+      "loc": 28,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/datapacks.ts",
+      "category": "shared",
+      "loc": 28,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/dialogs.ts",
+      "category": "shared",
+      "loc": 26,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/externalLinks.ts",
+      "category": "shared",
+      "loc": 13,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/index.ts",
+      "category": "shared",
+      "loc": 146,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/contracts/instanceMods.ts",
+      "category": "shared",
+      "loc": 19,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/instances.ts",
+      "category": "shared",
+      "loc": 104,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/ipcChannels.ts",
+      "category": "shared",
+      "loc": 139,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/contracts/javaRuntime.ts",
+      "category": "shared",
+      "loc": 21,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/launcher.ts",
+      "category": "shared",
+      "loc": 37,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/mirrors.ts",
+      "category": "shared",
+      "loc": 12,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/mods.ts",
+      "category": "shared",
+      "loc": 24,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/network.ts",
+      "category": "shared",
+      "loc": 108,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/operations.ts",
+      "category": "shared",
+      "loc": 115,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/providerCatalog.ts",
+      "category": "shared",
+      "loc": 58,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/resourcePacks.ts",
+      "category": "shared",
+      "loc": 32,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/screenshots.ts",
+      "category": "shared",
+      "loc": 7,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/settings.ts",
+      "category": "shared",
+      "loc": 5,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/shaders.ts",
+      "category": "shared",
+      "loc": 35,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/share.ts",
+      "category": "shared",
+      "loc": 3,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/statistics.ts",
+      "category": "shared",
+      "loc": 9,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/storageMaintenance.ts",
+      "category": "shared",
+      "loc": 19,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/windowApi.ts",
+      "category": "shared",
+      "loc": 54,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/contracts/windowControls.ts",
+      "category": "shared",
+      "loc": 6,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/contracts/worlds.ts",
+      "category": "shared",
+      "loc": 13,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/types/account.ts",
+      "category": "shared",
+      "loc": 29,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/types/download.ts",
+      "category": "shared",
+      "loc": 1,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/types/index.ts",
+      "category": "shared",
+      "loc": 17,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/types/minecraft.ts",
+      "category": "shared",
+      "loc": 21,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/types/mirrors.ts",
+      "category": "shared",
+      "loc": 18,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/types/modpack.ts",
+      "category": "shared",
+      "loc": 94,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/types/mods.ts",
+      "category": "shared",
+      "loc": 25,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/types/resourcePack.ts",
+      "category": "shared",
+      "loc": 9,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/types/screenshots.ts",
+      "category": "shared",
+      "loc": 7,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "shared/types/statistics.ts",
+      "category": "shared",
+      "loc": 50,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "shared/types/task.ts",
+      "category": "shared",
+      "loc": 5,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "src/App.tsx",
+      "category": "renderer",
+      "loc": 253,
+      "maxFunctionComplexity": 17
+    },
+    {
+      "path": "src/app/assets/branding.ts",
+      "category": "renderer",
+      "loc": 76,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "src/app/hooks/useAppIcon.ts",
+      "category": "renderer",
+      "loc": 20,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/app/hooks/useAppOverlays.ts",
+      "category": "renderer",
+      "loc": 20,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/app/hooks/useLaunchHandler.ts",
+      "category": "renderer",
+      "loc": 26,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/app/hooks/useOnboarding.ts",
+      "category": "renderer",
+      "loc": 48,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/app/providers.tsx",
+      "category": "renderer",
+      "loc": 19,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/components/AppLayout.tsx",
+      "category": "renderer",
+      "loc": 164,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/branding/BrandLockup.tsx",
+      "category": "renderer",
+      "loc": 41,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/components/branding/BrandMark.tsx",
+      "category": "renderer",
+      "loc": 57,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/branding/BrandWordmark.tsx",
+      "category": "renderer",
+      "loc": 26,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/components/ConsoleWindow.tsx",
+      "category": "renderer",
+      "loc": 4,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/components/error/FatalErrorView.tsx",
+      "category": "renderer",
+      "loc": 125,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "src/components/ErrorBoundary.tsx",
+      "category": "renderer",
+      "loc": 108,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/ErrorBoundaryWrapper.tsx",
+      "category": "renderer",
+      "loc": 10,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/components/layout/BackgroundLayer.tsx",
+      "category": "renderer",
+      "loc": 231,
+      "maxFunctionComplexity": 20
+    },
+    {
+      "path": "src/components/layout/ConsoleView.tsx",
+      "category": "renderer",
+      "loc": 39,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/components/layout/DegradedStateView.tsx",
+      "category": "renderer",
+      "loc": 93,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "src/components/layout/EmptyStateView.tsx",
+      "category": "renderer",
+      "loc": 34,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/components/modpacks/AddModModal.tsx",
+      "category": "renderer",
+      "loc": 132,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "src/components/modpacks/AddModPage.tsx",
+      "category": "renderer",
+      "loc": 350,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "src/components/modpacks/browser/ModpackBrowserFilters.tsx",
+      "category": "renderer",
+      "loc": 237,
+      "maxFunctionComplexity": 24
+    },
+    {
+      "path": "src/components/modpacks/browser/ModpackBrowserResults.tsx",
+      "category": "renderer",
+      "loc": 329,
+      "maxFunctionComplexity": 21
+    },
+    {
+      "path": "src/components/modpacks/browser/useModpackBrowserCatalog.ts",
+      "category": "renderer",
+      "loc": 322,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/modpacks/create/CreationContentStep.tsx",
+      "category": "renderer",
+      "loc": 144,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "src/components/modpacks/create/CreationRuntimeStep.tsx",
+      "category": "renderer",
+      "loc": 96,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/components/modpacks/details/index.ts",
+      "category": "renderer",
+      "loc": 18,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "src/components/modpacks/details/ModpackDetailsActionBar.tsx",
+      "category": "renderer",
+      "loc": 116,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/modpacks/details/ModpackDetailsActions.tsx",
+      "category": "renderer",
+      "loc": 100,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/modpacks/details/ModpackDetailsHeader.tsx",
+      "category": "renderer",
+      "loc": 201,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/components/modpacks/details/ModpackDetailsInfoTab.tsx",
+      "category": "renderer",
+      "loc": 83,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "src/components/modpacks/details/ModpackDetailsModsTab.tsx",
+      "category": "renderer",
+      "loc": 524,
+      "maxFunctionComplexity": 18
+    },
+    {
+      "path": "src/components/modpacks/details/ModpackDetailsOverview.tsx",
+      "category": "renderer",
+      "loc": 22,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/components/modpacks/details/ModpackDetailsSettingsTab.tsx",
+      "category": "renderer",
+      "loc": 126,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/components/modpacks/details/ModsTab.tsx",
+      "category": "renderer",
+      "loc": 237,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/modpacks/details/ResourcePacksTab.tsx",
+      "category": "renderer",
+      "loc": 283,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "src/components/modpacks/details/ShadersTab.tsx",
+      "category": "renderer",
+      "loc": 266,
+      "maxFunctionComplexity": 24
+    },
+    {
+      "path": "src/components/modpacks/details/useModpackDetailsActionsController.ts",
+      "category": "renderer",
+      "loc": 126,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "src/components/modpacks/details/useModpackDetailsController.ts",
+      "category": "renderer",
+      "loc": 218,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/components/modpacks/details/useModpackDetailsModsController.ts",
+      "category": "renderer",
+      "loc": 98,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/modpacks/details/WorldDatapacksModal.tsx",
+      "category": "renderer",
+      "loc": 461,
+      "maxFunctionComplexity": 16
+    },
+    {
+      "path": "src/components/modpacks/details/WorldsTab.tsx",
+      "category": "renderer",
+      "loc": 227,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/modpacks/ExportModpackPage.tsx",
+      "category": "renderer",
+      "loc": 132,
+      "maxFunctionComplexity": 21
+    },
+    {
+      "path": "src/components/modpacks/ImportModpackPreviewPage.tsx",
+      "category": "renderer",
+      "loc": 180,
+      "maxFunctionComplexity": 28
+    },
+    {
+      "path": "src/components/modpacks/index.ts",
+      "category": "renderer",
+      "loc": 5,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "src/components/modpacks/InstallModpackPage.tsx",
+      "category": "renderer",
+      "loc": 189,
+      "maxFunctionComplexity": 18
+    },
+    {
+      "path": "src/components/modpacks/list/InstalledModpackActions.tsx",
+      "category": "renderer",
+      "loc": 49,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/components/modpacks/list/InstalledModpackCatalog.tsx",
+      "category": "renderer",
+      "loc": 462,
+      "maxFunctionComplexity": 22
+    },
+    {
+      "path": "src/components/modpacks/list/InstalledModpackContextMenu.tsx",
+      "category": "renderer",
+      "loc": 240,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/components/modpacks/list/installedModpackContextMenuContext.ts",
+      "category": "renderer",
+      "loc": 13,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/components/modpacks/list/useInstalledModpackCatalog.ts",
+      "category": "renderer",
+      "loc": 253,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/components/modpacks/ModpackBrowser.tsx",
+      "category": "renderer",
+      "loc": 78,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/components/modpacks/ModpackCatalogControls.tsx",
+      "category": "renderer",
+      "loc": 98,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/modpacks/ModpackCreationWizard.tsx",
+      "category": "renderer",
+      "loc": 334,
+      "maxFunctionComplexity": 43
+    },
+    {
+      "path": "src/components/modpacks/ModpackDetails.tsx",
+      "category": "renderer",
+      "loc": 267,
+      "maxFunctionComplexity": 27
+    },
+    {
+      "path": "src/components/modpacks/ModpackList.tsx",
+      "category": "renderer",
+      "loc": 180,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/modpacks/ModpackRouter.tsx",
+      "category": "renderer",
+      "loc": 165,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "src/components/modpacks/ModpackUpdateModal.tsx",
+      "category": "renderer",
+      "loc": 252,
+      "maxFunctionComplexity": 32
+    },
+    {
+      "path": "src/components/modpacks/primaryActionOwnership.ts",
+      "category": "renderer",
+      "loc": 40,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/components/MultiplayerPage.tsx",
+      "category": "renderer",
+      "loc": 162,
+      "maxFunctionComplexity": 31
+    },
+    {
+      "path": "src/components/onboarding/OnboardingTour.tsx",
+      "category": "renderer",
+      "loc": 256,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/onboarding/WelcomePage.tsx",
+      "category": "renderer",
+      "loc": 136,
+      "maxFunctionComplexity": 21
+    },
+    {
+      "path": "src/components/settings/appearance/AppearanceBackgroundControls.tsx",
+      "category": "renderer",
+      "loc": 260,
+      "maxFunctionComplexity": 21
+    },
+    {
+      "path": "src/components/settings/appearance/AppearanceBranding.tsx",
+      "category": "renderer",
+      "loc": 167,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "src/components/settings/appearance/AppearancePresets.tsx",
+      "category": "renderer",
+      "loc": 350,
+      "maxFunctionComplexity": 30
+    },
+    {
+      "path": "src/components/settings/settingsTabs.ts",
+      "category": "renderer",
+      "loc": 77,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/components/settings/SettingsTabsHeader.tsx",
+      "category": "renderer",
+      "loc": 123,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "src/components/settings/tabs/AppearanceTab.tsx",
+      "category": "renderer",
+      "loc": 85,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/components/settings/tabs/DownloadsTab.tsx",
+      "category": "renderer",
+      "loc": 89,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "src/components/settings/tabs/game/ArgsSection.tsx",
+      "category": "renderer",
+      "loc": 40,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/components/settings/tabs/game/AutoConnectSection.tsx",
+      "category": "renderer",
+      "loc": 59,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/components/settings/tabs/game/MinecraftPathSection.tsx",
+      "category": "renderer",
+      "loc": 62,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "src/components/settings/tabs/game/ModpackSection.tsx",
+      "category": "renderer",
+      "loc": 132,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/settings/tabs/game/ResolutionSection.tsx",
+      "category": "renderer",
+      "loc": 46,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/components/settings/tabs/game/RuntimeSection.tsx",
+      "category": "renderer",
+      "loc": 255,
+      "maxFunctionComplexity": 15
+    },
+    {
+      "path": "src/components/settings/tabs/GameTab.tsx",
+      "category": "renderer",
+      "loc": 155,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/settings/tabs/LauncherTab.tsx",
+      "category": "renderer",
+      "loc": 400,
+      "maxFunctionComplexity": 14
+    },
+    {
+      "path": "src/components/settings/tabs/StorageTab.tsx",
+      "category": "renderer",
+      "loc": 161,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/components/settings/utils/argParser.ts",
+      "category": "renderer",
+      "loc": 20,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/SettingsPage.tsx",
+      "category": "renderer",
+      "loc": 175,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "src/components/Sidebar.tsx",
+      "category": "renderer",
+      "loc": 296,
+      "maxFunctionComplexity": 22
+    },
+    {
+      "path": "src/components/sidebar/controlGeometry.ts",
+      "category": "renderer",
+      "loc": 2,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "src/components/sidebar/LaunchControls.tsx",
+      "category": "renderer",
+      "loc": 152,
+      "maxFunctionComplexity": 36
+    },
+    {
+      "path": "src/components/sidebar/ModloaderSection.tsx",
+      "category": "renderer",
+      "loc": 96,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "src/components/sidebar/ModpackDependencySummary.tsx",
+      "category": "renderer",
+      "loc": 110,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "src/components/sidebar/modpackRuntimeDependencies.ts",
+      "category": "renderer",
+      "loc": 197,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/components/sidebar/ModpackSection.tsx",
+      "category": "renderer",
+      "loc": 111,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/sidebar/NicknameSection.tsx",
+      "category": "renderer",
+      "loc": 53,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/components/sidebar/OptifineToggle.tsx",
+      "category": "renderer",
+      "loc": 26,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/sidebar/SidebarHeader.tsx",
+      "category": "renderer",
+      "loc": 180,
+      "maxFunctionComplexity": 26
+    },
+    {
+      "path": "src/components/sidebar/VersionSection.tsx",
+      "category": "renderer",
+      "loc": 30,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/components/simple-play/ClassicAdvancedSettings.tsx",
+      "category": "renderer",
+      "loc": 63,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/components/simple-play/ClassicContentTabs.tsx",
+      "category": "renderer",
+      "loc": 138,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "src/components/simple-play/ClassicHero.tsx",
+      "category": "renderer",
+      "loc": 319,
+      "maxFunctionComplexity": 27
+    },
+    {
+      "path": "src/components/simple-play/ClassicLaunchRail.tsx",
+      "category": "renderer",
+      "loc": 97,
+      "maxFunctionComplexity": 27
+    },
+    {
+      "path": "src/components/SimplePlayDashboard.tsx",
+      "category": "renderer",
+      "loc": 219,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/SimplePlayHome.tsx",
+      "category": "renderer",
+      "loc": 266,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "src/components/TitleBar.tsx",
+      "category": "renderer",
+      "loc": 67,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/components/ui/AnchoredOverlay.tsx",
+      "category": "renderer",
+      "loc": 138,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/ui/anchoredOverlayLayout.ts",
+      "category": "renderer",
+      "loc": 196,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/ui/ArtworkFallback.tsx",
+      "category": "renderer",
+      "loc": 65,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/components/ui/Breadcrumbs.tsx",
+      "category": "renderer",
+      "loc": 51,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/ui/Button.tsx",
+      "category": "renderer",
+      "loc": 71,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/components/ui/CollapsibleSection.tsx",
+      "category": "renderer",
+      "loc": 93,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/ui/ConfirmDialog.tsx",
+      "category": "renderer",
+      "loc": 108,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "src/components/ui/ErrorMessage.tsx",
+      "category": "renderer",
+      "loc": 33,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/components/ui/Input.tsx",
+      "category": "renderer",
+      "loc": 39,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "src/components/ui/LazyImage.tsx",
+      "category": "renderer",
+      "loc": 288,
+      "maxFunctionComplexity": 29
+    },
+    {
+      "path": "src/components/ui/LoadingSpinner.tsx",
+      "category": "renderer",
+      "loc": 38,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/components/ui/Modal.tsx",
+      "category": "renderer",
+      "loc": 250,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "src/components/ui/ProgressBar.tsx",
+      "category": "renderer",
+      "loc": 76,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/components/ui/Select.tsx",
+      "category": "renderer",
+      "loc": 52,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/ui/SkeletonLoader.tsx",
+      "category": "renderer",
+      "loc": 60,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/components/ui/Textarea.tsx",
+      "category": "renderer",
+      "loc": 39,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "src/components/ui/Toast.tsx",
+      "category": "renderer",
+      "loc": 87,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "src/components/ui/ToastContainer.tsx",
+      "category": "renderer",
+      "loc": 36,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/components/ui/Tooltip.tsx",
+      "category": "renderer",
+      "loc": 134,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "src/components/UpdateModal.tsx",
+      "category": "renderer",
+      "loc": 127,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/components/UpdateNotification.tsx",
+      "category": "renderer",
+      "loc": 71,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "src/contexts/ConfirmContext.tsx",
+      "category": "renderer",
+      "loc": 102,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/contexts/instances/hooks/useInstanceCrudActions.ts",
+      "category": "renderer",
+      "loc": 126,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "src/contexts/instances/services/instancesService.ts",
+      "category": "renderer",
+      "loc": 144,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "src/contexts/instances/services/legacySeed.ts",
+      "category": "renderer",
+      "loc": 13,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/contexts/instances/types.ts",
+      "category": "renderer",
+      "loc": 32,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "src/contexts/instances/utils/configPatching.ts",
+      "category": "renderer",
+      "loc": 76,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/contexts/instances/utils/memory.ts",
+      "category": "renderer",
+      "loc": 16,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "src/contexts/settings/accent.ts",
+      "category": "renderer",
+      "loc": 148,
+      "maxFunctionComplexity": 15
+    },
+    {
+      "path": "src/contexts/settings/i18n.ts",
+      "category": "renderer",
+      "loc": 49,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "src/contexts/settings/persistence.ts",
+      "category": "renderer",
+      "loc": 42,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/contexts/settings/theme-presets.ts",
+      "category": "renderer",
+      "loc": 361,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/contexts/settings/theme.ts",
+      "category": "renderer",
+      "loc": 303,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "src/contexts/settings/types.ts",
+      "category": "renderer",
+      "loc": 67,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "src/contexts/SettingsContext.tsx",
+      "category": "renderer",
+      "loc": 367,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "src/contexts/ToastContext.tsx",
+      "category": "renderer",
+      "loc": 80,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/features/accounts/AccountSkinPanel.tsx",
+      "category": "renderer",
+      "loc": 166,
+      "maxFunctionComplexity": 26
+    },
+    {
+      "path": "src/features/accounts/AccountsPage.tsx",
+      "category": "renderer",
+      "loc": 315,
+      "maxFunctionComplexity": 17
+    },
+    {
+      "path": "src/features/accounts/AddAccountDialog.tsx",
+      "category": "renderer",
+      "loc": 150,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "src/features/console/ConsolePage.tsx",
+      "category": "renderer",
+      "loc": 324,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "src/features/content/adapters/modContentAcquisitionAdapter.ts",
+      "category": "renderer",
+      "loc": 280,
+      "maxFunctionComplexity": 14
+    },
+    {
+      "path": "src/features/content/adapters/resourcePackContentAcquisitionAdapter.ts",
+      "category": "renderer",
+      "loc": 361,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "src/features/content/adapters/shaderContentAcquisitionAdapter.ts",
+      "category": "renderer",
+      "loc": 363,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "src/features/content/components/ContentAcquisitionSurface.tsx",
+      "category": "renderer",
+      "loc": 208,
+      "maxFunctionComplexity": 28
+    },
+    {
+      "path": "src/features/content/components/ModContentAcquisition.tsx",
+      "category": "renderer",
+      "loc": 206,
+      "maxFunctionComplexity": 43
+    },
+    {
+      "path": "src/features/content/components/ResourcePackContentAcquisition.tsx",
+      "category": "renderer",
+      "loc": 243,
+      "maxFunctionComplexity": 53
+    },
+    {
+      "path": "src/features/content/components/ShaderContentAcquisition.tsx",
+      "category": "renderer",
+      "loc": 269,
+      "maxFunctionComplexity": 58
+    },
+    {
+      "path": "src/features/content/contentAcquisitionTypes.ts",
+      "category": "renderer",
+      "loc": 108,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/features/content/hooks/useContentAcquisitionState.ts",
+      "category": "renderer",
+      "loc": 299,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "src/features/instances/hooks/useEffectiveInstance.ts",
+      "category": "renderer",
+      "loc": 18,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/features/instances/hooks/useInstanceConfigCommands.ts",
+      "category": "renderer",
+      "loc": 59,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/features/instances/hooks/useInstanceInvalidation.ts",
+      "category": "renderer",
+      "loc": 13,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/features/instances/hooks/useInstanceSelectors.ts",
+      "category": "renderer",
+      "loc": 49,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/features/instances/InstanceQueryProvider.tsx",
+      "category": "renderer",
+      "loc": 258,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/features/launcher/hooks/useLauncher.ts",
+      "category": "renderer",
+      "loc": 131,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "src/features/launcher/hooks/useLauncherIPC.ts",
+      "category": "renderer",
+      "loc": 112,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "src/features/launcher/hooks/useLauncherState.ts",
+      "category": "renderer",
+      "loc": 145,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/features/launcher/hooks/useModSupportedVersions.ts",
+      "category": "renderer",
+      "loc": 186,
+      "maxFunctionComplexity": 17
+    },
+    {
+      "path": "src/features/launcher/hooks/useVersions.ts",
+      "category": "renderer",
+      "loc": 61,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/features/launcher/services/launcherService.ts",
+      "category": "renderer",
+      "loc": 399,
+      "maxFunctionComplexity": 23
+    },
+    {
+      "path": "src/features/modpacks/hooks/useModpackCreationDraft.ts",
+      "category": "renderer",
+      "loc": 283,
+      "maxFunctionComplexity": 14
+    },
+    {
+      "path": "src/features/modpacks/hooks/useModpackDetailsConfig.ts",
+      "category": "renderer",
+      "loc": 82,
+      "maxFunctionComplexity": 7
+    },
+    {
+      "path": "src/features/modpacks/hooks/useModpackNavigation.ts",
+      "category": "renderer",
+      "loc": 105,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/features/modpacks/hooks/useModpackRuntimeSummary.ts",
+      "category": "renderer",
+      "loc": 336,
+      "maxFunctionComplexity": 18
+    },
+    {
+      "path": "src/features/modpacks/hooks/useModpackUpdates.ts",
+      "category": "renderer",
+      "loc": 95,
+      "maxFunctionComplexity": 11
+    },
+    {
+      "path": "src/features/modpacks/navigation/ModpackNavigationContext.ts",
+      "category": "renderer",
+      "loc": 14,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/features/modpacks/navigation/ModpackNavigationProvider.tsx",
+      "category": "renderer",
+      "loc": 21,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/features/modpacks/services/installedModpackCatalogService.ts",
+      "category": "renderer",
+      "loc": 44,
+      "maxFunctionComplexity": 8
+    },
+    {
+      "path": "src/features/multiplayer/hooks/useMultiplayer.ts",
+      "category": "renderer",
+      "loc": 111,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "src/features/multiplayer/services/multiplayerPersistence.ts",
+      "category": "renderer",
+      "loc": 16,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/features/operations/components/OperationStatusView.tsx",
+      "category": "renderer",
+      "loc": 133,
+      "maxFunctionComplexity": 38
+    },
+    {
+      "path": "src/features/operations/hooks/useOperationSession.ts",
+      "category": "renderer",
+      "loc": 228,
+      "maxFunctionComplexity": 12
+    },
+    {
+      "path": "src/features/operations/operationTerminalPolicy.ts",
+      "category": "renderer",
+      "loc": 86,
+      "maxFunctionComplexity": 13
+    },
+    {
+      "path": "src/features/operations/recovery/OperationRecoveryContext.ts",
+      "category": "renderer",
+      "loc": 12,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/features/operations/recovery/OperationRecoveryInbox.tsx",
+      "category": "renderer",
+      "loc": 264,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "src/features/operations/recovery/operationRecoveryPolicy.ts",
+      "category": "renderer",
+      "loc": 4,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/features/operations/recovery/OperationRecoveryProvider.tsx",
+      "category": "renderer",
+      "loc": 171,
+      "maxFunctionComplexity": 28
+    },
+    {
+      "path": "src/features/screenshots/components/ScreenshotLightbox.tsx",
+      "category": "renderer",
+      "loc": 198,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "src/features/screenshots/components/ScreenshotsTab.tsx",
+      "category": "renderer",
+      "loc": 227,
+      "maxFunctionComplexity": 10
+    },
+    {
+      "path": "src/features/settings/mirrors/MirrorsSettings.tsx",
+      "category": "renderer",
+      "loc": 365,
+      "maxFunctionComplexity": 27
+    },
+    {
+      "path": "src/features/settings/statistics/StatisticsTab.tsx",
+      "category": "renderer",
+      "loc": 298,
+      "maxFunctionComplexity": 17
+    },
+    {
+      "path": "src/features/share/ImportShareModal.tsx",
+      "category": "renderer",
+      "loc": 89,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/features/share/ShareModal.tsx",
+      "category": "renderer",
+      "loc": 162,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/features/updater/hooks/useAppUpdater.ts",
+      "category": "renderer",
+      "loc": 141,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/hooks/useDebounce.ts",
+      "category": "renderer",
+      "loc": 13,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/hooks/useGlobalHotkeys.ts",
+      "category": "renderer",
+      "loc": 24,
+      "maxFunctionComplexity": 5
+    },
+    {
+      "path": "src/json.d.ts",
+      "category": "renderer",
+      "loc": 4,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "src/main.tsx",
+      "category": "renderer",
+      "loc": 17,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/services/ipc/accountIPC.ts",
+      "category": "renderer",
+      "loc": 69,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/appUpdaterIPC.ts",
+      "category": "renderer",
+      "loc": 79,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/archiveInspectionIPC.ts",
+      "category": "renderer",
+      "loc": 20,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/services/ipc/assetsIPC.ts",
+      "category": "renderer",
+      "loc": 46,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/cacheIPC.ts",
+      "category": "renderer",
+      "loc": 61,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/datapacksIPC.ts",
+      "category": "renderer",
+      "loc": 11,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/services/ipc/dialogIPC.ts",
+      "category": "renderer",
+      "loc": 32,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/externalLinksIPC.ts",
+      "category": "renderer",
+      "loc": 36,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/instanceModsIPC.ts",
+      "category": "renderer",
+      "loc": 35,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/services/ipc/instancesIPC.ts",
+      "category": "renderer",
+      "loc": 48,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/services/ipc/ipcError.ts",
+      "category": "renderer",
+      "loc": 16,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/services/ipc/javaRuntimeIPC.ts",
+      "category": "renderer",
+      "loc": 23,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/services/ipc/launcherIPC.ts",
+      "category": "renderer",
+      "loc": 82,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/mirrorsIPC.ts",
+      "category": "renderer",
+      "loc": 67,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/modsIPC.ts",
+      "category": "renderer",
+      "loc": 73,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "src/services/ipc/networkIPC.ts",
+      "category": "renderer",
+      "loc": 37,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/services/ipc/operationsIPC.ts",
+      "category": "renderer",
+      "loc": 32,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/services/ipc/providerCatalogIPC.ts",
+      "category": "renderer",
+      "loc": 25,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/services/ipc/resourcePacksIPC.ts",
+      "category": "renderer",
+      "loc": 10,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/services/ipc/screenshotsIPC.ts",
+      "category": "renderer",
+      "loc": 17,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/settingsIPC.ts",
+      "category": "renderer",
+      "loc": 52,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/shadersIPC.ts",
+      "category": "renderer",
+      "loc": 9,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/services/ipc/shareIPC.ts",
+      "category": "renderer",
+      "loc": 36,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/statisticsIPC.ts",
+      "category": "renderer",
+      "loc": 36,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/ipc/storageMaintenanceIPC.ts",
+      "category": "renderer",
+      "loc": 23,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/services/ipc/windowControlsIPC.ts",
+      "category": "renderer",
+      "loc": 61,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "src/services/ipc/worldsIPC.ts",
+      "category": "renderer",
+      "loc": 8,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/services/versions/types.ts",
+      "category": "renderer",
+      "loc": 7,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "src/services/versions/versionApi.ts",
+      "category": "renderer",
+      "loc": 26,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/services/versions/versionCache.ts",
+      "category": "renderer",
+      "loc": 76,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/shared/types/index.ts",
+      "category": "renderer",
+      "loc": 22,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "src/utils/cn.ts",
+      "category": "renderer",
+      "loc": 5,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/utils/displayError.ts",
+      "category": "renderer",
+      "loc": 52,
+      "maxFunctionComplexity": 6
+    },
+    {
+      "path": "src/utils/format.ts",
+      "category": "renderer",
+      "loc": 28,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "src/utils/minecraftVersions.ts",
+      "category": "renderer",
+      "loc": 9,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/utils/minecraftVersionsList.ts",
+      "category": "renderer",
+      "loc": 99,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "src/utils/modSlug.ts",
+      "category": "renderer",
+      "loc": 8,
+      "maxFunctionComplexity": 1
+    },
+    {
+      "path": "src/utils/platform.ts",
+      "category": "renderer",
+      "loc": 13,
+      "maxFunctionComplexity": 4
+    },
+    {
+      "path": "src/utils/safeUiText.ts",
+      "category": "renderer",
+      "loc": 36,
+      "maxFunctionComplexity": 9
+    },
+    {
+      "path": "src/utils/versionCheck.ts",
+      "category": "renderer",
+      "loc": 139,
+      "maxFunctionComplexity": 17
+    },
+    {
+      "path": "src/verification/manual/main.tsx",
+      "category": "renderer",
+      "loc": 15,
+      "maxFunctionComplexity": 0
+    },
+    {
+      "path": "src/verification/manual/ManualVerificationApp.tsx",
+      "category": "renderer",
+      "loc": 58,
+      "maxFunctionComplexity": 3
+    },
+    {
+      "path": "src/verification/manual/mockEnvironment.ts",
+      "category": "renderer",
+      "loc": 1618,
+      "maxFunctionComplexity": 21
+    },
+    {
+      "path": "src/verification/manual/scenarios.tsx",
+      "category": "renderer",
+      "loc": 2269,
+      "maxFunctionComplexity": 51
+    },
+    {
+      "path": "src/verification/manual/views.ts",
+      "category": "renderer",
+      "loc": 374,
+      "maxFunctionComplexity": 2
+    },
+    {
+      "path": "src/vite-env.d.ts",
+      "category": "renderer",
+      "loc": 7,
+      "maxFunctionComplexity": 0
+    }
+  ]
+}

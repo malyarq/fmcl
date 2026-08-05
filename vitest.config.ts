@@ -21,6 +21,8 @@ export default defineConfig({
     ],
     exclude: [
       'tests/visual/**/*',
+      'tests/performance/**/*',
+      'tests/accessibility/renderer-accessibility.spec.ts',
     ],
   },
 });

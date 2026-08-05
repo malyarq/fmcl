@@ -193,8 +193,9 @@ export function InstalledModpackContextMenu({
               role="menuitem"
               className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-background/70"
               onClick={() => {
-                onShare(menu.modpackId);
-                close();
+                const modpackId = menu.modpackId;
+                close(true);
+                window.requestAnimationFrame(() => onShare(modpackId));
               }}
             >
               <Share2 className="h-4 w-4" />

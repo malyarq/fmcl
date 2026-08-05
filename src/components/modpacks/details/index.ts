@@ -1,4 +1,12 @@
-export { ModpackDetailsHeader, type ModpackDetailsHeaderProps, type ModpackDetailsTab } from './ModpackDetailsHeader';
+export {
+  ModpackDetailsHeader,
+  type ModpackDetailsHeaderProps,
+} from './ModpackDetailsHeader';
+export {
+  getModpackDetailsPanelId,
+  getModpackDetailsTabId,
+  type ModpackDetailsTab,
+} from './modpackDetailsTabIds';
 export { ModpackDetailsInfoTab, type ModpackDetailsInfoTabProps } from './ModpackDetailsInfoTab';
 export {
   ModpackDetailsModsTab,

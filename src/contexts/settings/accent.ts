@@ -1,7 +1,7 @@
 import type { AccentStyleResult, AccentStyleType } from './types';
 
 // Preset styles are static to prevent Tailwind purging.
-const TEXT_ON_ACCENT = 'text-zinc-900 dark:text-white';
+const TEXT_ON_ACCENT = 'text-[rgb(var(--accent-content))]';
 export const DEFAULT_ACCENT_COLOR = 'emerald';
 
 const PRESET_STYLES: Record<string, Record<string, string>> = {
@@ -110,7 +110,7 @@ export function getAccentHoverHexForColor(accentColor: string) {
 export function getAccentStylesForColor(
   accentColor: string,
   type: AccentStyleType,
-  theme?: 'light' | 'dark'
+  _theme?: 'light' | 'dark'
 ): AccentStyleResult {
   const color = accentColor || DEFAULT_ACCENT_COLOR;
 
@@ -121,8 +121,7 @@ export function getAccentStylesForColor(
   }
 
   if (type === 'bg') {
-    const textColor = theme === 'light' ? '#18181b' : '#fff';
-    return { style: { backgroundColor: color, color: textColor } };
+    return { style: { backgroundColor: color, color: 'rgb(var(--accent-content))' } };
   }
   if (type === 'text') return { style: { color } };
   if (type === 'title') return { style: { color } };

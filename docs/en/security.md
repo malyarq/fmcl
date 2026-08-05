@@ -56,8 +56,11 @@ On Linux, `safeStorage` security depends on the desktop keyring. This is a platf
 
 ## Releases and updates
 
+- Publication is manual and dispatch-only. The workflow revalidates the exact tag, commit, artifact checksums, platform smoke, and schema-valid pre-push report before its publish job.
+- The local pre-push report is evidence, not a security boundary or publication authorization. GitHub publication additionally requires approval from the repository-configured protected `release-publication` Environment; repository code cannot create or guarantee that protection.
 - Release jobs build each platform from the tagged source and publish SHA-256 checksums.
-- Windows and macOS artifacts are currently unsigned; checksums help detect mismatch but do not authenticate the publisher.
+- Windows and macOS artifacts are currently unsigned; checksums help detect mismatch but do not authenticate the publisher. Gatekeeper and SmartScreen behavior must be checked manually on the target platform.
+- Release candidates are prereleases and non-latest.
 - Stable SemVer tags and their assets are immutable. A broken release is followed by a new patch version.
 - Update installation requires explicit product behavior and must use release metadata from the configured trusted source.
 

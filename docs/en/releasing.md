@@ -1,60 +1,55 @@
 # Release runbook
 
-Stable releases use immutable SemVer tags (`vMAJOR.MINOR.PATCH`) and GitHub Releases. The moving `latest` tag is only a convenience pointer to the newest stable release.
+FriendLauncher releases use immutable SemVer tags and a dispatch-only GitHub workflow. An RC is a prerelease and is never made `latest` by the workflow. A local command can prepare evidence or, with a separate explicit local decision, create a tag; it cannot authorize publication.
 
-## Before tagging
+## Prepare an exact candidate
 
-1. Start from a clean, current `main` and confirm its CI run is green.
-2. Review [Known Issues](known-issues.md), update version-specific roadmap/contract snapshots, and move user-visible changes into [CHANGELOG.md](../../CHANGELOG.md).
-3. For UI changes, run the visual closeout and inspect the screenshots.
-4. For installer, updater, Java, or modloader changes, run the relevant bounded manual or full-install checks.
-5. Choose a version that has never been tagged.
+Start on a clean branch. The candidate version is committed before any release report is generated; the release helper never runs `npm version` for you.
 
 ```bash
-git switch main
-git pull --ff-only origin main
 nvm use
 npm ci
+npm version <version> --no-git-tag-version --ignore-scripts
+git add package.json package-lock.json
+git commit -m "chore: prepare v<version> candidate"
+```
+
+Confirm that `package.json` and `package-lock.json` contain the same version, the worktree is clean, and `v<version>` does not already exist. Then build local readiness evidence:
+
+```bash
+npx electron-builder --publish never --mac --win --linux
 npm run release -- <version> --dry-run
 ```
 
-The dry run runs `verify` and a full local package build. It does not change tracked files, commits, tags, or remotes, but it refreshes ignored build output.
+The first command prepares the three expected artifacts under `release/<version>` without publishing them. Use native platform runners when cross-building is unavailable. The dry run then uses the Node 24 shared release profile, runs available package smoke, writes checksums and release evidence, creates a schema-valid pre-push report, and validates that report against the exact version, tag, current commit, and prepared artifacts. It creates no commit, tag, push, remote operation, or GitHub Release. The report is normally written to `quality/evidence/prepush-release-report.json`; this ignored local file must be regenerated after any candidate commit or artifact changes.
 
-## Create and publish
+## Review the evidence
 
-The release helper requires a clean worktree, an active branch, a valid new SemVer version, and an absent version tag. It updates `package.json` and `package-lock.json`, creates one commit, and creates an annotated tag.
+Review the pre-push report before asking for any release action. It names the exact version/tag/commit, every quality stage, artifact paths and SHA-256 checksums, platform smoke with unsupported-runner reasons, signing/notarization status, known failures, and the immutable rollback action.
 
-```bash
-npm run release -- <version> "chore: release v<version>" --push
-```
+Checksums establish artifact integrity only. The local report is decision evidence, not a security boundary, publisher-authentication proof, or publication authorization. Current macOS and Windows artifacts are unsigned unless platform verification evidence says otherwise; never infer signing from a checksum or successful launch. Gatekeeper and SmartScreen prompts are OS/reputation behavior that must be checked manually on the target platform and recorded separately.
 
-`--push` pushes the current branch and the immutable version tag. The tag starts `.github/workflows/release.yml`, which:
+## Tag and dispatch publication
 
-- validates the version and runs tests, lint, type checks, documentation/IPC contract checks, dependency audit, and a Linux packaging smoke test;
-- builds unsigned Windows, macOS, and Linux packages on native runners;
-- publishes one GitHub Release only after all platform builds succeed;
-- generates `SHA256SUMS.txt` and uploads updater metadata and blockmaps.
-
-After the release workflow succeeds, move the convenience tag:
+After a maintainer separately approves the exact report, the helper can create the matching annotated local tag only when it is given both the report and the literal local approval value:
 
 ```bash
-git tag -f latest 'v<version>^{}'
-git push origin :refs/tags/latest
-git push origin latest
+npm run release -- <version> --report quality/evidence/prepush-release-report.json --approval approve-local-release
 ```
 
-Then verify the [release page](https://github.com/malyarq/fmcl/releases/latest), all three installers, checksums, release notes, and the `latest` tag target.
+`--push` remains a separate remote action and does not publish anything. The helper rejects an absent, invalid, stale, mismatched, or unapproved report before it can create a tag or push. Local approval authorizes neither GitHub publication nor a bypass of review.
 
-## Manual workflow dispatch
+Before dispatching publication, a repository administrator must configure **Settings → Environments → `release-publication`**:
 
-Use `workflow_dispatch` only to rerun packaging for an **existing immutable version tag** after an infrastructure failure. Enter the full tag, such as `v0.8.0`. Do not use it to invent a release from an arbitrary `main` commit.
+1. Add required reviewers.
+2. Restrict deployments to the approved release refs.
+3. Verify that the configured gate applies to the `publish` job.
+
+Repository code cannot create or guarantee those protection rules. With the candidate tag available, a maintainer starts **Build and Release** manually through `workflow_dispatch` and supplies that exact tag. The workflow independently checks out the tag, verifies version/commit identity, rebuilds and validates artifact, checksum, smoke, and schema-valid report evidence, then waits for the protected `release-publication` Environment before its only publish job. A tag push alone cannot start publication.
 
 ## Failure and rollback
 
-- Before pushing a tag, fix the issue locally and rerun the dry run.
-- After pushing a tag, do not move, overwrite, or rebuild that SemVer tag with different source.
-- If publishing failed before a GitHub Release appeared, fix the workflow and rerun it for the same source tag.
-- If shipped behavior is broken, publish a new patch release. Do not silently replace assets under an existing version.
-- If an asset checksum does not match, treat the release as compromised: remove it from `latest`, warn users, investigate, and publish a new patch version.
-
-Signing is not configured yet. Never claim that an unsigned artifact is signed, and never bypass the checksum step.
+- An RC stays a prerelease and non-latest until a separately approved stable process says otherwise.
+- If evidence, smoke, or OS trust behavior fails, withdraw or mark the release non-latest where the host permits, investigate, and publish a new patch when ready.
+- Never move or overwrite an existing stable tag or asset. Do not replace bytes under an existing version.
+- Regenerate the report whenever the candidate commit or artifact set changes; an old report is intentionally rejected as stale.

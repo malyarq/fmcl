@@ -32,7 +32,7 @@ describe('applyThemeToDocument', () => {
     expect(document.body.classList.contains('dark')).toBe(true);
     expect(getRootVar('--accent-main')).toBe('59 130 246');
     expect(getRootVar('--accent-hover')).toBe('37 99 235');
-    expect(getRootVar('--accent-content')).toBe('255 255 255');
+    expect(getRootVar('--accent-content')).toBe('24 24 27');
     expect(getRootVar('--bg-app')).toBe('24 24 27');
     expect(getRootVar('--bg-card')).toBe('39 39 42');
     expect(getRootVar('--bg-overlay')).toBe('24 24 27');
@@ -77,7 +77,7 @@ describe('applyThemeToDocument', () => {
 
     expect(getRootVar('--accent-main')).toBe('18 52 86');
     expect(getRootVar('--accent-hover')).toBe('15 43 71');
-    expect(getRootVar('--accent-content')).toBe('24 24 27');
+    expect(getRootVar('--accent-content')).toBe('255 255 255');
     expect(getRootVar('--bg-app')).toBe('17 34 51');
     expect(getRootVar('--bg-card')).toBe('171 205 239');
     expect(getRootVar('--bg-overlay')).toBe('171 205 239');

@@ -23,6 +23,10 @@ const strictProductionCspPlugin: Plugin = {
 export default defineConfig({
   build: {
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        manualVerification: path.resolve(__dirname, 'manual-verification.html'),
+      },
       output: {
         manualChunks(id) {
           if (/[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/.test(id)) {

@@ -32,6 +32,12 @@ type AtomicJsonStoreOptions<T> = {
   version: number;
   mode?: number;
   validate?: (value: unknown) => value is T;
+  /** Test-only fault seams for deterministic publication-boundary coverage. */
+  faultHooks?: Partial<{
+    beforeTempWrite: () => void;
+    beforeBackupPublish: () => void;
+    beforePrimaryPublish: () => void;
+  }>;
 };
 
 type ParsedDocument<T> = {
@@ -54,6 +60,7 @@ export class AtomicJsonStore<T extends object> {
   private readonly version: number;
   private readonly mode: number;
   private readonly validate?: (value: unknown) => value is T;
+  private readonly faultHooks?: AtomicJsonStoreOptions<T>['faultHooks'];
 
   constructor(filePath: string, options: AtomicJsonStoreOptions<T>) {
     this.filePath = filePath;
@@ -61,6 +68,7 @@ export class AtomicJsonStore<T extends object> {
     this.version = options.version;
     this.mode = options.mode ?? 0o600;
     this.validate = options.validate;
+    this.faultHooks = options.faultHooks;
   }
 
   public read(): AtomicJsonRead<T> | null {
@@ -89,6 +97,14 @@ export class AtomicJsonStore<T extends object> {
   }
 
   public write(value: T): void {
+    if (this.validate && !this.validate(value)) {
+      throw new AtomicJsonStoreError(
+        'WRITE_FAILED',
+        this.filePath,
+        `State does not match the expected schema: ${this.filePath}`,
+      );
+    }
+
     const directory = path.dirname(this.filePath);
     fs.mkdirSync(directory, { recursive: true });
 
@@ -96,6 +112,7 @@ export class AtomicJsonStore<T extends object> {
     const backupTempPath = path.join(directory, `.${path.basename(this.backupPath)}.${randomUUID()}.tmp`);
 
     try {
+      this.faultHooks?.beforeTempWrite?.();
       this.writeAndSync(tempPath, this.serialize(value));
 
       if (fs.existsSync(this.filePath)) {
@@ -118,10 +135,12 @@ export class AtomicJsonStore<T extends object> {
           fs.copyFileSync(this.filePath, backupTempPath);
           this.syncFile(backupTempPath);
           fs.chmodSync(backupTempPath, this.mode);
+          this.faultHooks?.beforeBackupPublish?.();
           fs.renameSync(backupTempPath, this.backupPath);
         }
       }
 
+      this.faultHooks?.beforePrimaryPublish?.();
       fs.renameSync(tempPath, this.filePath);
       fs.chmodSync(this.filePath, this.mode);
       this.syncDirectory(directory);

@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import type { ModpackMetadata } from '@shared/types/modpack';
-import { ArrowLeft } from 'lucide-react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { cn } from '../../utils/cn';
 import { ScreenshotsTab } from '../../features/screenshots/components/ScreenshotsTab';
-import { Breadcrumbs } from '../ui/Breadcrumbs';
 import { Button } from '../ui/Button';
 import { LoadingSpinner } from '../ui/LoadingSpinner';
 import { ModpackUpdateModal } from './ModpackUpdateModal';
 import { MODPACK_SECONDARY_CONTENT_WORKSPACE } from './ModpackCatalogControls';
 import {
+  getModpackDetailsPanelId,
+  getModpackDetailsTabId,
   ModpackDetailsInfoTab,
   ModpackDetailsModsTab,
   ModpackDetailsSettingsTab,
@@ -21,6 +21,7 @@ import {
 } from './details';
 import { ModpackDetailsOperationNotices } from './details/ModpackDetailsActionBar';
 import { ModpackDetailsOverview } from './details/ModpackDetailsOverview';
+import { ModpackDetailsRouteHeader } from './details/ModpackDetailsRouteHeader';
 import { useModpackDetailsController } from './details/useModpackDetailsController';
 import { useModpackDetailsModsController } from './details/useModpackDetailsModsController';
 
@@ -75,14 +76,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
     initialMods,
     modpackId,
   });
-  const secondarySurfaceTab = [
-    'mods',
-    'resourcepacks',
-    'shaders',
-    'worlds',
-    'screenshots',
-    'settings',
-  ].includes(selectedTab);
+  const secondarySurfaceTab = ['mods', 'resourcepacks', 'shaders', 'worlds', 'screenshots', 'settings'].includes(selectedTab);
 
   useEffect(() => {
     if (selectedTab === 'settings') void loadConfig();
@@ -92,23 +86,12 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div
-        className="border-b border-border/70 bg-card/78 px-6 py-3 backdrop-blur-md"
-        data-testid="modpack-details-route-top"
-      >
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Breadcrumbs
-            items={[
-              { label: t('modpacks.title') || 'Modpacks', onClick: onBack },
-              { label: modpack.name, active: true },
-            ]}
-          />
-          <Button variant="secondary" size="sm" onClick={onBack} className="flex items-center gap-2">
-            <ArrowLeft aria-hidden="true" className="h-4 w-4" />
-            {t('general.back') || 'Back'}
-          </Button>
-        </div>
-      </div>
+      <ModpackDetailsRouteHeader
+        modpackName={modpack.name}
+        modpacksLabel={t('modpacks.title') || 'Modpacks'}
+        backLabel={t('general.back') || 'Back'}
+        onBack={onBack}
+      />
 
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {metadataState.status === 'loading' ? (
@@ -179,6 +162,9 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
                       ? MODPACK_SECONDARY_CONTENT_WORKSPACE.host
                       : 'surface-panel p-4 sm:p-5',
                   )}
+                  id={getModpackDetailsPanelId(selectedTab)}
+                  role="tabpanel"
+                  aria-labelledby={getModpackDetailsTabId(selectedTab)}
                   data-testid="modpack-details-content-host"
                   data-content-surface={secondarySurfaceTab ? 'secondary' : 'primary'}
                   data-secondary-content-workspace={secondarySurfaceTab ? 'shared' : undefined}

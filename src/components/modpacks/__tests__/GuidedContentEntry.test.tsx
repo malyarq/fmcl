@@ -228,6 +228,8 @@ vi.mock('../AddModPage', () => ({
 }));
 
 vi.mock('../details', () => ({
+  getModpackDetailsPanelId: (tab: string) => `modpack-details-panel-${tab}`,
+  getModpackDetailsTabId: (tab: string) => `modpack-details-tab-${tab}`,
   ModpackDetailsHeader: () => <div>Header</div>,
   ModpackDetailsInfoTab: () => <div>Info</div>,
   ModpackDetailsModsTab: () => <div>Mods</div>,

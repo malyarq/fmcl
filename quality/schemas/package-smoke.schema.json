@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://friendlauncher.app/quality/package-smoke.schema.json",
+  "title": "FriendLauncher packaged artifact smoke evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "status", "platform", "version", "artifact", "signing", "workspace", "launch", "quit", "logs"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "status": { "enum": ["passed", "failed", "unsupported-runner"] },
+    "platform": { "enum": ["darwin", "win32", "linux"] },
+    "version": { "type": "string", "minLength": 1 },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "kind", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["dmg", "nsis", "appimage", "none"] },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$|^$" }
+      }
+    },
+    "signing": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status"],
+      "properties": {
+        "status": { "enum": ["signed", "unsigned", "not-checked"] }
+      }
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cleanUserData", "cleaned"],
+      "properties": {
+        "cleanUserData": { "type": "boolean" },
+        "cleaned": { "type": "boolean" }
+      }
+    },
+    "launch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "readiness", "windowCount", "startedAt"],
+      "properties": {
+        "command": { "type": "string" },
+        "readiness": { "type": "string" },
+        "windowCount": { "type": "integer", "minimum": 0 },
+        "startedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "quit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requested", "graceful", "exitCode"],
+      "properties": {
+        "requested": { "type": "boolean" },
+        "graceful": { "type": "boolean" },
+        "exitCode": { "type": ["integer", "null"] }
+      }
+    },
+    "logs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stdout", "stderr"],
+      "properties": {
+        "stdout": { "type": "string" },
+        "stderr": { "type": "string" }
+      }
+    },
+    "error": { "type": "string" }
+  }
+}

@@ -6,8 +6,13 @@ import {
   getModpackRuntimeLoaderLabel,
   type ModpackRuntimeSummary,
 } from '../../../features/modpacks/hooks/useModpackRuntimeSummary';
+import {
+  getModpackDetailsPanelId,
+  getModpackDetailsTabId,
+  type ModpackDetailsTab,
+} from './modpackDetailsTabIds';
 
-export type ModpackDetailsTab = 'info' | 'mods' | 'resourcepacks' | 'shaders' | 'worlds' | 'screenshots' | 'settings';
+export type { ModpackDetailsTab } from './modpackDetailsTabIds';
 
 export interface ModpackDetailsHeaderProps {
   modpackName: string;
@@ -183,8 +188,10 @@ export const ModpackDetailsHeader: React.FC<ModpackDetailsHeaderProps> = ({
               type="button"
               onClick={() => onTabChange(tab.id)}
               onKeyDown={(event) => handleKeyDown(event, tab.id)}
+              id={getModpackDetailsTabId(tab.id)}
               role="tab"
               aria-selected={isActive}
+              aria-controls={getModpackDetailsPanelId(tab.id)}
               tabIndex={isActive ? 0 : -1}
               data-state={isActive ? 'active' : 'inactive'}
               className={cn(
