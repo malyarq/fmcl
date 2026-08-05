@@ -73,7 +73,7 @@ The full process boundary is described in [Architecture](architecture.md).
 
 ## Release preparation
 
-Use a version that does not already exist. The active milestone is `v0.8.0`; keep the command reusable for later releases:
+Use a version that does not already exist. The current maintenance candidate is `v0.8.1`; keep the command reusable for later releases:
 
 ```bash
 npm run release -- <version> --dry-run

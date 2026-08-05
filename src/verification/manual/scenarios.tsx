@@ -735,7 +735,7 @@ function OverviewScenario() {
     <div className="space-y-6">
       <section className="space-y-3">
         <div>
-          <div className="kicker-label mb-2">v0.5.0 closeout matrix</div>
+          <div className="kicker-label mb-2">Release closeout matrix</div>
           <h2 className="text-xl font-semibold text-foreground">Named release-proof views for final review and screenshot capture</h2>
           <p className="max-w-3xl text-sm leading-6 text-secondary">
             These are the milestone-owned review targets for Phase 24. They stay on deterministic fixtures so final screenshots, locale review, and release truth all point at the same evidence.
@@ -859,7 +859,7 @@ function DashboardScenario({ onReady }: ManualVerificationScenarioProps) {
 function Phase24HomeCloseoutScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Fabric', 'Play', 'v0.5.0 home closeout'],
+    ['FriendLauncher', 'Fabric', 'Play', 'Launcher home closeout'],
     'Phase 24 home closeout rendered inside the real shell with deterministic launcher-home proof for final release review.',
   );
 
@@ -867,7 +867,7 @@ function Phase24HomeCloseoutScenario({ onReady }: ManualVerificationScenarioProp
     <Phase19ShellFrame mode="simple" ownership="shell">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 sm:p-6">
         <Phase24ProofCallout
-          title="v0.5.0 home closeout"
+          title="Launcher home closeout"
           detail="This is the canonical launcher-home proof for milestone closeout: one shell-owned primary Play action, the final shared brand treatment, and deterministic motion-disabled fixture data for screenshot review."
         />
         <SimplePlayDashboard
@@ -1264,7 +1264,7 @@ function Phase21BrowserDensityScenario({ onReady }: ManualVerificationScenarioPr
 function Phase24ModpacksCloseoutScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Modpack Browser', 'Alpha Pack', 'v0.5.0 modpacks closeout'],
+    ['FriendLauncher', 'Modpack Browser', 'Alpha Pack', 'Modpacks closeout'],
     'Phase 24 modpacks closeout rendered inside the real shell with deterministic browse-state proof for final release review.',
   );
 
@@ -1272,7 +1272,7 @@ function Phase24ModpacksCloseoutScenario({ onReady }: ManualVerificationScenario
     <Phase19ShellFrame mode="modpacks" ownership="route">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
         <Phase24ProofCallout
-          title="v0.5.0 modpacks closeout"
+          title="Modpacks closeout"
           detail="This route anchors the final modpacks proof on a real shell-integrated browse flow so dense metadata, route-owned actions, and neutral fallback art all remain reviewable under one deterministic fixture."
         />
         <ModpackBrowser
@@ -1938,7 +1938,7 @@ function Phase22LocaleRuScenario({ onReady }: ManualVerificationScenarioProps) {
 function Phase24DegradedCloseoutScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Unable to search right now', 'Failed to load screenshots.', 'Needs attention'],
+    ['FriendLauncher', 'Unable to search right now', 'Failed to load screenshots.', 'Unavailable'],
     'Phase 24 degraded closeout rendered inside the real shell with representative route and secondary-content failed-load proof.',
   );
 

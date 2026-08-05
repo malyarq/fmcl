@@ -31,4 +31,29 @@ describe('OperationRootRegistry', () => {
     expect(new OperationRootRegistry(base).list().roots).toContain(fs.realpathSync.native(defaultRoot));
     expect(runner.listRecovered()).toEqual([]);
   });
+
+  it('uses a stable id when the same registry failure returns after restart', async () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-registry-stable-')); dirs.push(base);
+    const brokenRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-registry-broken-root-')); dirs.push(brokenRoot);
+    const defaultRoot = path.join(base, 'user-data', 'minecraft_data');
+    const registry = new OperationRootRegistry(base);
+    registry.register(brokenRoot);
+    const directory = path.join(base, 'FriendLauncher', 'operation-roots');
+    const descriptor = path.join(directory, fs.readdirSync(directory).find((name) => name.endsWith('.json'))!);
+    fs.writeFileSync(descriptor, '{bad');
+    fs.writeFileSync(`${descriptor}.bak`, '{bad');
+
+    const firstRunner = new OperationRunner([], { registryPath: base });
+    await firstRunner.recoverRegistered(defaultRoot);
+    const first = firstRunner.listRecovered();
+
+    const restartedRunner = new OperationRunner([], { registryPath: base });
+    await restartedRunner.recoverRegistered(defaultRoot);
+    const restarted = restartedRunner.listRecovered();
+
+    expect(first).toHaveLength(1);
+    expect(first[0]?.id).toMatch(/^recovery-[a-f0-9]{40}$/);
+    expect(restarted).toHaveLength(1);
+    expect(restarted[0]?.id).toBe(first[0]?.id);
+  });
 });

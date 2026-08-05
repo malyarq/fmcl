@@ -1,37 +1,37 @@
 # Roadmap
 
-Current stable release: **v0.7.1**, published on 2026-08-03. The recovery work that led to v0.7.0 and the v0.7.1 patch is complete; shipped changes belong in the [changelog](../../CHANGELOG.md), not in this roadmap.
+Current stable release: **v0.8.0**, published on 2026-08-05. The Ideal Architecture milestone is complete; shipped changes belong in the [changelog](../../CHANGELOG.md), not in this roadmap.
 
-Active target: **v0.8.0 — Ideal Architecture**. Its implementation phases and acceptance criteria live in the [engineering roadmap](../../.planning/ROADMAP.md). The security, reliability, and maintainability work below is the release scope; broader product expansion follows it.
+Current work is the bounded **v0.8.1 maintenance patch**. It fixes startup console and recovery behavior, production single-instance ownership, packaged brand assets, and stale visual release evidence. It does not start another architecture milestone.
 
 This is a direction document, not a promise of dates. Work is ordered by risk and user value.
 
-## 1. Trusted distribution
+## 1. Close v0.8.1
 
-- Sign Windows installers and sign/notarize macOS packages.
-- Publish build provenance and a software bill of materials alongside checksums.
-- Exercise fresh installation and updater paths on all supported operating systems before each stable release.
-- Keep the published MIT license and third-party notices accurate as dependencies change.
+- Restore a green `main` branch, including the current macOS Chromium visual lane.
+- Freeze the candidate, review only its final diff, and build exact-HEAD release evidence before push or tag creation.
+- Exercise the installed macOS package locally and let the protected release workflow rebuild all supported artifacts.
 
-## 2. Security and reliability
+## 2. Prove the product
 
+- Do not start another architecture milestone until at least 20 external users have tried the launcher and their opt-in usage and feedback have been reviewed.
+- Track successful and failed Minecraft launches, failure stages, operating systems, languages, and Classic/Modpacks usage without collecting account, path, server, or log data.
+- Prioritize observed installation, launch, update, and recovery failures over speculative expansion.
+
+## 3. Distribution and security follow-up
+
+- Exercise fresh installation and updater paths on Windows, macOS, and Linux before each stable release.
+- Sign Windows installers and sign/notarize macOS packages when publisher credentials are available.
 - Remove the remaining DNS-rebinding exposure from local HTTP callback and control surfaces.
-- Keep the single typed renderer boundary enforced as domain capabilities evolve.
-- Modpack duplication, import, provider installation, updates, deletion, archive export, and manifest publication use one durable transaction journal.
-- Interrupted modpack mutations are recovered deterministically or left explicitly recovery-required instead of relying on best-effort cleanup.
+- Detect weak Linux keyring backends and expand cross-platform visual and accessibility coverage.
+- Keep the MIT license, third-party notices, checksums, provenance, and privacy settings accurate.
 
-## 3. Maintainability
+## 4. Product candidates after external evidence
 
-- Split the oversized modpack service facade by responsibility without duplicating state.
-- Centralize the download queue, cancellation, retry, and progress model.
-- Expand dependency-direction and module-ownership checks as domain facades are split.
-- Expand cross-platform visual coverage and accessibility checks.
-
-## 4. After v0.8.0
-
-- Do not start another architectural milestone until at least 20 external users have tried v0.8.0 and their usage and feedback have been reviewed.
-- Improve account reauthentication and expired-session recovery.
+- Add Microsoft authentication for official Minecraft accounts.
+- Improve reauthentication and expired-session recovery for every supported account provider.
 - Add supported backup and restore for launcher settings and instances.
+- Resume interrupted downloads safely after restart.
 - Enable CurseForge browsing only after API credentials, attribution, distribution rules, tests, and failure handling are complete.
 - Revisit broader social or marketplace features only after the launcher core remains stable in daily use.
 

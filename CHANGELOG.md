@@ -4,7 +4,19 @@ This file summarizes user-visible and operational changes. Git history remains t
 
 ## Unreleased
 
-No changes after the local v0.8.0 candidate.
+No changes after the local v0.8.1 candidate.
+
+## [0.8.1] — 2026-08-06
+
+### Fixed
+
+- Keep the debug console closed across application restarts instead of restoring it in front of the launcher.
+- Keep startup recovery notices out of the dedicated console window and remember notices the user closes.
+- Give repeated recovery failures stable identities so dismissed notices do not return with a new identifier.
+- Focus the existing production window on a second launch instead of creating a stale `_2` profile.
+- Resolve bundled brand assets relative to the packaged renderer so first-run logos load from the installed application.
+- Keep the welcome dismissal action on one line at supported desktop widths.
+- Restore the degraded-state visual proof and refresh all release-candidate snapshots against the current interface.
 
 ## [0.8.0] — 2026-08-05
 
@@ -28,11 +40,10 @@ No changes after the local v0.8.0 candidate.
 - Added clean Node 24 production bundle budgets and representative median/p95 renderer performance gates.
 - Added real Chromium keyboard, focus-return, semantic naming, computed contrast, EN/RU route, and dialog behavior checks.
 
-### Release candidate
+### Release
 
-- Prepared unsigned Windows, macOS, and Linux packaging, native host smoke, explicit foreign-runner evidence, SHA-256 manifests, rollback rules, and a schema-valid exact-commit pre-push report.
+- Published unsigned Windows, macOS, and Linux packages with native host smoke, explicit foreign-runner evidence, SHA-256 manifests, rollback rules, and protected release approval.
 - Added canonical Linux desktop identity and game category metadata so launchers associate the running window with the installed application entry.
-- The stable candidate is prepared locally but is not tagged, pushed, or published until the maintainer approves the final report and the protected GitHub release Environment is configured.
 
 ## [0.7.1] — 2026-08-03
 
@@ -68,6 +79,7 @@ No changes after the local v0.8.0 candidate.
 
 Historical changes before v0.6.0 are available in [GitHub Releases](https://github.com/malyarq/fmcl/releases) and the archived planning records under `.planning/milestones/`.
 
+[0.8.1]: https://github.com/malyarq/fmcl/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/malyarq/fmcl/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/malyarq/fmcl/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/malyarq/fmcl/compare/v0.6.0...v0.7.0

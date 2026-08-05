@@ -4,6 +4,7 @@ import { OperationJournal } from './operationJournal';
 import { OperationLocks } from './operationLocks';
 import { RootMutationLock } from './rootMutationLock';
 import { OperationRootRegistry } from './rootRegistry';
+import { createRecoveryFailureSnapshot } from './recoveryFailureSnapshot';
 import { StagingWorkspace } from './stagingWorkspace';
 import { getModpackDir } from '../instances/paths';
 import type {
@@ -485,13 +486,7 @@ export class OperationRunner {
   }
 
   private recordRecoveryFailure(rootPath: string, error: unknown): void {
-    const now = new Date().toISOString();
-    const snapshot: OperationSnapshot = {
-      id: `recovery-${randomUUID()}`, kind: 'duplicate', rootPath, status: 'recovery-required', phase: 'recovery-required',
-      progress: { completed: 0, total: 1 }, createdAt: now, updatedAt: now,
-      input: { kind: 'duplicate', rootPath, sourceId: 'recovery' },
-      result: { status: 'recovery-required', message: toSafeMessage(error) },
-    };
+    const snapshot = createRecoveryFailureSnapshot(rootPath, error);
     this.snapshots.set(snapshot.id, snapshot);
   }
 

@@ -1,6 +1,12 @@
 export const BRAND_WORDMARK = 'FriendLauncher'
-export const APP_ICON_PATH = '/icon.ico'
-export const LAUNCHER_MARK_PATH = '/launcher-mark.svg'
+
+export function getBundledAssetPath(fileName: string, baseUrl = import.meta.env.BASE_URL) {
+  const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
+  return `${normalizedBase}${fileName.replace(/^\/+/, '')}`
+}
+
+export const APP_ICON_PATH = getBundledAssetPath('icon.ico')
+export const LAUNCHER_MARK_PATH = getBundledAssetPath('launcher-mark.svg')
 
 function createSvgDataUri(svg: string) {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
@@ -68,8 +74,11 @@ export function isBundledAssetSource(source: string | null | undefined, assetPat
 
   const normalizedSource = source.split('#')[0]?.split('?')[0] ?? ''
   const normalizedAsset = assetPath.split('#')[0]?.split('?')[0] ?? assetPath
+  const absoluteAssetSuffix = normalizedAsset.startsWith('./')
+    ? normalizedAsset.slice(1)
+    : normalizedAsset
 
-  return normalizedSource === normalizedAsset || normalizedSource.endsWith(normalizedAsset)
+  return normalizedSource === normalizedAsset || normalizedSource.endsWith(absoluteAssetSuffix)
 }
 
 export function isBrandAssetSource(source: string | null | undefined, role: BrandAssetRole) {

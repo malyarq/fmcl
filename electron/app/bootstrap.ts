@@ -12,6 +12,7 @@ import { runFullInstallationTest } from './fullInstallationTest';
 import { loadFullTestConfig } from './fullTestConfig';
 import { createCompositionRoot } from './compositionRoot';
 import { ApplicationLifecycle } from './applicationLifecycle';
+import { acquireApplicationInstance, focusExistingWindow } from './singleInstance';
 
 function configureAppRoot() {
   const __filename = fileURLToPath(import.meta.url);
@@ -52,22 +53,6 @@ function resolveRuntimePaths() {
     rendererDist,
     vitePublicPath: process.env.VITE_PUBLIC!,
   };
-}
-
-function configureMultiInstanceSupport(rendererDevUrl?: string) {
-  // In dev, allow two local instances by splitting userData.
-  if (rendererDevUrl && rendererDevUrl.includes(':5174')) {
-    const newPath = app.getPath('userData') + '_2';
-    app.setPath('userData', newPath);
-    return;
-  }
-
-  // In prod, isolate a second instance instead of exiting.
-  const gotTheLock = app.requestSingleInstanceLock();
-  if (!gotTheLock) {
-    const newPath = app.getPath('userData') + '_2';
-    app.setPath('userData', newPath);
-  }
 }
 
 function resolveAuthServerPort() {
@@ -115,9 +100,14 @@ export function bootstrapMain() {
 
   configureAppRoot();
   const paths = resolveRuntimePaths();
-  configureMultiInstanceSupport(paths.rendererDevUrl);
+  if (!acquireApplicationInstance(paths.rendererDevUrl)) {
+    app.quit();
+    return;
+  }
 
   let winRef: ReturnType<typeof createMainWindow> | null = null;
+
+  app.on('second-instance', () => focusExistingWindow(winRef));
 
   const createWindow = () => {
     const win = createMainWindow({

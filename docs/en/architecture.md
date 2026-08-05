@@ -109,7 +109,7 @@ Shell, installed list, Details, Classic, Settings, and launch code read focused 
 
 Each mutation feature owns its call to `useOperationSession`; the hook owns subscription release, cancellation, terminal callback ordering, reset, and explicit retry. `operationTerminalPolicy.ts` is the single classifier for durable commit, canonical invalidation, and presentation success. A degraded committed result may invalidate state, but it cannot select an instance, close the surface, or claim success.
 
-`OperationRecoveryProvider` mounts once inside the query provider. It accepts only internally consistent sanitized recovered records, invalidates a committed operation at most once, and exposes inspection, dismissal, and safe navigation. It never reconstructs hidden input or generically replays an operation. Consumed archive references and expired native save authorization require a new user action.
+`OperationRecoveryProvider` mounts once inside the query provider. It accepts only internally consistent sanitized recovered records, invalidates a committed operation at most once, and exposes inspection, durable bounded dismissal, and safe navigation. The inbox is not mounted in the dedicated debug-console renderer. It never reconstructs hidden input or generically replays an operation. Consumed archive references and expired native save authorization require a new user action.
 
 `ModpackNavigationProvider` is mounted above `AppRecoveryBoundary`, so route and back history survive in-place recovery. The feature boundary refreshes canonical instances and the recovery inbox without reloading the renderer. Only the provider-free bootstrap boundary may request a full renderer reload after an unrecoverable bootstrap failure.
 
@@ -240,7 +240,7 @@ See [Security model](security.md), [IPC contract map](contracts-map.md), and [Kn
 
 ## Multi-instance development
 
-Development can start a second local process with a suffixed Electron `userData` directory. Local helper ports derive from that instance slot; do not add a fixed port outside the allocation model. Processes that intentionally share one launcher root are serialized by the root mutation protocol.
+Production is single-instance: another launch focuses the existing window and keeps one canonical profile. Development can intentionally start a second local process with a suffixed Electron `userData` directory. Local helper ports derive from that instance slot; do not add a fixed port outside the allocation model. Processes that intentionally share one launcher root are serialized by the root mutation protocol.
 
 ## Changing a cross-process feature
 

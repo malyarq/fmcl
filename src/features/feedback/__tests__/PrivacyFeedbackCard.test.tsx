@@ -57,7 +57,7 @@ describe('PrivacyFeedbackCard', () => {
     expect(mocks.setEnabled).toHaveBeenCalledWith(true);
 
     fireEvent.click(screen.getByText('Посмотреть безопасную диагностику'));
-    expect(screen.getByText(/FMCL: 0\.8\.0/)).toBeTruthy();
+    expect(screen.getByText(/FMCL: 0\.8\.1/)).toBeTruthy();
     expect(screen.queryByText(/nickname|token|\/Users\//i)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Сообщить о проблеме на GitHub' }));
@@ -79,7 +79,7 @@ describe('PrivacyFeedbackCard', () => {
     expect(url.length).toBeLessThan(2048);
     expect(russianUrl.length).toBeLessThan(2048);
     expect(new URL(url).origin).toBe('https://github.com');
-    expect(body).toContain('FMCL: 0.8.0');
+    expect(body).toContain('FMCL: 0.8.1');
     expect(body).toContain('OS: windows');
   });
 });

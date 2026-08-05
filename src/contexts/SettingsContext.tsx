@@ -180,7 +180,9 @@ function serializeAppearanceState(state: AppearanceSettingsState) {
 export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [minecraftPath, setMinecraftPath] = useLocalStorageState('settings_minecraftPath', deserializeString(''), serializeString);
     const [hideLauncher, setHideLauncher] = useLocalStorageState('settings_hideLauncher', deserializeBoolean(true), serializeBoolean);
-    const [showConsole, setShowConsole] = useLocalStorageState('settings_showConsole', deserializeBoolean(false), serializeBoolean);
+    // Console visibility is session state. Persisting it used to reopen the
+    // debug window in front of the launcher after every application restart.
+    const [showConsole, setShowConsole] = useLocalStorageState('settings_showConsole', () => false, serializeBoolean);
     const [language, setLanguage] = useLocalStorageState<Language>('settings_language', (raw) => (raw === 'ru' ? 'ru' : 'en'), serializeString);
     const [appearanceState, setAppearanceStateRaw] = useLocalStorageState<AppearanceSettingsState>(
         'settings_appearanceState',
@@ -329,13 +331,12 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         setShowConsole(val);
     }, [setShowConsole]);
 
-    // Sync console window state with state
+    // The console has its own renderer and SettingsProvider. It must not close
+    // itself while booting or mirror the main window's console toggle.
     useEffect(() => {
-        if (showConsole) {
-            windowControlsIPC.openConsole();
-        } else {
-            windowControlsIPC.closeConsole();
-        }
+        if (window.location.hash === '#console') return;
+        if (showConsole) windowControlsIPC.openConsole();
+        else windowControlsIPC.closeConsole();
     }, [showConsole]);
 
     return (

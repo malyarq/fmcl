@@ -36,6 +36,8 @@ vi.mock('../../../../contexts/SettingsContext', () => ({
 
 describe('OperationRecoveryProvider', () => {
   beforeEach(() => {
+    window.localStorage.clear();
+    window.history.replaceState({}, '', '/');
     listRecoveredMock.mockReset();
     getMock.mockReset();
     invalidateInstancesMock.mockReset();
@@ -160,6 +162,38 @@ describe('OperationRecoveryProvider', () => {
     expect(await screen.findByText('Recovered after restart')).toBeTruthy();
     expect(listRecoveredMock).toHaveBeenCalledTimes(2);
     expect(invalidateInstancesMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps a dismissed recovery record closed after the provider restarts', async () => {
+    listRecoveredMock.mockResolvedValue([
+      operation('update-recovery', 'update', 'recovery-required'),
+    ]);
+
+    const first = render(
+      <OperationRecoveryProvider><div>Workspace</div></OperationRecoveryProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Dismiss Update' }));
+    expect(screen.queryByTestId('operation-recovery-inbox')).toBeNull();
+    first.unmount();
+
+    render(<OperationRecoveryProvider><div>Workspace restarted</div></OperationRecoveryProvider>);
+
+    await waitFor(() => expect(listRecoveredMock).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId('operation-recovery-inbox')).toBeNull();
+  });
+
+  it('does not load or render the recovery inbox inside the debug console window', async () => {
+    window.history.replaceState({}, '', '/#console');
+    listRecoveredMock.mockResolvedValue([
+      operation('update-recovery', 'update', 'recovery-required'),
+    ]);
+
+    render(<OperationRecoveryProvider><div>Debug console</div></OperationRecoveryProvider>);
+
+    expect(await screen.findByText('Debug console')).toBeTruthy();
+    expect(listRecoveredMock).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('operation-recovery-inbox')).toBeNull();
   });
 });
 

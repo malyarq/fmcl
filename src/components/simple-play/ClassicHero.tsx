@@ -184,7 +184,7 @@ export function ClassicHero({
                   </p>
                 </div>
               </div>
-              <Button variant="ghost" size="sm" onClick={handleDismissWelcome} className="self-start">
+              <Button variant="ghost" size="sm" onClick={handleDismissWelcome} className="shrink-0 self-start whitespace-nowrap">
                 {t('dashboard.dismiss') || 'Dismiss'}
               </Button>
             </div>

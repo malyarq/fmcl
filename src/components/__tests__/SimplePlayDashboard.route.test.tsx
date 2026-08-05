@@ -251,6 +251,7 @@ describe('SimplePlayDashboard route flow', () => {
 
     expect(screen.getByRole('heading', { name: 'Welcome to FriendLauncher!' })).toBeTruthy()
     expect(screen.getByText('Choose version and nickname in the sidebar, then press Play to start.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Got it' }).className).toContain('whitespace-nowrap')
 
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     expect(showSettingsMock).toHaveBeenCalledTimes(1)

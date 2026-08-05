@@ -48,4 +48,24 @@ describe('manual verification readiness', () => {
     await waitFor(() => expect(onReady).toHaveBeenCalledTimes(1));
     },
   );
+
+  it('publishes degraded closeout readiness from the current visible error copy', async () => {
+    window.history.replaceState({}, '', '?view=phase-24-degraded-closeout');
+    seedManualVerificationStorage('phase-24-degraded-closeout');
+    installManualVerificationEnvironment();
+    const onReady = vi.fn();
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    render(<ManualVerificationScenarios view="phase-24-degraded-closeout" onReady={onReady} />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Unable to search right now' })).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'Failed to load screenshots.' })).toBeTruthy();
+      expect(onReady).toHaveBeenCalledWith(
+        'Phase 24 degraded closeout rendered inside the real shell with representative route and secondary-content failed-load proof.',
+      );
+    }, { timeout: 4000 });
+
+    consoleError.mockRestore();
+  });
 });
