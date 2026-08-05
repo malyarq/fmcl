@@ -17,11 +17,11 @@ git commit -m "chore: prepare v<version> candidate"
 Confirm that `package.json` and `package-lock.json` contain the same version, the worktree is clean, and `v<version>` does not already exist. Then build local readiness evidence:
 
 ```bash
-npx electron-builder --publish never --mac --win --linux
+npm run build -- --publish never --mac --win --linux
 npm run release -- <version> --dry-run
 ```
 
-The first command prepares the three expected artifacts under `release/<version>` without publishing them. Use native platform runners when cross-building is unavailable. The dry run then uses the Node 24 shared release profile, runs available package smoke, writes checksums and release evidence, creates a schema-valid pre-push report, and validates that report against the exact version, tag, current commit, and prepared artifacts. It creates no commit, tag, push, remote operation, or GitHub Release. The report is normally written to `quality/evidence/prepush-release-report.json`; this ignored local file must be regenerated after any candidate commit or artifact changes.
+The first command prepares the three expected artifacts under `release/<version>` without publishing them. If cross-building is unavailable, build on native platform runners and collect the exact DMG, NSIS installer, and AppImage in that directory before the dry run; a missing or unhashed package is a hard failure, never `unsupported-runner` evidence. The dry run then uses the Node 24 shared release profile, runs available package smoke, writes checksums and release evidence, creates a schema-valid pre-push report, and validates that report against the exact version, tag, current commit, and prepared artifacts. It creates no commit, tag, push, remote operation, or GitHub Release. The report is normally written to `quality/evidence/prepush-release-report.json`; this ignored local file must be regenerated after any candidate commit or artifact changes.
 
 ## Review the evidence
 

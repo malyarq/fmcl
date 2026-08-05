@@ -1,8 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const mocked = vi.hoisted(() => ({ userDataPath: '/tmp/fmcl-composition-root-test' }));
 
 vi.mock('electron', () => ({
   app: {
-    getPath: () => '/tmp/fmcl-composition-root-test',
+    getPath: () => mocked.userDataPath,
     getAppPath: () => '/tmp/fmcl-composition-root-test',
     isPackaged: false,
   },
@@ -16,6 +21,13 @@ vi.mock('electron', () => ({
 import { createCompositionRoot } from '../compositionRoot';
 
 describe('createCompositionRoot', () => {
+  const cleanup: string[] = [];
+
+  afterEach(() => {
+    mocked.userDataPath = '/tmp/fmcl-composition-root-test';
+    for (const target of cleanup.splice(0)) fs.rmSync(target, { recursive: true, force: true });
+  });
+
   it('exposes one canonical application identity to the IPC handler seam', () => {
     const composition = createCompositionRoot({
       paths: { userDataPath: '/tmp/fmcl-user-data', appDataPath: '/tmp/fmcl-app-data' },
@@ -81,5 +93,27 @@ describe('createCompositionRoot', () => {
     expect(tunnel).toHaveBeenCalledOnce();
     expect(lan).toHaveBeenCalledOnce();
     expect(upnp).toHaveBeenCalledOnce();
+  });
+
+  it('seeds the canonical Classic profile on a clean first startup', async () => {
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-composition-first-start-'));
+    cleanup.push(base);
+    mocked.userDataPath = path.join(base, 'user-data');
+    const composition = createCompositionRoot({
+      paths: { userDataPath: mocked.userDataPath, appDataPath: path.join(base, 'app-data') },
+      authServerUrl: 'http://127.0.0.1:25530',
+    });
+
+    await composition.recoverOperations();
+    const state = await composition.application.read(await composition.getDefaultInstanceRoot());
+
+    expect(state).toMatchObject({
+      status: 'ready',
+      snapshot: {
+        selectedId: 'classic',
+        records: [{ id: 'classic', name: 'Classic' }],
+      },
+    });
+    await composition.shutdown();
   });
 });

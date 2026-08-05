@@ -31,6 +31,10 @@ vi.mock('../tabs/game/MinecraftPathSection', () => ({
   MinecraftPathSection: () => <div>Minecraft path surface</div>,
 }));
 
+vi.mock('../../../features/feedback/PrivacyFeedbackCard', () => ({
+  PrivacyFeedbackCard: () => <div>Privacy and feedback surface</div>,
+}));
+
 describe('LauncherTab layout', () => {
   it('keeps the runtime selector on the opaque Java runtime boundary', async () => {
     const source = await readFile(`${process.cwd()}/src/components/settings/tabs/game/RuntimeSection.tsx`, 'utf8');
@@ -115,5 +119,6 @@ describe('LauncherTab layout', () => {
     expect(clearCacheButton.className).toContain('whitespace-normal');
     expect(clearCacheButton.className).toContain('w-full');
     expect(screen.getByText('Minecraft path surface')).toBeTruthy();
+    expect(screen.getByText('Privacy and feedback surface')).toBeTruthy();
   });
 });

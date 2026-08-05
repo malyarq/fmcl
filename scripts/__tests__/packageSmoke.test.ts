@@ -156,7 +156,7 @@ describe('package smoke artifact contract', () => {
     };
     let adapters = 0;
     const result = await smoke.runPackageSmoke({
-      platform: 'darwin', releaseDir: releaseRoot, version, runtime,
+      platform: 'darwin', hostPlatform: 'darwin', releaseDir: releaseRoot, version, runtime,
       createAdapter: () => { adapters += 1; return { command: 'fixture-app', args: [], cleanup: () => undefined }; },
       readinessTimeoutMs: 25,
     });
@@ -176,7 +176,7 @@ describe('package smoke artifact contract', () => {
     roots.push(workspace);
     const child = Object.assign(new EventEmitter(), { exitCode: 1, stdout: new EventEmitter(), stderr: new EventEmitter(), kill: () => undefined });
     const result = await smoke.runPackageSmoke({
-      platform: 'darwin', releaseDir: releaseRoot, version,
+      platform: 'darwin', hostPlatform: 'darwin', releaseDir: releaseRoot, version,
       runtime: {
         mkdtemp: () => workspace, rm: (target: string) => fs.rmSync(target, { recursive: true, force: true }), exists: fs.existsSync, writeFile: fs.writeFileSync,
         spawn: () => child, reservePort: async () => 43124, waitForRendererReadiness: async () => [{ type: 'page', url: 'file:///index.html' }],
@@ -213,12 +213,37 @@ describe('package smoke artifact contract', () => {
     expect(spawnEnvironment?.APPIMAGE_EXTRACT_AND_RUN).toBe('1');
   });
 
-  it('reports a missing host artifact as unsupported instead of pretending a source build is smoke evidence', async () => {
+  it.each([
+    ['darwin', 'linux', `FriendLauncher-Mac-0.7.1-Installer.dmg`, 'dmg'],
+    ['linux', 'win32', `FriendLauncher-Linux-0.7.1.AppImage`, 'appimage'],
+    ['win32', 'darwin', `FriendLauncher-Windows-0.7.1-Setup.exe`, 'nsis'],
+  ] as const)('binds %s foreign-runner evidence to the artifact without invoking an adapter', async (platform, hostPlatform, artifactName, kind) => {
+    const version = '0.7.1';
+    const releaseRoot = createRelease(version);
+    roots.push(releaseRoot);
+    writeArtifact(releaseRoot, version, artifactName);
+    let adapters = 0;
+
+    const result = await smoke.runPackageSmoke({
+      platform, hostPlatform, releaseDir: releaseRoot, version,
+      createAdapter: () => { adapters += 1; return { command: 'must-not-run', args: [], cleanup: () => undefined }; },
+    });
+
+    expect(adapters).toBe(0);
+    expect(result).toMatchObject({
+      status: 'unsupported-runner',
+      platform,
+      artifact: { kind, sha256: expect.stringMatching(/^[a-f0-9]{64}$/) },
+      workspace: { cleaned: true },
+    });
+  });
+
+  it('reports a missing package as failed instead of emitting unbound unsupported evidence', async () => {
     const releaseRoot = createRelease('0.7.1');
     roots.push(releaseRoot);
 
     await expect(smoke.runPackageSmoke({ platform: 'darwin', releaseDir: releaseRoot, version: '0.7.1' }))
-      .resolves.toMatchObject({ status: 'unsupported-runner', artifact: { kind: 'none' }, workspace: { cleaned: true } });
+      .resolves.toMatchObject({ status: 'failed', artifact: { kind: 'none', sha256: '' }, workspace: { cleaned: true } });
   });
 
   it('writes schema-valid machine output without relying on npm stdout', () => {

@@ -8,6 +8,7 @@ import { MinecraftPathSection } from './game/MinecraftPathSection';
 import type { UpdateInfo, UpdateStatus } from '../../../features/updater/hooks/useAppUpdater';
 import { formatSize } from '../../../utils/format';
 import type { ImageCacheState } from '@shared/contracts/cache';
+import { PrivacyFeedbackCard } from '../../../features/feedback/PrivacyFeedbackCard';
 
 function translateWithFallback(t: (key: string) => string, key: string, fallback: string) {
   const translated = t(key);
@@ -307,6 +308,8 @@ export const LauncherTab: React.FC<LauncherTabProps> = ({
       </div>
 
       <div className="min-w-0 space-y-4">
+        <PrivacyFeedbackCard />
+
         {imageCacheState && (
           <div className="surface-card space-y-4 p-5">
             <div className="flex items-start justify-between gap-4">

@@ -13,6 +13,7 @@ import {
   saveRecentLaunch,
   type LaunchStage,
 } from '../services/launcherService';
+import { analyticsClient } from '../../analytics/analyticsClient';
 
 function translateWithFallback(t: (key: string) => string, key: string, fallback: string) {
   const translated = t(key);
@@ -66,7 +67,14 @@ export const useLauncher = (): UseLauncherResult => {
 
   const handleLaunch = async (options: LaunchOptions) => {
     if (state.isLaunching) return;
+    const loader = modpackConfig?.runtime?.modLoader?.type ?? 'vanilla';
+    const loaderNorm = loader === 'quilt' ? 'fabric' : loader;
+    const analyticsLoader = ['vanilla', 'forge', 'fabric', 'neoforge'].includes(loaderNorm)
+      ? loaderNorm as 'vanilla' | 'forge' | 'fabric' | 'neoforge'
+      : 'vanilla';
+
     if (!launcherIPC.isAvailable()) {
+      void analyticsClient.capture('game_launch_failed', { failure_stage: 'ipc_unavailable', loader: analyticsLoader });
       const unavailableDetail = getLauncherUnavailableDetail(t);
       state.setStatusText(getLaunchStageTitle('failed', t));
       state.setStatusDetail(unavailableDetail);
@@ -81,6 +89,7 @@ export const useLauncher = (): UseLauncherResult => {
     state.setStatusText(getLaunchStageTitle('preparing', t) || t('status.initializing'));
     state.setStatusDetail(translateWithFallback(t, 'status.preparing_detail', 'Checking runtime requirements and selected pack.'));
     state.appendLog('Starting launch sequence...');
+    void analyticsClient.capture('game_launch_started', { loader: analyticsLoader });
 
     try {
       await launcherIPC.launch({
@@ -95,9 +104,8 @@ export const useLauncher = (): UseLauncherResult => {
         useOptiFine: options.useOptiFine ?? false,
       });
       state.setStatusText(t('status.game_running'));
+      void analyticsClient.capture('game_launch_succeeded', { loader: analyticsLoader });
 
-      const loader = modpackConfig?.runtime?.modLoader?.type ?? 'vanilla';
-      const loaderNorm = loader === 'quilt' ? 'fabric' : loader;
       if (instanceId && ['vanilla', 'forge', 'fabric', 'neoforge'].includes(loaderNorm)) {
         const mc = modpackConfig?.runtime?.minecraft ?? '1.20.1';
         saveRecentLaunch(instanceId, {
@@ -116,6 +124,7 @@ export const useLauncher = (): UseLauncherResult => {
         translateWithFallback(t, 'status.waiting_detail', 'Minecraft process started. Waiting for the game window and logs.')
       );
     } catch (e) {
+      void analyticsClient.capture('game_launch_failed', { failure_stage: 'launch', loader: analyticsLoader });
       const detail = getVisibleLaunchFailureDetail(e, t);
       state.appendLog(detail);
       state.setLaunchStage('failed');

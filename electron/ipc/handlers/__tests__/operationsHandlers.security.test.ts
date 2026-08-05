@@ -175,6 +175,28 @@ describe('operations IPC security boundary', () => {
     expect(recovered).not.toHaveProperty('input');
   });
 
+  it('allows inspecting a synthetic startup recovery failure', async () => {
+    const recoveryId = 'recovery-33333333-3333-3333-3333-333333333333';
+    const recoveryFailure = {
+      ...recoveredSnapshot,
+      id: recoveryId,
+      status: 'recovery-required' as const,
+      phase: 'recovery-required' as const,
+      result: { status: 'recovery-required' as const, message: 'Internal recovery failure' },
+    };
+    const runner = {
+      get: vi.fn(() => recoveryFailure),
+      listRecovered: vi.fn(() => [recoveryFailure]),
+      cancel: vi.fn(), subscribe: vi.fn(), prepareRoot: vi.fn(), start: vi.fn(),
+    };
+    registerOperationsHandlers({ runner: runner as never });
+
+    await expect(mocked.handlers.get('operations:get')?.(
+      { sender: { id: 8 } },
+      recoveryId,
+    )).resolves.toMatchObject({ id: recoveryId, status: 'recovery-required' });
+  });
+
   it('does not expose absolute paths from a recovered journal snapshot', async () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-public-operation-snapshot-'));
     try {

@@ -105,10 +105,14 @@ export class OperationRunner {
   }
 
   public async recoverRegistered(defaultRootPath: string): Promise<void> {
-    this.registry?.register(defaultRootPath);
+    // A clean installation has no launcher root yet. Recovery owns creating
+    // the default root before the registry canonicalizes it with realpath.
+    fs.mkdirSync(defaultRootPath, { recursive: true, mode: 0o700 });
+    const canonicalDefaultRootPath = fs.realpathSync.native(defaultRootPath);
+    this.registry?.register(canonicalDefaultRootPath);
     const listed = this.registry?.list() ?? { roots: [], errors: [] };
-    for (const error of listed.errors) this.recordRecoveryFailure(defaultRootPath, error);
-    const roots = new Set([defaultRootPath, ...listed.roots]);
+    for (const error of listed.errors) this.recordRecoveryFailure(canonicalDefaultRootPath, error);
+    const roots = new Set([canonicalDefaultRootPath, ...listed.roots]);
     for (const rootPath of roots) {
       if (!fs.existsSync(rootPath)) continue;
       try { await this.recover(rootPath); } catch (error) {

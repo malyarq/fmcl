@@ -125,6 +125,10 @@ vi.mock('../settings/tabs/game/MinecraftPathSection', () => ({
   MinecraftPathSection: () => <div>Minecraft path surface</div>,
 }));
 
+vi.mock('../../features/feedback/PrivacyFeedbackCard', () => ({
+  PrivacyFeedbackCard: () => <div>Privacy and feedback surface</div>,
+}));
+
 describe('SettingsPage launcher route', () => {
   beforeEach(() => {
     onCloseMock.mockReset();
@@ -150,6 +154,7 @@ describe('SettingsPage launcher route', () => {
     expect(screen.getByTestId('launcher-runtime-grid')).toBeTruthy();
     expect(screen.getByDisplayValue('110')).toBeTruthy();
     expect(screen.getByText('Minecraft path surface')).toBeTruthy();
+    expect(screen.getByText('Privacy and feedback surface')).toBeTruthy();
     expect(screen.queryByRole('heading', { name: 'Launcher' })).toBeNull();
   });
 });

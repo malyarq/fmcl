@@ -123,6 +123,10 @@ vi.mock('../settings/tabs/game/MinecraftPathSection', () => ({
   MinecraftPathSection: () => <div>Путь к Minecraft</div>,
 }));
 
+vi.mock('../../features/feedback/PrivacyFeedbackCard', () => ({
+  PrivacyFeedbackCard: () => <div>Приватность и обратная связь</div>,
+}));
+
 describe('SettingsPage launcher i18n', () => {
   beforeEach(() => {
     window.matchMedia = vi.fn().mockImplementation(() => ({
@@ -142,6 +146,7 @@ describe('SettingsPage launcher i18n', () => {
     expect(screen.getByRole('switch', { name: 'Компактный режим' })).toBeTruthy();
     expect(screen.getByText('Положение сайдбара')).toBeTruthy();
     expect(screen.getByText('Путь к Minecraft')).toBeTruthy();
+    expect(screen.getByText('Приватность и обратная связь')).toBeTruthy();
 
     expect(container.textContent).not.toContain('settings.launcher_runtime_title');
     expect(container.textContent).not.toContain('settings.animations_scope_desc');

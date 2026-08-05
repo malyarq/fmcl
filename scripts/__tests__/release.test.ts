@@ -1,9 +1,35 @@
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
+import { collectPlatformSmoke } from '../release.js';
 
 const releaseScript = fileURLToPath(new URL('../release.js', import.meta.url));
 const prepushScript = fileURLToPath(new URL('../prepush-release-report.js', import.meta.url));
+const roots: string[] = [];
+
+afterEach(() => {
+  for (const root of roots.splice(0)) fs.rmSync(root, { recursive: true, force: true });
+});
+
+function smokeEvidence(platform: 'darwin' | 'linux' | 'win32') {
+  const marker = { darwin: 'a', linux: 'b', win32: 'c' }[platform];
+  return {
+    schemaVersion: 1,
+    status: platform === 'darwin' ? 'passed' : 'unsupported-runner',
+    platform,
+    version: '0.8.0-rc.1',
+    artifact: { path: `FriendLauncher-${platform}`, kind: platform === 'darwin' ? 'dmg' : platform === 'linux' ? 'appimage' : 'nsis', sha256: marker.repeat(64) },
+    signing: { status: 'not-checked' },
+    workspace: { cleanUserData: true, cleaned: true },
+    launch: { command: 'FriendLauncher', readiness: 'remote-debugging-page', windowCount: platform === 'darwin' ? 1 : 0, startedAt: '2026-08-05T00:00:00.000Z' },
+    quit: { requested: platform === 'darwin', graceful: platform === 'darwin', exitCode: platform === 'darwin' ? 0 : null },
+    logs: { stdout: '', stderr: '' },
+    ...(platform === 'darwin' ? {} : { error: 'unsupported runner: foreign host' }),
+  };
+}
 
 function inspectReleaseModule() {
   const source = `
@@ -61,5 +87,25 @@ describe('release candidate guard', () => {
     expect(result.valid).toMatch(/^prepush-[a-f0-9]{64}$/);
     expect(result.missingApproval).toBe(true);
     expect(result.mismatch).toBe(true);
+  });
+
+  it('writes fresh platform smoke files with the aggregate-compatible suffix', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-release-smoke-'));
+    roots.push(root);
+    const evidenceDir = path.join(root, 'evidence');
+    const output = await collectPlatformSmoke({
+      releaseDir: path.join(root, 'release'),
+      version: '0.8.0-rc.1',
+      evidenceDir,
+      runSmoke: async ({ platform }: { platform: 'darwin' | 'linux' | 'win32' }) => smokeEvidence(platform),
+    });
+
+    expect(fs.readdirSync(evidenceDir).sort()).toEqual([
+      'darwin-package-smoke.json',
+      'linux-package-smoke.json',
+      'platform-smoke.json',
+      'win32-package-smoke.json',
+    ]);
+    expect(JSON.parse(fs.readFileSync(output, 'utf8')).map((entry: { platform: string }) => entry.platform)).toEqual(['darwin', 'linux', 'win32']);
   });
 });

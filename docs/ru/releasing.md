@@ -17,11 +17,11 @@ git commit -m "chore: prepare v<version> candidate"
 Проверьте, что в `package.json` и `package-lock.json` одна версия, рабочий каталог чистый, а `v<version>` ещё не существует. Затем соберите локальные доказательства готовности:
 
 ```bash
-npx electron-builder --publish never --mac --win --linux
+npm run build -- --publish never --mac --win --linux
 npm run release -- <version> --dry-run
 ```
 
-Первая команда готовит три ожидаемых артефакта в `release/<version>`, но ничего не публикует. Если cross-build недоступен, используйте нативный runner нужной платформы. Затем dry run использует общий release profile на Node 24, запускает доступный package smoke, записывает checksums и release evidence, создаёт schema-valid pre-push report и проверяет его точное соответствие версии, тегу, текущему commit и подготовленным артефактам. Он не создаёт commit, тег, push, удалённую операцию или GitHub Release. Обычно report находится в `quality/evidence/prepush-release-report.json`; этот ignored локальный файл нужно пересоздавать после любого изменения candidate commit или артефактов.
+Первая команда готовит три ожидаемых артефакта в `release/<version>`, но ничего не публикует. Если cross-build недоступен, соберите пакеты на нативных runner'ах и до dry run сложите точные DMG, NSIS installer и AppImage в этот каталог; отсутствующий пакет или пакет без хеша считается ошибкой, а не `unsupported-runner` evidence. Затем dry run использует общий release profile на Node 24, запускает доступный package smoke, записывает checksums и release evidence, создаёт schema-valid pre-push report и проверяет его точное соответствие версии, тегу, текущему commit и подготовленным артефактам. Он не создаёт commit, тег, push, удалённую операцию или GitHub Release. Обычно report находится в `quality/evidence/prepush-release-report.json`; этот ignored локальный файл нужно пересоздавать после любого изменения candidate commit или артефактов.
 
 ## Проверить доказательства
 

@@ -66,7 +66,9 @@
       "AppImage"
     ],
     "artifactName": "${productName}-Linux-${version}.${ext}",
-    "icon": "public/icon.png"
+    "icon": "public/icon.png",
+    "category": "Game",
+    "syncDesktopName": true
   },
   "publish": {
     "provider": "github",

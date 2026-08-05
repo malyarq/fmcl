@@ -85,17 +85,17 @@ export function validateApprovedReport({ report, candidate, approval }) {
   return report;
 }
 
-async function collectPlatformSmoke({ releaseDir, version, evidenceDir }) {
+export async function collectPlatformSmoke({ releaseDir, version, evidenceDir, runSmoke = runPackageSmoke, writeAggregate = writePlatformSmokeAggregate }) {
   for (const platform of ['darwin', 'linux', 'win32']) {
-    const evidence = await runPackageSmoke({ platform, releaseDir, version });
+    const evidence = await runSmoke({ platform, releaseDir, version });
     const validation = validatePackageSmokeEvidence(evidence);
     if (!validation.valid) fail(`package smoke evidence is invalid for ${platform}: ${validation.errors.join('; ')}`);
-    const outputPath = join(evidenceDir, `package-smoke-${platform}.json`);
+    const outputPath = join(evidenceDir, `${platform}-package-smoke.json`);
     mkdirSync(dirname(outputPath), { recursive: true });
     writeFileSync(outputPath, `${JSON.stringify(evidence, null, 2)}\n`);
   }
   const outputPath = join(evidenceDir, 'platform-smoke.json');
-  writePlatformSmokeAggregate({ inputDir: evidenceDir, outputFile: outputPath });
+  writeAggregate({ inputDir: evidenceDir, outputFile: outputPath });
   return outputPath;
 }
 

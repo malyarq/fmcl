@@ -13,7 +13,7 @@ import type {
   OperationSnapshot,
 } from '../../../shared/contracts/operations';
 
-const OPERATION_ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const OPERATION_ID_RE = /^(?:recovery-)?[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_NAME_LENGTH = 120;
 
 type Subscription = {

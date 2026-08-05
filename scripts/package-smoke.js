@@ -208,11 +208,7 @@ function defaultRuntime() {
     reservePort,
     waitForRendererReadiness: (port, timeoutMs, child) => waitForRendererReadiness(port, timeoutMs, () => child.exitCode !== null),
     waitForExit,
-    requestGracefulQuit: ({ platform, child }) => {
-      if (platform === 'darwin') {
-        execFileSync('osascript', ['-e', 'tell application id "com.friendlauncher.app" to quit'], { stdio: 'ignore' });
-      } else child.kill('SIGTERM');
-    },
+    requestGracefulQuit: ({ child }) => child.kill('SIGTERM'),
   };
 }
 
@@ -247,6 +243,9 @@ export async function runPackageSmoke(options = {}) {
     }
     const artifact = findPackagedArtifact({ releaseDir, version, platform });
     evidence.artifact = { path: relative(releaseDir, artifact.path), kind: artifact.kind, sha256: sha256(artifact.path) };
+    if (platform === 'darwin' && hostPlatform !== 'darwin') throw new Error('unsupported runner: DMG packages require a macOS host');
+    if (platform === 'win32' && hostPlatform !== 'win32') throw new Error('unsupported runner: NSIS packages require a Windows host');
+    if (platform === 'linux' && hostPlatform !== 'linux') throw new Error('unsupported runner: AppImage packages require a Linux host');
     workspace = runtime.mkdtemp(join(tmpdir(), 'fmcl-package-smoke-'));
     const userDataPath = join(workspace, 'user-data');
     const configPath = join(workspace, 'package-smoke-config.json');
@@ -255,8 +254,6 @@ export async function runPackageSmoke(options = {}) {
     // operation recovery probes its real path on a clean first start.
     makeDirectory(join(userDataPath, 'minecraft_data'));
     runtime.writeFile(configPath, JSON.stringify({ cleanUserData: true, artifact: basename(artifact.path), version, platform }), 'utf8');
-    if (platform === 'win32' && hostPlatform !== 'win32') throw new Error('unsupported runner: NSIS packages require a Windows host');
-    if (platform === 'linux' && hostPlatform !== 'linux') throw new Error('unsupported runner: AppImage packages require a Linux host');
     adapter = (options.createAdapter ?? createPlatformAdapter)(platform, { artifactPath: artifact.path, workspace, ports });
     const debugPort = await runtime.reservePort();
     child = runtime.spawn(adapter.command, [...adapter.args, `--remote-debugging-port=${debugPort}`, `--user-data-dir=${userDataPath}`], {
@@ -288,7 +285,7 @@ export async function runPackageSmoke(options = {}) {
     evidence.status = 'passed';
   } catch (error) {
     evidence.error = error instanceof Error ? error.message : String(error);
-    if (/^(unsupported runner:|missing release directory|missing exact)/.test(String(evidence.error))) evidence.status = 'unsupported-runner';
+    if (/^unsupported runner:/.test(String(evidence.error))) evidence.status = 'unsupported-runner';
     if (child && child.exitCode === null) child.kill('SIGTERM');
   } finally {
     try { adapter?.cleanup?.(); } catch (error) { evidence.logs.stderr = appendLog(evidence.logs.stderr, `cleanup: ${String(error)}\n`); }

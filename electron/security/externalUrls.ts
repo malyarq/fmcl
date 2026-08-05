@@ -13,6 +13,7 @@ type ClassifiedExternalUrl = {
 const ALLOWED_EXTERNAL_PROTOCOLS = new Set(['http:', 'https:'])
 const BLOCKED_EXTERNAL_PROTOCOLS = new Set(['javascript:', 'data:', 'file:'])
 const TRUSTED_EXTERNAL_HOSTS = new Set([
+  'github.com',
   'modrinth.com',
   'www.modrinth.com',
   'curseforge.com',

@@ -29,6 +29,7 @@ No changes after the local release candidate.
 ### Release candidate
 
 - Prepared unsigned Windows, macOS, and Linux packaging, native host smoke, explicit foreign-runner evidence, SHA-256 manifests, rollback rules, and a schema-valid exact-commit pre-push report.
+- Added canonical Linux desktop identity and game category metadata so launchers associate the running window with the installed application entry.
 - The candidate is prepared locally but is not tagged, pushed, or published until the maintainer approves the final report and the protected GitHub release Environment is configured.
 
 ## [0.7.1] — 2026-08-03

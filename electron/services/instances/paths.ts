@@ -22,7 +22,10 @@ function hasLauncherRootMarkers(rootPath: string): boolean {
   }
 
   try {
-    return safeRootPath === path.resolve(getDefaultRootPath());
+    // macOS exposes /tmp through the /private/tmp real path (and users may
+    // intentionally symlink app data). Compare filesystem identities instead
+    // of rejecting the canonical form of our own default launcher root.
+    return fs.realpathSync.native(safeRootPath) === fs.realpathSync.native(getDefaultRootPath());
   } catch {
     return false;
   }

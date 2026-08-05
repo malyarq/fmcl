@@ -34,6 +34,9 @@ function configureIsolatedTestUserData(): void {
   }
 
   fs.mkdirSync(testUserDataPath, { recursive: true });
+  const testAppDataPath = path.join(testUserDataPath, 'app-data');
+  fs.mkdirSync(testAppDataPath, { recursive: true });
+  app.setPath('appData', testAppDataPath);
   app.setPath('userData', testUserDataPath);
 }
 
