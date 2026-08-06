@@ -4,7 +4,13 @@ This file summarizes user-visible and operational changes. Git history remains t
 
 ## Unreleased
 
-No changes after the local v0.9.0 candidate.
+No changes after the local v0.9.1 candidate.
+
+## [0.9.1] — 2026-08-07
+
+### Security
+
+- Updated `js-yaml` to 4.3.1 to fix quadratic CPU consumption while parsing crafted `!!omap` YAML input (GHSA-5p4m-2wfm-xmqj).
 
 ## [0.9.0] — 2026-08-06
 
@@ -104,6 +110,7 @@ No changes after the local v0.9.0 candidate.
 
 Historical changes before v0.6.0 are available in [GitHub Releases](https://github.com/malyarq/fmcl/releases) and Git history.
 
+[0.9.1]: https://github.com/malyarq/fmcl/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/malyarq/fmcl/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/malyarq/fmcl/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/malyarq/fmcl/compare/v0.7.1...v0.8.0

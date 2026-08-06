@@ -1,7 +1,7 @@
 {
   "name": "friend-launcher",
   "private": true,
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Desktop Minecraft launcher for vanilla play, modpacks, and FriendTunnel multiplayer.",
   "desktopName": "com.friendlauncher.app",
   "author": "FriendLauncher Contributors",
@@ -115,7 +115,7 @@
       "undici": "^7.29.0",
       "uuid": "^11.1.1"
     },
-    "js-yaml": "^4.3.0",
+    "js-yaml": "^4.3.1",
     "smol-toml": "^1.6.1"
   },
   "main": "dist-electron/main.js"
