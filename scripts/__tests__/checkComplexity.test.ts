@@ -14,6 +14,10 @@ type ComplexityMetric = Readonly<{
 type ComplexityChecker = Readonly<{
   collectComplexityInventory(projectRoot: string): ComplexityMetric[];
   collectComplexityViolations(projectRoot: string, ratchet: unknown): string[];
+  createRatchet(projectRoot: string): {
+    defaults: Record<string, { maxLoc: number; maxFunctionComplexity: number }>;
+    exceptions: Record<string, { maxLoc: number; maxFunctionComplexity: number }>;
+  };
 }>;
 
 const require = createRequire(import.meta.url);
@@ -31,9 +35,7 @@ function createFixture(): string {
 
 function ratchet(exceptions: Record<string, { maxLoc: number; maxFunctionComplexity: number }> = {}): unknown {
   return {
-    schemaVersion: 1,
-    parser: { name: 'typescript', loc: 'non-comment physical lines', complexity: 'cyclomatic branch count' },
-    environment: { node: '24.13.0', npm: '11.6.2', typescript: '5.9.3', platform: 'test', architecture: 'test', commit: 'fixture', capturedAt: '2026-08-05T00:00:00.000Z' },
+    schemaVersion: 2,
     defaults: {
       renderer: { maxLoc: 4, maxFunctionComplexity: 1 },
       shared: { maxLoc: 4, maxFunctionComplexity: 1 },
@@ -45,7 +47,6 @@ function ratchet(exceptions: Record<string, { maxLoc: number; maxFunctionComplex
       'electron-service': { maxLoc: 4, maxFunctionComplexity: 1 },
     },
     exceptions,
-    inventory: [],
   };
 }
 
@@ -67,6 +68,22 @@ describe('complexity ratchet', () => {
       { path: 'shared/contracts/alpha.ts', category: 'shared', loc: 1, maxFunctionComplexity: 0 },
       { path: 'src/features/zeta.ts', category: 'renderer', loc: 3, maxFunctionComplexity: 2 },
     ]);
+  });
+
+  it('rounds generated limits so ordinary edits do not require line-by-line baseline churn', () => {
+    const root = createFixture();
+    roots.push(root);
+    writeFixture(root, 'src/features/hot.ts', [
+      'export function hot(value: boolean) {',
+      '  if (value) return 1;',
+      '  return 0;',
+      '}',
+    ].join('\n'));
+
+    const generated = checker.createRatchet(root);
+
+    expect(generated.defaults.renderer).toEqual({ maxLoc: 25, maxFunctionComplexity: 5 });
+    expect(generated.exceptions).toEqual({});
   });
 
   it('permits an existing hotspot only at its explicit path-specific allowance', () => {

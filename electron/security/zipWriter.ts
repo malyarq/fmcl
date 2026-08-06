@@ -11,7 +11,7 @@ function normalizeEntryName(entryName: string): string {
     .join('/');
 }
 
-async function replaceFile(tempPath: string, outputPath: string): Promise<void> {
+export async function replaceFileAtomically(tempPath: string, outputPath: string): Promise<void> {
   if (!fs.existsSync(outputPath)) {
     await fs.promises.rename(tempPath, outputPath);
     return;
@@ -63,7 +63,7 @@ export class SafeZipWriter {
 
     try {
       await writePromise;
-      await replaceFile(tempPath, safeOutputPath);
+      await replaceFileAtomically(tempPath, safeOutputPath);
     } catch (error) {
       await fs.promises.rm(tempPath, { force: true }).catch(() => undefined);
       throw error;

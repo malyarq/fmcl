@@ -61,6 +61,7 @@ vi.mock('../../contexts/SettingsContext', () => ({
         'modpacks.add_mod_partial_title': 'Some mods still need attention',
         'modpacks.mod_issue_manifest_failure': 'The file was installed, but its manifest entry could not be saved.',
         'operations.retry': 'Retry',
+        'general.close_dialog': 'Close dialog',
         'general.cancel': 'Cancel',
         'general.modloader': 'Modloader',
         'general.offline': 'Offline',

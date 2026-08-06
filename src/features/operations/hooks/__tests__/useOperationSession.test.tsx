@@ -10,8 +10,10 @@ const ipc = vi.hoisted(() => ({
   cancel: vi.fn(),
   subscribe: vi.fn(),
 }));
+const analytics = vi.hoisted(() => ({ capture: vi.fn() }));
 
 vi.mock('../../../../services/ipc/operationsIPC', () => ({ operationsIPC: ipc }));
+vi.mock('../../../analytics/analyticsClient', () => ({ analyticsClient: analytics }));
 
 function operation(status: OperationStatus): OperationSnapshot {
   return {
@@ -45,6 +47,7 @@ describe('useOperationSession', () => {
     ipc.start.mockReset();
     ipc.cancel.mockReset().mockResolvedValue({ cancelled: true });
     ipc.subscribe.mockReset();
+    analytics.capture.mockReset().mockResolvedValue('sent');
   });
 
   it('classifies a terminal start result without subscribing and commits exactly once', async () => {
@@ -64,6 +67,11 @@ describe('useOperationSession', () => {
       selectableInstanceId: 'published-instance',
     });
     expect(result.current.snapshot?.status).toBe('succeeded');
+    expect(analytics.capture).toHaveBeenCalledOnce();
+    expect(analytics.capture).toHaveBeenCalledWith('operation_finished', {
+      kind: 'import',
+      result: 'succeeded',
+    });
   });
 
   it('handles a terminal callback before subscribe resolves and releases exactly once', async () => {

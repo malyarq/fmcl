@@ -2,7 +2,7 @@
 
 The documentation is split by audience and language. English and Russian variants describe the same behavior; code, tests, and workflow files remain the final source of truth.
 
-[English](#english) · [Русский](#russian) · [Historical documents](archive/README.md)
+[English](#english) · [Русский](#russian)
 
 ## English
 
@@ -27,7 +27,7 @@ The documentation is split by audience and language. English and Russian variant
 
 - [Release runbook](en/releasing.md)
 - [Security model](en/security.md) and [reporting policy](../SECURITY.md)
-- [Roadmap](en/roadmap.md)
+- [Product gate](en/roadmap.md)
 - [Changelog](../CHANGELOG.md)
 - [Third-party notices](../THIRD_PARTY_NOTICES.md)
 
@@ -54,14 +54,14 @@ The documentation is split by audience and language. English and Russian variant
 
 - [Выпуск релиза](ru/releasing.md)
 - [Модель безопасности](ru/security.md) и [политика сообщения об уязвимостях](../SECURITY.md)
-- [Роадмап](ru/roadmap.md)
+- [Продуктовый ограничитель](ru/roadmap.md)
 - [История изменений](../CHANGELOG.md)
 - [Уведомления о сторонних компонентах](../THIRD_PARTY_NOTICES.md)
 
 ## Maintenance rules
 
 - Update both language variants when a mirrored document changes.
-- Do not use dated plans as current product documentation; move completed plans to `docs/archive/`.
+- Do not keep dated plans as current product documentation; Git history preserves completed planning material.
 - Verify commands against `package.json` and workflows against `.github/workflows/`.
 - Run `npm run contracts:check` after changing the IPC channel map.
 - Keep local Markdown links valid.

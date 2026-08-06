@@ -174,7 +174,7 @@ export const WorldDatapacksModal: React.FC<WorldDatapacksModalProps> = ({
     }
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={t('modpacks.datapacks_for_world', { name: worldName })} className="max-w-5xl">
+        <Modal isOpen={isOpen} onClose={onClose} closeLabel={t('general.close_dialog')} title={t('modpacks.datapacks_for_world', { name: worldName })} className="max-w-5xl">
             <div className={MODPACK_SECONDARY_CONTENT_WORKSPACE.host} data-secondary-content-workspace="shared">
                 <div className="surface-inline grid gap-2 p-2 sm:grid-cols-2" role="tablist" aria-label={t('modpacks.datapacks')}>
                     {(['installed', 'search'] as const).map((entry) => {

@@ -10,11 +10,6 @@ const defaultRoot = path.join(__dirname, '..')
 const defaultOutputDir = path.join(defaultRoot, 'dist')
 const defaultManifestPath = path.join(defaultOutputDir, '.vite', 'manifest.json')
 const defaultBaselinePath = path.join(defaultRoot, 'quality', 'baselines', 'node24-vite.json')
-const phase41Comparison = {
-  index: { rawBytes: 448590, gzipBytes: 117150 },
-  modpackRouter: { rawBytes: 96680, gzipBytes: 26120 },
-}
-
 function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -53,19 +48,10 @@ function validateEnvironment(environment) {
   }
 }
 
-function validateMeasurement(value, label) {
-  assertExactKeys(value, ['rawBytes', 'gzipBytes'], label)
-  assertPositiveInteger(value.rawBytes, `${label}.rawBytes`)
-  assertPositiveInteger(value.gzipBytes, `${label}.gzipBytes`)
-}
-
 function validateQualityBaseline(baseline) {
-  assertExactKeys(baseline, ['schemaVersion', 'environment', 'phase41Comparison', 'chunks'], 'baseline')
+  assertExactKeys(baseline, ['schemaVersion', 'environment', 'chunks'], 'baseline')
   if (baseline.schemaVersion !== 1) throw new Error('baseline.schemaVersion must equal 1')
   validateEnvironment(baseline.environment)
-  assertExactKeys(baseline.phase41Comparison, ['index', 'modpackRouter'], 'baseline.phase41Comparison')
-  validateMeasurement(baseline.phase41Comparison.index, 'baseline.phase41Comparison.index')
-  validateMeasurement(baseline.phase41Comparison.modpackRouter, 'baseline.phase41Comparison.modpackRouter')
   if (!Array.isArray(baseline.chunks) || baseline.chunks.length === 0) {
     throw new Error('baseline.chunks must contain at least one renderer chunk')
   }
@@ -140,7 +126,6 @@ function collectQualityBaseline({ environment, manifestPath = defaultManifestPat
   const baseline = {
     schemaVersion: 1,
     environment,
-    phase41Comparison,
     chunks: collectChunkMeasurements(readManifest(manifestPath), outputDir),
   }
   validateQualityBaseline(baseline)

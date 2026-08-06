@@ -18,7 +18,9 @@ The renderer is never treated as trusted merely because it was bundled with the 
 ## Electron boundary
 
 - Application windows use sandboxing and context isolation with Node integration disabled.
+- Production packages disable `ELECTRON_RUN_AS_NODE`, Node options, and inspector arguments; enable cookie encryption and ASAR integrity; and load application code only from `app.asar`.
 - Navigation and new-window requests are checked before an external URL is opened.
+- The renderer CSP disallows inline scripts. Inline styles remain allowed because current components use them for bounded theme values.
 - Renderer operations cross a preload boundary and an IPC allowlist.
 - Shared contracts describe public renderer/main data; secrets should not appear in renderer DTOs.
 - Main-process handlers validate paths, URLs, enums, sizes, and identifiers before calling services.
@@ -41,7 +43,7 @@ Preload exposes one typed `window.api` namespace. Renderer code cannot select ar
 - Remote application inputs require approved schemes and host policy; account providers normally require HTTPS, with loopback allowed for local development flows.
 - Requests and archives use size limits and timeouts where the owning service supports them.
 - Browser permissions are denied unless explicitly allowed by the application policy.
-- Literal private/reserved targets are restricted for public-HTTPS fetches. DNS resolution is not yet pinned, so DNS rebinding remains a known risk.
+- Public-HTTPS downloads reject literal private/reserved targets and use a connection-time DNS lookup guard. Every resolved address must remain public, and dispatcher redirects must stay on HTTPS; private, loopback, link-local, reserved, and downgraded destinations fail closed.
 
 Do not broaden the URL allowlist merely to make one provider work. Add a narrow policy, tests, and failure behavior.
 
@@ -49,10 +51,10 @@ Do not broaden the URL allowlist merely to make one provider work. Add a narrow 
 
 - Offline profiles have no remote credential.
 - Third-party access and client tokens are encrypted with Electron `safeStorage` before persistence and are omitted from renderer-facing account objects.
-- If encryption is unavailable, third-party account persistence is disabled rather than falling back to plaintext.
+- If encryption is unavailable, third-party account persistence is disabled rather than falling back to plaintext. Electron's Linux `basic_text` backend is explicitly treated as unavailable.
 - Logs, diagnostics, screenshots, fixtures, and bug reports must not contain tokens, passwords, signing material, or private provider keys.
 
-On Linux, `safeStorage` security depends on the desktop keyring. This is a platform limitation, not equivalent to hardware-backed storage.
+On Linux, a supported desktop keyring must be available for third-party accounts. FMCL does not claim that desktop keyring storage is equivalent to hardware-backed storage.
 
 ## Analytics and feedback
 
@@ -68,7 +70,7 @@ On Linux, `safeStorage` security depends on the desktop keyring. This is a platf
 - Publication is manual and dispatch-only. The workflow revalidates the exact tag, commit, artifact checksums, platform smoke, and schema-valid pre-push report before its publish job.
 - The local pre-push report is evidence, not a security boundary or publication authorization. GitHub publication additionally requires approval from the repository-configured protected `release-publication` Environment; repository code cannot create or guarantee that protection.
 - Release jobs build each platform from the tagged source and publish SHA-256 checksums.
-- Windows and macOS artifacts are currently unsigned; checksums help detect mismatch but do not authenticate the publisher. Gatekeeper and SmartScreen behavior must be checked manually on the target platform.
+- Windows artifacts and macOS DMGs are not publisher-signed. The ad-hoc signature inside a local macOS build only keeps the fused Electron binary runnable; it does not authenticate the publisher. Checksums help detect mismatch but do not establish publisher identity. Gatekeeper and SmartScreen behavior must be checked manually on the target platform.
 - Release candidates are prereleases and non-latest.
 - Stable SemVer tags and their assets are immutable. A broken release is followed by a new patch version.
 - Update installation requires explicit product behavior and must use release metadata from the configured trusted source.

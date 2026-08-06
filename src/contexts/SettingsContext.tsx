@@ -198,6 +198,11 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const [downloadThreads, setDownloadThreads] = useLocalStorageState('settings_downloadThreads', deserializeInt(8), serializeInt);
     const [maxSockets, setMaxSockets] = useLocalStorageState('settings_maxSockets', deserializeInt(64), serializeInt);
     const downloadProvider: DownloadProvider = 'auto';
+
+    useEffect(() => {
+        document.documentElement.lang = language;
+    }, [language]);
+
     const { accentColor, accentColorSource, customTheme, theme, themePresetId } = appearanceState;
     const applyAppearanceState = useCallback((nextState: AppearanceSettingsState) => {
         setAppearanceStateRaw(normalizeAppearanceState(nextState));

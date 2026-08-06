@@ -136,7 +136,7 @@ describe('dependency-direction graph guard', () => {
     expect(checker.collectDependencyGraphViolations(root)).toEqual([
       'electron/domains/instances/unsafe.ts:1 domain imports reverse tier electron/app/compositionRoot.ts',
       'electron/infrastructure/instances/unsafe.ts:1 infrastructure imports reverse tier electron/app/compositionRoot.ts',
-      'electron/services/network/networkService.ts:1 restores deleted Phase 42 owner',
+      'electron/services/network/networkService.ts:1 restores deleted central network owner',
       'shared/contracts/unsafe.ts:1 shared imports non-shared tier src/services/ipc/instancesIPC.ts',
       'src/features/alias.ts:1 cannot resolve import @unknown/owner',
     ]);

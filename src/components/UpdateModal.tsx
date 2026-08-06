@@ -30,7 +30,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
   const { t, getAccentStyles } = useSettings();
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={t('updater.available')}>
+    <Modal isOpen={isOpen} onClose={onClose} closeLabel={t('general.close_dialog')} title={t('updater.available')}>
       <div className="space-y-4">
         {/* Current and Latest Version Info */}
         <div className="surface-soft grid grid-cols-2 gap-4 p-4">

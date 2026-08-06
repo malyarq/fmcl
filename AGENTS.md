@@ -23,7 +23,7 @@ Stack: `Electron` + `React` + `TypeScript` + `TailwindCSS` + `Vite`.
 - `src/` — renderer UI, contexts, features, IPC wrappers, manual verification UI. See `src/AGENTS.md`.
 - `shared/` — contracts and types shared by main and renderer. See `shared/AGENTS.md`.
 - `docs/` — architecture, roadmap, testing, contracts, known issues. See `docs/AGENTS.md`.
-- `.planning/` — current milestone truth in `PROJECT.md`, `REQUIREMENTS.md`, `ROADMAP.md`, and `STATE.md`; historical evidence lives in the named archive subdirectories. See `.planning/README.md`.
+- Product direction and accepted limitations live in the mirrored roadmaps and known-issues documents under `docs/{en,ru}/`. Historical implementation detail belongs in Git history, not in an active planning tree.
 
 ## Build And Verify
 - `npx tsc --noEmit` — TypeScript type check. Must pass after code changes.
@@ -40,7 +40,7 @@ Stack: `Electron` + `React` + `TypeScript` + `TailwindCSS` + `Vite`.
 - Renderer UI should not call `window.*` APIs directly when an IPC wrapper exists.
 - All user-facing strings belong in `src/locales/en.json` and `src/locales/ru.json`.
 - Update both `docs/en/contracts-map.md` and `docs/ru/contracts-map.md` when adding or changing IPC channels.
-- Update both `docs/en/roadmap.md` and `docs/ru/roadmap.md` when a feature is completed.
+- Update both `docs/en/roadmap.md` and `docs/ru/roadmap.md` only when product direction or accepted limitations change; completed work belongs in `CHANGELOG.md`.
 - Run `npm run docs:check` after changing maintained Markdown documentation.
 - Prefer nearby `__tests__` as the behavioral reference before changing a feature.
 

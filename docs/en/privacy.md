@@ -11,9 +11,13 @@ Official builds use PostHog EU Cloud for a small, reviewed event allowlist:
 | Application opened | FMCL version, operating-system family, interface language, and simple/modpacks UI mode |
 | Minecraft launch started | FMCL version, operating-system family, and modloader family |
 | Minecraft launch succeeded or failed | FMCL version, operating-system family, modloader family, and a bounded failure stage |
+| Onboarding shown or action selected | FMCL version, operating-system family, and a bounded action such as play, modpacks, FriendTunnel, settings, or optional tour |
+| Modpack operation finished | FMCL version, operating-system family, bounded operation kind, and bounded result; no project, instance, file, or provider identifiers |
+| FriendTunnel lifecycle | FMCL version, operating-system family, host/join role, and a bounded start, peer-connected, or failure stage |
+| Settings backup exported or imported | FMCL version and operating-system family only |
 | GitHub feedback opened | FMCL version, operating-system family, and the fixed `launcher_settings` source |
 
-FMCL creates a random installation identifier only after consent. It is not derived from hardware, an account, a nickname, or a filesystem path. Events are submitted as anonymous/personless PostHog events; FMCL does not call PostHog identify APIs.
+FMCL creates a random installation identifier only after consent. It is not derived from hardware, an account, a nickname, or a filesystem path. Events are submitted as anonymous/personless PostHog events; FMCL does not call PostHog identify APIs. Every event sets `$geoip_disable: true` so PostHog skips GeoIP enrichment.
 
 FMCL does **not** send account data, nicknames, access tokens, room codes, server addresses, Minecraft paths, file names, logs, form contents, error messages, screenshots, session recordings, advertising identifiers, or precise location. The integration does not load the PostHog browser SDK, autocapture, cookies, heatmaps, or session replay.
 
@@ -32,4 +36,4 @@ Never add credentials, account identifiers, room codes, private server addresses
 - Remove a GitHub issue or comment through GitHub if you submitted information there.
 - Ask a privacy question through a [GitHub issue](https://github.com/malyarq/fmcl/issues/new) without including private data.
 
-This document describes the v0.8.0 implementation. Material collection changes require updated code, tests, translations, and this notice before release.
+This document describes the current implementation. Material collection changes require updated code, tests, translations, and this notice before release.

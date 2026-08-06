@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig } from 'vite';
 import path from 'node:path';
 import electron from 'vite-plugin-electron/simple';
 import react from '@vitejs/plugin-react';
@@ -8,17 +8,6 @@ const sharedAlias = {
   '@shared': path.resolve(__dirname, 'shared')
 };
 const rendererOnly = process.env.FMCL_RENDERER_ONLY === '1';
-
-const strictProductionCspPlugin: Plugin = {
-  name: 'fmcl-strict-production-csp',
-  transformIndexHtml(html, context) {
-    if (context.server) return html;
-    return html.replace(
-      "script-src 'self' 'unsafe-inline';",
-      "script-src 'self';",
-    );
-  },
-};
 
 export default defineConfig({
   build: {
@@ -37,9 +26,6 @@ export default defineConfig({
           }
           if (id.includes('/node_modules/@tsparticles/') || id.includes('/node_modules/tsparticles-')) {
             return 'vendor-particles';
-          }
-          if (id.includes('/node_modules/react-virtuoso/')) {
-            return 'vendor-virtual-list';
           }
         }
       }
@@ -60,7 +46,7 @@ export default defineConfig({
       ignored: ['**/release/**', '**/dist/**', '**/dist-electron/**']
     }
   },
-  plugins: [strictProductionCspPlugin, react(), ...(rendererOnly ? [] : [electron({
+  plugins: [react(), ...(rendererOnly ? [] : [electron({
     main: {
       entry: 'electron/main.ts',
       // Keep Electron deps external to the renderer bundle.

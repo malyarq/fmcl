@@ -1,7 +1,10 @@
-import { describe, expect, it } from 'vitest';
-import { assertPublicHttpsUrl } from '../remoteUrls';
+import dns from 'node:dns';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { assertPublicHttpsUrl, fetchPublicHttpsUrl } from '../remoteUrls';
 
 describe('assertPublicHttpsUrl', () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it('accepts public HTTPS download URLs', () => {
     expect(assertPublicHttpsUrl('https://cdn.modrinth.com/data/file.zip', 'Download URL')).toBe(
       'https://cdn.modrinth.com/data/file.zip',
@@ -32,5 +35,29 @@ describe('assertPublicHttpsUrl', () => {
     expect(() => assertPublicHttpsUrl('https://example.com/file.zip', 'Download URL', {
       allowedHostSuffixes: ['cdn.modrinth.com'],
     })).toThrow('approved download host');
+  });
+
+  it('blocks DNS rebinding when a public hostname resolves to a private address', async () => {
+    vi.spyOn(dns, 'lookup').mockImplementation(((...args: unknown[]) => {
+      const callback = args.at(-1) as (
+        error: NodeJS.ErrnoException | null,
+        addresses: Array<{ address: string; family: number }>,
+        family: number,
+      ) => void;
+      callback(null, [{ address: '127.0.0.1', family: 4 }], 4);
+      return {} as never;
+    }) as never);
+
+    await expect(fetchPublicHttpsUrl(
+      'https://rebinding-test.invalid/file.zip',
+      'Download URL',
+      { maxRedirections: 0 },
+    )).rejects.toThrow(/fetch failed|private|reserved/i);
+  });
+
+  it('keeps the guarded fetch helper limited to idempotent downloads', async () => {
+    await expect(fetchPublicHttpsUrl('https://example.com/auth', 'Download URL', {
+      method: 'POST',
+    })).rejects.toThrow('only supports GET or HEAD');
   });
 });

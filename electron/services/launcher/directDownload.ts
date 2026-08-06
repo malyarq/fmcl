@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { once } from 'node:events';
 import { DEFAULT_USER_AGENT } from '@shared/constants';
+import { fetchPublicHttpsUrl } from '../../security/remoteUrls';
 
 export function isHtmlResponse(data: Buffer, contentType?: string | null): boolean {
   if (contentType?.includes('text/html')) return true;
@@ -51,14 +52,13 @@ export async function downloadFileDirectly(options: {
   cleanupFiles();
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchPublicHttpsUrl(url, 'Direct download URL', {
       signal: controller.signal,
       headers: {
         'user-agent': userAgent,
         accept: '*/*',
         'accept-encoding': 'identity',
       },
-      redirect: 'follow',
     });
 
     if (!response.ok) {
@@ -181,4 +181,3 @@ export async function downloadFileDirectly(options: {
     throw err;
   }
 }
-

@@ -144,7 +144,7 @@ export const ModpackUpdateModal: React.FC<ModpackUpdateModalProps> = ({
   const unavailableVersionLabel = t('modpacks.version_unavailable') || 'Version unavailable';
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} closeDisabled={isActive} title={t('modpacks.review_update_title') || 'Review modpack update'}>
+    <Modal isOpen={isOpen} onClose={onClose} closeDisabled={isActive} closeLabel={t('general.close_dialog')} title={t('modpacks.review_update_title') || 'Review modpack update'}>
       <div className="space-y-4" data-testid="modpack-update-modal" data-update-scope="modpack-local">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3">

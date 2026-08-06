@@ -12,6 +12,10 @@ interface ModalProps {
     bodyProps?: Omit<React.HTMLAttributes<HTMLDivElement>, 'children' | 'className' | 'id'>;
     bodyRef?: React.Ref<HTMLDivElement>;
     closeDisabled?: boolean;
+    closeLabel?: string;
+    hideHeader?: boolean;
+    ariaLabelledBy?: string;
+    overlayClassName?: string;
 }
 
 const FOCUSABLE_SELECTOR = [
@@ -106,6 +110,10 @@ export const Modal: React.FC<ModalProps> = ({
     bodyProps,
     bodyRef,
     closeDisabled = false,
+    closeLabel = 'Close dialog',
+    hideHeader = false,
+    ariaLabelledBy,
+    overlayClassName,
 }) => {
     const dialogRef = useRef<HTMLDivElement>(null);
     const lastFocusedElementRef = useRef<HTMLElement | null>(null);
@@ -226,7 +234,8 @@ export const Modal: React.FC<ModalProps> = ({
             <div
                 className={cn(
                     'fixed inset-0 z-50 bg-background/36 backdrop-blur-[2px] pointer-events-auto',
-                    animationClasses.overlay
+                    animationClasses.overlay,
+                    overlayClassName
                 )}
                 onClick={requestClose}
                 aria-hidden="true"
@@ -250,28 +259,30 @@ export const Modal: React.FC<ModalProps> = ({
                     onClick={(e) => e.stopPropagation()}
                     role="dialog"
                     aria-modal="true"
-                    aria-labelledby={title ? titleId : undefined}
+                    aria-labelledby={ariaLabelledBy ?? (title ? titleId : undefined)}
                     aria-describedby={contentId}
                     tabIndex={-1}
                     style={{ isolation: 'isolate' }}
                 >
-                    <div className="flex items-center justify-between border-b border-border/70 bg-card/72 px-4 py-3 sm:px-6 sm:py-4">
-                        <h3
-                            id={titleId}
-                            className="truncate pr-2 text-base font-bold text-foreground sm:text-lg"
-                        >
-                            {title}
-                        </h3>
-                        <button
-                            type="button"
-                            onClick={requestClose}
-                            aria-label="Close dialog"
-                            disabled={closeDisabled}
-                            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 ease-out hover:scale-105 hover:bg-background/70 hover:text-foreground active:scale-95"
-                        >
-                            <X className="h-4 w-4" />
-                        </button>
-                    </div>
+                    {!hideHeader && (
+                        <div className="flex items-center justify-between border-b border-border/70 bg-card/72 px-4 py-3 sm:px-6 sm:py-4">
+                            <h3
+                                id={titleId}
+                                className="truncate pr-2 text-base font-bold text-foreground sm:text-lg"
+                            >
+                                {title}
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={requestClose}
+                                aria-label={closeLabel}
+                                disabled={closeDisabled}
+                                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-secondary transition-all duration-200 ease-out hover:scale-105 hover:bg-background/70 hover:text-foreground active:scale-95"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                    )}
 
                     <div
                         ref={bodyRef}

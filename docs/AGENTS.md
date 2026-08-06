@@ -11,7 +11,7 @@ This directory contains player, contributor, maintainer, architecture, and histo
 - Engineering: `architecture.md`, `development.md`, `testing.md`, `code-style.md`, `design-system.md`
 - Contracts: `contracts.md`, `contracts-map.md`
 - Maintainer guides: `releasing.md`, `security.md`, `roadmap.md`
-- Historical material: `docs/archive/`
+- Historical decisions and completed plans: Git history and GitHub Releases
 
 ## Working rules
 
@@ -19,6 +19,6 @@ This directory contains player, contributor, maintainer, architecture, and histo
 - Verify behavior against code, `package.json`, and `.github/workflows/*`; documentation is not allowed to override runtime truth.
 - Update both contract maps when IPC channels change, then run `npm run contracts:check` and `npm run ipc:check`.
 - Keep current guides free of phase numbers, temporary audit language, and completed milestone instructions.
-- Move dated plans and one-off audits to `docs/archive/` with a clear historical notice.
+- Do not keep dated plans and one-off audits in the active tree; preserve them in Git history.
 - Do not invent signing status, support promises, platform support, or licensing terms.
 - Check local Markdown links before finishing.

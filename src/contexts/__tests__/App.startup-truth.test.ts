@@ -56,6 +56,7 @@ vi.mock('../../app/hooks/useOnboarding', () => ({
     showWelcome: false,
     showTour: false,
     handleWelcomeComplete: vi.fn(),
+    handleTourStart: vi.fn(),
     handleTourComplete: vi.fn(),
     handleSkip: vi.fn(),
   }),

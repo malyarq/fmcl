@@ -4,9 +4,9 @@ Use this page for common user-facing failures in the stable release. Do not dele
 
 ## The operating system blocks the installer
 
-Windows and macOS packages are unsigned. Confirm that the file came from the [official release page](https://github.com/malyarq/fmcl/releases/latest) and verify its SHA-256 as described in the [user guide](user-guide.md). If the checksum does not match, delete the file.
+Windows packages and macOS DMGs are not publisher-signed. A local macOS app's ad-hoc signature does not establish publisher identity. Confirm that the file came from the [official release page](https://github.com/malyarq/fmcl/releases/latest) and verify its SHA-256 as described in the [user guide](user-guide.md). If the checksum does not match, delete the file.
 
-Signing and notarization are not currently available, so FMCL cannot remove the operating-system warning itself.
+Publisher signing and notarization are not currently available, so FMCL cannot remove the operating-system warning itself.
 
 ## Minecraft does not start
 

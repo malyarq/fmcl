@@ -11,7 +11,7 @@
 - Тип объединённого renderer API: `shared/contracts/windowApi.ts`
 - Renderer-обёртки: `src/services/ipc/*`
 
-Снимок: **ветка разработки v0.8.0, 2026-08-04**. `npm run contracts:check` проверяет соответствие языковых карт allowlist каналов; `npm run architecture:check` проверяет границу renderer.
+Снимок: **текущая ветка разработки main, 2026-08-06**. `npm run contracts:check` проверяет соответствие языковых карт allowlist каналов; `npm run architecture:check` проверяет границу renderer.
 
 ---
 
@@ -195,9 +195,13 @@
 - `settings:selectMinecraftPath`
 - `settings:openMinecraftPath`
 - `settings:getDefaultMinecraftPath`
+- `settings:exportBackup`
+- `settings:importBackup`
 - `dialog:showSaveDialog`
 - `dialog:showOpenDialog`
 - `dialog:getDesktopPath`
+
+Резервная копия настроек принимает только явно перечисленные и ограниченные по размеру настройки лаунчера и последние варианты запуска. Нативные диалоги, атомарная запись, проверка схемы и лимит размера импорта остаются в main-процессе. Аккаунты, токены, идентификатор аналитики, приглашения FriendTunnel, локальные пути и игровые файлы исключены.
 
 ### 3.7 Assets и cache
 

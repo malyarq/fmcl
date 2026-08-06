@@ -769,11 +769,16 @@ function OverviewScenario() {
 }
 
 function WelcomeScenario({ onReady }: ManualVerificationScenarioProps) {
-  useReadyByText(onReady, ['FriendLauncher', 'Launcher setup', 'Get Started'], 'Welcome overlay rendered.');
+  useReadyByText(onReady, ['FriendLauncher', 'What do you want to do first?', 'Open launcher'], 'Welcome overlay rendered.');
 
   return (
     <SettingsProviders>
-      <WelcomePage onComplete={() => undefined} onSkip={() => undefined} onShowSettings={() => undefined} />
+      <WelcomePage
+        onComplete={() => undefined}
+        onStartTour={() => undefined}
+        onShowMultiplayer={() => undefined}
+        onShowSettings={() => undefined}
+      />
     </SettingsProviders>
   );
 }

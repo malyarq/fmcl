@@ -34,6 +34,7 @@ function MainApp() {
     showWelcome,
     showTour,
     handleWelcomeComplete,
+    handleTourStart,
     handleTourComplete,
     handleSkip,
   } = useOnboarding();
@@ -101,7 +102,7 @@ function MainApp() {
     [version, t, getAccentStyles]
   );
 
-  // Tour steps — порядок: классика, модпаки, настройки, мультиплеер, никнейм, версия, модлоадеры, запуск
+  // Optional overview for users who explicitly ask for it on the welcome screen.
   const tourSteps: TourStep[] = useMemo(() => [
     {
       id: 'classic',
@@ -131,34 +132,6 @@ function MainApp() {
       content: t('onboarding.tour.step_multiplayer.content') || 'Управление серверами и подключением к мультиплееру.',
       position: 'bottom',
     },
-    {
-      id: 'nickname',
-      target: '[data-tour="nickname"]',
-      title: t('onboarding.tour.step_nickname.title') || 'Никнейм',
-      content: t('onboarding.tour.step_nickname.content') || 'Введите ваш игровой никнейм. Он будет использоваться при входе в игру.',
-      position: 'right',
-    },
-    {
-      id: 'version',
-      target: '[data-tour="version"]',
-      title: t('onboarding.tour.step_version.title') || 'Версия Minecraft',
-      content: t('onboarding.tour.step_version.content') || 'Выберите версию Minecraft. Убедитесь, что она совместима с выбранным модпаком.',
-      position: 'right',
-    },
-    {
-      id: 'modloaders',
-      target: '[data-tour="modloaders"]',
-      title: t('onboarding.tour.step_modloaders.title') || 'Модлоадеры',
-      content: t('onboarding.tour.step_modloaders.content') || 'Выберите модлоадер (Forge, Fabric, NeoForge).',
-      position: 'right',
-    },
-    {
-      id: 'launch',
-      target: '[data-tour="launch"]',
-      title: t('onboarding.tour.step_launch.title') || 'Запуск игры',
-      content: t('onboarding.tour.step_launch.content') || 'Нажмите эту кнопку, чтобы запустить Minecraft с выбранными настройками.',
-      position: 'right',
-    },
   ], [t]);
 
   if (!modpackReady) {
@@ -170,8 +143,9 @@ function MainApp() {
       {showWelcome && (
         <WelcomePage
           onComplete={handleWelcomeComplete}
-          onSkip={handleSkip}
-          onShowSettings={openSettings}
+          onStartTour={handleTourStart}
+          onShowMultiplayer={() => { handleWelcomeComplete(); openMultiplayer(); }}
+          onShowSettings={() => { handleWelcomeComplete(); openSettings(); }}
         />
       )}
       {showTour && (

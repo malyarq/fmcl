@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   FriendTunnelSnapshot,
   LanDiscoverEvent,
@@ -8,10 +8,15 @@ import type {
 import { useSettings } from '../../../contexts/SettingsContext';
 import { networkIPC } from '../../../services/ipc/networkIPC';
 import { useEffectiveInstance } from '../../instances/hooks/useEffectiveInstance';
+import { analyticsClient } from '../../analytics/analyticsClient';
 import { dispatchInstanceConfigCommand, useInstanceConfigCommands } from '../../instances/hooks/useInstanceConfigCommands';
 import {
   clearLegacySessionTruth, loadHostPort, loadJoinCode, loadMode, saveHostPort, saveJoinCode, saveMode, type Mode,
 } from '../services/multiplayerPersistence';
+import {
+  createFriendTunnelInvite,
+  normalizeFriendTunnelInvite,
+} from '../services/friendTunnelInvite';
 
 type NetworkMode = 'hyperswarm' | 'xmcl_lan' | 'xmcl_upnp_host';
 
@@ -33,6 +38,7 @@ export function useMultiplayer() {
   const [discovered, setDiscovered] = useState<LanDiscoverEvent[]>([]);
   const [status, setStatus] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const connectedSession = useRef<string | null>(null);
   const networkMode = (instance?.networkMode || 'hyperswarm') as NetworkMode;
 
   useEffect(() => { clearLegacySessionTruth(); }, []);
@@ -69,6 +75,19 @@ export function useMultiplayer() {
   const diagnostic = activeSnapshot.diagnostic;
   const roomCode = tunnel.state === 'active' && tunnel.role === 'host' ? tunnel.roomCode || '' : '';
   const mappedPort = tunnel.state === 'active' && tunnel.role === 'join' ? tunnel.localPort || null : null;
+  const invitation = roomCode ? createFriendTunnelInvite(roomCode) : '';
+  const directAddress = mappedPort ? `localhost:${mappedPort}` : '';
+
+  useEffect(() => {
+    if (tunnel.state !== 'active' || !tunnel.role || tunnel.peerCount < 1) {
+      if (tunnel.state === 'idle') connectedSession.current = null;
+      return;
+    }
+    const session = `${tunnel.role}:${tunnel.roomCode ?? ''}`;
+    if (connectedSession.current === session) return;
+    connectedSession.current = session;
+    void analyticsClient.capture('friend_tunnel_peer_connected', { role: tunnel.role });
+  }, [tunnel]);
 
   const persistServer = async (host: string, serverPort: number) => await commands.patchConfig({ server: { host, port: serverPort } });
   const run = async (work: () => Promise<void>) => {
@@ -82,7 +101,16 @@ export function useMultiplayer() {
   const host = async () => await run(async () => {
     const hostPort = Number.parseInt(port, 10) || 25_565;
     await persistServer('localhost', hostPort);
-    if (networkMode === 'hyperswarm') await networkIPC.tunnel.host({ port: hostPort });
+    if (networkMode === 'hyperswarm') {
+      try {
+        const result = await networkIPC.tunnel.host({ port: hostPort });
+        if (result.state === 'active') void analyticsClient.capture('friend_tunnel_started', { role: 'host' });
+        else void analyticsClient.capture('friend_tunnel_failed', { role: 'host', failure_stage: 'start' });
+      } catch (error) {
+        void analyticsClient.capture('friend_tunnel_failed', { role: 'host', failure_stage: 'start' });
+        throw error;
+      }
+    }
     else if (networkMode === 'xmcl_lan') {
       await networkIPC.lan.start({ family: 'udp4' });
       await networkIPC.lan.broadcast({ motd: instance?.name || 'FriendLauncher', port: hostPort });
@@ -91,8 +119,21 @@ export function useMultiplayer() {
 
   const join = async () => await run(async () => {
     if (networkMode === 'hyperswarm') {
-      const result = await networkIPC.tunnel.join({ roomCode: joinCode.trim() });
-      if (result.state === 'active' && result.localPort) await persistServer('localhost', result.localPort);
+      const normalizedCode = normalizeFriendTunnelInvite(joinCode);
+      if (!normalizedCode) throw new Error(t('multiplayer.room_code_invalid'));
+      try {
+        const result = await networkIPC.tunnel.join({ roomCode: normalizedCode });
+        if (result.state === 'active' && result.localPort) {
+          setJoinCode(normalizedCode);
+          await persistServer('localhost', result.localPort);
+          void analyticsClient.capture('friend_tunnel_started', { role: 'join' });
+        } else {
+          void analyticsClient.capture('friend_tunnel_failed', { role: 'join', failure_stage: 'start' });
+        }
+      } catch (error) {
+        void analyticsClient.capture('friend_tunnel_failed', { role: 'join', failure_stage: 'start' });
+        throw error;
+      }
     } else if (networkMode === 'xmcl_lan') {
       setDiscovered([]);
       await networkIPC.lan.start({ family: 'udp4' });
@@ -111,10 +152,17 @@ export function useMultiplayer() {
     else await networkIPC.upnp.stop();
   });
   const setNetworkMode = (next: NetworkMode) => dispatchInstanceConfigCommand(commands.setNetworkMode(next));
-  const copyToClipboard = (text: string) => { void navigator.clipboard.writeText(text); setStatus(t('general.copied')); };
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus(t('general.copied'));
+    } catch {
+      setStatus(t('multiplayer.copy_failed'));
+    }
+  };
 
   return {
-    mode, setMode, port, setPort, roomCode, joinCode, setJoinCode, mappedPort,
+    mode, setMode, port, setPort, roomCode, invitation, joinCode, setJoinCode, mappedPort, directAddress,
     status, diagnostic, isLoading, networkMode, setNetworkMode, tunnel, lan, upnp, discovered,
     host, join, stop, selectLanServer, copyToClipboard,
   };

@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import { Readable, Transform } from 'node:stream';
 import { resolvePathWithinRoot } from '../../security/pathGuards';
-import { assertPublicHttpsUrl } from '../../security/remoteUrls';
+import { assertPublicHttpsUrl, fetchPublicHttpsUrl } from '../../security/remoteUrls';
 
 interface ManifestFile {
     path: string;
@@ -136,7 +136,9 @@ export class Updater {
         checkCancelled();
         await fs.promises.mkdir(path.dirname(destPath), { recursive: true });
 
-        const response = await fetch(file.url, { redirect: 'error' });
+        const response = await fetchPublicHttpsUrl(file.url, `Updater file ${file.path} URL`, {
+            maxRedirections: 0,
+        });
         if (!response.ok) throw new Error(`Failed to download ${file.url}: HTTP ${response.status}`);
         if (!response.body) throw new Error('Download response has no body');
 
@@ -200,7 +202,9 @@ export class Updater {
         let manifest: Manifest;
         try {
             const safeManifestUrl = assertPublicHttpsUrl(manifestUrl, 'Updater manifest URL');
-            const response = await fetch(safeManifestUrl, { redirect: 'error' });
+            const response = await fetchPublicHttpsUrl(safeManifestUrl, 'Updater manifest URL', {
+                maxRedirections: 0,
+            });
             manifest = validateManifest(await readJsonResponse(response));
         } catch (e) {
             throw new Error(`Failed to load manifest: ${e}`);

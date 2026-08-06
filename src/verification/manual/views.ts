@@ -58,7 +58,6 @@ export type ManualVerificationViewMeta = {
   label: string;
   description: string;
   group: ManualVerificationViewGroup;
-  milestone?: 'v0.5.0';
   screenshot?: boolean;
   viewport?: 'desktop' | 'wide';
   theme?: 'dark' | 'light';
@@ -71,7 +70,6 @@ const OVERVIEW_VIEW: ManualVerificationViewMeta = {
   label: 'Overview',
   description: 'Manual proof hub for the current Phase 34 details-hierarchy, first-read runtime truth, and shared-content-workspace contract, plus retained historical regression routes.',
   group: 'hub',
-  milestone: 'v0.5.0',
 };
 
 export const CLOSEOUT_VIEWS: ManualVerificationViewMeta[] = [
@@ -80,7 +78,6 @@ export const CLOSEOUT_VIEWS: ManualVerificationViewMeta[] = [
     label: 'Phase 24 Home Closeout',
     description: 'Canonical launcher-home closeout proof for the shipped shell, brand reset, and single primary Play action.',
     group: 'closeout',
-    milestone: 'v0.5.0',
     screenshot: true,
     viewport: 'wide',
     forbidText: ['${file.jarVersion}', 'node_modules', 'renderWithHooks'],
@@ -90,7 +87,6 @@ export const CLOSEOUT_VIEWS: ManualVerificationViewMeta[] = [
     label: 'Phase 24 Modpacks Closeout',
     description: 'Representative route-owned modpacks proof for dense browse flows, fallback art, and stable shell spacing.',
     group: 'closeout',
-    milestone: 'v0.5.0',
     screenshot: true,
     viewport: 'wide',
     forbidText: ['${file.jarVersion}', 'node_modules', 'renderWithHooks'],
@@ -100,7 +96,6 @@ export const CLOSEOUT_VIEWS: ManualVerificationViewMeta[] = [
     label: 'Phase 24 Degraded Closeout',
     description: 'Representative shell-integrated degraded-state proof for route search failure and secondary-content availability loss.',
     group: 'closeout',
-    milestone: 'v0.5.0',
     screenshot: true,
     viewport: 'wide',
     forbidText: ['${file.jarVersion}', 'node_modules', 'renderWithHooks'],
@@ -110,7 +105,6 @@ export const CLOSEOUT_VIEWS: ManualVerificationViewMeta[] = [
     label: 'Phase 24 Theme Dark',
     description: 'Dark-theme closeout pair for final appearance review under deterministic shell-owned fixture data.',
     group: 'closeout',
-    milestone: 'v0.5.0',
     screenshot: true,
     viewport: 'wide',
     theme: 'dark',
@@ -121,7 +115,6 @@ export const CLOSEOUT_VIEWS: ManualVerificationViewMeta[] = [
     label: 'Phase 24 Theme Light',
     description: 'Light-theme closeout pair for direct comparison against the dark closeout surface without fixture drift.',
     group: 'closeout',
-    milestone: 'v0.5.0',
     screenshot: true,
     viewport: 'wide',
     theme: 'light',
@@ -132,7 +125,6 @@ export const CLOSEOUT_VIEWS: ManualVerificationViewMeta[] = [
     label: 'Phase 24 Locale EN',
     description: 'English closeout pair on real shell-integrated content with visible counts, dates, and secondary content.',
     group: 'closeout',
-    milestone: 'v0.5.0',
     screenshot: true,
     viewport: 'wide',
     language: 'en',
@@ -143,7 +135,6 @@ export const CLOSEOUT_VIEWS: ManualVerificationViewMeta[] = [
     label: 'Phase 24 Locale RU',
     description: 'Russian closeout pair on the same shell-integrated content for direct language comparison.',
     group: 'closeout',
-    milestone: 'v0.5.0',
     screenshot: true,
     viewport: 'wide',
     language: 'ru',

@@ -1,14 +1,12 @@
 # Known issues
 
-Reviewed on 2026-08-04 against the current code and packaging configuration. This list contains confirmed limitations, not speculative feature requests.
+Reviewed on 2026-08-06 against the current code and packaging configuration. This list contains confirmed limitations, not speculative feature requests.
 
 ## Distribution and security
 
 | Severity | Limitation | Current protection | Planned resolution |
 | --- | --- | --- | --- |
-| High | Windows and macOS artifacts are not code-signed; macOS is not notarized. | Releases are built by GitHub Actions after the complete platform matrix, include an explicit warning, and publish SHA-256 checksums. | Add Windows signing, Apple Developer ID signing, notarization, and installed-artifact verification. |
-| Medium | Public-HTTPS validation blocks literal private and reserved addresses but does not pin the resolved address, so DNS rebinding is still possible. | Remote inputs are restricted by scheme, host policy, size limits, streaming, and archive validation where applicable. | Validate resolved addresses when connecting or use a dispatcher that enforces DNS/IP policy. |
-| Medium | Electron `safeStorage` strength on Linux depends on the available desktop keyring. | Tokens are excluded from renderer DTOs; third-party accounts are disabled when encryption is unavailable instead of silently persisting plaintext. | Detect weak backends and document tested keyring configurations. |
+| High | Windows artifacts and macOS DMGs are not publisher-signed; macOS is not notarized. The local macOS app uses an ad-hoc signature only to remain runnable. | Releases are built by GitHub Actions after the complete platform matrix, include an explicit warning, and publish SHA-256 checksums. | Add Windows signing, Apple Developer ID signing, notarization, and installed-artifact verification. |
 
 Checksums detect corruption or asset replacement only when users compare them with a trusted release page. They do not provide publisher identity and do not replace code signing.
 
@@ -22,16 +20,15 @@ Checksums detect corruption or asset replacement only when users compare them wi
 - LAN discovery and UPnP depend on the local network and router and cannot be guaranteed by the launcher.
 - Electron documents that normal quit events may not fire during Windows shutdown, restart, or user logout. The ordered drain applies to ordinary launcher quit paths; crash/journal recovery remains the protection for forced termination.
 
-## Architecture and maintenance debt
+## Verification and maintenance limits
 
-- Some renderer IPC wrappers still contain defensive availability checks even though `window.api` is now the only preload surface; these can be simplified as their owning features are refactored.
 - The XMCL bytebuffer compatibility correction is applied by a validated postinstall script. It should be replaced by an upstream fix or a managed package patch.
 - Deterministic renderer proof and visual regression baselines run on macOS Chromium only; they do not establish native-dialog, window-manager, or graphics-driver behavior on other platforms.
 - Full Minecraft installation, real routers, installed updates, and OS signing/notarization still require manual platform smoke tests.
 
 ## Not bugs
 
-- An unknown-developer warning on Windows or macOS is expected for unsigned artifacts.
+- An unknown-developer warning on Windows or macOS is expected without publisher signing and notarization.
 - `npm run verify` does not package the application and does not run visual or real installation tests; see [Testing](testing.md).
 
-Planned work is prioritized in the [roadmap](roadmap.md). Report an ordinary regression through [GitHub Issues](https://github.com/malyarq/fmcl/issues/new) and a vulnerability according to [SECURITY.md](../../SECURITY.md).
+The project stop condition is documented in the short [product gate](roadmap.md). Report an ordinary regression through [GitHub Issues](https://github.com/malyarq/fmcl/issues/new) and a vulnerability according to [SECURITY.md](../../SECURITY.md).

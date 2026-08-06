@@ -61,7 +61,7 @@ export const AddAccountDialog: React.FC<AddAccountDialogProps> = ({ isOpen, onCl
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={t('accounts.addAccount')}>
+        <Modal isOpen={isOpen} onClose={onClose} closeLabel={t('general.close_dialog')} title={t('accounts.addAccount')}>
             <div className="surface-muted mb-4 space-y-2 p-4">
                 <p className="kicker-label">{t('accounts.addAccount')}</p>
                 <p className="text-sm leading-6 text-secondary">

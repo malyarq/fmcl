@@ -139,6 +139,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onClose, initialTab = 'appe
         <Modal
             isOpen={true}
             onClose={onClose}
+            closeLabel={t('general.close_dialog')}
             title={t('settings.title')}
             className="max-w-[min(72rem,calc(100vw-1rem))]"
         >

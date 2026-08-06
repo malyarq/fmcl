@@ -337,7 +337,7 @@ function isControlPlaneDocument(value: unknown): value is ControlPlaneDocument {
 
 /**
  * Filesystem adapter for the sole canonical instance control-plane document.
- * It owns legacy parsing only; callers must acquire the Phase 39 root lock
+ * It owns legacy parsing only; callers must acquire the root mutation lock
  * before calling prepareFromLegacy.
  */
 export class JsonControlPlaneStore implements InstanceControlPlanePort {

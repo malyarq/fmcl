@@ -11,7 +11,7 @@ Goal: document the live IPC, preload, and renderer contract surface for FMCL.
 - Unified renderer API type: `shared/contracts/windowApi.ts`
 - Renderer wrappers: `src/services/ipc/*`
 
-Snapshot: **v0.8.0 development line, 2026-08-04**. `npm run contracts:check` verifies that each language map contains exactly the allowlisted channels; `npm run architecture:check` verifies the renderer boundary.
+Snapshot: **current main development line, 2026-08-06**. `npm run contracts:check` verifies that each language map contains exactly the allowlisted channels; `npm run architecture:check` verifies the renderer boundary.
 
 ---
 
@@ -195,9 +195,13 @@ On the first registration for a newly created instance, main derives the manifes
 - `settings:selectMinecraftPath`
 - `settings:openMinecraftPath`
 - `settings:getDefaultMinecraftPath`
+- `settings:exportBackup`
+- `settings:importBackup`
 - `dialog:showSaveDialog`
 - `dialog:showOpenDialog`
 - `dialog:getDesktopPath`
+
+Settings backup accepts only an explicit, size-bounded allowlist of launcher preferences and recent launch choices. Main owns the native file dialogs, atomic write, schema validation, and import size limit. Accounts, tokens, analytics identity, FriendTunnel invitations, local filesystem paths, and game content are excluded.
 
 ### 3.7 Assets and cache
 

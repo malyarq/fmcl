@@ -17,7 +17,6 @@ type QualityEnvironment = {
 type QualityBaseline = {
   schemaVersion: 1;
   environment: QualityEnvironment;
-  phase41Comparison: Record<string, { rawBytes: number; gzipBytes: number }>;
   chunks: Array<{ logicalPath: string; rawBytes: number; gzipBytes: number }>;
 };
 
@@ -109,10 +108,6 @@ describe('Node 24 renderer quality baseline collector', () => {
     expect(() => collector.writeQualityBaseline({
       schemaVersion: 1,
       environment: environment(),
-      phase41Comparison: {
-        index: { rawBytes: 1, gzipBytes: 1 },
-        modpackRouter: { rawBytes: 1, gzipBytes: 1 },
-      },
       chunks: [{ logicalPath: 'src/main.tsx', rawBytes: 1, gzipBytes: 1, hash: 'forbidden' }],
     } as unknown as QualityBaseline, baselinePath)).toThrow('unexpected field');
     expect(fs.existsSync(baselinePath)).toBe(false);

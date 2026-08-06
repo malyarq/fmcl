@@ -4,7 +4,32 @@ This file summarizes user-visible and operational changes. Git history remains t
 
 ## Unreleased
 
-No changes after the local v0.8.1 candidate.
+No changes after the local v0.9.0 candidate.
+
+## [0.9.0] — 2026-08-06
+
+### Added
+
+- Replaced the generic first-run tour with an immediate English/Russian choice and outcome-based actions for ordinary play, FriendTunnel, and modpacks; the short tour is now optional.
+- Added readable, copyable FriendTunnel invitations and concrete Direct Connection guidance for the joining player.
+- Added settings export/import through native dialogs with a strict allowlist that excludes credentials, analytics identity and consent, room secrets, local paths, worlds, and modpacks.
+- Added consent-gated outcome analytics for onboarding, FriendTunnel, long operations, and settings transfer without collecting paths, account data, room secrets, or error contents.
+- Added a complete Russian project README and current English/Russian first-run screenshots.
+
+### Changed
+
+- Removed the 43-phase `.planning` archive from the active tree; Git history remains the historical record and the roadmap is now a short external-user product gate.
+- Reduced the complexity budget from a generated source inventory and exact-line ratchet to rounded category limits and explicit hotspot ceilings.
+- Kept fast source checks in the pull-request contract and moved bundle, performance, accessibility, and packaging checks to release validation.
+- Updated Electron to 43.3 and removed the unused `react-virtuoso` dependency and stale bundle split.
+- Made local macOS packages fall back to an ad-hoc signature when Developer ID is unavailable, so Electron fuse changes no longer leave Apple Silicon builds unlaunchable; publisher signing and notarization remain separate release gates.
+
+### Security
+
+- Added connection-time public-IP enforcement for public HTTPS downloads, including redirect validation, to close DNS-rebinding paths in updater, content, image, and direct-download flows.
+- Reject Electron's reversible Linux `basic_text` credential backend instead of treating it as secure storage.
+- Enabled production Electron fuses for ASAR integrity, cookie encryption, Node/inspector restrictions, and ASAR-only application loading.
+- Removed `unsafe-inline` from the renderer script policy in development and production.
 
 ## [0.8.1] — 2026-08-06
 
@@ -77,8 +102,9 @@ No changes after the local v0.8.1 candidate.
 
 ## Earlier releases
 
-Historical changes before v0.6.0 are available in [GitHub Releases](https://github.com/malyarq/fmcl/releases) and the archived planning records under `.planning/milestones/`.
+Historical changes before v0.6.0 are available in [GitHub Releases](https://github.com/malyarq/fmcl/releases) and Git history.
 
+[0.9.0]: https://github.com/malyarq/fmcl/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/malyarq/fmcl/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/malyarq/fmcl/compare/v0.7.1...v0.8.0
 [0.7.1]: https://github.com/malyarq/fmcl/compare/v0.7.0...v0.7.1

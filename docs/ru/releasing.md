@@ -27,7 +27,7 @@ npm run release -- <version> --dry-run
 
 До любого release-действия просмотрите pre-push report. В нём указаны точные version/tag/commit, все этапы quality profile, пути к артефактам и SHA-256 checksums, platform smoke с причинами unsupported runner, статус signing/notarization, known failures и неизменяемый rollback action.
 
-Checksums подтверждают только целостность артефактов. Локальный report — это evidence для решения, а не security boundary, доказательство издателя или разрешение на публикацию. Текущие артефакты macOS и Windows неподписаны, если platform verification evidence не говорит обратного; нельзя выводить подпись из checksum или успешного запуска. Диалоги Gatekeeper и SmartScreen зависят от ОС и репутации: их проверяют вручную на целевой платформе и фиксируют отдельно.
+Checksums подтверждают только целостность артефактов. Локальный report — это evidence для решения, а не security boundary, доказательство издателя или разрешение на публикацию. Текущие macOS DMG и Windows-артефакты не подписаны издателем, если platform verification evidence не говорит обратного. Локальная ad-hoc подпись macOS-приложения не доказывает ни личность издателя, ни notarization; их нельзя выводить из checksum или успешного запуска. Диалоги Gatekeeper и SmartScreen зависят от ОС и репутации: их проверяют вручную на целевой платформе и фиксируют отдельно.
 
 ## Тег и запуск публикации
 

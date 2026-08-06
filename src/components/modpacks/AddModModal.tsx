@@ -86,6 +86,7 @@ export function AddModModal({
       isOpen
       onClose={onClose}
       closeDisabled={busy}
+      closeLabel={t('general.close_dialog')}
       title={(
         <span className="flex min-w-0 items-center gap-3">
           <PackagePlus className="h-4 w-4 shrink-0 text-secondary" />

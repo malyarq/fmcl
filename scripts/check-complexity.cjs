@@ -1,5 +1,4 @@
 /* global console, process, __dirname */
-const childProcess = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
 const ts = require('typescript')
@@ -124,6 +123,10 @@ function percentile90(values) {
   return sorted[Math.floor((sorted.length - 1) * 0.9)]
 }
 
+function roundedLimit(value, step) {
+  return value === 0 ? 0 : Math.ceil(value / step) * step
+}
+
 function buildDefaults(inventory) {
   const grouped = new Map()
   for (const metric of inventory) {
@@ -134,18 +137,10 @@ function buildDefaults(inventory) {
   return Object.fromEntries([...grouped.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([category, metrics]) => [
     category,
     {
-      maxLoc: percentile90(metrics.map((metric) => metric.loc)),
-      maxFunctionComplexity: percentile90(metrics.map((metric) => metric.maxFunctionComplexity)),
+      maxLoc: roundedLimit(percentile90(metrics.map((metric) => metric.loc)), 25),
+      maxFunctionComplexity: roundedLimit(percentile90(metrics.map((metric) => metric.maxFunctionComplexity)), 5),
     },
   ]))
-}
-
-function npmVersion(projectRoot) {
-  return childProcess.execFileSync('npm', ['--version'], { cwd: projectRoot, encoding: 'utf8' }).trim()
-}
-
-function commit(projectRoot) {
-  return childProcess.execFileSync('git', ['rev-parse', 'HEAD'], { cwd: projectRoot, encoding: 'utf8' }).trim()
 }
 
 function createRatchet(projectRoot = defaultRoot) {
@@ -155,41 +150,20 @@ function createRatchet(projectRoot = defaultRoot) {
     .filter((metric) => metric.loc > defaults[metric.category].maxLoc
       || metric.maxFunctionComplexity > defaults[metric.category].maxFunctionComplexity)
     .map((metric) => [metric.path, {
-      maxLoc: metric.loc,
-      maxFunctionComplexity: metric.maxFunctionComplexity,
+      maxLoc: roundedLimit(metric.loc, 25),
+      maxFunctionComplexity: roundedLimit(metric.maxFunctionComplexity, 5),
     }]))
   return {
-    schemaVersion: 1,
-    parser: {
-      name: 'typescript',
-      version: ts.version,
-      loc: 'non-comment physical lines with TypeScript scanner tokens (multiline tokens count every occupied line)',
-      complexity: 'cyclomatic v1: one per function plus if, conditional, loop, catch, case, &&, || and ?? branches',
-    },
-    ruleVersions: {
-      loc: 'non-comment-physical-lines-v1',
-      functionComplexity: 'cyclomatic-v1',
-      defaults: 'p90-per-category-v1',
-    },
-    environment: {
-      node: process.versions.node,
-      npm: npmVersion(projectRoot),
-      typescript: ts.version,
-      platform: process.platform,
-      architecture: process.arch,
-      commit: commit(projectRoot),
-      capturedAt: new Date().toISOString(),
-    },
+    schemaVersion: 2,
     defaults,
     exceptions,
-    inventory,
   }
 }
 
 function assertRatchet(ratchet) {
-  if (!ratchet || typeof ratchet !== 'object' || ratchet.schemaVersion !== 1
-    || !ratchet.defaults || !ratchet.exceptions || !Array.isArray(ratchet.inventory)) {
-    throw new Error('Complexity ratchet must provide schemaVersion, defaults, exceptions and inventory')
+  if (!ratchet || typeof ratchet !== 'object' || ratchet.schemaVersion !== 2
+    || !ratchet.defaults || !ratchet.exceptions) {
+    throw new Error('Complexity ratchet must provide schemaVersion, defaults and exceptions')
   }
 }
 

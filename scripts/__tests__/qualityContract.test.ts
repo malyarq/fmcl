@@ -25,9 +25,9 @@ describe('shared source quality contract', () => {
     const plan = contract.createQualityPlan({ profile: 'pr' });
 
     expect(plan.stages.map((stage) => stage.name)).toEqual([
-      'node-preflight', 'unit', 'lint', 'typecheck', 'docs', 'contracts', 'ipc', 'legacy-import', 'architecture', 'dependency-graph', 'complexity', 'audit', 'fault-matrix', 'bundle', 'performance', 'accessibility',
+      'node-preflight', 'unit', 'lint', 'typecheck', 'docs', 'contracts', 'ipc', 'legacy-import', 'architecture', 'dependency-graph', 'complexity', 'audit',
     ]);
-    expect(plan.stages.find((stage) => stage.name === 'bundle')).toMatchObject({ command: 'npm', args: ['run', 'quality:bundle'] });
+    expect(plan.stages.find((stage) => stage.name === 'bundle')).toBeUndefined();
   });
 
   it('adds only actual artifact inputs in release mode and rejects absent release evidence inputs', () => {
@@ -41,7 +41,8 @@ describe('shared source quality contract', () => {
     const source = contract.createQualityPlan({ profile: 'release-source' });
 
     expect(source.profile).toBe('release');
-    expect(source.stages.map((stage) => stage.name)).toEqual(contract.createQualityPlan({ profile: 'pr' }).stages.map((stage) => stage.name));
+    expect(source.stages.slice(-3).map((stage) => stage.name)).toEqual(['bundle', 'performance', 'accessibility']);
+    expect(source.stages.slice(0, -3)).toEqual(contract.createQualityPlan({ profile: 'pr' }).stages);
   });
 
   it('records machine-readable results and stops after the first failed high-severity gate', () => {

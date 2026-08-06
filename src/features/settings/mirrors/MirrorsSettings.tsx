@@ -358,6 +358,7 @@ export const MirrorsSettings: React.FC<MirrorsSettingsProps> = ({ embedded = fal
             <Modal
                 isOpen={isDialogOpen}
                 onClose={() => setIsDialogOpen(false)}
+                closeLabel={t('general.close_dialog')}
                 title={t('mirrors.addCustomTitle')}
                 className="max-w-md"
             >

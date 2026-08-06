@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { Readable, Transform } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
-import { assertPublicHttpsUrl } from '../../security/remoteUrls'
+import { assertPublicHttpsUrl, fetchPublicHttpsUrl } from '../../security/remoteUrls'
 
 export interface ImageCacheState {
   entryCount: number
@@ -45,8 +45,10 @@ interface ImageCacheIndex {
   entries: Record<string, ImageCacheEntry>
 }
 
+type ImageFetcher = (url: string, init?: Parameters<typeof fetch>[1]) => ReturnType<typeof fetch>
+
 interface ImageCacheServiceOptions {
-  fetchImpl?: typeof fetch
+  fetchImpl?: ImageFetcher
 }
 
 const DEFAULT_MAX_SIZE_BYTES = 256 * 1024 * 1024
@@ -59,14 +61,18 @@ export class ImageCacheService {
   private readonly cacheRoot: string
   private readonly entriesRoot: string
   private readonly indexPath: string
-  private readonly fetchImpl: typeof fetch
+  private readonly fetchImpl: ImageFetcher
   private index: ImageCacheIndex
 
   constructor(userDataPath: string, options: ImageCacheServiceOptions = {}) {
     this.cacheRoot = path.join(userDataPath, 'image-cache')
     this.entriesRoot = path.join(this.cacheRoot, 'entries')
     this.indexPath = path.join(this.cacheRoot, 'index.json')
-    this.fetchImpl = options.fetchImpl ?? fetch
+    this.fetchImpl = options.fetchImpl ?? ((url, init) => fetchPublicHttpsUrl(
+      url,
+      'Image URL',
+      { ...init, maxRedirections: 0 },
+    ))
 
     this.ensureRoots()
     this.index = this.loadIndex()

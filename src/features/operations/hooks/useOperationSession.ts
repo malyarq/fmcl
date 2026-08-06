@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { OperationSnapshot, OperationStartRequest } from '@shared/contracts';
+import type { OperationKind, OperationSnapshot, OperationStartRequest } from '@shared/contracts';
 import { operationsIPC } from '../../../services/ipc/operationsIPC';
 import {
   classifyOperationTerminal,
   type OperationTerminalClassification,
 } from '../operationTerminalPolicy';
+import { analyticsClient, type AnalyticsEventMap } from '../../analytics/analyticsClient';
 
 export type OperationTerminalEvent = {
   snapshot: OperationSnapshot;
@@ -25,6 +26,23 @@ type SessionRun = {
   released: boolean;
   terminalHandled: boolean;
 };
+
+function toAnalyticsResult(status: OperationSnapshot['status']): 'succeeded' | 'recovered' | 'degraded' | 'cancelled' | 'failed' | 'recovery_required' | null {
+  if (status === 'recovery-required') return 'recovery_required';
+  if (status === 'succeeded' || status === 'recovered' || status === 'degraded' || status === 'cancelled' || status === 'failed') return status;
+  return null;
+}
+
+const analyticsOperationKinds = {
+  duplicate: 'duplicate',
+  import: 'import',
+  'import-share': 'import_share',
+  'install-curseforge': 'install_curseforge',
+  'install-modrinth': 'install_modrinth',
+  update: 'update',
+  delete: 'delete',
+  export: 'export',
+} satisfies Record<OperationKind, AnalyticsEventMap['operation_finished']['kind']>;
 
 function releaseRun(run: SessionRun) {
   if (run.released) return;
@@ -108,6 +126,9 @@ export function useOperationSession({
 
     run.terminalHandled = true;
     releaseRun(run);
+    const analyticsResult = toAnalyticsResult(nextSnapshot.status);
+    const analyticsKind = analyticsOperationKinds[nextSnapshot.kind];
+    if (analyticsResult) void analyticsClient.capture('operation_finished', { kind: analyticsKind, result: analyticsResult });
     const event = { snapshot: nextSnapshot, classification: nextClassification };
     if (nextClassification.didCommit) {
       const committedCallback = onCommittedRef.current;

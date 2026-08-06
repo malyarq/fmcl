@@ -52,6 +52,12 @@ export const settingsIPC = {
   getDefaultMinecraftPath(): ReturnType<SettingsApi['getDefaultMinecraftPath']> {
     return call('getDefaultMinecraftPath', () => requireSettings('getDefaultMinecraftPath').getDefaultMinecraftPath());
   },
+  exportBackup(values: Parameters<SettingsApi['exportBackup']>[0]): ReturnType<SettingsApi['exportBackup']> {
+    return call('exportBackup', () => requireSettings('exportBackup').exportBackup(values));
+  },
+  importBackup(): ReturnType<SettingsApi['importBackup']> {
+    return call('importBackup', () => requireSettings('importBackup').importBackup());
+  },
 };
 
 export type SettingsIPC = typeof settingsIPC;

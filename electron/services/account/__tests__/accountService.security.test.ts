@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mocked = vi.hoisted(() => ({
   encryptionAvailable: true,
+  storageBackend: 'keychain' as 'basic_text' | 'keychain',
 }));
 
 vi.mock('electron', () => ({
@@ -13,6 +14,7 @@ vi.mock('electron', () => ({
   },
   safeStorage: {
     isEncryptionAvailable: () => mocked.encryptionAvailable,
+    getSelectedStorageBackend: () => mocked.storageBackend,
     encryptString: (value: string) => Buffer.from(`encrypted:${value}`, 'utf8'),
     decryptString: (value: Buffer) => value.toString('utf8').replace(/^encrypted:/, ''),
   },
@@ -25,6 +27,7 @@ describe('AccountService secret boundaries', () => {
 
   afterEach(() => {
     mocked.encryptionAvailable = true;
+    mocked.storageBackend = 'keychain';
     for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
   });
 
@@ -121,6 +124,39 @@ describe('AccountService secret boundaries', () => {
     });
     expect(reloadedService.getSelectedAccount()).toBeNull();
     expect(await reloadedService.ensureActiveAccountValid()).toBeNull();
+  });
+
+  it('rejects Electron basic_text as insecure credential storage', async () => {
+    mocked.storageBackend = 'basic_text';
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    tempDirs.push(userDataPath);
+    const accountsPath = path.join(userDataPath, 'accounts.json');
+    const encoded = Buffer.from('encrypted:access').toString('base64');
+    fs.writeFileSync(accountsPath, JSON.stringify({
+      accounts: [{
+        id: 'profile-1',
+        type: 'third-party',
+        name: 'PlayerOne',
+        authServerUrl: 'https://skin.example.com/api/yggdrasil',
+        encryptedAccessToken: encoded,
+        encryptedClientToken: encoded,
+      }],
+      selectedAccountId: 'profile-1',
+    }));
+
+    const service = new AccountService(userDataPath);
+
+    expect(fs.readFileSync(accountsPath, 'utf8')).not.toContain(encoded);
+    expect(service.getAccounts()[0]).toMatchObject({
+      isDisabled: true,
+      disabledReason: 'secureStorageUnavailable',
+    });
+
+    await expect(service.addThirdPartyAccount(
+      'https://skin.example.com/api/yggdrasil',
+      'PlayerOne',
+      'password',
+    )).rejects.toThrow(/Secure credential storage/);
   });
 
   it('does not replace malformed account state with an empty account list', () => {

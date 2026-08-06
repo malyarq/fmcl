@@ -51,6 +51,7 @@ export function ImportShareModal({ isOpen, onClose, onCommitted }: ImportShareMo
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
+      closeLabel={t('general.close_dialog')}
       title={(
         <div className="flex items-center gap-2">
           <Download className="h-5 w-5" />

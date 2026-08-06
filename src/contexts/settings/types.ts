@@ -7,7 +7,7 @@ export type Theme = 'dark' | 'light';
 export type ThemePresetId = 'default' | 'midnight' | 'forest' | 'light-plus' | 'navy';
 export type DownloadProvider = 'mojang' | 'bmcl' | 'auto';
 
-// Global UI mode for Phase 0 split between simple play and modpacks.
+// Global UI mode for the simple-play and modpack workspaces.
 export type UIMode = 'simple' | 'modpacks';
 
 export type AccentStyleType =

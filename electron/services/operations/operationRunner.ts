@@ -72,7 +72,7 @@ export class OperationRunner {
     }
   }
 
-  /** Explicitly prepares canonical state while holding the Phase 39 root scope. */
+  /** Explicitly prepares canonical state while holding the root mutation scope. */
   public async prepareControlPlane(rootPath: string): Promise<RootMutationPreparationResult | RootMutationFailure> {
     this.assertAccepting();
     try {
@@ -410,7 +410,7 @@ export class OperationRunner {
       { rootPath },
       async () => await this.rootMutationLock.run(rootPath, async () => {
         const coordinator = this.coordinatorFor(rootPath);
-        // Every contender must reread after both Phase 39 gates. This is also
+        // Every contender must reread after the local queue and filesystem lock. This is also
         // what makes a second first-use caller observe a published migration.
         const current = coordinator ? await coordinator.read() : undefined;
         const scope: RootMutationScope & { coordinator?: RootMutationCoordinator } = {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { analyticsClient } from '../../features/analytics/analyticsClient';
 
 const ONBOARDING_COMPLETED_KEY = 'onboarding_completed';
 const FIRST_LAUNCH_KEY = 'first_launch';
@@ -21,18 +22,26 @@ export function useOnboarding() {
       }, 0);
       // Помечаем, что первый запуск был
       localStorage.setItem(FIRST_LAUNCH_KEY, 'false');
+      void analyticsClient.capture('onboarding_shown', {});
     }
   }, []);
 
   const handleWelcomeComplete = () => {
     setShowWelcome(false);
-    // После Welcome показываем Tour
+    setShowTour(false);
+    localStorage.setItem(ONBOARDING_COMPLETED_KEY, 'true');
+  };
+
+  const handleTourStart = () => {
+    setShowWelcome(false);
     setShowTour(true);
+    void analyticsClient.capture('onboarding_action', { action: 'tour_started' });
   };
 
   const handleTourComplete = () => {
     setShowTour(false);
     localStorage.setItem(ONBOARDING_COMPLETED_KEY, 'true');
+    void analyticsClient.capture('onboarding_action', { action: 'tour_completed' });
   };
 
   const handleSkip = () => {
@@ -40,6 +49,7 @@ export function useOnboarding() {
     setShowTour(false);
     localStorage.setItem(ONBOARDING_COMPLETED_KEY, 'true');
     localStorage.setItem(FIRST_LAUNCH_KEY, 'false');
+    void analyticsClient.capture('onboarding_action', { action: 'tour_skipped' });
   };
 
   const resetOnboarding = () => {
@@ -54,6 +64,7 @@ export function useOnboarding() {
     showTour,
     isFirstLaunch,
     handleWelcomeComplete,
+    handleTourStart,
     handleTourComplete,
     handleSkip,
     resetOnboarding,

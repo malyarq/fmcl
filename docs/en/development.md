@@ -60,7 +60,7 @@ The full process boundary is described in [Architecture](architecture.md).
 
 - Never commit provider keys, account tokens, signing certificates, passwords, or local absolute paths.
 - Official builds intentionally leave CurseForge browsing disabled; a local `CURSEFORGE_API_KEY` is for development only and does not make the public distribution contract complete.
-- Release signing secrets are optional and currently not configured. Do not pass empty `CSC_*` values to electron-builder.
+- Release signing secrets are optional and currently not configured. Do not pass empty `CSC_*` values to electron-builder. On macOS, `npm run build` falls back to an ad-hoc signature only when no Developer ID or explicit signing identity is available; this makes the local build runnable but does not make it distributable or notarized.
 - `VITE_POSTHOG_PROJECT_TOKEN` enables the optional, consent-gated analytics client. It is a public ingestion token, not a personal API key. `VITE_POSTHOG_HOST` defaults to `https://eu.i.posthog.com`; only HTTPS hosts are accepted.
 - Stable release builds require the repository variable `POSTHOG_PROJECT_TOKEN`. The PostHog project must discard IP addresses; this hosted setting is checked by the release owner, not by repository code.
 
@@ -73,7 +73,7 @@ The full process boundary is described in [Architecture](architecture.md).
 
 ## Release preparation
 
-Use a version that does not already exist. The current maintenance candidate is `v0.8.1`; keep the command reusable for later releases:
+Use a version that does not already exist. The current release candidate is `v0.9.0`; keep the command reusable for later releases:
 
 ```bash
 npm run release -- <version> --dry-run

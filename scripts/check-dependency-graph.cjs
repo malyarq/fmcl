@@ -5,7 +5,7 @@ const ts = require('typescript')
 
 const defaultRoot = path.join(__dirname, '..')
 const sourceExtensions = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']
-const deletedPhase42Owners = [
+const deletedCentralNetworkOwners = [
   'electron/services/network/networkService.ts',
   'electron/services/network/networkManager.ts',
   'src/contexts/instances/hooks/useInstanceNetworkModeSync.ts',
@@ -211,9 +211,9 @@ function collectDependencyGraphViolations(projectRoot = defaultRoot) {
     .flatMap((directory) => listSourceFiles(path.join(projectRoot, directory)))
     .filter((absolutePath) => isProductionSource(relative(projectRoot, absolutePath)))
 
-  for (const deletedOwner of deletedPhase42Owners) {
+  for (const deletedOwner of deletedCentralNetworkOwners) {
     if (fs.existsSync(path.join(projectRoot, deletedOwner))) {
-      violations.push(`${deletedOwner}:1 restores deleted Phase 42 owner`)
+      violations.push(`${deletedOwner}:1 restores deleted central network owner`)
     }
   }
 

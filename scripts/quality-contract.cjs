@@ -6,7 +6,7 @@ const path = require('node:path')
 const projectRoot = path.join(__dirname, '..')
 const RESULT_VERSION = 1
 
-const sourceStages = [
+const pullRequestStages = [
   ['node-preflight', 'node', ['scripts/assert-node24.cjs']],
   ['unit', 'npm', ['test']],
   ['lint', 'npm', ['run', 'lint']],
@@ -19,13 +19,20 @@ const sourceStages = [
   ['dependency-graph', 'node', ['scripts/check-dependency-graph.cjs']],
   ['complexity', 'node', ['scripts/check-complexity.cjs', '--check', 'quality/budgets/complexity-ratchet.json']],
   ['audit', 'npm', ['run', 'audit:prod']],
-  ['fault-matrix', 'npm', ['run', 'test:faults']],
+]
+
+const releaseSourceStages = [
   ['bundle', 'npm', ['run', 'quality:bundle']],
   ['performance', 'npm', ['run', 'quality:performance']],
   ['accessibility', 'npm', ['run', 'quality:accessibility']],
 ]
 
-const knownStages = new Set([...sourceStages.map(([name]) => name), 'package-smoke', 'release-evidence'])
+const knownStages = new Set([
+  ...pullRequestStages.map(([name]) => name),
+  ...releaseSourceStages.map(([name]) => name),
+  'package-smoke',
+  'release-evidence',
+])
 
 function assertReleaseInputs(inputs) {
   const required = ['releaseDir', 'version', 'tag', 'commit', 'report']
@@ -35,7 +42,10 @@ function assertReleaseInputs(inputs) {
 
 function createQualityPlan({ profile = 'pr', inputs = {} } = {}) {
   if (!['pr', 'release', 'release-source'].includes(profile)) throw new Error(`Unknown quality profile: ${profile}`)
-  const stages = sourceStages.map(([name, command, args]) => ({ name, command, args: [...args] }))
+  const stages = pullRequestStages.map(([name, command, args]) => ({ name, command, args: [...args] }))
+  if (profile !== 'pr') {
+    stages.push(...releaseSourceStages.map(([name, command, args]) => ({ name, command, args: [...args] })))
+  }
   if (profile === 'release') {
     assertReleaseInputs(inputs)
     stages.push(

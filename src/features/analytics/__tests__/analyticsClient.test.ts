@@ -54,6 +54,7 @@ describe('privacy-first analytics client', () => {
       distinct_id: 'install-id',
       event: 'game_launch_failed',
       properties: {
+        $geoip_disable: true,
         $process_person_profile: false,
         app_platform: 'linux',
         failure_stage: 'launch',
@@ -62,6 +63,7 @@ describe('privacy-first analytics client', () => {
     });
     const propertyKeys = Object.keys(payload.properties as Record<string, unknown>).sort();
     expect(propertyKeys).toEqual([
+      '$geoip_disable',
       '$process_person_profile',
       'app_platform',
       'app_version',

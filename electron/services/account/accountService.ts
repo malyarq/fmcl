@@ -55,6 +55,15 @@ function isPersistedAccountState(value: unknown): value is PersistedAccountState
         && (candidate.selectedAccountId === null || typeof candidate.selectedAccountId === 'string');
 }
 
+function hasSecureCredentialStorage(): boolean {
+    if (!safeStorage.isEncryptionAvailable()) return false;
+
+    // On Linux, Electron can fall back to the reversible `basic_text` backend
+    // when no system keyring is available. Treat that fallback as unavailable
+    // instead of giving users a false promise that provider tokens are secure.
+    return safeStorage.getSelectedStorageBackend?.() !== 'basic_text';
+}
+
 export class AccountService {
     private accountsStore: AtomicJsonStore<PersistedAccountState>;
     private state: InternalAccountState;
@@ -118,7 +127,7 @@ export class AccountService {
     }
 
     private decryptSecret(value: string | undefined): string | undefined {
-        if (!value || !safeStorage.isEncryptionAvailable()) return undefined;
+        if (!value || !hasSecureCredentialStorage()) return undefined;
         try {
             return safeStorage.decryptString(Buffer.from(value, 'base64'));
         } catch {
@@ -133,6 +142,9 @@ export class AccountService {
             const hasPlaintextSecrets = parsed.accounts.some(
                 (account) => Boolean(account.accessToken || account.clientToken),
             );
+            const hasEncryptedSecrets = parsed.accounts.some(
+                (account) => Boolean(account.encryptedAccessToken || account.encryptedClientToken),
+            );
             const accounts = parsed.accounts.map((account) => {
                 const {
                     encryptedAccessToken,
@@ -146,7 +158,7 @@ export class AccountService {
                     accessToken: this.decryptSecret(encryptedAccessToken) ?? accessToken,
                     clientToken: this.decryptSecret(encryptedClientToken) ?? clientToken,
                 });
-                if (hydratedAccount.type === 'third-party' && !safeStorage.isEncryptionAvailable()) {
+                if (hydratedAccount.type === 'third-party' && !hasSecureCredentialStorage()) {
                     return this.applyDerivedAccountFields({
                         ...hydratedAccount,
                         accessToken: undefined,
@@ -165,7 +177,8 @@ export class AccountService {
             return {
                 state: { accounts, selectedAccountId },
                 shouldPersist: hasPlaintextSecrets
-                    || (safeStorage.isEncryptionAvailable() && (loaded.legacy || loaded.source === 'backup')),
+                    || (!hasSecureCredentialStorage() && hasEncryptedSecrets)
+                    || (hasSecureCredentialStorage() && (loaded.legacy || loaded.source === 'backup')),
             };
         }
         return {
@@ -177,7 +190,7 @@ export class AccountService {
     private saveAccounts(state: InternalAccountState): void {
         const accounts = state.accounts.map((account): PersistedAccount => {
             const { accessToken, clientToken, ...publicAccount } = account;
-            if (!safeStorage.isEncryptionAvailable()) return publicAccount;
+            if (!hasSecureCredentialStorage()) return publicAccount;
 
             return {
                 ...publicAccount,
@@ -240,7 +253,7 @@ export class AccountService {
     }
 
     public async addThirdPartyAccount(authServerUrl: string, username: string, password?: string): Promise<Account> {
-        if (!safeStorage.isEncryptionAvailable()) {
+        if (!hasSecureCredentialStorage()) {
             throw new Error('Secure credential storage is unavailable on this system');
         }
 

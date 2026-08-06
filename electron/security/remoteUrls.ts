@@ -1,4 +1,6 @@
 import net from 'node:net';
+import dns, { type LookupAddress } from 'node:dns';
+import { Agent, Pool, type Dispatcher } from 'undici';
 
 const MAX_REMOTE_URL_LENGTH = 2_048;
 const BLOCKED_HOSTNAMES = new Set([
@@ -81,6 +83,41 @@ function isBlockedHost(hostname: string): boolean {
   return false;
 }
 
+const publicHttpsDispatcher = new Agent({
+  factory(origin, options) {
+    if (new URL(origin).protocol !== 'https:') {
+      throw new Error('Public download redirects must keep using HTTPS.');
+    }
+    return new Pool(origin, options);
+  },
+  connect: {
+    lookup(hostname, options, callback) {
+      dns.lookup(hostname, { ...options, all: true }, (error, addresses) => {
+        if (error) {
+          callback(error, '', 0);
+          return;
+        }
+
+        const resolved = addresses as LookupAddress[];
+        if (resolved.length === 0 || resolved.some(({ address }) => isBlockedHost(address))) {
+          const lookupError = new Error('Remote URL resolved to a private, link-local, or reserved address.') as NodeJS.ErrnoException;
+          lookupError.code = 'EACCES';
+          callback(lookupError, '', 0);
+          return;
+        }
+
+        if (options.all) {
+          callback(null, resolved, 0);
+          return;
+        }
+
+        const [selected] = resolved;
+        callback(null, selected.address, selected.family);
+      });
+    },
+  },
+});
+
 export function assertPublicHttpsUrl(
   candidate: unknown,
   label: string,
@@ -117,4 +154,47 @@ export function assertPublicHttpsUrl(
   }
 
   return parsed.toString();
+}
+
+export function getPublicHttpsDispatcher(): Dispatcher {
+  return publicHttpsDispatcher;
+}
+
+type NativeFetchOptions = NonNullable<Parameters<typeof globalThis.fetch>[1]>;
+type PublicFetchOptions = Omit<NativeFetchOptions, 'redirect'> & {
+  maxRedirections?: number;
+};
+
+export async function fetchPublicHttpsUrl(
+  candidate: unknown,
+  label: string,
+  options: PublicFetchOptions = {},
+): Promise<Response> {
+  const { maxRedirections = 5, ...requestOptions } = options;
+  const method = requestOptions.method?.toUpperCase() ?? 'GET';
+  if (method !== 'GET' && method !== 'HEAD') {
+    throw new Error(`${label} fetch only supports GET or HEAD requests.`);
+  }
+  let currentUrl = assertPublicHttpsUrl(candidate, label);
+
+  for (let redirectCount = 0; redirectCount <= maxRedirections; redirectCount += 1) {
+    const response = await globalThis.fetch(currentUrl, {
+      ...requestOptions,
+      dispatcher: publicHttpsDispatcher,
+      redirect: 'manual',
+    } as NativeFetchOptions);
+
+    if (![301, 302, 303, 307, 308].includes(response.status)) {
+      return response;
+    }
+
+    const location = response.headers.get('location');
+    await response.body?.cancel();
+    if (!location) throw new Error(`${label} redirect is missing a location.`);
+    if (redirectCount === maxRedirections) throw new Error(`${label} redirected too many times.`);
+
+    currentUrl = assertPublicHttpsUrl(new URL(location, currentUrl).toString(), `${label} redirect`);
+  }
+
+  throw new Error(`${label} redirected too many times.`);
 }

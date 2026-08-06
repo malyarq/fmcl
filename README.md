@@ -1,30 +1,36 @@
 # FriendLauncher
 
-[Latest release](https://github.com/malyarq/fmcl/releases/latest) · [Русская документация](docs/ru/user-guide.md) · [Documentation index](docs/README.md)
+[English](README.md) · [Русский](README.ru.md) · [Download](https://github.com/malyarq/fmcl/releases/latest) · [Documentation](docs/README.md)
 
-FriendLauncher (FMCL) is a cross-platform desktop Minecraft launcher for vanilla play, modpacks, local content management, and multiplayer with friends. It is built with Electron, React, and TypeScript.
+FriendLauncher (FMCL) is a privacy-first desktop Minecraft launcher for vanilla play, isolated modpacks, local content management, and direct play with a friend. It runs on Windows, macOS, and Linux.
 
-Current stable release: [latest GitHub release](https://github.com/malyarq/fmcl/releases/latest).
+![FriendLauncher first launch](docs/assets/screenshots/welcome-en.png)
 
-> [!WARNING]
-> Windows and macOS packages are currently unsigned. Download them only from this repository and verify `SHA256SUMS.txt` from the release before installing. The operating system may show an unknown-developer warning.
+## Why FriendLauncher
 
-## Features
+- **Play together without renting a server.** FriendTunnel connects a world opened to LAN through a copyable invitation. The joining player uses the local address shown by FMCL.
+- **Keep control of your data.** Game data, settings, accounts, and instances stay local. Anonymous product analytics is off by default and has a documented event allowlist.
+- **Use vanilla or modded Minecraft.** FMCL supports Forge, Fabric, NeoForge, OptiFine, isolated instances, and Modrinth content.
+- **Move safely between computers.** Export launcher settings without account tokens or analytics identifiers, and export important modpacks separately.
+- **Understand what the launcher is doing.** Long installs and updates expose progress, cancellation, recovery, and actionable failure states.
 
-- Launch vanilla Minecraft or instances using Forge, Fabric, NeoForge, and OptiFine.
-- Detect or provision the Java runtime required by the selected Minecraft version.
-- Create, import, export, duplicate, rename, update, and remove modpacks.
-- Browse Modrinth and manage mods, resource packs, shaders, worlds, datapacks, and screenshots.
-- Use offline profiles or supported third-party Yggdrasil/authlib-injector providers.
-- Host and join LAN-style sessions through FriendTunnel; optional LAN discovery and UPnP modes are available for diagnostics.
-- Configure themes, storage, download mirrors, launcher behavior, and local statistics.
-- Check for application and modpack updates with explicit download consent.
+## Current capabilities
 
-CurseForge archive import/export is supported, but browsing CurseForge is disabled in official builds until the API and distribution contract is configured end to end.
+| Area | Available now |
+| --- | --- |
+| Minecraft | Vanilla launch, automatic Java 8/17/21 selection, Forge, Fabric, NeoForge, OptiFine |
+| Modpacks | Create, import, export, duplicate, rename, update, delete, browse Modrinth |
+| Content | Mods, resource packs, shaders, worlds, datapacks, screenshots |
+| Accounts | Offline profiles and supported third-party Yggdrasil/authlib-injector providers |
+| Multiplayer | FriendTunnel, optional LAN discovery, optional UPnP diagnostics |
+| Safety | Atomic writes, operation recovery, archive/path validation, checksummed release artifacts |
+| Languages | English and Russian |
 
-## Download
+Microsoft sign-in is not available yet. CurseForge archive import/export works, but official builds do not browse CurseForge until its API and distribution contract are configured end to end.
 
-Download the latest package from [GitHub Releases](https://github.com/malyarq/fmcl/releases/latest):
+## Install
+
+Download the latest package and `SHA256SUMS.txt` from [GitHub Releases](https://github.com/malyarq/fmcl/releases/latest).
 
 | Platform | Artifact |
 | --- | --- |
@@ -32,15 +38,14 @@ Download the latest package from [GitHub Releases](https://github.com/malyarq/fm
 | macOS | `FriendLauncher-Mac-<version>-Installer.dmg` |
 | Linux | `FriendLauncher-Linux-<version>.AppImage` |
 
-Release metadata also includes updater manifests, blockmaps, and `SHA256SUMS.txt`. Installation and first-run instructions are in the [user guide](docs/en/user-guide.md).
+> [!WARNING]
+> Windows packages and macOS DMGs are not publisher-signed. Local macOS builds use an ad-hoc signature only so the app can run after Electron fuses are applied; it does not authenticate the publisher. Download only from this repository and verify the matching SHA-256 checksum. Your operating system may show an unknown-developer warning.
+
+The [user guide](docs/en/user-guide.md) explains checksum verification, first launch, FriendTunnel, updates, and backups.
 
 ## Development
 
-Requirements:
-
-- Node.js 24.x (`.nvmrc`)
-- npm 11.x (`package.json#packageManager`)
-- Git
+Requirements: Node.js 24.x, npm 11.x, and Git.
 
 ```bash
 nvm use
@@ -49,46 +54,30 @@ npm run verify
 npm run dev
 ```
 
-`npm run verify` runs unit tests, ESLint, TypeScript, documentation and IPC contract checks, and the production dependency audit. It does not run visual regression, packaging, or real Minecraft installation tests; see [Testing](docs/en/testing.md) for the full matrix.
-
-Create production packages locally with:
+Build production packages locally without publishing:
 
 ```bash
 npm run build -- --publish never
 ```
 
+`npm run verify` runs unit tests, ESLint, TypeScript, documentation and IPC contract checks, and the production dependency audit. Packaging and real Minecraft installation are separate checks; see [Testing](docs/en/testing.md).
+
 ## Documentation
 
-| Topic | English | Русский |
-| --- | --- | --- |
-| User guide | [User guide](docs/en/user-guide.md) | [Руководство](docs/ru/user-guide.md) |
-| Troubleshooting | [Troubleshooting](docs/en/troubleshooting.md) | [Решение проблем](docs/ru/troubleshooting.md) |
-| Development | [Development](docs/en/development.md) | [Разработка](docs/ru/development.md) |
-| Architecture | [Architecture](docs/en/architecture.md) | [Архитектура](docs/ru/architecture.md) |
-| Testing | [Testing](docs/en/testing.md) | [Тестирование](docs/ru/testing.md) |
-| IPC contracts | [Contracts](docs/en/contracts.md) | [Контракты](docs/ru/contracts.md) |
-| Design system | [Design system](docs/en/design-system.md) | [Дизайн-система](docs/ru/design-system.md) |
-| Security model | [Security](docs/en/security.md) | [Безопасность](docs/ru/security.md) |
-| Privacy and analytics | [Privacy](docs/en/privacy.md) | [Приватность](docs/ru/privacy.md) |
-| Release process | [Releasing](docs/en/releasing.md) | [Релизы](docs/ru/releasing.md) |
-| Roadmap | [Roadmap](docs/en/roadmap.md) | [Роадмап](docs/ru/roadmap.md) |
-
-Repository-wide contribution and release history documents:
-
+- [User guide](docs/en/user-guide.md)
+- [Troubleshooting](docs/en/troubleshooting.md)
+- [Privacy](docs/en/privacy.md)
+- [Security](docs/en/security.md)
+- [Development](docs/en/development.md)
+- [Architecture](docs/en/architecture.md)
+- [Testing](docs/en/testing.md)
+- [Release process](docs/en/releasing.md)
+- [Known issues](docs/en/known-issues.md)
 - [Contributing](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
 - [Changelog](CHANGELOG.md)
-- [Third-party notices](THIRD_PARTY_NOTICES.md)
-- [Known issues](docs/KNOWN_ISSUES.md)
 
 ## Project status
 
-`main` is the active development branch. Stable releases are versioned as `vMAJOR.MINOR.PATCH`; the `latest` tag points to the newest stable release. Current limitations and work that is intentionally not release-blocking are tracked in [Known Issues](docs/en/known-issues.md).
+The launcher is engineering-complete for its current feature set, but public alpha confidence still depends on fresh-install smoke tests on each target OS. Code signing, Microsoft authentication, and external-user product proof remain separate gates. Product direction is summarized in the short [product gate](docs/en/roadmap.md).
 
-## Authentication and game ownership
-
-FMCL supports offline and alternative Yggdrasil authentication flows through `authlib-injector`. Use these features responsibly. FriendLauncher is not affiliated with Mojang or Microsoft, and this project does not grant ownership of Minecraft.
-
-## License
-
-FriendLauncher is available under the [MIT License](LICENSE).
+FriendLauncher is not affiliated with Mojang or Microsoft and does not grant ownership of Minecraft. The project is available under the [MIT License](LICENSE).

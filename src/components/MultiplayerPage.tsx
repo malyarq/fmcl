@@ -12,7 +12,7 @@ const MultiplayerPage: React.FC<MultiplayerPageProps> = ({ onBack }) => {
   const multiplayer = useMultiplayer();
 
   return (
-    <Modal isOpen onClose={onBack} title={t('multiplayer.title')} className="max-w-lg">
+    <Modal isOpen onClose={onBack} closeLabel={t('general.close_dialog')} title={t('multiplayer.title')} className="max-w-lg">
       <div className="flex flex-col gap-5">
         <Select
           label={t('settings.network_mode')}

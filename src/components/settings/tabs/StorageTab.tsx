@@ -6,6 +6,9 @@ import { formatSize } from '../../../utils/format';
 import { cn } from '../../../utils/cn';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { LoadingSpinner } from '../../ui/LoadingSpinner';
+import { settingsIPC } from '../../../services/ipc/settingsIPC';
+import { applySettingsBackup, collectSettingsBackup } from '../../../features/settings/backup/settingsBackup';
+import { analyticsClient } from '../../../features/analytics/analyticsClient';
 
 interface StorageSettingsProps {
     t: (key: string) => string;
@@ -19,6 +22,7 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
     const [stats, setStats] = useState<StorageMaintenanceStats | null>(null);
     const [loading, setLoading] = useState(false);
     const [cleanupResult, setCleanupResult] = useState<{ freedSize: number; deletedFiles: number } | null>(null);
+    const [backupMessage, setBackupMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const cleanupSectionClassName = embedded
         ? 'surface-muted settings-section-stack p-5'
@@ -68,6 +72,49 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
         } catch (error) {
             console.error('Failed to cleanup content:', error);
             setError(error instanceof Error ? error.message : t('settings.storage.cleanupError'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleExportSettings = async () => {
+        setLoading(true);
+        setBackupMessage(null);
+        setError(null);
+        try {
+            const result = await settingsIPC.exportBackup(collectSettingsBackup());
+            if (!result.canceled) {
+                setBackupMessage(t('settings.storage.backupExported').replace('{file}', result.fileName ?? ''));
+                void analyticsClient.capture('settings_backup_exported', {});
+            }
+        } catch (error) {
+            setError(error instanceof Error ? error.message : t('settings.storage.backupError'));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleImportSettings = async () => {
+        setLoading(true);
+        setBackupMessage(null);
+        setError(null);
+        try {
+            const result = await settingsIPC.importBackup();
+            if (result.canceled || !result.values) return;
+            const confirmed = await confirm.confirm({
+                title: t('settings.storage.backupImportTitle'),
+                message: t('settings.storage.backupImportConfirm'),
+                confirmText: t('settings.storage.backupImportButton'),
+                cancelText: t('general.cancel'),
+            });
+            if (!confirmed) return;
+            applySettingsBackup(result.values);
+            setError(null);
+            setBackupMessage(t('settings.storage.backupImported').replace('{file}', result.fileName ?? ''));
+            void analyticsClient.capture('settings_backup_imported', {});
+            window.setTimeout(() => window.location.reload(), 400);
+        } catch (error) {
+            setError(error instanceof Error ? error.message : t('settings.storage.backupError'));
         } finally {
             setLoading(false);
         }
@@ -126,6 +173,23 @@ export const StorageSettings: React.FC<StorageSettingsProps> = ({ t, getAccentSt
                                 .replace('{count}', cleanupResult.deletedFiles.toString())}
                         </div>
                     )}
+                </div>
+
+                <div className={cleanupSectionClassName}>
+                    <div className="settings-section-copy">
+                        <h4 className="settings-embedded-title">{t('settings.storage.backup')}</h4>
+                        <p className="settings-embedded-copy">{t('settings.storage.backupDesc')}</p>
+                        <p className="text-xs leading-5 text-muted">{t('settings.storage.backupPrivacy')}</p>
+                    </div>
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                        <Button variant="secondary" onClick={() => void handleExportSettings()} disabled={loading}>
+                            {t('settings.storage.backupExport')}
+                        </Button>
+                        <Button variant="ghost" onClick={() => void handleImportSettings()} disabled={loading}>
+                            {t('settings.storage.backupImport')}
+                        </Button>
+                    </div>
+                    {backupMessage && <p className="text-sm text-emerald-300" role="status">{backupMessage}</p>}
                 </div>
             </div>
 

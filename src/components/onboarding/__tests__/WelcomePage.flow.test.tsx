@@ -1,35 +1,38 @@
 // @vitest-environment jsdom
 
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { WelcomePage } from '../WelcomePage'
 
 const completeMock = vi.fn()
-const skipMock = vi.fn()
+const tourMock = vi.fn()
+const multiplayerMock = vi.fn()
 const settingsMock = vi.fn()
+const setLanguageMock = vi.fn()
+const setUIModeMock = vi.fn()
 
 vi.mock('../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
-    t: (key: string) =>
-      ({
-        'onboarding.welcome.title': 'Welcome!',
-        'onboarding.welcome.badge': 'Launcher setup',
-        'onboarding.welcome.feature_modpacks.title': 'Modpack Management',
-        'onboarding.welcome.feature_modpacks.desc': 'Import and manage modpacks from CurseForge and Modrinth',
-        'onboarding.welcome.feature_multiplayer.title': 'Multiplayer Tunnel',
-        'onboarding.welcome.feature_multiplayer.desc': 'Play with friends through a secure tunnel without port forwarding',
-        'onboarding.welcome.feature_customization.title': 'Customization',
-        'onboarding.welcome.feature_customization.desc': 'Dark/light theme, accent colors, and more',
-        'onboarding.welcome.quick_start.title': 'Quick Start:',
-        'onboarding.welcome.quick_start.step1': 'Start in Classic for a quick launch, or switch to Modpacks when you want a curated pack.',
-        'onboarding.welcome.quick_start.step2': 'Set your nickname, Minecraft version, and modloader in the sidebar.',
-        'onboarding.welcome.quick_start.step3': 'Press "Play", or open Settings to tune theme, accounts, and launcher behavior.',
-        'onboarding.welcome.customize_title': 'Make it yours',
-        'onboarding.welcome.customize_desc': 'Start with a clean launcher shell, then adjust theme, accent, background effects, and account setup in Settings.',
-        'onboarding.welcome.get_started': 'Get Started',
-        'onboarding.welcome.skip': 'Skip',
-        'general.settings': 'Settings',
-      }[key] ?? key),
+    language: 'en',
+    setLanguage: setLanguageMock,
+    setUIMode: setUIModeMock,
+    t: (key: string) => ({
+      'onboarding.welcome.title': 'What do you want to do first?',
+      'onboarding.welcome.intro': 'Choose an outcome.',
+      'onboarding.welcome.language': 'Interface language',
+      'onboarding.welcome.play_now': 'Play Minecraft',
+      'onboarding.welcome.play_now_desc': 'Play offline now.',
+      'onboarding.welcome.play_now_action': 'Open launcher',
+      'onboarding.welcome.play_together': 'Play with a friend',
+      'onboarding.welcome.play_together_desc': 'Use FriendTunnel.',
+      'onboarding.welcome.play_together_action': 'Open FriendTunnel',
+      'onboarding.welcome.modpacks': 'Use a modpack',
+      'onboarding.welcome.modpacks_desc': 'Import or create a pack.',
+      'onboarding.welcome.modpacks_action': 'Open modpacks',
+      'onboarding.welcome.account_note': 'Offline works immediately.',
+      'onboarding.welcome.tour': 'Show a short tour',
+      'general.settings': 'Settings',
+    }[key] ?? key),
     getAccentStyles: () => ({ className: '', style: undefined }),
     getAccentHex: () => '#10b981',
   }),
@@ -37,30 +40,81 @@ vi.mock('../../../contexts/SettingsContext', () => ({
 
 describe('WelcomePage flow', () => {
   beforeEach(() => {
-    completeMock.mockReset()
-    skipMock.mockReset()
-    settingsMock.mockReset()
+    vi.clearAllMocks()
+    Object.defineProperty(window, 'matchMedia', {
+      writable: true,
+      value: vi.fn().mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+        addListener: vi.fn(),
+        removeListener: vi.fn(),
+      }),
+    })
   })
 
-  it('describes the real default first-run flow instead of pointing users to modpacks first', () => {
+  it('opens as a labelled modal and keeps keyboard focus inside it', async () => {
+    render(
+      <>
+        <button type="button">Background action</button>
+        <WelcomePage
+          onComplete={completeMock}
+          onStartTour={tourMock}
+          onShowMultiplayer={multiplayerMock}
+          onShowSettings={settingsMock}
+        />
+      </>,
+    )
+
+    const dialog = screen.getByRole('dialog', { name: 'What do you want to do first?' })
+    expect(dialog.getAttribute('aria-modal')).toBe('true')
+    expect(screen.getByRole('group', { name: 'Interface language' })).toBeTruthy()
+
+    const primaryAction = screen.getByRole('button', { name: 'Open launcher' })
+    await waitFor(() => expect(document.activeElement).toBe(primaryAction))
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(dialog.contains(document.activeElement)).toBe(true)
+  })
+
+  it('routes directly to the selected first outcome', () => {
     render(
       <WelcomePage
         onComplete={completeMock}
-        onSkip={skipMock}
+        onStartTour={tourMock}
+        onShowMultiplayer={multiplayerMock}
         onShowSettings={settingsMock}
-      />
+      />,
     )
 
-    expect(screen.getByText(/Start in Classic for a quick launch/i)).toBeTruthy()
-    expect(screen.queryByText('Select or create a modpack')).toBeNull()
-
-    fireEvent.click(screen.getByRole('button', { name: 'Get Started' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open launcher' }))
     expect(completeMock).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open FriendTunnel' }))
+    expect(multiplayerMock).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open modpacks' }))
+    expect(setUIModeMock).toHaveBeenCalledWith('modpacks')
+    expect(completeMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('lets the user switch language or explicitly ask for help', () => {
+    render(
+      <WelcomePage
+        onComplete={completeMock}
+        onStartTour={tourMock}
+        onShowMultiplayer={multiplayerMock}
+        onShowSettings={settingsMock}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'ru' }))
+    expect(setLanguageMock).toHaveBeenCalledWith('ru')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show a short tour' }))
+    expect(tourMock).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     expect(settingsMock).toHaveBeenCalledTimes(1)
-
-    fireEvent.click(screen.getByRole('button', { name: 'Skip' }))
-    expect(skipMock).toHaveBeenCalledTimes(1)
   })
 })

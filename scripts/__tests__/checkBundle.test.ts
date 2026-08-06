@@ -15,7 +15,7 @@ type Environment = {
   capturedAt: string;
 };
 
-type Baseline = { environment: Environment; phase41Comparison: { index: { rawBytes: number; gzipBytes: number }; modpackRouter: { rawBytes: number; gzipBytes: number } }; chunks: Chunk[]; schemaVersion: 1 };
+type Baseline = { environment: Environment; chunks: Chunk[]; schemaVersion: 1 };
 
 type BundleChecker = Readonly<{
   checkBundle(options: {
@@ -50,10 +50,6 @@ function fixture(overrides: Partial<{ baseline: Baseline; budget: { schemaVersio
     baseline: {
       schemaVersion: 1,
       environment: environment(),
-      phase41Comparison: {
-        index: { rawBytes: 100, gzipBytes: 50 },
-        modpackRouter: { rawBytes: 100, gzipBytes: 50 },
-      },
       chunks: [chunk],
     },
     budget: {

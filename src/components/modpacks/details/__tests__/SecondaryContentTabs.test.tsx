@@ -33,16 +33,6 @@ const instanceModsListMock = vi.fn();
 const instanceModsRemoveMock = vi.fn();
 const instanceModsSetEnabledMock = vi.fn();
 
-vi.mock('react-virtuoso', () => ({
-  Virtuoso: ({
-    data,
-    itemContent,
-  }: {
-    data: unknown[];
-    itemContent: (index: number, item: unknown) => React.ReactNode;
-  }) => <div>{data.map((item, index) => <div key={index}>{itemContent(index, item)}</div>)}</div>,
-}));
-
 vi.mock('../../../../contexts/SettingsContext', () => ({
   useSettings: () => ({
     t,

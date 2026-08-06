@@ -91,6 +91,8 @@ export const allowedIpcChannels = [
   'settings:selectMinecraftPath',
   'settings:openMinecraftPath',
   'settings:getDefaultMinecraftPath',
+  'settings:exportBackup',
+  'settings:importBackup',
 
   // dialog
   'dialog:showSaveDialog',

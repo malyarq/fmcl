@@ -225,6 +225,7 @@ describe('theme runtime contract', () => {
 
     await waitFor(() => {
       expect(latestSettings?.locale).toBe('ru-RU');
+      expect(document.documentElement.lang).toBe('ru');
     });
 
     expect(
@@ -238,6 +239,7 @@ describe('theme runtime contract', () => {
 
     await waitFor(() => {
       expect(latestSettings?.locale).toBe('en-US');
+      expect(document.documentElement.lang).toBe('en');
     });
 
     expect(latestSettings?.formatNumber(1234567.89)).toBe(new Intl.NumberFormat('en-US').format(1234567.89));

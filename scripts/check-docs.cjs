@@ -5,19 +5,12 @@ const path = require('node:path')
 const root = path.join(__dirname, '..')
 const requiredRootDocs = [
   'README.md',
+  'README.ru.md',
   'CHANGELOG.md',
   'CONTRIBUTING.md',
   'SECURITY.md',
   'THIRD_PARTY_NOTICES.md',
   'docs/README.md',
-]
-const maintainedPlanningDocs = [
-  '.planning/README.md',
-  '.planning/PROJECT.md',
-  '.planning/STATE.md',
-  '.planning/ROADMAP.md',
-  '.planning/MILESTONES.md',
-  '.planning/REQUIREMENTS.md',
 ]
 const maintainedGitHubDocs = ['.github/PULL_REQUEST_TEMPLATE.md']
 
@@ -91,14 +84,13 @@ function difference(left, right) {
 function main() {
   const failures = []
 
-  for (const relPath of [...requiredRootDocs, ...maintainedPlanningDocs, ...maintainedGitHubDocs]) {
+  for (const relPath of [...requiredRootDocs, ...maintainedGitHubDocs]) {
     if (!fs.existsSync(path.join(root, relPath))) failures.push(`Missing required document: ${relPath}`)
   }
 
   const maintainedDocs = [
     path.join(root, 'AGENTS.md'),
     ...requiredRootDocs.map((relPath) => path.join(root, relPath)),
-    ...maintainedPlanningDocs.map((relPath) => path.join(root, relPath)),
     ...maintainedGitHubDocs.map((relPath) => path.join(root, relPath)),
     ...walkMarkdown(path.join(root, 'docs')),
   ]

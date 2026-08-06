@@ -192,4 +192,5 @@ describe('createMainWindow macOS chrome contract', () => {
     expect(getNativeWindowIconCandidates('darwin')).toEqual(['icon-macos.png', 'icon.png', 'icon.ico']);
     expect(mocked.createFromPath).toHaveBeenCalledWith(path.join(vitePublicPath, 'icon.png'));
   });
+
 });

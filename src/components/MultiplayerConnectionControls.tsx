@@ -4,6 +4,7 @@ import { useMultiplayer } from '../features/multiplayer/hooks/useMultiplayer';
 import { cn } from '../utils/cn';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
+import { formatFriendTunnelCode, normalizeFriendTunnelInvite } from '../features/multiplayer/services/friendTunnelInvite';
 
 export function MultiplayerConnectionControls({ multiplayer }: { multiplayer: ReturnType<typeof useMultiplayer> }) {
   const { t, getAccentStyles } = useSettings();
@@ -20,7 +21,7 @@ export function MultiplayerConnectionControls({ multiplayer }: { multiplayer: Re
     if (!Number.isInteger(parsed)) return t('validation.port_invalid');
     return parsed < 1 || parsed > 65_535 ? t('validation.port_range') : null;
   };
-  const validateCode = (value: string) => /^[0-9a-f]{64}$/.test(value.trim()) ? null : t('multiplayer.room_code_exact');
+  const validateCode = (value: string) => normalizeFriendTunnelInvite(value) ? null : t('multiplayer.room_code_invalid');
   const status = multiplayer.diagnostic ? t(`multiplayer.diagnostic.${multiplayer.diagnostic.code}`) || multiplayer.diagnostic.message : multiplayer.status;
   const liveStatus = status || (active ? t(isTunnel ? 'multiplayer.room_active' : isLan ? 'multiplayer.lan_broadcast_active' : 'multiplayer.upnp_mapping_active') : '');
 
@@ -29,16 +30,31 @@ export function MultiplayerConnectionControls({ multiplayer }: { multiplayer: Re
       <Input label={t('multiplayer.lan_port')} value={multiplayer.port} onChange={(event) => { multiplayer.setPort(event.target.value); setPortError(validatePort(event.target.value)); }} onBlur={(event) => setPortError(validatePort(event.target.value))} type="number" min="1" max="65535" className="text-center font-mono" error={portError || undefined} />
       <Button className="w-full" onClick={multiplayer.host} isLoading={multiplayer.isLoading} disabled={Boolean(portError) || !multiplayer.port.trim()}>{t(isTunnel ? 'multiplayer.create_room' : isLan ? 'multiplayer.start_lan_broadcast' : 'multiplayer.map_port')}</Button>
     </>}
-    {active && isTunnel && multiplayer.roomCode && <button type="button" onClick={() => multiplayer.copyToClipboard(multiplayer.roomCode)} className={cn('multiplayer-room-code', getAccentStyles('soft-bg').className, getAccentStyles('soft-border').className)}>
-      <span className="mb-2 block text-xs font-bold uppercase">{t('multiplayer.room_active')}</span><span className="block break-all font-mono text-xs">{multiplayer.roomCode}</span><span className="mt-2 block text-[10px] opacity-70">{t('multiplayer.click_copy')}</span>
-    </button>}
+    {active && isTunnel && multiplayer.roomCode && <div className={cn('multiplayer-room-code space-y-3', getAccentStyles('soft-bg').className, getAccentStyles('soft-border').className)}>
+      <div>
+        <span className="mb-2 block text-xs font-bold uppercase">{t('multiplayer.room_active')}</span>
+        <span className="block break-all font-mono text-xs">{formatFriendTunnelCode(multiplayer.roomCode)}</span>
+      </div>
+      <p className="text-xs text-secondary">{t('multiplayer.invite_help')}</p>
+      <Button type="button" variant="secondary" className="w-full" onClick={() => multiplayer.copyToClipboard(multiplayer.invitation)}>{t('multiplayer.copy_invite')}</Button>
+      <p className="text-xs text-secondary">{t('multiplayer.peers_connected', { count: multiplayer.tunnel.peerCount })}</p>
+    </div>}
     {active && isLan && <StateCard title={t('multiplayer.lan_broadcast_active')} detail={`UDP · ${multiplayer.port}`} />}
     {active && isUpnp && multiplayer.upnp.mappings.map((mapping) => <StateCard key={mapping.publicPort} title={t('multiplayer.upnp_mapping_active')} detail={`${mapping.externalIp}:${mapping.publicPort} → localhost:${mapping.privatePort}`} />)}
     {active && <StopButton onStop={multiplayer.stop} label={t('multiplayer.stop')} />}
   </div>;
 
   const renderJoin = () => {
-    if (isTunnel) return multiplayer.mappedPort ? <div className="space-y-4"><StateCard title={t('multiplayer.tunnel_established')} detail={`localhost:${multiplayer.mappedPort}`} /><StopButton onStop={multiplayer.stop} label={t('multiplayer.stop')} /></div> : <div className="space-y-4"><Input label={t('multiplayer.room_code')} value={multiplayer.joinCode} onChange={(event) => { multiplayer.setJoinCode(event.target.value); setJoinCodeError(validateCode(event.target.value)); }} onBlur={(event) => setJoinCodeError(validateCode(event.target.value))} className="text-center font-mono text-xs" error={joinCodeError || undefined} /><Button className="w-full" onClick={multiplayer.join} isLoading={multiplayer.isLoading} disabled={Boolean(joinCodeError) || !multiplayer.joinCode.trim()}>{t('multiplayer.join_room')}</Button></div>;
+    if (isTunnel) return multiplayer.mappedPort ? <div className="space-y-4">
+      <StateCard title={t('multiplayer.tunnel_established')} detail={multiplayer.directAddress} />
+      <p className="text-center text-sm text-secondary">{t('multiplayer.direct_connect_help')}</p>
+      <Button variant="secondary" className="w-full" onClick={() => multiplayer.copyToClipboard(multiplayer.directAddress)}>{t('multiplayer.copy_address')}</Button>
+      <p className="text-center text-xs text-secondary">{t('multiplayer.peers_connected', { count: multiplayer.tunnel.peerCount })}</p>
+      <StopButton onStop={multiplayer.stop} label={t('multiplayer.stop')} />
+    </div> : <div className="space-y-4">
+      <Input label={t('multiplayer.invite_or_code')} value={multiplayer.joinCode} onChange={(event) => { multiplayer.setJoinCode(event.target.value); setJoinCodeError(event.target.value.trim() ? validateCode(event.target.value) : null); }} onBlur={(event) => setJoinCodeError(validateCode(event.target.value))} placeholder={t('multiplayer.invite_placeholder')} className="text-center font-mono text-xs" error={joinCodeError || undefined} />
+      <Button className="w-full" onClick={multiplayer.join} isLoading={multiplayer.isLoading} disabled={Boolean(joinCodeError) || !multiplayer.joinCode.trim()}>{t('multiplayer.join_room')}</Button>
+    </div>;
     return multiplayer.lan.state !== 'active' ? <Button className="w-full" onClick={multiplayer.join} isLoading={multiplayer.isLoading}>{t('multiplayer.scan_lan')}</Button> : <div className="space-y-4"><div className="max-h-52 space-y-2 overflow-y-auto" aria-live="polite">{multiplayer.discovered.length === 0 && <p className="py-6 text-center text-sm text-secondary">{t('multiplayer.no_lan_servers')}</p>}{multiplayer.discovered.map((server) => <button key={`${server.address}:${server.port}`} type="button" onClick={() => multiplayer.selectLanServer(server)} className="surface-soft w-full rounded-lg p-3 text-left"><span className="block font-medium">{server.motd}</span><span className="block font-mono text-xs text-secondary">{server.address}:{server.port}</span></button>)}</div><StopButton onStop={multiplayer.stop} label={t('multiplayer.stop')} /></div>;
   };
 

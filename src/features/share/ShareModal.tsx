@@ -88,6 +88,7 @@ export function ShareModal({ isOpen, onClose, modpackId }: ShareModalProps) {
         <Modal
             isOpen={isOpen}
             onClose={handleClose}
+            closeLabel={t('general.close_dialog')}
             title={
                 <div className="flex items-center gap-2">
                     <Share2 className="w-5 h-5" />

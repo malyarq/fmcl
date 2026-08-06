@@ -156,6 +156,7 @@ export function ScreenshotLightbox({
         <Modal
             isOpen={true}
             onClose={onClose}
+            closeLabel={t('general.close_dialog')}
             title={
                 <div className="flex min-w-0 items-center gap-3">
                     <span className="truncate">{current.name}</span>

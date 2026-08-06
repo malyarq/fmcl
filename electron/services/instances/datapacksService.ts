@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { assertChildName, resolvePathWithinRoot } from '../../security/pathGuards';
-import { assertPublicHttpsUrl } from '../../security/remoteUrls';
+import { assertPublicHttpsUrl, getPublicHttpsDispatcher } from '../../security/remoteUrls';
 import { resolveApprovedInstancePath, resolveWorldPath } from './paths';
 import { openValidatedZip } from '../../security/archivePolicy';
 
@@ -187,6 +187,7 @@ export class DatapackService {
         await download({
             url: safeFileUrl,
             destination: destPath,
+            dispatcher: getPublicHttpsDispatcher(),
         });
     }
 }

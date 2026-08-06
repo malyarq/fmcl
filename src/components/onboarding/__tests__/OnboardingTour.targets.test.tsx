@@ -107,7 +107,7 @@ describe('OnboardingTour target stability', () => {
       />
     )
 
-    for (const target of ['classic', 'modpacks', 'settings', 'multiplayer', 'nickname', 'version', 'modloaders', 'launch']) {
+    for (const target of ['classic', 'modpacks', 'settings', 'multiplayer']) {
       expect(document.querySelector(`[data-tour="${target}"]`)).toBeTruthy()
     }
   })

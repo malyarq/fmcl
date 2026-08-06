@@ -5,6 +5,15 @@
   "asar": true,
   "productName": "FriendLauncher",
   "compression": "maximum",
+  "electronFuses": {
+    "runAsNode": false,
+    "enableCookieEncryption": true,
+    "enableNodeOptionsEnvironmentVariable": false,
+    "enableNodeCliInspectArguments": false,
+    "enableEmbeddedAsarIntegrityValidation": true,
+    "onlyLoadAppFromAsar": true,
+    "grantFileProtocolExtraPrivileges": true
+  },
   "directories": {
     "output": "release/${version}"
   },

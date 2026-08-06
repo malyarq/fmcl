@@ -25,6 +25,26 @@ export type AnalyticsEventMap = {
   feedback_opened: {
     source: 'launcher_settings';
   };
+  onboarding_shown: Record<string, never>;
+  onboarding_action: {
+    action: 'play_now' | 'friend_tunnel' | 'modpacks' | 'settings' | 'tour_started' | 'tour_completed' | 'tour_skipped';
+  };
+  friend_tunnel_started: {
+    role: 'host' | 'join';
+  };
+  friend_tunnel_peer_connected: {
+    role: 'host' | 'join';
+  };
+  friend_tunnel_failed: {
+    role: 'host' | 'join';
+    failure_stage: 'start';
+  };
+  settings_backup_exported: Record<string, never>;
+  settings_backup_imported: Record<string, never>;
+  operation_finished: {
+    kind: 'duplicate' | 'import' | 'import_share' | 'install_curseforge' | 'install_modrinth' | 'update' | 'delete' | 'export';
+    result: 'succeeded' | 'recovered' | 'degraded' | 'cancelled' | 'failed' | 'recovery_required';
+  };
 };
 
 export type AnalyticsEventName = keyof AnalyticsEventMap;
@@ -132,6 +152,7 @@ export function createAnalyticsClient(options: AnalyticsClientOptions = {}): Ana
             distinct_id: getInstallId(),
             event,
             properties: {
+              $geoip_disable: true,
               $process_person_profile: false,
               app_platform: platform,
               app_version: pkg.version,
