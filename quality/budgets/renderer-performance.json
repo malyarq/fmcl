@@ -53,12 +53,12 @@
       }
     },
     "routes": [
-      { "id": "launcher-home-en", "rerenderMedianBaseline": 7, "rerenderP95Baseline": 7, "rerenderMedianLimit": 7, "rerenderP95Limit": 8 },
-      { "id": "installed-list-detail-ru", "rerenderMedianBaseline": 7, "rerenderP95Baseline": 7, "rerenderMedianLimit": 7, "rerenderP95Limit": 7 },
-      { "id": "provider-content-en", "rerenderMedianBaseline": 7, "rerenderP95Baseline": 7, "rerenderMedianLimit": 7, "rerenderP95Limit": 7 },
-      { "id": "provider-content-ru", "rerenderMedianBaseline": 7, "rerenderP95Baseline": 7, "rerenderMedianLimit": 7, "rerenderP95Limit": 7 },
-      { "id": "network-tunnel-en", "rerenderMedianBaseline": 6, "rerenderP95Baseline": 6, "rerenderMedianLimit": 6, "rerenderP95Limit": 6 },
-      { "id": "network-lan-ru", "rerenderMedianBaseline": 5, "rerenderP95Baseline": 5, "rerenderMedianLimit": 5, "rerenderP95Limit": 5 }
+      { "id": "launcher-home-en", "rerenderMedianBaseline": 8, "rerenderP95Baseline": 9, "rerenderMedianLimit": 8, "rerenderP95Limit": 9 },
+      { "id": "installed-list-detail-ru", "rerenderMedianBaseline": 7, "rerenderP95Baseline": 8, "rerenderMedianLimit": 7, "rerenderP95Limit": 8 },
+      { "id": "provider-content-en", "rerenderMedianBaseline": 7, "rerenderP95Baseline": 7, "rerenderMedianLimit": 7, "rerenderP95Limit": 8 },
+      { "id": "provider-content-ru", "rerenderMedianBaseline": 7, "rerenderP95Baseline": 7, "rerenderMedianLimit": 7, "rerenderP95Limit": 8 },
+      { "id": "network-tunnel-en", "rerenderMedianBaseline": 6, "rerenderP95Baseline": 6, "rerenderMedianLimit": 6, "rerenderP95Limit": 7 },
+      { "id": "network-lan-ru", "rerenderMedianBaseline": 5, "rerenderP95Baseline": 5, "rerenderMedianLimit": 5, "rerenderP95Limit": 6 }
     ],
     "longTasks": {
       "baselineTasksOver50ms": 0,

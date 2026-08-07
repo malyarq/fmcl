@@ -342,6 +342,21 @@ test('performance-production rejects a controlled median/p95 threshold breach', 
   expect(failures).toEqual(['controlled median: actual=3 limit=2', 'controlled p95: actual=5 limit=4']);
 });
 
+test('performance-production tolerates one noisy rerender but rejects a sustained regression', () => {
+  const oneNoisySampleFailures: string[] = [];
+  const sustainedRegressionFailures: string[] = [];
+  const oneNoisySample = [7, 7, 8];
+  const sustainedRegression = [7, 8, 8];
+
+  assertAtMost('one noisy sample median', median(oneNoisySample), 7, oneNoisySampleFailures);
+  assertAtMost('one noisy sample p95', p95(oneNoisySample), 8, oneNoisySampleFailures);
+  assertAtMost('sustained regression median', median(sustainedRegression), 7, sustainedRegressionFailures);
+  assertAtMost('sustained regression p95', p95(sustainedRegression), 8, sustainedRegressionFailures);
+
+  expect(oneNoisySampleFailures).toEqual([]);
+  expect(sustainedRegressionFailures).toEqual(['sustained regression median: actual=8 limit=7']);
+});
+
 test('performance-production aggregates complete blur-scroll traces instead of failing one noisy sample', () => {
   const measurement = (frames: readonly number[]): BlurScrollMeasurement => ({
     targetSelector: '#controlled-scroll-owner',

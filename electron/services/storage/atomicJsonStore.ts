@@ -272,7 +272,10 @@ export class AtomicJsonStore<T extends object> {
   }
 
   private syncFile(candidate: string): void {
-    const fd = fs.openSync(candidate, 'r');
+    // Windows rejects fsync on a read-only descriptor. These files are fresh
+    // backup/recovery copies owned by the store, so open them writable without
+    // changing their contents and keep the durability barrier cross-platform.
+    const fd = fs.openSync(candidate, 'r+');
     try {
       fs.fsyncSync(fd);
     } finally {

@@ -140,6 +140,7 @@ describe('package smoke artifact contract', () => {
       ports: { ...ports, exists: (target: string) => target.endsWith('FriendLauncher.exe') },
     });
     const linux = smoke.createPlatformAdapter('linux', { artifactPath: '/artifacts/FriendLauncher-Linux-0.7.1.AppImage', workspace: path.join(root, 'linux'), ports });
+    win.cleanup();
 
     expect(mac.command).toMatch(/FriendLauncher\.app\/Contents\/MacOS\/FriendLauncher$/);
     expect(win.command).toMatch(/installed[\\/]FriendLauncher\.exe$/);
@@ -148,8 +149,16 @@ describe('package smoke artifact contract', () => {
       expect.stringContaining('hdiutil:attach'),
       expect.stringContaining('hdiutil:detach'),
       expect.stringContaining('FriendLauncher-Windows-0.7.1-Setup.exe:/S'),
+      expect.stringMatching(/^powershell\.exe:.*GetFullPath\('.*installed'\).*Win32_Process/),
       expect.stringContaining('chmod:/artifacts/FriendLauncher-Linux-0.7.1.AppImage:755'),
     ]));
+    const powershellCall = calls.find((call) => call.startsWith('powershell.exe:'));
+    expect(powershellCall).toContain("$root = [IO.Path]::GetFullPath('");
+    expect(powershellCall).toContain("$workspace = [IO.Path]::GetFullPath('");
+    expect(powershellCall).toContain('CommandLine.IndexOf($workspace');
+    expect(powershellCall).toContain('$_.ProcessId -ne $PID');
+    expect(powershellCall).not.toContain('$args[0]');
+    expect(powershellCall).not.toContain('{;');
   });
 
   it.each(['win32', 'linux'] as const)('requests a real window close for %s instead of force-killing Electron', async (platform) => {
@@ -250,6 +259,7 @@ describe('package smoke artifact contract', () => {
     roots.push(workspace);
     const verifiedVersions: Array<[string, unknown]> = [];
     const waitForProfileRelease = vi.fn().mockResolvedValue(undefined);
+    const removeWorkspace = vi.fn((target: string) => fs.rmSync(target, { recursive: true, force: true }));
     let port = 44000;
     const createChild = () => Object.assign(new EventEmitter(), {
       exitCode: 0, stdout: new EventEmitter(), stderr: new EventEmitter(), kill: () => undefined,
@@ -260,7 +270,7 @@ describe('package smoke artifact contract', () => {
       previousArtifactPath: previousArtifact, previousVersion,
       runtime: {
         mkdtemp: () => workspace,
-        rm: (target: string) => fs.rmSync(target, { recursive: true, force: true }),
+        rm: removeWorkspace,
         exists: fs.existsSync,
         writeFile: fs.writeFileSync,
         spawn: () => createChild(),
@@ -292,7 +302,63 @@ describe('package smoke artifact contract', () => {
       [previousVersion, { allowMissingMarker: true }],
       [version, undefined],
     ]);
-    expect(waitForProfileRelease).toHaveBeenCalledWith(path.join(workspace, 'user-data'), 5_000);
+    expect(waitForProfileRelease).toHaveBeenCalledTimes(2);
+    expect(waitForProfileRelease).toHaveBeenNthCalledWith(1, path.join(workspace, 'user-data'), 5_000);
+    expect(waitForProfileRelease).toHaveBeenNthCalledWith(2, path.join(workspace, 'user-data'), 5_000);
+    expect(removeWorkspace).toHaveBeenCalledWith(workspace, {
+      recursive: true,
+      force: true,
+      maxRetries: 25,
+      retryDelay: 200,
+    });
+    expect(smoke.validatePackageSmokeEvidence(result)).toEqual({ valid: true, errors: [] });
+  });
+
+  it('returns valid failed evidence when a locked workspace survives cleanup', async () => {
+    const version = '0.7.1';
+    const releaseRoot = createRelease(version);
+    roots.push(releaseRoot);
+    writeArtifact(releaseRoot, version, `FriendLauncher-Windows-${version}-Setup.exe`);
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-package-smoke-locked-'));
+    roots.push(workspace);
+    const removeWorkspace = vi.fn(() => { throw Object.assign(new Error('locked'), { code: 'EPERM' }); });
+    const child = Object.assign(new EventEmitter(), {
+      exitCode: 0,
+      stdout: Object.assign(new EventEmitter(), { destroy: vi.fn() }),
+      stderr: Object.assign(new EventEmitter(), { destroy: vi.fn() }),
+      kill: () => undefined,
+      unref: vi.fn(),
+    });
+
+    const result = await smoke.runPackageSmoke({
+      platform: 'win32', hostPlatform: 'win32', releaseDir: releaseRoot, version,
+      runtime: {
+        mkdtemp: () => workspace,
+        rm: removeWorkspace,
+        exists: fs.existsSync,
+        writeFile: fs.writeFileSync,
+        spawn: () => child,
+        reservePort: async () => 43126,
+        waitForRendererReadiness: async () => [{ type: 'page', url: 'file:///index.html' }],
+        verifyRenderedVersion: async () => undefined,
+        waitForProfileRelease: async () => undefined,
+        requestGracefulQuit: () => undefined,
+        waitForExit: async () => 0,
+      },
+      createAdapter: () => ({ command: 'fixture.exe', args: [], cleanup: () => undefined }),
+    });
+
+    expect(result).toMatchObject({
+      status: 'failed',
+      workspace: { cleaned: false },
+      error: expect.stringMatching(/workspace cleanup failed/i),
+    });
+    expect(removeWorkspace).toHaveBeenCalledWith(workspace, {
+      recursive: true,
+      force: true,
+      maxRetries: 75,
+      retryDelay: 200,
+    });
     expect(smoke.validatePackageSmokeEvidence(result)).toEqual({ valid: true, errors: [] });
   });
 
@@ -309,11 +375,16 @@ describe('package smoke artifact contract', () => {
       exitCode: 0, stdout, stderr, kill: () => undefined, unref: vi.fn(),
     });
     let spawnEnvironment: NodeJS.ProcessEnv | undefined;
+    let spawnCwd: string | undefined;
     const result = await smoke.runPackageSmoke({
       platform: 'linux', hostPlatform: 'linux', releaseDir: releaseRoot, version,
       runtime: {
         mkdtemp: () => workspace, rm: (target: string) => fs.rmSync(target, { recursive: true, force: true }), exists: fs.existsSync, writeFile: fs.writeFileSync,
-        spawn: (_command: string, _args: string[], options: { env: NodeJS.ProcessEnv }) => { spawnEnvironment = options.env; return child; },
+        spawn: (_command: string, _args: string[], options: { cwd: string; env: NodeJS.ProcessEnv }) => {
+          spawnCwd = options.cwd;
+          spawnEnvironment = options.env;
+          return child;
+        },
         reservePort: async () => 43125, waitForRendererReadiness: async () => [{ type: 'page', url: 'file:///index.html' }],
         verifyRenderedVersion: async () => undefined,
         requestGracefulQuit: () => undefined, waitForExit: async () => 0,
@@ -322,6 +393,7 @@ describe('package smoke artifact contract', () => {
     });
 
     expect(result).toMatchObject({ status: 'passed', quit: { graceful: true, exitCode: 0 } });
+    expect(spawnCwd).toBe(os.tmpdir());
     expect(spawnEnvironment?.APPIMAGE_EXTRACT_AND_RUN).toBe('1');
     expect(stdout.destroy).toHaveBeenCalledOnce();
     expect(stderr.destroy).toHaveBeenCalledOnce();

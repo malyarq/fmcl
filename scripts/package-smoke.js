@@ -273,6 +273,8 @@ function macAdapter({ artifactPath, workspace, ports }) {
 
 function windowsAdapter({ artifactPath, workspace, ports }) {
   const installDir = join(workspace, 'installed');
+  const escapedInstallDir = installDir.replaceAll("'", "''");
+  const escapedWorkspace = workspace.replaceAll("'", "''");
   ports.mkdir(installDir);
   ports.execFile(artifactPath, ['/S', `/D=${installDir}`]);
   const executable = join(installDir, 'FriendLauncher.exe');
@@ -280,7 +282,17 @@ function windowsAdapter({ artifactPath, workspace, ports }) {
   return {
     command: executable,
     args: [],
-    cleanup: () => undefined,
+    cleanup: () => ports.execFile('powershell.exe', [
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      [
+        `$root = [IO.Path]::GetFullPath('${escapedInstallDir}')`,
+        `$workspace = [IO.Path]::GetFullPath('${escapedWorkspace}')`,
+        'Get-CimInstance Win32_Process | Where-Object { $_.ProcessId -ne $PID -and (($_.ExecutablePath -and [IO.Path]::GetFullPath($_.ExecutablePath).StartsWith($root, [StringComparison]::OrdinalIgnoreCase)) -or ($_.CommandLine -and $_.CommandLine.IndexOf($workspace, [StringComparison]::OrdinalIgnoreCase) -ge 0)) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }',
+      ].join('; '),
+    ]),
   };
 }
 
@@ -393,7 +405,7 @@ export async function runPackageSmoke(options = {}) {
       previousAdapter = (options.createAdapter ?? createPlatformAdapter)(platform, { artifactPath: previousArtifactPath, workspace, ports });
       const previousDebugPort = await runtime.reservePort();
       previousChild = runtime.spawn(previousAdapter.command, [...previousAdapter.args, `--remote-debugging-port=${previousDebugPort}`, `--user-data-dir=${userDataPath}`], {
-        cwd: workspace,
+        cwd: tmpdir(),
         env: {
           ...process.env,
           NODE_ENV: 'test',
@@ -422,7 +434,7 @@ export async function runPackageSmoke(options = {}) {
     adapter = (options.createAdapter ?? createPlatformAdapter)(platform, { artifactPath: artifact.path, workspace, ports });
     const debugPort = await runtime.reservePort();
     child = runtime.spawn(adapter.command, [...adapter.args, `--remote-debugging-port=${debugPort}`, `--user-data-dir=${userDataPath}`], {
-      cwd: workspace,
+      cwd: tmpdir(),
       env: {
         ...process.env,
         NODE_ENV: 'test',
@@ -454,6 +466,11 @@ export async function runPackageSmoke(options = {}) {
     evidence.quit.exitCode = await runtime.waitForExit(child, options.quitTimeoutMs ?? QUIT_TIMEOUT_MS);
     evidence.quit.graceful = evidence.quit.exitCode === 0;
     if (!evidence.quit.graceful) throw new Error(`packaged process exited abnormally: ${evidence.quit.exitCode}`);
+    releaseChildHandles(child);
+    child = null;
+    adapter.cleanup?.();
+    adapter = null;
+    await runtime.waitForProfileRelease(userDataPath, options.profileReleaseTimeoutMs ?? CLEANUP_TIMEOUT_MS);
     evidence.status = 'passed';
   } catch (error) {
     evidence.error = error instanceof Error ? error.message : String(error);
@@ -461,23 +478,31 @@ export async function runPackageSmoke(options = {}) {
   } finally {
     await stopChildIfRunning(previousChild, runtime);
     await stopChildIfRunning(child, runtime);
+    releaseChildHandles(previousChild);
+    releaseChildHandles(child);
     try { previousAdapter?.cleanup?.(); } catch (error) { evidence.logs.stderr = appendLog(evidence.logs.stderr, `previous cleanup: ${String(error)}\n`); }
     try { adapter?.cleanup?.(); } catch (error) { evidence.logs.stderr = appendLog(evidence.logs.stderr, `cleanup: ${String(error)}\n`); }
     if (workspace) {
       const workspaceAliases = [workspace];
       try { workspaceAliases.push(realpathSync(workspace)); } catch { /* workspace may already be removed */ }
-      runtime.rm(workspace, { recursive: true, force: true });
+      try {
+        runtime.rm(workspace, { recursive: true, force: true, maxRetries: platform === 'win32' ? 75 : 25, retryDelay: 200 });
+      } catch (error) {
+        evidence.status = 'failed';
+        evidence.error ??= `workspace cleanup failed: ${error instanceof Error ? error.message : String(error)}`;
+        evidence.logs.stderr = appendLog(evidence.logs.stderr, `workspace cleanup: ${String(error)}\n`);
+      }
       evidence.workspace.cleaned = !runtime.exists(workspace);
+      if (!evidence.workspace.cleaned) {
+        evidence.status = 'failed';
+        evidence.error ??= 'workspace cleanup failed: temporary launcher data remains locked';
+      }
       for (const workspacePath of workspaceAliases) {
         evidence.logs.stdout = evidence.logs.stdout.split(workspacePath).join('<smoke-workspace>');
         evidence.logs.stderr = evidence.logs.stderr.split(workspacePath).join('<smoke-workspace>');
         if (typeof evidence.error === 'string') evidence.error = evidence.error.split(workspacePath).join('<smoke-workspace>');
       }
     } else evidence.workspace.cleaned = true;
-    // AppImage can leave Chromium helpers holding inherited stdio after the
-    // main process exits. Do not let those stale handles pin the smoke runner.
-    releaseChildHandles(previousChild);
-    releaseChildHandles(child);
   }
   return evidence;
 }

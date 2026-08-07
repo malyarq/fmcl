@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AtomicJsonStore,
   AtomicJsonStoreError,
@@ -17,6 +17,7 @@ describe('AtomicJsonStore', () => {
   const tempDirs: string[] = [];
 
   afterEach(() => {
+    vi.restoreAllMocks();
     for (const dir of tempDirs.splice(0)) {
       fs.rmSync(dir, { recursive: true, force: true });
     }
@@ -55,6 +56,18 @@ describe('AtomicJsonStore', () => {
       _fmclSchemaVersion: 1,
       selected: 'one',
     });
+  });
+
+  it('opens a copied backup writable before fsync so Windows can persist it', () => {
+    const openSync = vi.spyOn(fs, 'openSync');
+    const { store } = createStore();
+
+    store.write({ selected: 'one', values: ['a'] });
+    store.write({ selected: 'two', values: ['b'] });
+
+    expect(openSync.mock.calls.some(([candidate, flags]) => (
+      String(candidate).includes('.state.json.bak.') && flags === 'r+'
+    ))).toBe(true);
   });
 
   it('owns the schema marker even if an input object contains a conflicting field', () => {
