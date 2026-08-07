@@ -25,6 +25,7 @@ import { providerCatalog } from './preload/bridges/ProviderCatalogBridge'
 import { storageMaintenance } from './preload/bridges/StorageMaintenanceBridge'
 import { javaRuntime } from './preload/bridges/JavaRuntimeBridge'
 import { instanceMods } from './preload/bridges/InstanceModsBridge'
+import { systemReadiness } from './preload/bridges/SystemReadinessBridge'
 import type { FriendLauncherApi } from '@shared/contracts'
 
 // The renderer receives one minimal, typed namespace. No raw IPC or legacy globals.
@@ -33,6 +34,7 @@ const api: FriendLauncherApi = {
   providerCatalog,
   storageMaintenance,
   javaRuntime,
+  systemReadiness,
   mods,
   instanceMods,
   appUpdater,

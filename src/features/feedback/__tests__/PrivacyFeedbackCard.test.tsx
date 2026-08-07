@@ -10,6 +10,13 @@ const mocks = vi.hoisted(() => ({
   capture: vi.fn().mockResolvedValue('sent'),
   open: vi.fn().mockResolvedValue({ status: 'opened' }),
   setEnabled: vi.fn(),
+  readinessCheck: vi.fn().mockResolvedValue({
+    overall: 'attention',
+    checks: [
+      { id: 'storage', status: 'ready', code: 'ready' },
+      { id: 'network', status: 'warning', code: 'unreachable' },
+    ],
+  }),
 }));
 
 vi.mock('../../../contexts/SettingsContext', () => ({
@@ -47,6 +54,11 @@ describe('PrivacyFeedbackCard', () => {
     mocks.capture.mockClear();
     mocks.open.mockClear();
     mocks.setEnabled.mockClear();
+    mocks.readinessCheck.mockClear();
+    Object.defineProperty(window, 'api', {
+      configurable: true,
+      value: { systemReadiness: { check: mocks.readinessCheck } },
+    });
   });
 
   it('keeps consent off and shows the exact safe report before GitHub opens', async () => {
@@ -63,15 +75,25 @@ describe('PrivacyFeedbackCard', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Сообщить о проблеме на GitHub' }));
     await waitFor(() => expect(mocks.open).toHaveBeenCalledTimes(1));
+    expect(mocks.readinessCheck).toHaveBeenCalledTimes(1);
     const request = mocks.open.mock.calls[0][0] as { url: string };
     const body = new URL(request.url).searchParams.get('body') ?? '';
     expect(body).toContain('## Безопасная диагностика');
+    expect(body).toContain('Готовность системы: storage:ready, network:unreachable');
     expect(body).not.toContain('/Users/');
     expect(mocks.capture).toHaveBeenCalledWith('feedback_opened', { source: 'launcher_settings' });
   });
 
   it('builds a bounded GitHub URL from reviewed fields only', () => {
-    const body = buildSafeIssueBody({ analyticsEnabled: true, language: 'en', platform: 'windows' });
+    const body = buildSafeIssueBody({
+      analyticsEnabled: true,
+      language: 'en',
+      platform: 'windows',
+      readiness: {
+        overall: 'blocked',
+        checks: [{ id: 'storage', status: 'blocked', code: 'unwritable' }],
+      },
+    });
     const url = buildGitHubIssueUrl(body);
     const russianUrl = buildGitHubIssueUrl(
       buildSafeIssueBody({ analyticsEnabled: false, language: 'ru', platform: 'macos' }),
@@ -82,5 +104,7 @@ describe('PrivacyFeedbackCard', () => {
     expect(new URL(url).origin).toBe('https://github.com');
     expect(body).toContain(`FMCL: ${pkg.version}`);
     expect(body).toContain('OS: windows');
+    expect(body).toContain('System readiness: storage:unwritable');
+    expect(body).not.toContain('/Users/');
   });
 });

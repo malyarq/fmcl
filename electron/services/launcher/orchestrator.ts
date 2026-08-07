@@ -158,7 +158,8 @@ export class LauncherManager {
     const downloadOptions = this.downloads.buildInstallerOptions(downloadProvider, dispatcher, rangePolicy, concurrency);
 
     const requiredJava = getRequiredJavaForMinecraftVersion(mcVersion);
-    if (requiredJava === 21) onLog(`Version ${mcVersion} requires Java 21.`);
+    if (requiredJava === 25) onLog(`Version ${mcVersion} requires Java 25.`);
+    else if (requiredJava === 21) onLog(`Version ${mcVersion} requires Java 21.`);
     else if (requiredJava === 17) onLog(`Version ${mcVersion} requires Java 17.`);
     else onLog(`Version ${mcVersion} uses Legacy Java 8.`);
 

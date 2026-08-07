@@ -67,6 +67,18 @@
         "stderr": { "type": "string" }
       }
     },
+    "upgrade": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attempted", "previousVersion", "previousArtifactSha256", "previousLaunchVerified", "userDataPreserved"],
+      "properties": {
+        "attempted": { "const": true },
+        "previousVersion": { "type": "string", "minLength": 1 },
+        "previousArtifactSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "previousLaunchVerified": { "type": "boolean" },
+        "userDataPreserved": { "type": "boolean" }
+      }
+    },
     "error": { "type": "string" }
   }
 }

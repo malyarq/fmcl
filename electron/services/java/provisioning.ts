@@ -7,9 +7,10 @@ import {
   JavaRuntimeTargetType,
 } from '@xmcl/installer';
 import type { Task } from '@xmcl/task';
-import { findJavaExecutable } from './findJavaExecutable';
+import { ensureJavaExecutablePermission, findJavaExecutable } from './findJavaExecutable';
 import { findLocalJava } from './discovery';
 import { getJavaVersion, validateJavaPath, verifyJava } from './validation';
+import type { SupportedJavaVersion } from '../../../shared/minecraftRuntime';
 
 /**
  * Manages the Java Runtime Environment (JRE) required for Minecraft.
@@ -30,12 +31,12 @@ export class JavaManager {
    * Retrieves a valid path to the requested Java version.
    * Downloads and installs it if missing or corrupted.
    *
-   * @param version 8 (Legacy), 17 (Modern), or 21 (Latest)
+   * @param version supported Java major required by the selected Minecraft release
    * @param onProgress Callback for status updates
    * @returns Absolute path to java.exe
    */
   public async getJavaPath(
-    version: 8 | 17 | 21,
+    version: SupportedJavaVersion,
     onProgress: (status: string, current?: number, total?: number) => void
   ): Promise<string> {
     let runtimeDir: string;
@@ -48,15 +49,19 @@ export class JavaManager {
       runtimeDir = path.join(this.runtimeRoot, 'java17');
       // Gamma is commonly Java 17 in Mojang runtime naming.
       targetCandidates = [JavaRuntimeTargetType.Gamma, JavaRuntimeTargetType.Beta, JavaRuntimeTargetType.Alpha];
-    } else {
+    } else if (version === 21) {
       runtimeDir = path.join(this.runtimeRoot, 'java21');
       // Delta is expected to be newer than Gamma; fallback keeps launcher usable across manifest variations.
       targetCandidates = [JavaRuntimeTargetType.Delta, JavaRuntimeTargetType.Gamma];
+    } else {
+      runtimeDir = path.join(this.runtimeRoot, 'java25');
+      targetCandidates = ['java-runtime-epsilon'];
     }
 
     const existingJava = findJavaExecutable(runtimeDir);
     if (existingJava) {
       try {
+        ensureJavaExecutablePermission(existingJava);
         await verifyJava(existingJava);
         const actualVersion = await getJavaVersion(existingJava);
         if (actualVersion === version) return existingJava;
@@ -104,7 +109,8 @@ export class JavaManager {
         });
 
         const newJava = findJavaExecutable(runtimeDir);
-        if (!newJava) throw new Error(`Java ${version} installed but java.exe not found in runtime directory`);
+        if (!newJava) throw new Error(`Java ${version} installed but the Java executable was not found in the runtime directory`);
+        ensureJavaExecutablePermission(newJava);
         await verifyJava(newJava);
         const actualVersion = await getJavaVersion(newJava);
         if (actualVersion !== version) {
@@ -136,4 +142,3 @@ export class JavaManager {
     );
   }
 }
-

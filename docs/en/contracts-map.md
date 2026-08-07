@@ -11,7 +11,7 @@ Goal: document the live IPC, preload, and renderer contract surface for FMCL.
 - Unified renderer API type: `shared/contracts/windowApi.ts`
 - Renderer wrappers: `src/services/ipc/*`
 
-Snapshot: **current main development line, 2026-08-06**. `npm run contracts:check` verifies that each language map contains exactly the allowlisted channels; `npm run architecture:check` verifies the renderer boundary.
+Snapshot: **current main development line, 2026-08-07**. `npm run contracts:check` verifies that each language map contains exactly the allowlisted channels; `npm run architecture:check` verifies the renderer boundary.
 
 ---
 
@@ -27,6 +27,7 @@ Snapshot: **current main development line, 2026-08-06**. `npm run contracts:chec
 - `window.api.providerCatalog`
 - `window.api.storageMaintenance`
 - `window.api.javaRuntime`
+- `window.api.systemReadiness`
 - `window.api.mods`
 - `window.api.instanceMods`
 - `window.api.appUpdater`
@@ -67,6 +68,7 @@ There is no generic `invoke/send/on/off` capability and no top-level Electron al
 - `src/services/ipc/launcherIPC.ts` → `window.api.launcher`
 - `src/services/ipc/instancesIPC.ts` → `window.api.instances`
 - `src/services/ipc/javaRuntimeIPC.ts` → `window.api.javaRuntime`
+- `src/services/ipc/systemReadinessIPC.ts` → `window.api.systemReadiness`
 - `src/services/ipc/mirrorsIPC.ts` → `window.api.mirrors`
 - `src/services/ipc/instanceModsIPC.ts` → `window.api.instanceMods`
 - `src/services/ipc/operationsIPC.ts` → `window.api.operations`
@@ -160,6 +162,12 @@ On the first registration for a newly created instance, main derives the manifes
 - `archiveInspection:select`
 
 `window.api.archiveInspection` opens and inspects a local archive in the main process. Its selected response contains manifest metadata and an opaque, sender-bound, expiring single-use archive reference; it never exposes a filesystem path.
+
+### 3.4.3a System readiness
+
+- `systemReadiness:check`
+
+`window.api.systemReadiness` returns only fixed readiness identifiers, statuses, and reason codes for storage, disk space, Java, and Mojang download access. Native paths, raw errors, network addresses, and Java executable details remain in the main process.
 
 ### 3.4.4 Storage maintenance
 

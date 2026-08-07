@@ -6,6 +6,7 @@ import { cn } from '../../../../utils/cn';
 import type { ModpackConfig } from '../../../../contexts/instances/types';
 import { javaRuntimeIPC } from '../../../../services/ipc/javaRuntimeIPC';
 import type { JavaRuntimeInstallationDto } from '@shared/contracts';
+import { getRequiredJavaForMinecraftVersion } from '@shared/minecraftRuntime';
 
 // Helper to get RAM in GB
 const getRamGb = (config: ModpackConfig | null, defaultVal: number): number => {
@@ -16,20 +17,6 @@ const getRamGb = (config: ModpackConfig | null, defaultVal: number): number => {
 const getMinRamGb = (config: ModpackConfig | null, defaultVal: number): number => {
   if (!config?.memory?.minMb) return defaultVal;
   return config.memory.minMb / 1024;
-};
-
-const getRequiredJavaVersion = (mcVersion?: string): number => {
-  if (!mcVersion) return 8;
-  // Semver-ish parsing
-  const parts = mcVersion.split('.');
-  if (parts.length < 2) return 8;
-  const minor = parseInt(parts[1], 10);
-  const patch = parts.length > 2 ? parseInt(parts[2], 10) : 0;
-
-  if (minor >= 20 && patch >= 5) return 21; // 1.20.5+ -> Java 21
-  if (minor >= 18) return 17; // 1.18+ -> Java 17
-  if (minor === 17) return 16; // 1.17 -> Java 16
-  return 8; // < 1.17 -> Java 8
 };
 
 function translateWithFallback(
@@ -86,7 +73,7 @@ export function RuntimeSection(props: {
   const selectedJava = detectedJavas.find((java) => java.id === selectedInstallationId);
 
   const currentRam = getRamGb(modpackConfig, 4);
-  const requiredJavaVer = getRequiredJavaVersion(modpackConfig?.runtime?.minecraft);
+  const requiredJavaVer = getRequiredJavaForMinecraftVersion(modpackConfig?.runtime?.minecraft ?? '1.16.5');
 
   // Warnings
   const warnings: string[] = [];

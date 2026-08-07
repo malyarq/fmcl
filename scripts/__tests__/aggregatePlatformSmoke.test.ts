@@ -18,6 +18,13 @@ function evidence(platform: 'darwin' | 'linux' | 'win32', marker: string) {
     launch: { command: 'FriendLauncher', readiness: 'remote-debugging-page', windowCount: 1, startedAt: '2026-08-05T00:00:00.000Z' },
     quit: { requested: true, graceful: true, exitCode: 0 },
     logs: { stdout: '', stderr: '' },
+    upgrade: {
+      attempted: true,
+      previousVersion: '0.8.0',
+      previousArtifactSha256: 'f'.repeat(64),
+      previousLaunchVerified: true,
+      userDataPreserved: true,
+    },
   };
 }
 
@@ -52,5 +59,9 @@ describe('platform smoke aggregation', () => {
     expect(() => aggregatePlatformSmoke({ inputDir: createInput([evidence('darwin', 'a'), evidence('darwin', 'b'), evidence('linux', 'c'), evidence('win32', 'd')]) })).toThrow(/duplicate/i);
     expect(() => aggregatePlatformSmoke({ inputDir: createInput([{ ...evidence('darwin', 'a'), status: 'failed' }, evidence('linux', 'b'), evidence('win32', 'c')]) })).toThrow(/did not pass/i);
     expect(() => aggregatePlatformSmoke({ inputDir: createInput([{ ...evidence('darwin', 'a'), artifact: { ...evidence('darwin', 'a').artifact, sha256: '' } }, evidence('linux', 'b'), evidence('win32', 'c')]) })).toThrow(/hash/i);
+    expect(() => aggregatePlatformSmoke({
+      inputDir: createInput([{ ...evidence('darwin', 'a'), upgrade: undefined }, evidence('linux', 'b'), evidence('win32', 'c')]),
+      requireUpgrade: true,
+    })).toThrow(/upgrade/i);
   });
 });

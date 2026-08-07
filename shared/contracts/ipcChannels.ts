@@ -55,6 +55,9 @@ export const allowedIpcChannels = [
   'javaRuntime:scan',
   'javaRuntime:select',
 
+  // first-run and support diagnostics
+  'systemReadiness:check',
+
   // instances
   'instances:list',
   'instances:snapshot',

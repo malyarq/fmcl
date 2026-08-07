@@ -1,18 +1,19 @@
-import { app, ipcMain, BrowserWindow, nativeImage, type Tray } from 'electron';
+import { app, nativeImage, type Tray } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 import { AuthServer } from '../auth/server';
 import { SelfUpdater } from '../services/updater/appUpdater';
 import { IPCManager } from '../ipc/ipcManager';
-import { createMainWindow, createConsoleWindow, getNativeWindowIconCandidates } from '../window/windowManager';
+import { createMainWindow, getNativeWindowIconCandidates } from '../window/windowManager';
 import { createTray } from '../tray/trayManager';
 import { registerLifecycleHandlers } from './lifecycle';
-import { runFullInstallationTest } from './fullInstallationTest';
 import { loadFullTestConfig } from './fullTestConfig';
 import { createCompositionRoot } from './compositionRoot';
 import { ApplicationLifecycle } from './applicationLifecycle';
-import { acquireApplicationInstance, focusExistingWindow } from './singleInstance';
+import { acquireApplicationInstance, registerApplicationInstanceHandoff } from './singleInstance';
+import { registerConsoleWindowHandlers } from './consoleWindowHandlers';
+import { runConfiguredFullTest } from './runConfiguredFullTest';
 
 function configureAppRoot() {
   const __filename = fileURLToPath(import.meta.url);
@@ -107,7 +108,7 @@ export function bootstrapMain() {
 
   let winRef: ReturnType<typeof createMainWindow> | null = null;
 
-  app.on('second-instance', () => focusExistingWindow(winRef));
+  registerApplicationInstanceHandoff(() => winRef);
 
   const createWindow = () => {
     const win = createMainWindow({
@@ -135,8 +136,7 @@ export function bootstrapMain() {
     if (testConfig?.enabled) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { enabled, ...testParams } = testConfig;
-      const exitCode = await runFullInstallationTest(testParams);
-      app.exit(exitCode);
+      app.exit(await runConfiguredFullTest(testParams));
       return;
     }
 
@@ -178,31 +178,11 @@ export function bootstrapMain() {
 
       IPCManager.registerAllHandlers({ window: win, composition: composition.handlerDependencies });
 
-      let consoleWinRef: BrowserWindow | null = null;
-      ipcMain.handle('window:openConsole', () => {
-        if (consoleWinRef && !consoleWinRef.isDestroyed()) {
-          consoleWinRef.show();
-          consoleWinRef.focus();
-          return;
-        }
-
-        consoleWinRef = createConsoleWindow({
+      registerConsoleWindowHandlers({
           preloadPath: path.join(paths.mainDist, 'preload.cjs'),
           rendererDevUrl: paths.rendererDevUrl,
           rendererDist: paths.rendererDist,
           vitePublicPath: paths.vitePublicPath,
-        });
-
-        consoleWinRef.on('closed', () => {
-          consoleWinRef = null;
-        });
-      });
-
-      ipcMain.handle('window:closeConsole', () => {
-        if (consoleWinRef && !consoleWinRef.isDestroyed()) {
-          consoleWinRef.close();
-        }
-        consoleWinRef = null;
       });
     } catch (error) {
       const partialLifecycle = applicationLifecycle ?? new ApplicationLifecycle({

@@ -32,6 +32,7 @@ describe('loadFullTestConfig', () => {
       provider: null,
       limit: '1',
       only: '1.20.1',
+      launchSmoke: true,
     });
 
     expect(loadFullTestConfig({
@@ -43,6 +44,7 @@ describe('loadFullTestConfig', () => {
       provider: null,
       limit: '1',
       only: '1.20.1',
+      launchSmoke: true,
     });
   });
 
@@ -56,6 +58,12 @@ describe('loadFullTestConfig', () => {
     expect(() => loadFullTestConfig({
       NODE_ENV: 'test',
       FMCL_FULL_TEST_CONFIG: configPath,
+    })).toThrow(/invalid/);
+
+    const invalidLaunch = writeConfig({ enabled: true, launchSmoke: 'yes' });
+    expect(() => loadFullTestConfig({
+      NODE_ENV: 'test',
+      FMCL_FULL_TEST_CONFIG: invalidLaunch,
     })).toThrow(/invalid/);
   });
 });

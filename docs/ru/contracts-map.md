@@ -11,7 +11,7 @@
 - Тип объединённого renderer API: `shared/contracts/windowApi.ts`
 - Renderer-обёртки: `src/services/ipc/*`
 
-Снимок: **текущая ветка разработки main, 2026-08-06**. `npm run contracts:check` проверяет соответствие языковых карт allowlist каналов; `npm run architecture:check` проверяет границу renderer.
+Снимок: **текущая ветка разработки main, 2026-08-07**. `npm run contracts:check` проверяет соответствие языковых карт allowlist каналов; `npm run architecture:check` проверяет границу renderer.
 
 ---
 
@@ -27,6 +27,7 @@
 - `window.api.providerCatalog`
 - `window.api.storageMaintenance`
 - `window.api.javaRuntime`
+- `window.api.systemReadiness`
 - `window.api.mods`
 - `window.api.instanceMods`
 - `window.api.appUpdater`
@@ -67,6 +68,7 @@
 - `src/services/ipc/launcherIPC.ts` → `window.api.launcher`
 - `src/services/ipc/instancesIPC.ts` → `window.api.instances`
 - `src/services/ipc/javaRuntimeIPC.ts` → `window.api.javaRuntime`
+- `src/services/ipc/systemReadinessIPC.ts` → `window.api.systemReadiness`
 - `src/services/ipc/mirrorsIPC.ts` → `window.api.mirrors`
 - `src/services/ipc/instanceModsIPC.ts` → `window.api.instanceMods`
 - `src/services/ipc/operationsIPC.ts` → `window.api.operations`
@@ -160,6 +162,12 @@
 - `archiveInspection:select`
 
 `window.api.archiveInspection` открывает и проверяет локальный архив в main-процессе. Ответ на выбор содержит метаданные манифеста и непрозрачную sender-bound истекающую одноразовую ссылку на архив; путь файловой системы в нём не раскрывается.
+
+### 3.4.3a Готовность системы
+
+- `systemReadiness:check`
+
+`window.api.systemReadiness` возвращает только фиксированные идентификаторы, статусы и коды причин для хранилища, свободного места, Java и доступа к загрузкам Mojang. Системные пути, сырые ошибки, сетевые адреса и исполняемые файлы Java остаются в main-процессе.
 
 ### 3.4.4 Обслуживание хранилища
 

@@ -23,7 +23,7 @@ function listSmokeFiles(root) {
   return files.sort((left, right) => left.localeCompare(right, 'en'));
 }
 
-export function aggregatePlatformSmoke({ inputDir }) {
+export function aggregatePlatformSmoke({ inputDir, requireUpgrade = false }) {
   const records = new Map();
   for (const evidencePath of listSmokeFiles(resolve(inputDir))) {
     let evidence;
@@ -37,6 +37,9 @@ export function aggregatePlatformSmoke({ inputDir }) {
     if (records.has(evidence.platform)) throw new Error(`duplicate package smoke evidence for ${evidence.platform}`);
     if (!['passed', 'unsupported-runner'].includes(evidence.status)) throw new Error(`package smoke did not pass for ${evidence.platform}`);
     if (!sha256.test(evidence.artifact.sha256)) throw new Error(`package smoke artifact hash is invalid for ${evidence.platform}`);
+    if (requireUpgrade && (!evidence.upgrade || evidence.upgrade.previousLaunchVerified !== true || evidence.upgrade.userDataPreserved !== true)) {
+      throw new Error(`package upgrade smoke did not pass for ${evidence.platform}`);
+    }
     const signing = evidence.signing.status === 'not-checked' ? 'unavailable' : evidence.signing.status;
     records.set(evidence.platform, {
       platform: evidence.platform,
@@ -54,8 +57,8 @@ export function aggregatePlatformSmoke({ inputDir }) {
   return platforms.map((platform) => records.get(platform));
 }
 
-export function writePlatformSmokeAggregate({ inputDir, outputFile }) {
-  const value = aggregatePlatformSmoke({ inputDir });
+export function writePlatformSmokeAggregate({ inputDir, outputFile, requireUpgrade = false }) {
+  const value = aggregatePlatformSmoke({ inputDir, requireUpgrade });
   const output = resolve(outputFile);
   mkdirSync(dirname(output), { recursive: true });
   writeFileSync(output, `${JSON.stringify(value, null, 2)}\n`);
@@ -71,8 +74,8 @@ function main() {
   const args = process.argv.slice(2);
   const inputDir = option(args, '--input');
   const outputFile = option(args, '--output');
-  if (!inputDir || !outputFile) throw new Error('Usage: node scripts/aggregate-platform-smoke.js --input <directory> --output <file>');
-  writePlatformSmokeAggregate({ inputDir, outputFile });
+  if (!inputDir || !outputFile) throw new Error('Usage: node scripts/aggregate-platform-smoke.js --input <directory> --output <file> [--require-upgrade]');
+  writePlatformSmokeAggregate({ inputDir, outputFile, requireUpgrade: args.includes('--require-upgrade') });
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

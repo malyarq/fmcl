@@ -177,8 +177,8 @@ export class AccountService {
             return {
                 state: { accounts, selectedAccountId },
                 shouldPersist: hasPlaintextSecrets
-                    || (!hasSecureCredentialStorage() && hasEncryptedSecrets)
-                    || (hasSecureCredentialStorage() && (loaded.legacy || loaded.source === 'backup')),
+                    || (hasEncryptedSecrets && !hasSecureCredentialStorage())
+                    || ((loaded.legacy || loaded.source === 'backup') && hasSecureCredentialStorage()),
             };
         }
         return {

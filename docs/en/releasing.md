@@ -1,6 +1,6 @@
 # Release runbook
 
-FriendLauncher releases use immutable SemVer tags and a dispatch-only GitHub workflow. A tag with a SemVer prerelease suffix is published as a non-latest prerelease; a normal `vMAJOR.MINOR.PATCH` tag is published as the latest stable release. A local command can prepare evidence or, with a separate explicit local decision, create a tag; it cannot authorize publication.
+FriendLauncher releases use a tag-last, dispatch-only GitHub workflow. A protected publication job creates the immutable annotated SemVer tag only after source checks, native builds, package smoke, checksums, and downloaded-artifact evidence pass. A prerelease version is published as non-latest; a normal `MAJOR.MINOR.PATCH` version becomes the latest stable release.
 
 ## Prepare an exact candidate
 
@@ -25,19 +25,20 @@ The first command prepares the three expected artifacts under `release/<version>
 
 ## Review the evidence
 
-Review the pre-push report before asking for any release action. It names the exact version/tag/commit, every quality stage, artifact paths and SHA-256 checksums, platform smoke with unsupported-runner reasons, signing/notarization status, known failures, and the immutable rollback action.
+Review the pre-push report before asking for any release action. It names the exact version/proposed tag/commit, every quality stage, artifact paths and SHA-256 checksums, platform smoke with unsupported-runner reasons, signing/notarization status, known failures, and the immutable rollback action.
 
 Checksums establish artifact integrity only. The local report is decision evidence, not a security boundary, publisher-authentication proof, or publication authorization. Current macOS DMGs and Windows artifacts are not publisher-signed unless platform verification evidence says otherwise. A local ad-hoc macOS app signature proves neither publisher identity nor notarization; never infer either from a checksum or successful launch. Gatekeeper and SmartScreen prompts are OS/reputation behavior that must be checked manually on the target platform and recorded separately.
 
-## Tag and dispatch publication
+## Dispatch publication
 
-After a maintainer separately approves the exact report, the helper can create the matching annotated local tag only when it is given both the report and the literal local approval value:
+The local helper is evidence-only and never creates or pushes a tag. Commit the prepared version to `main`, confirm the exact commit, then dispatch the workflow with that version and commit:
 
 ```bash
-npm run release -- <version> --report quality/evidence/prepush-release-report.json --approval approve-local-release
+COMMIT=$(git rev-parse HEAD)
+gh workflow run release.yml -f version=<version> -f commit="$COMMIT"
 ```
 
-`--push` remains a separate remote action and does not publish anything. The helper rejects an absent, invalid, stale, mismatched, or unapproved report before it can create a tag or push. Local approval authorizes neither GitHub publication nor a bypass of review.
+The workflow rejects a commit that is no longer the exact `origin/main`, a mismatched `package.json` version, an existing tag, or an existing GitHub Release. Do not create the release tag locally first.
 
 Before dispatching publication, a repository administrator must configure **Settings → Environments → `release-publication`**:
 
@@ -52,7 +53,9 @@ Official release builds also require these GitHub repository variables:
 
 Before the first release, open PostHog **Settings → Project → General**, disable IP data capture, keep person profiles unused, and confirm retention does not exceed 12 months. The workflow refuses to package without the project token, but hosted privacy settings require a manual owner check.
 
-Repository code cannot create or guarantee those protection rules. With the candidate tag available, a maintainer starts **Build and Release** manually through `workflow_dispatch` and supplies that exact tag. The workflow independently checks out the tag, verifies version/commit identity, rebuilds and validates artifact, checksum, smoke, and schema-valid report evidence, then waits for the protected `release-publication` Environment before its only publish job. A tag push alone cannot start publication.
+Repository code cannot create or guarantee those protection rules. A maintainer starts **Build and Release** manually through `workflow_dispatch` and supplies the committed version plus the exact 40-character `main` commit. The workflow independently checks out that commit, downloads the previous published package on each native runner, verifies an in-place upgrade with preserved user data and the rendered candidate version, then validates artifacts, checksums, smoke, and schema-valid evidence. It waits for the protected `release-publication` Environment before creating anything public. Only that job creates the annotated tag and GitHub Release. Stable releases move the mutable `latest` tag only after GitHub publication succeeds. Release notes come from every `CHANGELOG.md` entry since the previous published stable release, so an abandoned tag cannot hide shipped changes.
+
+If asset upload fails before publication, the workflow removes its draft and newly created tag. After publication, repository immutability wins: the tag and assets are preserved and any follow-up failure must be fixed with a new patch release.
 
 ## Failure and rollback
 

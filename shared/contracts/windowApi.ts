@@ -24,6 +24,7 @@ import type { DialogsAPI } from './dialogs'
 import type { OperationsAPI } from './operations'
 import type { InstancesAPI } from './instances'
 import type { ArchiveInspectionAPI } from './archiveInspection'
+import type { SystemReadinessAPI } from './systemReadiness'
 
 /**
  * Supported, namespaced preload surface for renderer code.
@@ -35,6 +36,7 @@ export type FriendLauncherApi = {
   providerCatalog: ProviderCatalogAPI
   storageMaintenance: StorageMaintenanceAPI
   javaRuntime: JavaRuntimeAPI
+  systemReadiness: SystemReadinessAPI
   mods: ModsAPI
   instanceMods: InstanceModsAPI
   windowControls: WindowControlsAPI

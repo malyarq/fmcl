@@ -30,6 +30,14 @@ export type TestSummary = {
   startedAt: string;
   providerId: DownloadProviderId;
   rootPath: string;
+  launch?: {
+    requested: true;
+    version: string | null;
+    ok: boolean;
+    ms: number;
+    signals: readonly string[];
+    error?: string;
+  };
   stages: {
     vanilla: {
       total: number;

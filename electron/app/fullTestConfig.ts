@@ -32,6 +32,7 @@ export function loadFullTestConfig(
     || !isOptionalString(config.provider)
     || !isOptionalString(config.limit)
     || !isOptionalString(config.only)
+    || (config.launchSmoke !== undefined && typeof config.launchSmoke !== 'boolean')
   ) {
     throw new Error('Full installation test config is invalid');
   }
@@ -42,5 +43,6 @@ export function loadFullTestConfig(
     provider: config.provider,
     limit: config.limit,
     only: config.only,
+    ...(config.launchSmoke === undefined ? {} : { launchSmoke: config.launchSmoke }),
   };
 }

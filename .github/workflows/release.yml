@@ -3,28 +3,34 @@ name: Build and Release
 on:
   workflow_dispatch:
     inputs:
-      tag:
-        description: 'Existing immutable release tag (for example, v0.8.0)'
+      version:
+        description: 'Version already committed in package.json (for example, 0.10.0)'
+        required: true
+        type: string
+      commit:
+        description: 'Exact 40-character commit SHA currently at origin/main'
         required: true
         type: string
 
 concurrency:
-  group: release-${{ inputs.tag }}
+  group: release-v${{ inputs.version }}
   cancel-in-progress: false
 
 jobs:
   verify:
-    name: Verify immutable release candidate
+    name: Verify exact release candidate
     runs-on: ubuntu-latest
     outputs:
       tag: ${{ steps.candidate.outputs.tag }}
       version: ${{ steps.candidate.outputs.version }}
       commit: ${{ steps.candidate.outputs.commit }}
+      previous_tag: ${{ steps.candidate.outputs.previous_tag }}
+      previous_version: ${{ steps.candidate.outputs.previous_version }}
     steps:
-      - name: Checkout requested tag
+      - name: Checkout requested commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ inputs.tag }}
+          ref: ${{ inputs.commit }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -39,20 +45,26 @@ jobs:
       - name: Install Chromium for measured quality gates
         run: npx playwright install --with-deps chromium
 
-      - name: Resolve exact tag, version, and commit
+      - name: Resolve exact version, tag, and commit
         id: candidate
         shell: bash
         env:
-          TAG: ${{ inputs.tag }}
+          VERSION: ${{ inputs.version }}
+          COMMIT: ${{ inputs.commit }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          test "$TAG" = "${TAG#v}" && { echo 'tag must start with v' >&2; exit 1; }
-          git rev-parse --verify --quiet "refs/tags/$TAG^{commit}" >/dev/null
-          test "$(git cat-file -t "refs/tags/$TAG")" = tag
-          TAG_COMMIT=$(git rev-parse "refs/tags/$TAG^{commit}")
-          test "$TAG_COMMIT" = "$(git rev-parse HEAD)"
-          VERSION=${TAG#v}
+          set -euo pipefail
+          [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]
+          [[ "$COMMIT" =~ ^[0-9a-f]{40}$ ]]
+          TAG="v$VERSION"
+          test "$COMMIT" = "$(git rev-parse HEAD)"
+          test "$COMMIT" = "$(git ls-remote origin refs/heads/main | awk '{print $1}')"
           test "$VERSION" = "$(node -p "require('./package.json').version")"
-          printf 'tag=%s\nversion=%s\ncommit=%s\n' "$TAG" "$VERSION" "$TAG_COMMIT" >> "$GITHUB_OUTPUT"
+          test -z "$(git ls-remote --tags origin "refs/tags/$TAG" "refs/tags/$TAG^{}")"
+          ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
+          PREVIOUS_TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          PREVIOUS_VERSION=${PREVIOUS_TAG#v}
+          printf 'tag=%s\nversion=%s\ncommit=%s\nprevious_tag=%s\nprevious_version=%s\n' "$TAG" "$VERSION" "$COMMIT" "$PREVIOUS_TAG" "$PREVIOUS_VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Run shared source quality contract
         run: npm run quality:check -- --profile=release-source
@@ -78,10 +90,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-      - name: Checkout immutable tag
+      - name: Checkout exact candidate commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.verify.outputs.tag }}
+          ref: ${{ needs.verify.outputs.commit }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -98,6 +110,27 @@ jobs:
         run: |
           test "$(git rev-parse HEAD)" = "${{ needs.verify.outputs.commit }}"
           test "$(node -p "require('./package.json').version")" = "${{ needs.verify.outputs.version }}"
+
+      - name: Download previous published package for upgrade smoke
+        id: previous
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_TAG: ${{ needs.verify.outputs.previous_tag }}
+          PREVIOUS_VERSION: ${{ needs.verify.outputs.previous_version }}
+          PREVIOUS_DIR: ${{ runner.temp }}/previous-release
+        run: |
+          set -euo pipefail
+          mkdir -p "$PREVIOUS_DIR"
+          case "${{ runner.os }}" in
+            Linux) ARTIFACT_NAME="FriendLauncher-Linux-$PREVIOUS_VERSION.AppImage" ;;
+            Windows) ARTIFACT_NAME="FriendLauncher-Windows-$PREVIOUS_VERSION-Setup.exe" ;;
+            macOS) ARTIFACT_NAME="FriendLauncher-Mac-$PREVIOUS_VERSION-Installer.dmg" ;;
+            *) echo 'unsupported release runner' >&2; exit 1 ;;
+          esac
+          gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT_NAME" --dir "$PREVIOUS_DIR"
+          test -f "$PREVIOUS_DIR/$ARTIFACT_NAME"
+          printf 'path=%s\n' "$PREVIOUS_DIR/$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Require privacy-reviewed analytics configuration
         shell: bash
@@ -116,12 +149,13 @@ jobs:
         shell: bash
         env:
           EVIDENCE_ROOT: ${{ runner.temp }}/release-evidence
+          PREVIOUS_ARTIFACT: ${{ steps.previous.outputs.path }}
         run: |
           mkdir -p "$EVIDENCE_ROOT"
           if [ "${{ runner.os }}" = "Linux" ]; then
-            xvfb-run --auto-servernum node scripts/package-smoke.js --release-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --output "$EVIDENCE_ROOT/${{ runner.os }}-package-smoke.json"
+            xvfb-run --auto-servernum node scripts/package-smoke.js --release-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --previous-artifact "$PREVIOUS_ARTIFACT" --previous-version ${{ needs.verify.outputs.previous_version }} --output "$EVIDENCE_ROOT/${{ runner.os }}-package-smoke.json"
           else
-            node scripts/package-smoke.js --release-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --output "$EVIDENCE_ROOT/${{ runner.os }}-package-smoke.json"
+            node scripts/package-smoke.js --release-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --previous-artifact "$PREVIOUS_ARTIFACT" --previous-version ${{ needs.verify.outputs.previous_version }} --output "$EVIDENCE_ROOT/${{ runner.os }}-package-smoke.json"
           fi
           node scripts/release-evidence.js --artifacts-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --tag ${{ needs.verify.outputs.tag }} --commit ${{ needs.verify.outputs.commit }} --output "$EVIDENCE_ROOT/${{ runner.os }}-release-evidence.json"
           cp release/${{ needs.verify.outputs.version }}/SHA256SUMS.txt release/${{ needs.verify.outputs.version }}/SHA256SUMS-${{ runner.os }}.txt
@@ -154,10 +188,10 @@ jobs:
     outputs:
       report: ${{ steps.report.outputs.path }}
     steps:
-      - name: Checkout immutable tag
+      - name: Checkout exact candidate commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.verify.outputs.tag }}
+          ref: ${{ needs.verify.outputs.commit }}
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -217,7 +251,7 @@ jobs:
           DOWNLOADED_EVIDENCE: ${{ runner.temp }}/downloaded-evidence
           VERIFIED_EVIDENCE: ${{ runner.temp }}/verified-release-evidence
         run: |
-          node scripts/aggregate-platform-smoke.js --input "$DOWNLOADED_EVIDENCE" --output "$VERIFIED_EVIDENCE/platform-smoke.json"
+          node scripts/aggregate-platform-smoke.js --input "$DOWNLOADED_EVIDENCE" --output "$VERIFIED_EVIDENCE/platform-smoke.json" --require-upgrade
 
       - name: Validate schema-bound pre-push report
         id: report
@@ -252,10 +286,10 @@ jobs:
     # Settings -> Environments -> release-publication. YAML cannot create that protection.
     environment: release-publication
     steps:
-      - name: Checkout the approved immutable tag
+      - name: Checkout the approved candidate commit
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.verify.outputs.tag }}
+          ref: ${{ needs.verify.outputs.commit }}
           fetch-depth: 0
 
       - name: Download verified release evidence
@@ -270,21 +304,47 @@ jobs:
           name: verified-release-assets
           path: release-assets
 
-      - name: Publish immutable release assets
+      - name: Create immutable tag and publish verified release assets
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ needs.verify.outputs.tag }}
           COMMIT: ${{ needs.verify.outputs.commit }}
         shell: bash
         run: |
+          set -euo pipefail
           test -f release-evidence/prepush-release-report.json
           test -f release-assets/SHA256SUMS.txt
           test "$COMMIT" = "$(git rev-parse HEAD)"
           (cd release-assets && sha256sum --check SHA256SUMS.txt)
-          test "$COMMIT" = "$(git ls-remote --tags origin "refs/tags/$TAG^{}" | awk '{print $1}')"
+          test "$COMMIT" = "$(git ls-remote origin refs/heads/main | awk '{print $1}')"
+          test -z "$(git ls-remote --tags origin "refs/tags/$TAG" "refs/tags/$TAG^{}")"
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && { echo 'release already exists; immutable assets cannot be overwritten' >&2; exit 1; }
+          PREVIOUS_TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name 2>/dev/null || true)
+          node scripts/changelog-release-notes.js --current "${TAG#v}" --previous "${PREVIOUS_TAG#v}" --output release-notes.md
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          TAG_PUSHED=false
+          cleanup_unpublished_tag() {
+            test "$TAG_PUSHED" = true || return 0
+            RELEASE_DRAFT=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft --jq .isDraft 2>/dev/null || true)
+            if [ "$RELEASE_DRAFT" = false ]; then
+              echo 'release is already published; immutable tag is preserved' >&2
+              return 0
+            fi
+            gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes >/dev/null 2>&1 || true
+            git push origin ":refs/tags/$TAG" || true
+          }
+          trap cleanup_unpublished_tag ERR
+          git tag -a "$TAG" "$COMMIT" -m "Release $TAG"
+          git push origin "refs/tags/$TAG"
+          TAG_PUSHED=true
           if [[ "$TAG" == *-* ]]; then
-            gh release create "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "${TAG#v}" --generate-notes --prerelease --latest=false
+            gh release create "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "${TAG#v}" --notes-file release-notes.md --draft --prerelease
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --prerelease --latest=false
           else
-            gh release create "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "${TAG#v}" --generate-notes --latest
+            gh release create "$TAG" release-assets/* --repo "$GITHUB_REPOSITORY" --verify-tag --title "${TAG#v}" --notes-file release-notes.md --draft
+            gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
+            git tag -f latest "$COMMIT"
+            git push --force origin refs/tags/latest
           fi
+          trap - ERR

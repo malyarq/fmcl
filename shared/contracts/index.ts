@@ -26,6 +26,8 @@ export type {
   JavaRuntimeSelectRequest,
   JavaRuntimeSelectResponse,
 } from './javaRuntime';
+export { SYSTEM_READINESS_CHANNELS } from './systemReadiness';
+export type { SystemReadinessAPI, SystemReadinessCheck, SystemReadinessCheckId, SystemReadinessCode, SystemReadinessReport, SystemReadinessStatus } from './systemReadiness';
 export type { ModsAPI, ModInstallContentType, ModInstallIssue, ModInstallRequest, ModInstallResponse, ModInstallStatus } from './mods';
 export { INSTANCE_MODS_CHANNELS } from './instanceMods';
 export type { InstanceModRegistrationRequest, InstanceModsAPI, InstanceModsChannel } from './instanceMods';

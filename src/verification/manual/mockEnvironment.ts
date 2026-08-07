@@ -1638,6 +1638,13 @@ export function installManualVerificationEnvironment() {
     share: shareApi,
     windowControls,
     javaRuntime,
+    systemReadiness: { check: async () => ({
+      overall: 'ready' as const,
+      checks: [
+        { id: 'storage' as const, status: 'ready' as const, code: 'ready' as const }, { id: 'disk' as const, status: 'ready' as const, code: 'ready' as const },
+        { id: 'java' as const, status: 'info' as const, code: 'automatic-download' as const }, { id: 'network' as const, status: 'ready' as const, code: 'ready' as const },
+      ],
+    }) },
     resourcePacks: resourcePacksApi,
     shaders: shadersApi,
     dialogs: dialogsApi,

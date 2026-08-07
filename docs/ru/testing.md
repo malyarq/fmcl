@@ -16,6 +16,7 @@
 | Visual regression | `npm run test:visual:closeout` | Семь детерминированных экранов в macOS Chromium | Да, отдельный job |
 | Packaging smoke | `npm run build -- --publish never` | TypeScript, Vite и упаковка electron-builder | Да |
 | Реальная установка | `npm run test:full` | Minecraft/modloader metadata, загрузки, Java и установка | Нет |
+| Реальный запуск игры | `npm run smoke:game` | Установка актуальной vanilla, production-путь запуска, сигналы renderer и загруженных ресурсов | Нет |
 | Установленное приложение | Вручную | Installer, первый запуск, OS warning, update и сеть/роутер | Нет |
 
 ## Стандартная проверка
@@ -74,7 +75,10 @@ npm run test:full:vanilla
 npm run test:full:forge
 npm run test:full:fabric
 npm run test:full:neoforge
+npm run smoke:game
 ```
+
+`smoke:game` устанавливает одну актуальную vanilla-версию, запускает её с тестовым офлайн-профилем через production-путь лаунчера, ждёт одновременно запуска LWJGL renderer и загрузки ресурсов, ненадолго удерживает процесс и затем завершает всё дерево процессов игры. `.github/workflows/game-smoke.yml` вручную запускает ту же ограниченную проверку на Windows, Linux и macOS и сохраняет журнал и JSON-доказательство. Она намеренно отделена от обычного CI и публикации релиза: загрузки Mojang и запуск графики медленные и зависят от внешней среды.
 
 Прямые параметры:
 

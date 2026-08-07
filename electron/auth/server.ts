@@ -126,7 +126,15 @@ export class AuthServer {
             });
         }
 
-        // 4. Batch Profile Lookup (Name -> UUID)
+        // 4. Profile properties. Offline profiles do not have signed textures;
+        // Yggdrasil represents a missing profile with an empty response, not `{}`.
+        if (req.method === 'GET' && url.pathname.includes('/session/minecraft/profile/')) {
+            res.writeHead(204);
+            res.end();
+            return;
+        }
+
+        // 5. Batch Profile Lookup (Name -> UUID)
         if (req.method === 'POST' && url.pathname.includes('/profiles/minecraft')) {
             return this.respondJSON(res, 200, []);
         }

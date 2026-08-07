@@ -6,6 +6,7 @@ import { Button } from '../ui/Button';
 import { Modal } from '../ui/Modal';
 import { cn } from '../../utils/cn';
 import { analyticsClient } from '../../features/analytics/analyticsClient';
+import { FirstRunReadiness } from './FirstRunReadiness';
 
 interface WelcomePageProps {
   onComplete: () => void;
@@ -79,7 +80,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
       className="max-w-5xl"
       bodyClassName="!p-0"
     >
-      <div className="relative">
+      <div className="relative bg-card text-foreground">
       <div
         className="pointer-events-none absolute inset-0 opacity-80"
         style={{ background: `radial-gradient(circle at top, ${getAccentHex()}28 0%, transparent 38%), radial-gradient(circle at bottom left, ${getAccentHex()}18 0%, transparent 26%)` }}
@@ -132,6 +133,8 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
             </div>
           </div>
         </div>
+
+        <FirstRunReadiness />
 
         <div className="grid gap-4 p-6 sm:p-8 lg:grid-cols-3">
           {choices.map(({ icon: Icon, title, description, action, button }, index) => (

@@ -4,7 +4,34 @@ This file summarizes user-visible and operational changes. Git history remains t
 
 ## Unreleased
 
-No changes after the local v0.9.1 candidate.
+No changes after the local v0.10.0 candidate.
+
+## [0.10.0] — 2026-08-07
+
+### Added
+
+- Added a bilingual first-run readiness check for writable storage, free disk space, Java availability, and Mojang connectivity, with safe retry guidance.
+- Added the same bounded readiness codes to the user-reviewed GitHub issue template without exposing paths, logs, accounts, or network addresses.
+- Added a real cross-platform game smoke workflow that installs the current Minecraft release, provisions its required Java runtime, launches through the production path, and waits for renderer and resource readiness.
+
+### Changed
+
+- Added Java 25 provisioning for Minecraft's calendar-versioned releases and made the renderer and launcher use one shared Java-requirement rule.
+- Updated the bundled `authlib-injector` to 1.2.8 and verify its pinned SHA-256 before use or fallback download.
+- Made release publication tag-last: all platform builds and upgrade checks finish before the protected job creates the annotated version tag and stages a draft release for publication.
+- Made each native package smoke launch the previous published version, install or open the candidate against the same user data, verify the rendered candidate version, and prove existing data survives.
+
+### Fixed
+
+- Preserve Mojang's newest-first version order so bounded installation tests exercise the current release instead of Minecraft 1.0.
+- Find downloaded Java executables on macOS and Linux, restore executable permissions after extraction, and reject a custom Java path with the wrong major version.
+- Return the protocol-correct empty Yggdrasil profile response for offline users instead of invalid JSON.
+- Let a newly installed launcher take over from an older running package while retaining ordinary single-instance focus behavior.
+
+### Release
+
+- Release notes are generated from the committed changelog since the previous published GitHub release; generated commit lists and orphan tags cannot silently define the user-facing notes.
+- Game smoke now fails on fatal `authlib-injector` diagnostics instead of accepting a visually ready but incompatible launch.
 
 ## [0.9.1] — 2026-08-07
 
@@ -110,6 +137,7 @@ No changes after the local v0.9.1 candidate.
 
 Historical changes before v0.6.0 are available in [GitHub Releases](https://github.com/malyarq/fmcl/releases) and Git history.
 
+[0.10.0]: https://github.com/malyarq/fmcl/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/malyarq/fmcl/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/malyarq/fmcl/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/malyarq/fmcl/compare/v0.8.0...v0.8.1

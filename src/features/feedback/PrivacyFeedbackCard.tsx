@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { useToast } from '../../contexts/ToastContext';
 import { externalLinksIPC } from '../../services/ipc/externalLinksIPC';
+import { systemReadinessIPC } from '../../services/ipc/systemReadinessIPC';
 import { detectAnalyticsPlatform } from '../analytics/analyticsClient';
 import { useAnalytics } from '../analytics/AnalyticsProvider';
 import { Button } from '../../components/ui/Button';
@@ -13,17 +14,15 @@ export function PrivacyFeedbackCard() {
   const { capture, configured, enabled, setEnabled } = useAnalytics();
   const [openingReport, setOpeningReport] = useState(false);
   const platform = detectAnalyticsPlatform();
-  const issueBody = useMemo(
-    () => buildSafeIssueBody({ analyticsEnabled: enabled, language, platform }),
-    [enabled, language, platform],
-  );
+  const issueBody = buildSafeIssueBody({ analyticsEnabled: enabled, language, platform });
 
   const openIssue = async () => {
     setOpeningReport(true);
     try {
+      const readiness = await systemReadinessIPC.check().catch(() => null);
       const result = await externalLinksIPC.open({
-        url: buildGitHubIssueUrl(issueBody),
-        context: 'FMCL privacy-safe bug report',
+        url: buildGitHubIssueUrl(buildSafeIssueBody({ analyticsEnabled: enabled, language, platform, readiness })),
+        context: 'FMCL bug report',
       });
       if (result.status === 'opened') {
         void capture('feedback_opened', { source: 'launcher_settings' });

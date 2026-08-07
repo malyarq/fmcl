@@ -69,7 +69,7 @@ export function SidebarHeader(props: {
               data-testid="sidebar-app-title"
               className="text-[15px] leading-none text-foreground sm:text-base"
             />
-            <p className="text-[11px] leading-4 text-secondary">
+            <p className="text-[11px] leading-4 text-secondary" data-app-version={appVersion}>
               {currentModeLabel} • v{appVersion}
             </p>
           </div>

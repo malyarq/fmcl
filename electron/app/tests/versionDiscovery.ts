@@ -26,8 +26,9 @@ export async function discoverVersions(params: {
     const versionList = await versionLists.getVersionList(providerId);
     allReleaseVersions = (versionList.versions as Array<{ id: string; type: string }>)
       .filter((v) => v.type === 'release')
-      .map((v) => v.id)
-      .sort();
+      // Mojang publishes this manifest newest-first. Preserve that authority so
+      // --limit=1 tests the current release instead of lexicographically picking 1.0.
+      .map((v) => v.id);
     onLog(`[FullTest] Found ${allReleaseVersions.length} total release versions`);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

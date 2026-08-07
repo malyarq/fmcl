@@ -16,6 +16,7 @@ FriendLauncher uses layered checks. No single local command proves every operati
 | Visual regression | `npm run test:visual:closeout` | Seven deterministic manual-verification views in macOS Chromium | Yes, separate job |
 | Packaging smoke | `npm run build -- --publish never` | TypeScript, Vite, and electron-builder packaging | Yes |
 | Real installation | `npm run test:full` | Minecraft and modloader metadata, downloads, Java, and installation | No |
+| Real game launch | `npm run smoke:game` | Latest vanilla installation, production launch path, rendering and loaded-resource signals | No |
 | Installed application | Manual | Installer, first launch, OS warnings, updates, router/network behavior | No |
 
 ## Default verification
@@ -74,7 +75,10 @@ npm run test:full:vanilla
 npm run test:full:forge
 npm run test:full:fabric
 npm run test:full:neoforge
+npm run smoke:game
 ```
+
+`smoke:game` installs one current vanilla version, launches it with an offline test profile through the production launcher path, waits for both the LWJGL renderer and loaded-resource signals, holds the process briefly, and then terminates the whole game process tree. `.github/workflows/game-smoke.yml` runs the same bounded check manually on Windows, Linux, and macOS and preserves its log and JSON evidence. It is intentionally separate from normal CI and release publication because Mojang downloads and graphics startup are slow and externally dependent.
 
 Direct options:
 

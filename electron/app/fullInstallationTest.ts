@@ -16,6 +16,7 @@ import { installVanillaVersion } from './tests/vanillaInstaller';
 import { installModLoaderVersion } from './tests/modLoaderInstaller';
 import { discoverVersions } from './tests/versionDiscovery';
 import { saveSummary, logFinalSummary } from './tests/testReporter';
+import { getLaunchFailureCount, runOptionalInstalledGameSmoke } from './tests/installedGameSmoke';
 
 async function runVanillaStage(params: {
   vanillaVersions: string[];
@@ -169,9 +170,13 @@ export interface TestConfig {
   provider?: string | null;
   limit?: string | null;
   only?: string | null;
+  launchSmoke?: boolean;
 }
 
-export async function runFullInstallationTest(config?: TestConfig): Promise<number> {
+export async function runFullInstallationTest(
+  config?: TestConfig,
+  runtime: Readonly<{ authServerUrl?: string }> = {},
+): Promise<number> {
   const rootPath = path.join(app.getPath('userData'), 'minecraft_data');
   const providerId = (config?.provider?.trim() as DownloadProviderId | undefined) || 'auto';
   const limitRaw = config?.limit?.trim();
@@ -357,12 +362,28 @@ export async function runFullInstallationTest(config?: TestConfig): Promise<numb
     });
   }
 
+  const version = summary.stages.vanilla.results.find((result) => result.ok)?.mcVersion ?? null;
+  summary.launch = await runOptionalInstalledGameSmoke({
+    requested: config?.launchSmoke === true,
+    rootPath,
+    version,
+    javaManager,
+    downloads,
+    versionLists,
+    tasks,
+    vanilla,
+    providerId,
+    authServerUrl: runtime.authServerUrl,
+    onLog: log,
+  });
+
   // Final summary
   const totalFail =
     summary.stages.vanilla.failCount +
     summary.stages.fabric.failCount +
     summary.stages.neoforge.failCount +
-    summary.stages.forge.failCount;
+    summary.stages.forge.failCount +
+    getLaunchFailureCount(summary.launch);
 
   summary.ok = totalFail === 0;
   saveSummary(jsonPath, summary);

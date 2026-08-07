@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mocked = vi.hoisted(() => ({
   encryptionAvailable: true,
+  encryptionChecks: 0,
   storageBackend: 'keychain' as 'basic_text' | 'keychain',
 }));
 
@@ -13,7 +14,7 @@ vi.mock('electron', () => ({
     fetch: async () => ({ status: 204 }),
   },
   safeStorage: {
-    isEncryptionAvailable: () => mocked.encryptionAvailable,
+    isEncryptionAvailable: () => { mocked.encryptionChecks += 1; return mocked.encryptionAvailable; },
     getSelectedStorageBackend: () => mocked.storageBackend,
     encryptString: (value: string) => Buffer.from(`encrypted:${value}`, 'utf8'),
     decryptString: (value: Buffer) => value.toString('utf8').replace(/^encrypted:/, ''),
@@ -27,8 +28,22 @@ describe('AccountService secret boundaries', () => {
 
   afterEach(() => {
     mocked.encryptionAvailable = true;
+    mocked.encryptionChecks = 0;
     mocked.storageBackend = 'keychain';
     for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('does not touch secure storage for an empty persisted account list', () => {
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    tempDirs.push(userDataPath);
+    fs.writeFileSync(path.join(userDataPath, 'accounts.json'), JSON.stringify({
+      accounts: [],
+      selectedAccountId: null,
+      _fmclSchemaVersion: 1,
+    }));
+
+    expect(() => new AccountService(userDataPath)).not.toThrow();
+    expect(mocked.encryptionChecks).toBe(0);
   });
 
   it('migrates plaintext tokens to encrypted persistence and never returns them to the renderer DTO', () => {

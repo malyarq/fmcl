@@ -4,10 +4,10 @@ FriendLauncher includes third-party software distributed under its own terms. Th
 
 ## Bundled authlib-injector
 
-`resources/authlib-injector.jar` is authlib-injector **1.2.5**, upstream commit `9c95847aeb676a272e1e0c25a1d6da720dbfcd7b`, by yushijinhun and contributors.
+`resources/authlib-injector.jar` is authlib-injector **1.2.8**, upstream commit `5437f5b465ee3f5be0a1e5e1ae3c50978114f6fb`, by yushijinhun and contributors. FriendLauncher verifies the bundled or fallback copy against SHA-256 `9c7f4343e6c82034958ffb48c14a2cb0c85928be7283103ce17da00c6d5a7b10` before launch.
 
 - Project: <https://github.com/yushijinhun/authlib-injector>
-- Corresponding release/source: <https://github.com/yushijinhun/authlib-injector/releases/tag/v1.2.5>
+- Corresponding release/source: <https://github.com/yushijinhun/authlib-injector/releases/tag/v1.2.8>
 - License: GNU Affero General Public License, version 3
 - Full license text in the JAR: `META-INF/licenses/authlib-injector.txt`
 

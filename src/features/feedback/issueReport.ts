@@ -1,5 +1,6 @@
 import pkg from '../../../package.json';
 import { detectAnalyticsPlatform } from '../analytics/analyticsClient';
+import type { SystemReadinessReport } from '@shared/contracts';
 
 const ISSUE_URL = 'https://github.com/malyarq/fmcl/issues/new';
 
@@ -7,15 +8,17 @@ export function buildSafeIssueBody(options: {
   analyticsEnabled: boolean;
   language: 'en' | 'ru';
   platform: ReturnType<typeof detectAnalyticsPlatform>;
+  readiness?: SystemReadinessReport | null;
 }): string {
-  const { analyticsEnabled, language, platform } = options;
+  const { analyticsEnabled, language, platform, readiness } = options;
+  const readinessCodes = readiness?.checks.map(({ id, code }) => `${id}:${code}`).join(', ');
   const lines = language === 'ru'
     ? [
         '## Что произошло',
-        '<!-- Опишите фактический результат. -->',
+        '<!-- Что получилось? -->',
         '',
         '## Что ожидалось',
-        '<!-- Опишите ожидаемый результат. -->',
+        '<!-- Что ожидали? -->',
         '',
         '## Шаги воспроизведения',
         '1. ',
@@ -23,17 +26,18 @@ export function buildSafeIssueBody(options: {
         '## Безопасная диагностика',
         `- FMCL: ${pkg.version}`,
         `- ОС: ${platform}`,
-        `- Язык интерфейса: ${language}`,
-        `- Анонимная аналитика: ${analyticsEnabled ? 'включена' : 'выключена'}`,
+        `- Язык: ${language}`,
+        `- Аналитика: ${analyticsEnabled ? 'включена' : 'выключена'}`,
+        ...(readinessCodes ? [`- Готовность системы: ${readinessCodes}`] : []),
         '',
-        '> Перед отправкой не добавляйте токены, никнеймы, коды комнат, приватные адреса серверов или личные пути к файлам.',
+        '> Не добавляйте секреты и персональные данные.',
       ]
     : [
         '## What happened',
-        '<!-- Describe the actual result. -->',
+        '<!-- Actual result -->',
         '',
         '## What did you expect',
-        '<!-- Describe the expected result. -->',
+        '<!-- Expected result -->',
         '',
         '## Reproduction steps',
         '1. ',
@@ -41,10 +45,11 @@ export function buildSafeIssueBody(options: {
         '## Safe diagnostics',
         `- FMCL: ${pkg.version}`,
         `- OS: ${platform}`,
-        `- Interface language: ${language}`,
-        `- Anonymous analytics: ${analyticsEnabled ? 'enabled' : 'disabled'}`,
+        `- Language: ${language}`,
+        `- Analytics: ${analyticsEnabled ? 'enabled' : 'disabled'}`,
+        ...(readinessCodes ? [`- System readiness: ${readinessCodes}`] : []),
         '',
-        '> Before submitting, do not add tokens, nicknames, room codes, private server addresses, or personal filesystem paths.',
+        '> Do not add secrets or personal data.',
       ];
 
   return lines.join('\n');

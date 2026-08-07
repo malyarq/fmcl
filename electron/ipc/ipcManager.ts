@@ -24,6 +24,8 @@ import { registerArchiveInspectionHandlers } from './handlers/archiveInspectionH
 import { registerProviderCatalogHandlers } from './handlers/providerCatalogHandlers'
 import { registerStorageMaintenanceHandlers } from './handlers/storageMaintenanceHandlers'
 import { registerJavaRuntimeHandlers } from './handlers/javaRuntimeHandlers'
+import { registerSystemReadinessHandlers } from './handlers/systemReadinessHandlers'
+import { checkSystemReadiness } from '../services/readiness/systemReadiness'
 import { registerInstanceModsHandlers } from './handlers/instanceModsHandlers'
 import { INSTANCE_CHANNELS } from '../../shared/contracts/instances'
 import { allowedIpcChannels } from '../../shared/contracts/ipcChannels'
@@ -66,6 +68,10 @@ export class IPCManager {
             getDefaultInstanceRoot,
             scanJava,
         })
+        registerSystemReadinessHandlers(async () => await checkSystemReadiness({
+            rootPath: getDefaultRootPath(),
+            scanJava,
+        }))
         registerInstanceModsHandlers({ instanceMods })
         registerNetworkHandlers({ window, friendTunnel, lanDiscovery, portMapping })
         registerSettingsHandlers({ window })

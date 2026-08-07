@@ -68,6 +68,18 @@ export function validatePackageSmokeEvidence(value) {
   if (!isObject(evidence.launch) || typeof evidence.launch.command !== 'string' || typeof evidence.launch.readiness !== 'string' || !Number.isInteger(evidence.launch.windowCount) || typeof evidence.launch.startedAt !== 'string') errors.push('invalid launch');
   if (!isObject(evidence.quit) || typeof evidence.quit.requested !== 'boolean' || typeof evidence.quit.graceful !== 'boolean' || !(Number.isInteger(evidence.quit.exitCode) || evidence.quit.exitCode === null)) errors.push('invalid quit');
   if (!isObject(evidence.logs) || typeof evidence.logs.stdout !== 'string' || typeof evidence.logs.stderr !== 'string') errors.push('invalid logs');
+  if (has('upgrade')) {
+    const upgrade = evidence.upgrade;
+    const invalid = !isObject(upgrade)
+      || upgrade.attempted !== true
+      || typeof upgrade.previousVersion !== 'string'
+      || !/^[a-f0-9]{64}$/.test(upgrade.previousArtifactSha256)
+      || typeof upgrade.previousLaunchVerified !== 'boolean'
+      || typeof upgrade.userDataPreserved !== 'boolean';
+    if (invalid || (evidence.status === 'passed' && (!upgrade.previousLaunchVerified || !upgrade.userDataPreserved))) {
+      errors.push('invalid upgrade');
+    }
+  }
   return { valid: errors.length === 0, errors };
 }
 
@@ -151,6 +163,67 @@ function waitForExit(child, timeoutMs = QUIT_TIMEOUT_MS) {
   });
 }
 
+async function waitForProfileRelease(userDataPath, timeoutMs = CLEANUP_TIMEOUT_MS) {
+  const singletonSocket = join(userDataPath, 'SingletonSocket');
+  const deadline = Date.now() + timeoutMs;
+  while (existsSync(singletonSocket) && Date.now() < deadline) {
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+  }
+  if (existsSync(singletonSocket)) throw new Error(`previous packaged profile remained locked after ${timeoutMs}ms`);
+}
+
+export function evaluateDebugTarget(target, expression, WebSocketConstructor = globalThis.WebSocket) {
+  if (!target?.webSocketDebuggerUrl || typeof WebSocketConstructor !== 'function') {
+    return Promise.reject(new Error('renderer debug target has no WebSocket endpoint'));
+  }
+  return new Promise((resolveValue, reject) => {
+    const socket = new WebSocketConstructor(target.webSocketDebuggerUrl);
+    const timer = setTimeout(() => {
+      socket.close();
+      reject(new Error('renderer debug evaluation timed out'));
+    }, 3_000);
+    const finish = (callback) => {
+      clearTimeout(timer);
+      socket.close();
+      callback();
+    };
+    socket.addEventListener('open', () => {
+      socket.send(JSON.stringify({ id: 1, method: 'Runtime.evaluate', params: { expression, returnByValue: true } }));
+    });
+    socket.addEventListener('message', (event) => {
+      try {
+        const message = JSON.parse(String(event.data));
+        if (message.id !== 1) return;
+        if (message.error || message.result?.exceptionDetails) throw new Error('renderer debug evaluation failed');
+        finish(() => resolveValue(message.result?.result?.value));
+      } catch (error) {
+        finish(() => reject(error));
+      }
+    });
+    socket.addEventListener('error', () => finish(() => reject(new Error('renderer debug WebSocket failed'))));
+  });
+}
+
+export function assertRenderedVersion(renderedVersion, expectedVersion, options = {}) {
+  if (renderedVersion === expectedVersion) return;
+  if (renderedVersion === null && options.allowMissingMarker === true) return;
+  throw new Error(`packaged renderer version mismatch: expected ${expectedVersion}, received ${String(renderedVersion)}`);
+}
+
+async function verifyRenderedVersion(target, expectedVersion, options) {
+  const deadline = Date.now() + 5_000;
+  let renderedVersion = null;
+  do {
+    renderedVersion = await evaluateDebugTarget(
+      target,
+      "document.querySelector('[data-app-version]')?.getAttribute('data-app-version') ?? null",
+    );
+    if (renderedVersion !== null || options?.allowMissingMarker === true) break;
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+  } while (Date.now() < deadline);
+  assertRenderedVersion(renderedVersion, expectedVersion, options);
+}
+
 function releaseChildHandles(child) {
   child?.stdout?.destroy?.();
   child?.stderr?.destroy?.();
@@ -182,6 +255,7 @@ function macAdapter({ artifactPath, workspace, ports }) {
   ports.execFile('hdiutil', ['attach', artifactPath, '-nobrowse', '-readonly', '-mountpoint', mountPath]);
   try {
     const mountedApp = findSingleApp(mountPath);
+    if (ports.exists(copiedApp)) ports.remove?.(copiedApp);
     ports.copyBundle(mountedApp, copiedApp);
   } finally {
     // Run the extracted bundle, never the mounted disk image, so cleanup does
@@ -229,6 +303,7 @@ function defaultPorts() {
     copyBundle: (from, to) => execFileSync('ditto', [from, to], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }),
     chmod: chmodSync,
     execFile: (command, args) => execFileSync(command, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }),
+    remove: (target) => rmSync(target, { recursive: true, force: true }),
   };
 }
 
@@ -247,6 +322,8 @@ function defaultRuntime() {
     waitForRendererReadiness: (port, timeoutMs, child) => waitForRendererReadiness(port, timeoutMs, () => child.exitCode !== null),
     waitForExit,
     requestGracefulQuit: requestPlatformQuit,
+    verifyRenderedVersion,
+    waitForProfileRelease,
   };
 }
 
@@ -270,9 +347,20 @@ export async function runPackageSmoke(options = {}) {
     quit: { requested: false, graceful: false, exitCode: null },
     logs: { stdout: '', stderr: '' },
   };
+  if (options.previousArtifactPath || options.previousVersion) {
+    evidence.upgrade = {
+      attempted: true,
+      previousVersion: options.previousVersion ?? '',
+      previousArtifactSha256: '',
+      previousLaunchVerified: false,
+      userDataPreserved: false,
+    };
+  }
   let workspace = null;
   let child = null;
   let adapter = null;
+  let previousChild = null;
+  let previousAdapter = null;
   try {
     if (!['darwin', 'win32', 'linux'].includes(platform)) {
       evidence.status = 'unsupported-runner';
@@ -292,6 +380,45 @@ export async function runPackageSmoke(options = {}) {
     // operation recovery probes its real path on a clean first start.
     makeDirectory(join(userDataPath, 'minecraft_data'));
     runtime.writeFile(configPath, JSON.stringify({ cleanUserData: true, artifact: basename(artifact.path), version, platform }), 'utf8');
+    const preservationMarker = join(userDataPath, 'upgrade-preservation-marker');
+    if (evidence.upgrade) {
+      if (!options.previousArtifactPath || !options.previousVersion) throw new Error('upgrade smoke requires both previous artifact and previous version');
+      const previousArtifactPath = resolve(options.previousArtifactPath);
+      if (!runtime.exists(previousArtifactPath)) throw new Error(`missing previous release artifact: ${previousArtifactPath}`);
+      if (basename(previousArtifactPath) !== expectedArtifactName(options.previousVersion, platform)) {
+        throw new Error(`unexpected previous release artifact: ${basename(previousArtifactPath)}`);
+      }
+      evidence.upgrade.previousArtifactSha256 = sha256(previousArtifactPath);
+      runtime.writeFile(preservationMarker, `upgrade ${options.previousVersion} -> ${version}\n`, 'utf8');
+      previousAdapter = (options.createAdapter ?? createPlatformAdapter)(platform, { artifactPath: previousArtifactPath, workspace, ports });
+      const previousDebugPort = await runtime.reservePort();
+      previousChild = runtime.spawn(previousAdapter.command, [...previousAdapter.args, `--remote-debugging-port=${previousDebugPort}`, `--user-data-dir=${userDataPath}`], {
+        cwd: workspace,
+        env: {
+          ...process.env,
+          NODE_ENV: 'test',
+          FMCL_TEST_USER_DATA: userDataPath,
+          FMCL_PACKAGE_SMOKE_CONFIG: configPath,
+          ELECTRON_ENABLE_LOGGING: '1',
+          ...(platform === 'linux' ? { APPIMAGE_EXTRACT_AND_RUN: '1' } : {}),
+        },
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: false,
+      });
+      previousChild.stdout.on('data', (chunk) => { evidence.logs.stdout = appendLog(evidence.logs.stdout, chunk); });
+      previousChild.stderr.on('data', (chunk) => { evidence.logs.stderr = appendLog(evidence.logs.stderr, chunk); });
+      const previousPages = await runtime.waitForRendererReadiness(previousDebugPort, options.readinessTimeoutMs ?? READY_TIMEOUT_MS, previousChild);
+      await runtime.verifyRenderedVersion(previousPages[0], options.previousVersion, { allowMissingMarker: true });
+      evidence.upgrade.previousLaunchVerified = true;
+      await runtime.requestGracefulQuit({ platform, child: previousChild, debugPort: previousDebugPort, pages: previousPages });
+      const previousExitCode = await runtime.waitForExit(previousChild, options.quitTimeoutMs ?? QUIT_TIMEOUT_MS);
+      if (previousExitCode !== 0) throw new Error(`previous packaged process exited abnormally: ${previousExitCode}`);
+      releaseChildHandles(previousChild);
+      previousChild = null;
+      previousAdapter.cleanup?.();
+      previousAdapter = null;
+      await runtime.waitForProfileRelease(userDataPath, options.profileReleaseTimeoutMs ?? CLEANUP_TIMEOUT_MS);
+    }
     adapter = (options.createAdapter ?? createPlatformAdapter)(platform, { artifactPath: artifact.path, workspace, ports });
     const debugPort = await runtime.reservePort();
     child = runtime.spawn(adapter.command, [...adapter.args, `--remote-debugging-port=${debugPort}`, `--user-data-dir=${userDataPath}`], {
@@ -315,7 +442,12 @@ export async function runPackageSmoke(options = {}) {
       options.readinessTimeoutMs ?? READY_TIMEOUT_MS,
       child,
     );
-    evidence.launch.readiness = 'remote-debugging-page';
+    await runtime.verifyRenderedVersion(pages[0], version);
+    if (evidence.upgrade) {
+      evidence.upgrade.userDataPreserved = runtime.exists(preservationMarker);
+      if (!evidence.upgrade.userDataPreserved) throw new Error('upgrade removed the existing launcher user-data marker');
+    }
+    evidence.launch.readiness = 'remote-debugging-page-and-rendered-version';
     evidence.launch.windowCount = pages.length;
     evidence.quit.requested = true;
     await runtime.requestGracefulQuit({ platform, child, debugPort, pages });
@@ -327,7 +459,9 @@ export async function runPackageSmoke(options = {}) {
     evidence.error = error instanceof Error ? error.message : String(error);
     if (/^unsupported runner:/.test(String(evidence.error))) evidence.status = 'unsupported-runner';
   } finally {
+    await stopChildIfRunning(previousChild, runtime);
     await stopChildIfRunning(child, runtime);
+    try { previousAdapter?.cleanup?.(); } catch (error) { evidence.logs.stderr = appendLog(evidence.logs.stderr, `previous cleanup: ${String(error)}\n`); }
     try { adapter?.cleanup?.(); } catch (error) { evidence.logs.stderr = appendLog(evidence.logs.stderr, `cleanup: ${String(error)}\n`); }
     if (workspace) {
       const workspaceAliases = [workspace];
@@ -342,13 +476,14 @@ export async function runPackageSmoke(options = {}) {
     } else evidence.workspace.cleaned = true;
     // AppImage can leave Chromium helpers holding inherited stdio after the
     // main process exits. Do not let those stale handles pin the smoke runner.
+    releaseChildHandles(previousChild);
     releaseChildHandles(child);
   }
   return evidence;
 }
 
 function printHelp() {
-  console.log('Usage: node scripts/package-smoke.js [--release-dir <dir>] [--version <version>] [--output <file>] [--fixture-unsupported-platform]');
+  console.log('Usage: node scripts/package-smoke.js [--release-dir <dir>] [--version <version>] [--previous-artifact <file> --previous-version <version>] [--output <file>] [--fixture-unsupported-platform]');
 }
 
 async function main() {
@@ -358,6 +493,8 @@ async function main() {
   const result = await runPackageSmoke({
     releaseDir: args.includes('--release-dir') ? valueAfter('--release-dir') : undefined,
     version: args.includes('--version') ? valueAfter('--version') : undefined,
+    previousArtifactPath: args.includes('--previous-artifact') ? valueAfter('--previous-artifact') : undefined,
+    previousVersion: args.includes('--previous-version') ? valueAfter('--previous-version') : undefined,
     platform: args.includes('--fixture-unsupported-platform') ? 'freebsd' : undefined,
   });
   const validation = validatePackageSmokeEvidence(result);

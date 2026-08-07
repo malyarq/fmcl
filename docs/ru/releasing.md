@@ -1,6 +1,6 @@
 # Регламент релиза
 
-FriendLauncher использует неизменяемые SemVer-теги и GitHub workflow, запускаемый только вручную. Тег с prerelease-суффиксом SemVer публикуется как non-latest prerelease, а обычный `vMAJOR.MINOR.PATCH` — как последний стабильный релиз. Локальная команда может подготовить доказательства или, после отдельного явного решения, создать тег; публиковать релиз она не уполномочена.
+FriendLauncher использует запускаемый вручную GitHub workflow, который создаёт тег в самом конце. Защищённая публикация создаёт неизменяемый аннотированный SemVer-тег только после успешных проверок исходников, нативных сборок, package smoke, контрольных сумм и повторной проверки скачанных артефактов. Prerelease-версия публикуется как non-latest, обычная `MAJOR.MINOR.PATCH` становится последним стабильным релизом.
 
 ## Подготовить точного кандидата
 
@@ -25,19 +25,20 @@ npm run release -- <version> --dry-run
 
 ## Проверить доказательства
 
-До любого release-действия просмотрите pre-push report. В нём указаны точные version/tag/commit, все этапы quality profile, пути к артефактам и SHA-256 checksums, platform smoke с причинами unsupported runner, статус signing/notarization, known failures и неизменяемый rollback action.
+До любого release-действия просмотрите pre-push report. В нём указаны точные version/предлагаемый tag/commit, все этапы quality profile, пути к артефактам и SHA-256 checksums, platform smoke с причинами unsupported runner, статус signing/notarization, known failures и неизменяемый rollback action.
 
 Checksums подтверждают только целостность артефактов. Локальный report — это evidence для решения, а не security boundary, доказательство издателя или разрешение на публикацию. Текущие macOS DMG и Windows-артефакты не подписаны издателем, если platform verification evidence не говорит обратного. Локальная ad-hoc подпись macOS-приложения не доказывает ни личность издателя, ни notarization; их нельзя выводить из checksum или успешного запуска. Диалоги Gatekeeper и SmartScreen зависят от ОС и репутации: их проверяют вручную на целевой платформе и фиксируют отдельно.
 
-## Тег и запуск публикации
+## Запуск публикации
 
-После отдельного одобрения точного report helper может создать подходящий аннотированный локальный тег только при наличии report и буквального значения локального approval:
+Локальный helper только собирает evidence и никогда не создаёт и не отправляет тег. Закоммитьте подготовленную версию в `main`, зафиксируйте точный commit и запустите workflow с версией и commit:
 
 ```bash
-npm run release -- <version> --report quality/evidence/prepush-release-report.json --approval approve-local-release
+COMMIT=$(git rev-parse HEAD)
+gh workflow run release.yml -f version=<version> -f commit="$COMMIT"
 ```
 
-`--push` остаётся отдельным удалённым действием и сам по себе ничего не публикует. Helper отклоняет отсутствующий, невалидный, устаревший, несоответствующий или неодобренный report до создания тега или push. Локальное approval не даёт права на публикацию в GitHub и не отменяет review.
+Workflow отклоняет commit, который уже не является точным `origin/main`, несовпадающую версию в `package.json`, существующий тег или существующий GitHub Release. Не создавайте релизный тег локально заранее.
 
 Перед dispatch публикации администратор репозитория настраивает **Settings → Environments → `release-publication`**:
 
@@ -52,7 +53,9 @@ npm run release -- <version> --report quality/evidence/prepush-release-report.js
 
 До первого релиза откройте в PostHog **Settings → Project → General**, выключите сбор IP, не используйте person profiles и проверьте, что хранение не превышает 12 месяцев. Workflow не собирает релиз без project token, но облачные privacy-настройки владелец проверяет вручную.
 
-Код репозитория не может создать или гарантировать эти правила защиты. Когда candidate tag уже доступен, maintainer вручную запускает **Build and Release** через `workflow_dispatch` и передаёт точный тег. Workflow самостоятельно checkout'ит тег, проверяет version/commit, заново валидирует artifact, checksum, smoke и schema-valid report, а затем ждёт protected Environment `release-publication` перед единственным publish job. Один push тега не запускает публикацию.
+Код репозитория не может создать или гарантировать эти правила защиты. Maintainer вручную запускает **Build and Release** через `workflow_dispatch` и передаёт закоммиченную версию вместе с точным 40-символьным commit из `main`. Workflow самостоятельно checkout'ит commit, на каждом нативном runner скачивает предыдущий опубликованный пакет, проверяет обновление на месте с сохранением пользовательских данных и отображением новой версии, затем валидирует артефакты, checksums, smoke и schema-valid evidence. До создания публичных объектов workflow ждёт protected Environment `release-publication`. Только этот job создаёт аннотированный тег и GitHub Release. Для стабильного релиза изменяемый тег `latest` переносится только после успешной публикации. Release notes собираются из всех записей `CHANGELOG.md` после предыдущего опубликованного стабильного релиза, поэтому брошенный тег не скрывает доставленные изменения.
+
+Если загрузка артефактов падает до публикации, workflow удаляет свой draft и только что созданный тег. После публикации действует неизменяемость: тег и артефакты сохраняются, а последующая проблема исправляется новым patch-релизом.
 
 ## Ошибка и откат
 

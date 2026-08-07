@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 type PackageSmoke = Readonly<{
   findPackagedArtifact(options: Readonly<{ releaseDir: string; version: string; platform: NodeJS.Platform }>): Readonly<{ path: string; kind: string; platform: string }>;
   validatePackageSmokeEvidence(value: unknown): Readonly<{ valid: boolean; errors: string[] }>;
+  assertRenderedVersion(value: unknown, expectedVersion: string, options?: Readonly<{ allowMissingMarker?: boolean }>): void;
   createPlatformAdapter(platform: NodeJS.Platform, options: unknown): Readonly<{ command: string; args: string[]; cleanup(): void }>;
   requestPlatformQuit(options: unknown): Promise<void> | boolean;
   runPackageSmoke(options: unknown): Promise<Record<string, unknown>>;
@@ -99,6 +100,24 @@ describe('package smoke artifact contract', () => {
     expect(smoke.validatePackageSmokeEvidence(withoutSigning)).toMatchObject({ valid: false });
     expect(smoke.validatePackageSmokeEvidence({ ...complete, quit: { requested: true } })).toMatchObject({ valid: false });
     expect(smoke.validatePackageSmokeEvidence({ ...complete, logs: { stdout: '' } })).toMatchObject({ valid: false });
+    const incompleteUpgrade = {
+      ...complete,
+      upgrade: {
+        attempted: true,
+        previousVersion: '0.7.0',
+        previousArtifactSha256: 'b'.repeat(64),
+        previousLaunchVerified: false,
+        userDataPreserved: true,
+      },
+    };
+    expect(smoke.validatePackageSmokeEvidence(incompleteUpgrade)).toMatchObject({ valid: false });
+    expect(smoke.validatePackageSmokeEvidence({ ...incompleteUpgrade, status: 'failed' })).toEqual({ valid: true, errors: [] });
+  });
+
+  it('accepts a missing version marker only for an exact legacy upgrade artifact', () => {
+    expect(() => smoke.assertRenderedVersion(null, '0.9.1', { allowMissingMarker: true })).not.toThrow();
+    expect(() => smoke.assertRenderedVersion('0.9.0', '0.9.1', { allowMissingMarker: true })).toThrow(/version mismatch/i);
+    expect(() => smoke.assertRenderedVersion(null, '0.10.0')).toThrow(/version mismatch/i);
   });
 
   it('constructs native adapter commands through injected filesystem ports', () => {
@@ -179,6 +198,7 @@ describe('package smoke artifact contract', () => {
       spawn: () => createChild(),
       reservePort: async () => 43123,
       waitForRendererReadiness: async () => { throw new Error('renderer readiness timed out after 25ms'); },
+      verifyRenderedVersion: async () => undefined,
       waitForExit: async () => 1,
       requestGracefulQuit: () => undefined,
     };
@@ -208,6 +228,7 @@ describe('package smoke artifact contract', () => {
       runtime: {
         mkdtemp: () => workspace, rm: (target: string) => fs.rmSync(target, { recursive: true, force: true }), exists: fs.existsSync, writeFile: fs.writeFileSync,
         spawn: () => child, reservePort: async () => 43124, waitForRendererReadiness: async () => [{ type: 'page', url: 'file:///index.html' }],
+        verifyRenderedVersion: async () => undefined,
         requestGracefulQuit: () => undefined, waitForExit: async () => 1,
       },
       createAdapter: () => ({ command: 'fixture-app', args: [], cleanup: () => undefined }),
@@ -215,6 +236,64 @@ describe('package smoke artifact contract', () => {
 
     expect(result).toMatchObject({ status: 'failed', workspace: { cleaned: true }, quit: { requested: true, graceful: false, exitCode: 1 } });
     expect(fs.existsSync(path.join(releaseRoot, version, `FriendLauncher-Mac-${version}-Installer.dmg`))).toBe(true);
+  });
+
+  it('launches the previous package, upgrades in place, and preserves user data before passing', async () => {
+    const version = '0.9.2';
+    const previousVersion = '0.9.1';
+    const releaseRoot = createRelease(version);
+    roots.push(releaseRoot);
+    writeArtifact(releaseRoot, version, `FriendLauncher-Mac-${version}-Installer.dmg`);
+    const previousArtifact = path.join(releaseRoot, `FriendLauncher-Mac-${previousVersion}-Installer.dmg`);
+    fs.writeFileSync(previousArtifact, 'previous fixture');
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-package-smoke-upgrade-'));
+    roots.push(workspace);
+    const verifiedVersions: Array<[string, unknown]> = [];
+    const waitForProfileRelease = vi.fn().mockResolvedValue(undefined);
+    let port = 44000;
+    const createChild = () => Object.assign(new EventEmitter(), {
+      exitCode: 0, stdout: new EventEmitter(), stderr: new EventEmitter(), kill: () => undefined,
+    });
+
+    const result = await smoke.runPackageSmoke({
+      platform: 'darwin', hostPlatform: 'darwin', releaseDir: releaseRoot, version,
+      previousArtifactPath: previousArtifact, previousVersion,
+      runtime: {
+        mkdtemp: () => workspace,
+        rm: (target: string) => fs.rmSync(target, { recursive: true, force: true }),
+        exists: fs.existsSync,
+        writeFile: fs.writeFileSync,
+        spawn: () => createChild(),
+        reservePort: async () => { port += 1; return port; },
+        waitForRendererReadiness: async () => [{ type: 'page', url: 'file:///index.html' }],
+        verifyRenderedVersion: async (_page: unknown, expectedVersion: string, options: unknown) => { verifiedVersions.push([expectedVersion, options]); },
+        waitForProfileRelease,
+        requestGracefulQuit: () => undefined,
+        waitForExit: async () => 0,
+      },
+      createAdapter: (_platform: string, options: { artifactPath: string }) => ({
+        command: options.artifactPath,
+        args: [],
+        cleanup: () => undefined,
+      }),
+    });
+
+    expect(result).toMatchObject({
+      status: 'passed',
+      upgrade: {
+        attempted: true,
+        previousVersion,
+        previousArtifactSha256: expect.stringMatching(/^[a-f0-9]{64}$/),
+        previousLaunchVerified: true,
+        userDataPreserved: true,
+      },
+    });
+    expect(verifiedVersions).toEqual([
+      [previousVersion, { allowMissingMarker: true }],
+      [version, undefined],
+    ]);
+    expect(waitForProfileRelease).toHaveBeenCalledWith(path.join(workspace, 'user-data'), 5_000);
+    expect(smoke.validatePackageSmokeEvidence(result)).toEqual({ valid: true, errors: [] });
   });
 
   it('runs Linux AppImage smoke without depending on FUSE availability', async () => {
@@ -236,6 +315,7 @@ describe('package smoke artifact contract', () => {
         mkdtemp: () => workspace, rm: (target: string) => fs.rmSync(target, { recursive: true, force: true }), exists: fs.existsSync, writeFile: fs.writeFileSync,
         spawn: (_command: string, _args: string[], options: { env: NodeJS.ProcessEnv }) => { spawnEnvironment = options.env; return child; },
         reservePort: async () => 43125, waitForRendererReadiness: async () => [{ type: 'page', url: 'file:///index.html' }],
+        verifyRenderedVersion: async () => undefined,
         requestGracefulQuit: () => undefined, waitForExit: async () => 0,
       },
       createAdapter: () => ({ command: 'fixture.AppImage', args: [], cleanup: () => undefined }),

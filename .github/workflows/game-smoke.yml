@@ -1,0 +1,46 @@
+name: Minecraft game smoke
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: game-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  launch:
+    name: Launch to main menu (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 35
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Launch Minecraft on Linux
+        if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum npm run smoke:game -- --evidence-dir=quality/evidence/game-smoke/${{ runner.os }}
+
+      - name: Launch Minecraft on Windows or macOS
+        if: runner.os != 'Linux'
+        run: npm run smoke:game -- --evidence-dir=quality/evidence/game-smoke/${{ runner.os }}
+
+      - name: Upload launch evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: game-smoke-${{ runner.os }}
+          path: quality/evidence/game-smoke/${{ runner.os }}/
+          if-no-files-found: warn

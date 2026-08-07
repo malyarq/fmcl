@@ -2,11 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { getPotentialJavaLocations, scanLocalJava } from '@xmcl/installer';
 import { resolveJavaExecutable, toJavaHome } from './pathResolver';
+import type { SupportedJavaVersion } from '../../../shared/minecraftRuntime';
 
 /**
  * Finds local Java of a specific major version using XMCL discovery utilities.
  */
-export async function findLocalJava(requiredVersion: 8 | 17 | 21): Promise<string | null> {
+export async function findLocalJava(requiredVersion: SupportedJavaVersion): Promise<string | null> {
   const homes = new Set<string>();
 
   // 1) Candidates from PATH / system discovery (XMCL)
@@ -53,4 +54,3 @@ export async function findLocalJava(requiredVersion: 8 | 17 | 21): Promise<strin
   const exec = resolveJavaExecutable(candidate);
   return exec || null;
 }
-

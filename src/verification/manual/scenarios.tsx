@@ -678,6 +678,7 @@ function Phase19ShellChrome(props: {
                 )}
               >
                 <Sidebar
+                  appVersion="0.8.1"
                   launch={props.launch ?? MANUAL_SIDEBAR_LAUNCH}
                   runtime={props.runtime ?? MANUAL_SHELL_RUNTIME}
                   actions={MANUAL_SHELL_ACTIONS}

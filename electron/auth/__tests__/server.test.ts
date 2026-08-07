@@ -21,4 +21,14 @@ describe('AuthServer lifecycle', () => {
     const follower = new AuthServer(port); servers.push(follower);
     await expect(follower.start()).resolves.toEqual({ url: owner.url, owned: false });
   });
+
+  it('returns the Yggdrasil no-profile response instead of invalid JSON', async () => {
+    const server = new AuthServer(0); servers.push(server);
+    await server.start();
+
+    const response = await fetch(`${server.url}/sessionserver/session/minecraft/profile/e6c775be5be937a6bfd5f5ecbc68bdc5`);
+
+    expect(response.status).toBe(204);
+    await expect(response.text()).resolves.toBe('');
+  });
 });

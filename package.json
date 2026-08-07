@@ -1,7 +1,7 @@
 {
   "name": "friend-launcher",
   "private": true,
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "Desktop Minecraft launcher for vanilla play, modpacks, and FriendTunnel multiplayer.",
   "desktopName": "com.friendlauncher.app",
   "author": "FriendLauncher Contributors",
@@ -20,6 +20,7 @@
     "test:full:forge": "node scripts/test-full.js --stage=forge",
     "test:full:fabric": "node scripts/test-full.js --stage=fabric",
     "test:full:neoforge": "node scripts/test-full.js --stage=neoforge",
+    "smoke:game": "node scripts/test-full.js --stage=vanilla --limit=1 --launch-smoke",
     "build": "tsc && vite build && node scripts/build-electron.js",
     "lint": "eslint . --max-warnings 0",
     "docs:check": "node scripts/check-docs.cjs",

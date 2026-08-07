@@ -46,7 +46,10 @@ function listSourceFiles(dir) {
 }
 
 function isProductionSource(relativePath) {
-  return !relativePath.includes('/__tests__/')
+  // The full-installation helpers run only behind explicit FMCL_FULL_TEST_CONFIG
+  // and intentionally build an isolated launcher graph against a temporary root.
+  return !relativePath.startsWith('electron/app/tests/')
+    && !relativePath.includes('/__tests__/')
     && !/\.(?:test|spec)\.[^.]+$/.test(relativePath)
 }
 

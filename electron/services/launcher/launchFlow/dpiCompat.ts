@@ -1,4 +1,6 @@
-export function getLegacyWindowsDpiJvmArgs(params: { requiredJava: 8 | 17 | 21 }) {
+import type { SupportedJavaVersion } from '../../../../shared/minecraftRuntime';
+
+export function getLegacyWindowsDpiJvmArgs(params: { requiredJava: SupportedJavaVersion }) {
   const { requiredJava } = params;
   // Legacy (Java 8) Minecraft on Windows is not DPI-aware by default, which can lead to:
   // - blurry rendering (Windows scaling stretches a lower internal resolution)
@@ -8,7 +10,7 @@ export function getLegacyWindowsDpiJvmArgs(params: { requiredJava: 8 | 17 | 21 }
 }
 
 export async function withWindowsDpiCompatLayer<T>(params: {
-  requiredJava: 8 | 17 | 21;
+  requiredJava: SupportedJavaVersion;
   onLog: (data: string) => void;
   run: () => Promise<T>;
 }) {
@@ -33,4 +35,3 @@ export async function withWindowsDpiCompatLayer<T>(params: {
     }
   }
 }
-

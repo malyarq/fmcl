@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import pkg from '../package.json';
 import { ErrorBoundaryWrapper } from './components/ErrorBoundaryWrapper';
 import { useAppIcon } from './app/hooks/useAppIcon';
 import { useAppOverlays } from './app/hooks/useAppOverlays';
@@ -232,11 +233,13 @@ function AppRoot() {
 
 export default function App() {
   return (
-    <ModpackNavigationProvider>
-      <AppRecoveryBoundary>
-        <AppRoot />
-      </AppRecoveryBoundary>
-    </ModpackNavigationProvider>
+    <div className="contents" data-app-version={pkg.version}>
+      <ModpackNavigationProvider>
+        <AppRecoveryBoundary>
+          <AppRoot />
+        </AppRecoveryBoundary>
+      </ModpackNavigationProvider>
+    </div>
   );
 }
 

@@ -7,9 +7,9 @@
  */
 
 import { spawn } from 'child_process';
-import { mkdtempSync, rmSync, writeFileSync, unlinkSync } from 'fs';
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync, unlinkSync } from 'fs';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname, join, relative, resolve } from 'path';
 import { tmpdir } from 'os';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -29,6 +29,8 @@ const options = {
   provider: null,
   limit: null,
   only: null,
+  launchSmoke: false,
+  evidenceDir: null,
 };
 
 for (const arg of args) {
@@ -40,6 +42,10 @@ for (const arg of args) {
     options.limit = arg.split('=')[1];
   } else if (arg.startsWith('--only=')) {
     options.only = arg.split('=')[1];
+  } else if (arg === '--launch-smoke') {
+    options.launchSmoke = true;
+  } else if (arg.startsWith('--evidence-dir=')) {
+    options.evidenceDir = arg.slice('--evidence-dir='.length);
   } else if (arg === '--help' || arg === '-h') {
     console.log(`
 Usage: node scripts/test-full.js [options]
@@ -49,6 +55,8 @@ Options:
   --provider=<id>     Download provider: auto, mojang, bmclapi (default: auto)
   --limit=<N>         Limit number of versions to test (default: unlimited)
   --only=<versions>   Comma-separated list of specific versions to test
+  --launch-smoke      Launch one installed vanilla version until main-menu readiness
+  --evidence-dir=<p>  Preserve logs under a project-relative directory
   --help, -h          Show this help message
 
 Examples:
@@ -56,6 +64,7 @@ Examples:
   node scripts/test-full.js --stage=vanilla
   node scripts/test-full.js --stage=forge --limit=5
   node scripts/test-full.js --only=1.20.1,1.19.2
+  node scripts/test-full.js --stage=vanilla --limit=1 --launch-smoke
     `);
     process.exit(0);
   }
@@ -69,9 +78,32 @@ const testConfig = {
   provider: options.provider || null,
   limit: options.limit || null,
   only: options.only || null,
+  launchSmoke: options.launchSmoke,
 };
 
 writeFileSync(testConfigPath, JSON.stringify(testConfig, null, 2), 'utf-8');
+
+const evidenceDir = (() => {
+  if (!options.evidenceDir) return null;
+  const resolved = resolve(projectRoot, options.evidenceDir);
+  const projectRelative = relative(projectRoot, resolved);
+  if (!projectRelative || projectRelative.startsWith('..') || projectRelative.includes('\0')) {
+    console.error('--evidence-dir must stay inside the project root.');
+    process.exit(1);
+  }
+  return resolved;
+})();
+
+const preserveEvidence = () => {
+  if (!evidenceDir) return;
+  const source = join(testUserDataPath, 'logs', 'full-installation');
+  try {
+    mkdirSync(evidenceDir, { recursive: true });
+    cpSync(source, evidenceDir, { recursive: true });
+  } catch (error) {
+    console.error('Failed to preserve full-test evidence:', error);
+  }
+};
 
 // Cleanup function
 const cleanup = () => {
@@ -134,6 +166,7 @@ buildProcess.on('exit', (buildCode) => {
   });
 
   electronProcess.on('exit', (code) => {
+    preserveEvidence();
     cleanup();
     process.exit(code ?? 1);
   });

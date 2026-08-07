@@ -62,6 +62,7 @@ export type SidebarRuntimeModel = {
 };
 
 interface SidebarProps {
+    appVersion?: string;
     launch: SidebarLaunchModel;
     runtime: SidebarRuntimeModel;
     actions: {
@@ -86,6 +87,7 @@ function getClassicLoaderType(launch: Pick<SidebarLaunchModel, 'useForge' | 'use
 
 // Left panel with launch controls and quick settings access.
 const Sidebar = ({
+    appVersion = pkg.version,
     launch,
     runtime,
     actions,
@@ -141,7 +143,7 @@ const Sidebar = ({
         )}
         >
             <SidebarHeader
-                appVersion={pkg.version}
+                appVersion={appVersion}
                 onShowMultiplayer={actions.onShowMultiplayer}
                 onShowSettings={actions.onShowSettings}
                 getAccentStyles={(type) => getAccentStyles(type)}

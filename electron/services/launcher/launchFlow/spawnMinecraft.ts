@@ -1,9 +1,10 @@
 import { launch, type LaunchOption } from '@xmcl/core';
 import { getLegacyWindowsDpiJvmArgs, withWindowsDpiCompatLayer } from './dpiCompat';
+import type { SupportedJavaVersion } from '../../../../shared/minecraftRuntime';
 
 export async function spawnMinecraft(params: {
   launchOptions: LaunchOption;
-  requiredJava: 8 | 17 | 21;
+  requiredJava: SupportedJavaVersion;
   effectiveVmOptions: string[];
   onLog: (data: string) => void;
   onClose: (code: number) => void;
@@ -79,4 +80,3 @@ export async function spawnMinecraft(params: {
 
   return proc;
 }
-

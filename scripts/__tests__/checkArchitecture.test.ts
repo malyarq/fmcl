@@ -76,6 +76,17 @@ describe('architecture ownership guard', () => {
     expect(checker.collectArchitectureViolations(root)).toEqual([]);
   });
 
+  it('allows the explicit full-installation harness to build an isolated temporary launcher', () => {
+    const root = createFixture();
+    roots.push(root);
+    writeFixture(root, 'electron/app/tests/isolatedLauncher.ts', 'new LauncherManager(testDependencies)\n');
+    writeFixture(root, 'electron/app/notATestHarness.ts', 'new LauncherManager(productionDependencies)\n');
+
+    expect(checker.collectArchitectureViolations(root)).toEqual([
+      'electron/app/notATestHarness.ts:1 constructs LauncherManager outside the composition root',
+    ]);
+  });
+
   it('rejects root and archive paths at every public operations boundary', () => {
     const root = createFixture();
     roots.push(root);
