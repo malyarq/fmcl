@@ -1,6 +1,8 @@
 name: Bug report
 description: Report a reproducible Burrow problem that is not security-sensitive
 title: "[Bug]: "
+labels:
+  - bug
 body:
   - type: markdown
     attributes:
@@ -12,7 +14,7 @@ body:
     attributes:
       label: Burrow version
       description: Use the exact version from the application or release filename.
-      placeholder: v0.8.0
+      placeholder: v0.11.0
     validations:
       required: true
 

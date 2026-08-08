@@ -9,7 +9,7 @@ Thanks for improving Burrow. Keep changes focused, testable, and consistent acro
 - For a large behavior, format, migration, or dependency change, open an issue first so the contract can be agreed before implementation.
 - Read the nearest `AGENTS.md` in the directory you change.
 
-The repository currently has no project-wide open-source license. A public repository can be read and forked through GitHub, but that does not grant general redistribution or relicensing rights. Contributions are accepted only if you have the right to submit them.
+Burrow is released under the [MIT License](LICENSE). By contributing, you confirm that you have the right to submit the work under that license.
 
 ## Set up
 
@@ -51,8 +51,8 @@ Use targeted tests while developing. Run visual regression for UI changes and th
 
 ## Commits and pull requests
 
-- Use conventional commit prefixes such as `feat:`, `fix:`, `docs:`, `refactor:`, and `test:`.
-- Keep one coherent change per commit; do not mix unrelated formatting or generated output.
+- Write a short, human commit subject that names the finished result. Do not include phase, wave, plan, or agent bookkeeping.
+- Keep one coherent result per commit; fold follow-up fixes for that result into the same commit before pushing.
 - Explain the user impact, implementation boundary, tests run, screenshots for visible UI changes, and remaining risk.
 - Do not include secrets, private account data, or exploit details in commits, CI logs, issues, or pull requests.
 
