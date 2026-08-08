@@ -37,9 +37,7 @@ function artifactNameForProduct(productName, version, platform) {
 
 export function productNameForArtifact(artifactPath, version, platform) {
   const artifactName = basename(artifactPath);
-  for (const productName of ['Burrow', 'FriendLauncher']) {
-    if (artifactName === artifactNameForProduct(productName, version, platform)) return productName;
-  }
+  if (artifactName === artifactNameForProduct('Burrow', version, platform)) return 'Burrow';
   throw new Error(`unexpected previous release artifact: ${artifactName}`);
 }
 
@@ -430,12 +428,8 @@ export async function runPackageSmoke(options = {}) {
         env: {
           ...process.env,
           NODE_ENV: 'test',
-          // The previous public package still reads the legacy variables.
-          // Keep both namespaces for the one-process upgrade probe only.
           BURROW_TEST_USER_DATA: userDataPath,
           BURROW_PACKAGE_SMOKE_CONFIG: configPath,
-          FMCL_TEST_USER_DATA: userDataPath,
-          FMCL_PACKAGE_SMOKE_CONFIG: configPath,
           ELECTRON_ENABLE_LOGGING: '1',
           ...(platform === 'linux' ? { APPIMAGE_EXTRACT_AND_RUN: '1' } : {}),
         },
@@ -445,7 +439,7 @@ export async function runPackageSmoke(options = {}) {
       previousChild.stdout.on('data', (chunk) => { evidence.logs.stdout = appendLog(evidence.logs.stdout, chunk); });
       previousChild.stderr.on('data', (chunk) => { evidence.logs.stderr = appendLog(evidence.logs.stderr, chunk); });
       const previousPages = await runtime.waitForRendererReadiness(previousDebugPort, options.readinessTimeoutMs ?? READY_TIMEOUT_MS, previousChild);
-      await runtime.verifyRenderedVersion(previousPages[0], options.previousVersion, { allowMissingMarker: true });
+      await runtime.verifyRenderedVersion(previousPages[0], options.previousVersion);
       evidence.upgrade.previousLaunchVerified = true;
       await runtime.requestGracefulQuit({ platform, child: previousChild, debugPort: previousDebugPort, pages: previousPages });
       const previousExitCode = await runtime.waitForExit(previousChild, options.quitTimeoutMs ?? QUIT_TIMEOUT_MS);

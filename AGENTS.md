@@ -55,7 +55,7 @@ Stack: `Electron` + `React` + `TypeScript` + `TailwindCSS` + `Vite`.
 - Do not leave long-lived processes, terminals, browser sessions, watchers, or spawned agents running after the task.
 - Before final handoff, stop any `npm run dev`, `vite`, `electron`, `vitest --watch`, manual verification server, headless browser, or MCP watch that you started.
 - Reuse an existing interactive session when possible; do not open duplicate dev servers for the same repo.
-- If you are unsure what is still running, inspect with `ps -ax | rg '/Users/kszinikov/work/(fmcl|burrow)|vite|electron|vitest|playwright|chromium'` and stop only the processes started for this repo/task.
+- If you are unsure what is still running, inspect with `ps -ax | rg '/Users/kszinikov/work/burrow|vite|electron|vitest|playwright|chromium'` and stop only the processes started for this repo/task.
 - If you spawned sub-agents, watches, or background PTY sessions, close or unwatch them before finishing.
 
 ## Git

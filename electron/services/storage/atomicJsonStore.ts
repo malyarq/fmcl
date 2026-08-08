@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
-const SCHEMA_VERSION_FIELD = '_fmclSchemaVersion';
+const SCHEMA_VERSION_FIELD = '_burrowSchemaVersion';
 
 export type AtomicJsonRead<T> = {
   value: T;

@@ -5,7 +5,7 @@ export function normalizeBurrowLinkInvite(value: string): string | null {
   const trimmed = value.trim().toLowerCase();
   if (!trimmed) return null;
 
-  if (trimmed.startsWith('burrow://') || trimmed.startsWith('fmcl://')) {
+  if (trimmed.startsWith('burrow://')) {
     try {
       const url = new URL(trimmed);
       if (url.hostname !== 'join' || url.search || url.hash) return null;
@@ -18,9 +18,7 @@ export function normalizeBurrowLinkInvite(value: string): string | null {
 
   const withoutPrefix = trimmed.startsWith('burrow-')
     ? trimmed.slice('burrow-'.length)
-    : trimmed.startsWith('fmcl-')
-      ? trimmed.slice('fmcl-'.length)
-      : trimmed;
+    : trimmed;
   const code = withoutPrefix.replaceAll('-', '').replaceAll(' ', '');
   return ROOM_CODE.test(code) ? code : null;
 }

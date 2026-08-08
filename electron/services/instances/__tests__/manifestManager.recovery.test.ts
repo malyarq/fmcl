@@ -21,7 +21,7 @@ describe('InstanceManifestManager recovery', () => {
 
     manager.saveManifest(instancePath, { version: 1, mods: [] });
     expect(JSON.parse(fs.readFileSync(manifestPath, 'utf8'))).toMatchObject({
-      _fmclSchemaVersion: 1,
+      _burrowSchemaVersion: 1,
       version: 1,
       mods: [],
     });

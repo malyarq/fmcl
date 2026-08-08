@@ -321,8 +321,7 @@ jobs:
           test "$COMMIT" = "$(git ls-remote origin refs/heads/main | awk '{print $1}')"
           test -z "$(git ls-remote --tags origin "refs/tags/$TAG" "refs/tags/$TAG^{}")"
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 && { echo 'release already exists; immutable assets cannot be overwritten' >&2; exit 1; }
-          PREVIOUS_TAG=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name 2>/dev/null || true)
-          node scripts/changelog-release-notes.js --current "${TAG#v}" --previous "${PREVIOUS_TAG#v}" --output release-notes.md
+          node scripts/changelog-release-notes.js --current "${TAG#v}" --output release-notes.md
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           TAG_PUSHED=false

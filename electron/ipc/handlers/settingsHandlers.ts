@@ -50,7 +50,7 @@ function parseSettingsBackup(value: unknown): SettingsBackupValues {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid Burrow settings backup')
   const backup = value as Record<string, unknown>
   if (backup.schemaVersion !== 1
-    || (backup.product !== 'Burrow' && backup.product !== 'FriendLauncher')
+    || backup.product !== 'Burrow'
     || !isCanonicalIsoTimestamp(backup.createdAt)
     || !hasExactSettingsBackupFields(backup)) {
     throw new Error('Unsupported Burrow settings backup')

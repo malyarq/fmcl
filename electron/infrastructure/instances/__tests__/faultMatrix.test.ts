@@ -63,7 +63,7 @@ describe('persistent control-plane fault matrix', () => {
     expect(fs.readFileSync(getAtomicJsonBackupPath(filePath))).toEqual(backupBytes);
     expectNoTemporaryResidue(path.dirname(filePath));
 
-    fs.writeFileSync(filePath, JSON.stringify({ _fmclSchemaVersion: 99, ...state('future') }));
+    fs.writeFileSync(filePath, JSON.stringify({ _burrowSchemaVersion: 99, ...state('future') }));
     expect(() => store.read()).toThrow(/Unsupported state schema version/);
     expect(fs.readFileSync(filePath, 'utf8')).toContain('future');
   });

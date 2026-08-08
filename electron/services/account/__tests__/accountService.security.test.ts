@@ -39,7 +39,7 @@ describe('AccountService secret boundaries', () => {
     fs.writeFileSync(path.join(userDataPath, 'accounts.json'), JSON.stringify({
       accounts: [],
       selectedAccountId: null,
-      _fmclSchemaVersion: 1,
+      _burrowSchemaVersion: 1,
     }));
 
     expect(() => new AccountService(userDataPath)).not.toThrow();
@@ -218,7 +218,7 @@ describe('AccountService secret boundaries', () => {
     });
     expect(fs.readFileSync(`${accountsPath}.corrupt`, 'utf8')).toBe('{malformed account state');
     expect(JSON.parse(fs.readFileSync(accountsPath, 'utf8'))).toMatchObject({
-      _fmclSchemaVersion: 1,
+      _burrowSchemaVersion: 1,
       selectedAccountId: 'offline-1',
     });
   });

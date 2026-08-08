@@ -213,7 +213,7 @@ async function installLongTaskObserver(page: Page): Promise<void> {
         for (const entry of list.getEntries()) observed.push(entry.duration);
       }).observe({ type: 'longtask', buffered: true });
     }
-    (window as typeof window & { __fmclLongTaskDurations?: number[] }).__fmclLongTaskDurations = observed;
+    (window as typeof window & { __burrowLongTaskDurations?: number[] }).__burrowLongTaskDurations = observed;
   });
 }
 
@@ -221,7 +221,7 @@ async function collectRouteRun(page: Page, route: QualityManualRoute, settleMs: 
   await navigateToQualityManualRoute(page, route);
   await page.waitForTimeout(settleMs);
   return page.evaluate(() => {
-    const profiler = window.__fmclPerformanceProfiler;
+    const profiler = window.__burrowPerformanceProfiler;
     if (!profiler) throw new Error('Production performance Profiler bridge is missing.');
     const snapshot = profiler.read();
     if (snapshot.excludedDevelopmentProbes.length > 0) {
@@ -237,7 +237,7 @@ async function collectRouteRun(page: Page, route: QualityManualRoute, settleMs: 
         classification: sample.classification,
       })),
       longTaskDurations: (() => {
-        const observed = (window as typeof window & { __fmclLongTaskDurations?: number[] }).__fmclLongTaskDurations ?? [];
+        const observed = (window as typeof window & { __burrowLongTaskDurations?: number[] }).__burrowLongTaskDurations ?? [];
         const durations = [...observed];
         observed.length = 0;
         return durations;

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://friendlauncher.app/quality/release-evidence.schema.json",
+  "$id": "https://raw.githubusercontent.com/malyarq/burrow/main/quality/schemas/release-evidence.schema.json",
   "title": "Burrow release integrity and authenticity evidence",
   "type": "object",
   "additionalProperties": false,

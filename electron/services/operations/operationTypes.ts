@@ -218,7 +218,7 @@ export type RootMutationPreparationResult =
   | Readonly<{ status: 'uninitialized' }>
   | Readonly<{
     status: 'ready';
-    source: 'canonical' | 'legacy-migration';
+    source: 'canonical';
     snapshot: CanonicalInstanceSnapshot;
   }>
   | Readonly<{ status: 'recovery-required'; reason: string }>;
@@ -235,7 +235,7 @@ export type RootMutationCommandResult = InstanceCommandResult | RootMutationFail
 /**
  * Main-process adapter for one resolved launcher root. The runner owns the
  * queue, lock, journal and lifecycle around it; this adapter only maps typed
- * canonical reads, explicit legacy preparation and commands to infrastructure.
+ * canonical reads, explicit preparation and commands to infrastructure.
  */
 export type RootMutationCoordinator = Readonly<{
   read(): Promise<InstanceControlPlaneRead>;

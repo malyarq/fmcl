@@ -2,21 +2,23 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { LauncherRoot } from '../../../domains/instances/instanceTypes';
+import type { CanonicalInstanceSnapshot, LauncherRoot } from '../../../domains/instances/instanceTypes';
 import { JsonControlPlaneStore } from '../jsonControlPlaneStore';
 
-function snapshot() {
-  return {
-    selectedId: 'pack-one',
-    records: [{
-      id: 'pack-one',
-      name: 'Pack One',
-      source: { source: 'local' as const, createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-02T00:00:00.000Z' },
-      config: { runtime: { minecraftVersion: '1.21.1' } },
-      summary: { minecraftVersion: '1.21.1' },
-    }],
-  };
-}
+const snapshot: CanonicalInstanceSnapshot = {
+  selectedId: 'pack-one',
+  records: [{
+    id: 'pack-one',
+    name: 'Pack One',
+    source: {
+      source: 'local',
+      createdAt: '2026-08-01T00:00:00.000Z',
+      updatedAt: '2026-08-01T00:00:00.000Z',
+    },
+    config: { runtime: { minecraftVersion: '1.21.1' } },
+    summary: { minecraftVersion: '1.21.1' },
+  }],
+};
 
 describe('JsonControlPlaneStore', () => {
   const roots: string[] = [];
@@ -26,59 +28,39 @@ describe('JsonControlPlaneStore', () => {
   });
 
   function createStore() {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-control-plane-store-'));
-    roots.push(root);
-    const rootCapability = {} as LauncherRoot;
-    return {
-      root,
-      rootCapability,
-      store: new JsonControlPlaneStore((candidate) => {
-        if (candidate !== rootCapability) throw new Error('unexpected root capability');
-        return root;
-      }),
-    };
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-control-plane-'));
+    const root = {} as LauncherRoot;
+    roots.push(rootPath);
+    return { rootPath, root, store: new JsonControlPlaneStore(() => rootPath) };
   }
 
-  it('validates and deep-copies writes and reads through one versioned document', async () => {
-    const { root, rootCapability, store } = createStore();
-    const persisted = snapshot();
-    const mutablePersisted = persisted as unknown as { records: Array<{ name: string }> };
+  it('reports an empty root without creating state', async () => {
+    const { rootPath, root, store } = createStore();
 
-    await store.commit(rootCapability, persisted);
-    mutablePersisted.records[0].name = 'Mutated after commit';
-    const first = await store.read(rootCapability);
-    if (first.status !== 'ready') throw new Error('expected canonical state');
-    (first.snapshot as unknown as { records: Array<{ name: string }> }).records[0].name = 'Mutated after read';
-
-    await expect(store.read(rootCapability)).resolves.toMatchObject({
-      status: 'ready',
-      snapshot: { records: [{ name: 'Pack One' }] },
-    });
-    expect(fs.readdirSync(root).filter((entry) => entry.startsWith('instance-control-plane.json'))).toEqual([
-      'instance-control-plane.json',
-    ]);
+    await expect(store.read(root)).resolves.toEqual({ status: 'uninitialized' });
+    await expect(store.prepare(root)).resolves.toEqual({ status: 'uninitialized' });
+    expect(fs.existsSync(path.join(rootPath, 'instance-control-plane.json'))).toBe(false);
   });
 
-  it('recovers a corrupt canonical primary from its AtomicJsonStore backup without legacy migration', async () => {
-    const { root, rootCapability, store } = createStore();
-    await store.commit(rootCapability, snapshot());
-    const second = snapshot();
-    second.records[0].name = 'Second';
-    await store.commit(rootCapability, second);
-    fs.writeFileSync(path.join(root, 'instance-control-plane.json'), '{broken');
+  it('publishes and reads the canonical snapshot', async () => {
+    const { rootPath, root, store } = createStore();
 
-    await expect(store.read(rootCapability)).resolves.toMatchObject({
-      status: 'ready',
-      snapshot: { records: [{ name: 'Pack One' }] },
+    await store.commit(root, snapshot);
+
+    await expect(store.prepare(root)).resolves.toEqual({ status: 'ready', source: 'canonical', snapshot });
+    expect(JSON.parse(fs.readFileSync(path.join(rootPath, 'instance-control-plane.json'), 'utf8'))).toMatchObject({
+      _burrowSchemaVersion: 1,
+      snapshot: { selectedId: 'pack-one' },
     });
   });
 
-  it('rejects malformed canonical values before publication', async () => {
-    const { root, rootCapability, store } = createStore();
-    const malformed = snapshot() as unknown as { records: Array<{ source: { sourceId?: unknown } }> };
-    malformed.records[0].source.sourceId = 42;
+  it('requires recovery when canonical state is corrupt', async () => {
+    const { rootPath, root, store } = createStore();
+    fs.writeFileSync(path.join(rootPath, 'instance-control-plane.json'), '{not-json');
 
-    await expect(store.commit(rootCapability, malformed as never)).rejects.toThrow(/sourceId/i);
-    expect(fs.existsSync(path.join(root, 'instance-control-plane.json'))).toBe(false);
+    await expect(store.prepare(root)).resolves.toMatchObject({
+      status: 'recovery-required',
+      reason: expect.stringContaining('Canonical control-plane is unavailable'),
+    });
   });
 });

@@ -30,7 +30,7 @@ describe('share import operation', () => {
 
     expect(completed).toMatchObject({ status: 'succeeded', result: { status: 'succeeded', instanceId: 'shared-pack' } });
     expect(resolveShareCode).toHaveBeenCalledWith('H4s=');
-    expect(stageManifest).toHaveBeenCalledWith(expect.stringContaining('.fmcl-operations'), 'shared-pack', manifest());
+    expect(stageManifest).toHaveBeenCalledWith(expect.stringContaining('.burrow-operations'), 'shared-pack', manifest());
     expect(fs.readFileSync(path.join(rootPath, 'modpacks', 'shared-pack', 'mods', 'required.jar'), 'utf8')).toBe('bytes');
     expect(execute).toHaveBeenCalledWith(expect.objectContaining({
       version: 1,
@@ -85,7 +85,7 @@ describe('share import operation', () => {
     expect(await runner.waitFor(started.id)).toMatchObject({ status: 'cancelled', result: { status: 'cancelled' } });
     expect(execute).not.toHaveBeenCalled();
     expect(fs.existsSync(path.join(rootPath, 'modpacks', 'shared-pack'))).toBe(false);
-    expect(fs.existsSync(path.join(rootPath, '.fmcl-operations', 'staging', started.id))).toBe(false);
+    expect(fs.existsSync(path.join(rootPath, '.burrow-operations', 'staging', started.id))).toBe(false);
   });
 
   it('replays the persisted canonical command for a published share import after restart', async () => {

@@ -25,7 +25,7 @@ describe('staged archive export operation', () => {
 
     await expect(runner.waitFor(started.id)).resolves.toMatchObject({ status: 'succeeded', result: { status: 'succeeded', instanceId: 'export-me' } });
     expect(fs.readFileSync(outputPath, 'utf8')).toBe('PK\x03\x04new archive bytes');
-    expect(fs.readdirSync(path.dirname(outputPath)).some((name) => name.includes('.fmcl-export-'))).toBe(false);
+    expect(fs.readdirSync(path.dirname(outputPath)).some((name) => name.includes('.burrow-export-'))).toBe(false);
   });
 
   it.each(['write', 'publish'] as const)('restores an existing destination when %s fails', async (fault) => {
@@ -98,7 +98,7 @@ describe('journaled manifest export operation', () => {
         source: expect.objectContaining({ source: 'local', version: '2.0.0', author: 'Friend' }),
       }),
     }));
-    expect(fs.existsSync(path.join(rootPath, 'modpacks', 'export-me', '.fmcl-operation-publish.json'))).toBe(false);
+    expect(fs.existsSync(path.join(rootPath, 'modpacks', 'export-me', '.burrow-operation-publish.json'))).toBe(false);
   });
 
   it('persists the exact root-bound manifest command before publish and replays it once after a post-publish crash', async () => {

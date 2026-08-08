@@ -23,7 +23,7 @@ describe('delete operation', () => {
     });
 
     expect(fs.existsSync(path.join(rootPath, 'modpacks', 'target'))).toBe(false);
-    expect(fs.existsSync(path.join(rootPath, '.fmcl-operations', 'backups', started.id))).toBe(false);
+    expect(fs.existsSync(path.join(rootPath, '.burrow-operations', 'backups', started.id))).toBe(false);
     expect(execute).toHaveBeenCalledWith({ version: 1, type: 'delete', id: 'target' });
   });
 
@@ -36,7 +36,7 @@ describe('delete operation', () => {
     await expect(runner.waitFor(started.id)).resolves.toMatchObject({ status: 'failed', result: { status: 'failed' } });
 
     expect(capture(rootPath)).toEqual(before);
-    expect(fs.existsSync(path.join(rootPath, '.fmcl-operations', 'backups', started.id))).toBe(false);
+    expect(fs.existsSync(path.join(rootPath, '.burrow-operations', 'backups', started.id))).toBe(false);
   });
 
   it('restores the quarantined directory when cancellation arrives before the control-plane commit', async () => {
@@ -63,7 +63,7 @@ describe('delete operation', () => {
     await expect(runner.waitFor(started.id)).resolves.toMatchObject({ status: 'recovery-required', result: { status: 'recovery-required' } });
 
     expect(fs.existsSync(path.join(rootPath, 'modpacks', 'target'))).toBe(false);
-    expect(fs.readFileSync(path.join(rootPath, '.fmcl-operations', 'backups', started.id, 'modpacks', 'target', 'payload.bin'))).toEqual(Buffer.from([0, 1, 2, 255]));
+    expect(fs.readFileSync(path.join(rootPath, '.burrow-operations', 'backups', started.id, 'modpacks', 'target', 'payload.bin'))).toEqual(Buffer.from([0, 1, 2, 255]));
   });
 
   it('serializes same-instance deletes while the first operation is quarantined', async () => {

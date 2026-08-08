@@ -66,7 +66,7 @@ export function validatePrepushReleaseReport(value) {
   const errors = [];
   const report = asObject(value);
   if (!report) return { valid: false, errors: ['report must be an object'] };
-  if (schema.$id !== 'https://friendlauncher.app/quality/prepush-release-report.schema.json') errors.push('schema identity is invalid');
+  if (schema.$id !== 'https://raw.githubusercontent.com/malyarq/burrow/main/quality/schemas/prepush-release-report.schema.json') errors.push('schema identity is invalid');
   if (report.schemaVersion !== 1 || report.status !== 'passed') errors.push('report status is invalid');
   let candidate;
   try { candidate = validateCandidate(report.candidate); } catch (error) { errors.push(error.message); }

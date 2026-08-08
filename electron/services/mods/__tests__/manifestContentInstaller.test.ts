@@ -221,7 +221,7 @@ describe('ManifestContentInstaller', () => {
     )).resolves.toEqual([]);
 
     expect(contentStore.linkFile.mock.calls[0]?.[0]).toMatch(
-      /\/\.fmcl-operations\/staging\/share-operation\/modpacks\/share-pack\/mods\/shared\.jar$/,
+      /\/\.burrow-operations\/staging\/share-operation\/modpacks\/share-pack\/mods\/shared\.jar$/,
     );
   });
 });

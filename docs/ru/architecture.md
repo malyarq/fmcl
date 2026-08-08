@@ -195,7 +195,7 @@ Archive import использует непрозрачный `archiveRef`; rende
 
 ### Протокол root mutation lock
 
-Разрушительные root-wide операции используют протокол v3 в `.fmcl-operations/locks`. Неизменяемые записи Lamport bakery (`choosing` и `ticket`) выбирают одного writer; каждая запись содержит случайный token и уникальный путь к локальному Node socket владельца. Contender удаляет запись только когда socket однозначно отказал или отклонил token. Таймауты и неоднозначные ошибки локальной сети считаются live и блокируют операцию. Протокол не опирается на PID reuse или прошедшее время и безопасен при suspend процесса.
+Разрушительные root-wide операции используют протокол v3 в `.burrow-operations/locks`. Неизменяемые записи Lamport bakery (`choosing` и `ticket`) выбирают одного writer; каждая запись содержит случайный token и уникальный путь к локальному Node socket владельца. Contender удаляет запись только когда socket однозначно отказал или отклонил token. Таймауты и неоднозначные ошибки локальной сети считаются live и блокируют операцию. Протокол не опирается на PID reuse или прошедшее время и безопасен при suspend процесса.
 
 После победы writer удерживает атомарно опубликованный canonical bridge `mutation.lock` весь callback. Marker `mutation.lock.v3` задаёт границу offline upgrade: перед обновлением до v3, откатом или смешиванием сборок остановите все процессы Burrow с общим custom launcher root. Pre-v3 marker не reclaim-ится; операция fail-closed завершается `ROOT_LOCK_OFFLINE_UPGRADE_REQUIRED`.
 

@@ -27,7 +27,7 @@ type ManualPerformanceProfilerRecorder = ManualPerformanceProfiler & {
 
 declare global {
   interface Window {
-    __fmclPerformanceProfiler?: ManualPerformanceProfiler;
+    __burrowPerformanceProfiler?: ManualPerformanceProfiler;
   }
 }
 
@@ -67,7 +67,7 @@ export function createManualPerformanceProfiler(isDevelopment: boolean): ManualP
 const manualPerformanceProfiler = createManualPerformanceProfiler(import.meta.env.DEV);
 
 if (typeof window !== 'undefined') {
-  window.__fmclPerformanceProfiler = manualPerformanceProfiler;
+  window.__burrowPerformanceProfiler = manualPerformanceProfiler;
 }
 
 export function getManualPerformanceProfiler(): ManualPerformanceProfiler {

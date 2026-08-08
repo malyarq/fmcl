@@ -49,4 +49,4 @@ npx tsc -p tsconfig.json --noEmit
 
 ## Renderer surface
 
-`window.api` is the only Electron capability global. Top-level aliases and the generic allowlisted renderer bridge were removed for v0.8.0. `npm run architecture:check` prevents raw channel strings, legacy globals, and restoration of the generic bridge in `src/`.
+`window.api` is the only Electron capability global. `npm run architecture:check` prevents raw channel strings, obsolete globals, and restoration of a generic renderer bridge in `src/`.

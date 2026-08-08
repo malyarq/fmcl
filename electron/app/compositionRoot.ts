@@ -191,7 +191,7 @@ export function createCompositionRoot(options: CompositionRootOptions): MainComp
         const resolveRoot = async (): Promise<LauncherRoot> => await filesystem.rootResolver.resolve(rootPath);
         return {
           read: async () => await application.read(await resolveRoot()),
-          prepare: async () => await controlPlane.prepareFromLegacy(await resolveRoot()),
+          prepare: async () => await controlPlane.prepare(await resolveRoot()),
           execute: async (command) => await application.execute(await resolveRoot(), command),
         };
       },

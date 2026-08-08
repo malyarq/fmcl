@@ -49,11 +49,11 @@ describe('AtomicJsonStore', () => {
       legacy: false,
     });
     expect(JSON.parse(fs.readFileSync(filePath, 'utf8'))).toMatchObject({
-      _fmclSchemaVersion: 1,
+      _burrowSchemaVersion: 1,
       selected: 'two',
     });
     expect(JSON.parse(fs.readFileSync(getAtomicJsonBackupPath(filePath), 'utf8'))).toMatchObject({
-      _fmclSchemaVersion: 1,
+      _burrowSchemaVersion: 1,
       selected: 'one',
     });
   });
@@ -75,14 +75,14 @@ describe('AtomicJsonStore', () => {
     store.write({
       selected: 'one',
       values: [],
-      _fmclSchemaVersion: 99,
+      _burrowSchemaVersion: 99,
     } as TestState);
 
     expect(JSON.parse(fs.readFileSync(filePath, 'utf8'))).toMatchObject({
-      _fmclSchemaVersion: 1,
+      _burrowSchemaVersion: 1,
       selected: 'one',
     });
-    expect(store.read()?.value).not.toHaveProperty('_fmclSchemaVersion');
+    expect(store.read()?.value).not.toHaveProperty('_burrowSchemaVersion');
   });
 
   it('recovers a corrupt primary from the last-known-good backup', () => {
@@ -112,12 +112,12 @@ describe('AtomicJsonStore', () => {
   it('rejects unsupported versions without falling back to an older backup', () => {
     const { filePath, store } = createStore();
     fs.writeFileSync(filePath, JSON.stringify({
-      _fmclSchemaVersion: 99,
+      _burrowSchemaVersion: 99,
       selected: 'future',
       values: [],
     }));
     fs.writeFileSync(getAtomicJsonBackupPath(filePath), JSON.stringify({
-      _fmclSchemaVersion: 1,
+      _burrowSchemaVersion: 1,
       selected: 'old',
       values: [],
     }));

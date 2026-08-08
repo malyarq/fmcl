@@ -20,9 +20,7 @@ type ModpackFile = ModpackManifest['files'][number]
 
 const URL_SCHEME_PATTERN = /^[a-z][a-z\d+\-.]*:/i
 const SHARE_CODE_PREFIX = 'burrow://share/v1/'
-const LEGACY_SHARE_CODE_PREFIX = 'fmcl://share/v1/'
-const SHARE_CODE_PREFIXES = [SHARE_CODE_PREFIX, LEGACY_SHARE_CODE_PREFIX] as const
-const SHARE_CODE_SCHEMES = ['burrow://share/', 'fmcl://share/'] as const
+const SHARE_CODE_SCHEMES = ['burrow://share/'] as const
 const MAX_PATH_LENGTH = 4096
 const MAX_URL_LENGTH = 2048
 const MAX_SHARE_CODE_LENGTH = 32_768
@@ -348,7 +346,7 @@ export function validateShareCode(value: unknown): string {
     maxLength: MAX_SHARE_CODE_LENGTH,
   })
   const matchedScheme = findMatchingPrefix(rawCode, SHARE_CODE_SCHEMES)
-  const matchedPrefix = findMatchingPrefix(rawCode, SHARE_CODE_PREFIXES)
+  const matchedPrefix = rawCode.startsWith(SHARE_CODE_PREFIX) ? SHARE_CODE_PREFIX : undefined
 
   if (matchedScheme && !matchedPrefix) {
     fail('Share code version is not supported.')

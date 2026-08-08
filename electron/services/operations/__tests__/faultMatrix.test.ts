@@ -147,7 +147,7 @@ describe('operation publication fault matrix', () => {
     const operationId = '11111111-1111-4111-8111-111111111111';
     const destination = path.join(rootPath, 'modpacks', 'copy');
     fs.mkdirSync(destination, { recursive: true });
-    fs.writeFileSync(path.join(destination, '.fmcl-operation-publish.json'), JSON.stringify({ operationId }));
+    fs.writeFileSync(path.join(destination, '.burrow-operation-publish.json'), JSON.stringify({ operationId }));
     new OperationJournal(rootPath).save(publishedSnapshot(rootPath, operationId));
     const executed: InstanceCommand[] = [];
     const restarted = new OperationRunner([createDuplicateOperationAdapter()], { rootMutationCoordinator: coordinator(executed) });
@@ -157,7 +157,7 @@ describe('operation publication fault matrix', () => {
     expect(executed).toHaveLength(1);
     expect(executed[0]).toMatchObject({ type: 'commit-published', record: { id: 'copy' } });
     expect(new OperationJournal(rootPath).get(operationId)).toMatchObject({ status: 'recovered', phase: 'completed' });
-    expect(fs.existsSync(path.join(destination, '.fmcl-operation-publish.json'))).toBe(false);
+    expect(fs.existsSync(path.join(destination, '.burrow-operation-publish.json'))).toBe(false);
     await new OperationRunner([createDuplicateOperationAdapter()], { rootMutationCoordinator: coordinator() }).recover(rootPath);
     expect(new OperationJournal(rootPath).get(operationId)).toMatchObject({ status: 'recovered' });
   });

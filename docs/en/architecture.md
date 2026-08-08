@@ -195,7 +195,7 @@ Archive import consumes an opaque `archiveRef`; the renderer never receives the 
 
 ### Root mutation lock protocol
 
-Destructive root-wide operations use protocol v3 in `.fmcl-operations/locks`. Immutable Lamport choosing and ticket records select one writer; each record carries a random token and the owning process's unique local Node socket path. A contender removes a record only after the socket definitively refuses or rejects that token. Timeouts and ambiguous local-network failures remain live and block the operation. This avoids PID-reuse and elapsed-time liveness decisions, including while a process is suspended.
+Destructive root-wide operations use protocol v3 in `.burrow-operations/locks`. Immutable Lamport choosing and ticket records select one writer; each record carries a random token and the owning process's unique local Node socket path. A contender removes a record only after the socket definitively refuses or rejects that token. Timeouts and ambiguous local-network failures remain live and block the operation. This avoids PID-reuse and elapsed-time liveness decisions, including while a process is suspended.
 
 After winning the bakery turn, the writer holds the atomically published canonical `mutation.lock` bridge for the whole callback. The `mutation.lock.v3` marker is an offline upgrade boundary: stop every Burrow process sharing a custom launcher root before upgrading to v3, downgrading, or mixing builds. A pre-v3 marker is not reclaimed; the operation fails closed with `ROOT_LOCK_OFFLINE_UPGRADE_REQUIRED`.
 

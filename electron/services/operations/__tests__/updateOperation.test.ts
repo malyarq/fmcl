@@ -52,7 +52,7 @@ describe('staged manifest update operation', () => {
 
       await expect(runner.waitFor(started.id)).resolves.toMatchObject({ status: 'failed', result: { status: 'failed' } });
       expect(capture(rootPath)).toEqual(before);
-      expect(fs.existsSync(path.join(rootPath, '.fmcl-operations', 'staging', started.id))).toBe(false);
+      expect(fs.existsSync(path.join(rootPath, '.burrow-operations', 'staging', started.id))).toBe(false);
     },
   );
 

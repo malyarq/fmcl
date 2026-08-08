@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://friendlauncher.app/quality/package-smoke.schema.json",
+  "$id": "https://raw.githubusercontent.com/malyarq/burrow/main/quality/schemas/package-smoke.schema.json",
   "title": "Burrow packaged artifact smoke evidence",
   "type": "object",
   "additionalProperties": false,

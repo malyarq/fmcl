@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://friendlauncher.app/quality/prepush-release-report.schema.json",
+  "$id": "https://raw.githubusercontent.com/malyarq/burrow/main/quality/schemas/prepush-release-report.schema.json",
   "title": "Burrow pre-push release decision evidence",
   "type": "object",
   "additionalProperties": false,

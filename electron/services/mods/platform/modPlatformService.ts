@@ -422,7 +422,7 @@ export class ModPlatformService {
       }
 
       const tempDestination = guidedContentType
-        ? path.join(destDir, `.${filename}.fmcl-download`)
+        ? path.join(destDir, `.${filename}.burrow-download`)
         : destination;
 
       try {

@@ -269,7 +269,7 @@ export function validateReleaseEvidence(value) {
   const errors = [];
   const evidence = asObject(value);
   if (!evidence) return { valid: false, errors: ['evidence must be an object'] };
-  if (releaseEvidenceSchema.$id !== 'https://friendlauncher.app/quality/release-evidence.schema.json') errors.push('release evidence schema identity is invalid');
+  if (releaseEvidenceSchema.$id !== 'https://raw.githubusercontent.com/malyarq/burrow/main/quality/schemas/release-evidence.schema.json') errors.push('release evidence schema identity is invalid');
   if (evidence.schemaVersion !== 1) errors.push('schemaVersion must be 1');
   if (!['passed', 'failed'].includes(evidence.status)) errors.push('status must be passed or failed');
   try { validateCandidate(evidence.candidate); } catch (error) { errors.push(error.message); }

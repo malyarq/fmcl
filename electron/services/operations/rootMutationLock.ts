@@ -45,7 +45,7 @@ export class RootMutationLock {
   }
 
   private async acquire(rootPath: string): Promise<Lease> {
-    const directory = resolvePathWithinRoot(rootPath, '.fmcl-operations/locks', 'Operation lock directory');
+    const directory = resolvePathWithinRoot(rootPath, '.burrow-operations/locks', 'Operation lock directory');
     fs.mkdirSync(directory, { recursive: true });
     ensureProtocolMarker(directory);
 

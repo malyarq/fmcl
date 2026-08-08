@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const electron = vi.hoisted(() => ({
-  getPath: vi.fn(() => '/tmp/.fmcl'),
+  getPath: vi.fn(() => '/tmp/Burrow'),
   setPath: vi.fn(),
   getVersion: vi.fn(() => '0.9.1'),
   requestSingleInstanceLock: vi.fn(() => true),
@@ -32,8 +32,8 @@ describe('single application instance', () => {
     expect(isNewerApplicationVersion('1.0.0-rc.1', '1.0.0')).toBe(true);
     expect(resolveIncomingUpgrade('0.9.1', { version: '0.9.2', executablePath: '/Applications/Burrow.app/Contents/MacOS/Burrow' }))
       .toEqual({ version: '0.9.2', executablePath: '/Applications/Burrow.app/Contents/MacOS/Burrow' });
-    expect(resolveIncomingUpgrade('0.9.1', { version: '0.9.2', executablePath: '/Applications/FriendLauncher.app/Contents/MacOS/FriendLauncher' }))
-      .toEqual({ version: '0.9.2', executablePath: '/Applications/FriendLauncher.app/Contents/MacOS/FriendLauncher' });
+    expect(resolveIncomingUpgrade('0.9.1', { version: '0.9.2', executablePath: '/Applications/OtherLauncher.app/Contents/MacOS/OtherLauncher' }))
+      .toBeUndefined();
     expect(resolveIncomingUpgrade('0.9.1', { version: '0.9.2', executablePath: '/tmp/not-the-launcher' })).toBeUndefined();
     expect(resolveIncomingUpgrade('0.9.1', { version: '0.9.1', executablePath: '/tmp/Burrow.AppImage' })).toBeUndefined();
   });
@@ -60,7 +60,7 @@ describe('single application instance', () => {
 
   it('keeps the explicit second development slot isolated', () => {
     expect(acquireApplicationInstance('http://127.0.0.1:5174')).toBe(true);
-    expect(electron.setPath).toHaveBeenCalledWith('userData', '/tmp/.fmcl_2');
+    expect(electron.setPath).toHaveBeenCalledWith('userData', '/tmp/Burrow_2');
     expect(electron.requestSingleInstanceLock).not.toHaveBeenCalled();
   });
 

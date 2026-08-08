@@ -14,7 +14,6 @@ import { ApplicationLifecycle } from './applicationLifecycle';
 import { acquireApplicationInstance, registerApplicationInstanceHandoff } from './singleInstance';
 import { registerConsoleWindowHandlers } from './consoleWindowHandlers';
 import { runConfiguredFullTest } from './runConfiguredFullTest';
-import { resolveCompatibleUserDataPath } from './userDataCompatibility';
 
 function configureAppRoot() {
   const __filename = fileURLToPath(import.meta.url);
@@ -39,17 +38,6 @@ function configureIsolatedTestUserData(): boolean {
   fs.mkdirSync(app.getPath('appData'), { recursive: true });
   app.setPath('userData', testUserDataPath);
   return true;
-}
-
-function configureUserDataCompatibility(): void {
-  const currentUserDataPath = app.getPath('userData');
-  const compatibleUserDataPath = resolveCompatibleUserDataPath({
-    appDataPath: app.getPath('appData'),
-    currentUserDataPath,
-  });
-  if (compatibleUserDataPath !== currentUserDataPath) {
-    app.setPath('userData', compatibleUserDataPath);
-  }
 }
 
 function resolveRuntimePaths() {
@@ -106,11 +94,9 @@ function applyNativeAppIcon(vitePublicPath: string): string {
 }
 
 export function bootstrapMain() {
-  // New installations use the Burrow directory. Existing installations keep
-  // the legacy profile path so upgrades never strand user data.
   app.setName('Burrow');
-  app.setAppUserModelId('com.friendlauncher.app');
-  if (!configureIsolatedTestUserData()) configureUserDataCompatibility();
+  app.setAppUserModelId('com.malyarq.burrow');
+  configureIsolatedTestUserData();
 
   configureAppRoot();
   const paths = resolveRuntimePaths();

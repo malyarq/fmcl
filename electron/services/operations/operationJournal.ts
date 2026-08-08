@@ -20,7 +20,7 @@ export class OperationJournal {
 
   constructor(rootPath: string) {
     this.rootPath = canonicalRootPath(rootPath);
-    const operationsDirectory = resolveOperationPath(this.rootPath, '.fmcl-operations', 'Operation state directory');
+    const operationsDirectory = resolveOperationPath(this.rootPath, '.burrow-operations', 'Operation state directory');
     this.store = new AtomicJsonStore(
       path.join(operationsDirectory, 'journal.json'),
       { version: 1, validate: (value): value is OperationJournalDocument => isOperationJournalDocument(value, this.rootPath) },
@@ -221,7 +221,7 @@ function isArchiveRecovery(value: Record<string, unknown>, outputPath: string, o
   const expectedOutputPath = canonicalAbsolutePath(outputPath);
   const recoveryOutputPath = canonicalAbsolutePath(value.outputPath);
   if (!expectedOutputPath || recoveryOutputPath !== expectedOutputPath) return false;
-  const workspacePath = path.join(path.dirname(expectedOutputPath), `.${path.basename(expectedOutputPath)}.fmcl-export-${operationId}`);
+  const workspacePath = path.join(path.dirname(expectedOutputPath), `.${path.basename(expectedOutputPath)}.burrow-export-${operationId}`);
   return canonicalAbsolutePath(value.workspacePath) === workspacePath
     && canonicalAbsolutePath(value.stagedPath) === path.join(workspacePath, 'archive.zip')
     && canonicalAbsolutePath(value.backupPath) === path.join(workspacePath, 'previous-output.zip')
@@ -317,8 +317,8 @@ function isNonNegativeInteger(value: unknown): boolean { return Number.isSafeInt
 function isIdentifier(value: unknown): boolean { return typeof value === 'string' && /^[a-zA-Z0-9._-]{1,160}$/.test(value); }
 function isShareCode(value: unknown): boolean {
   if (typeof value !== 'string' || value.length < 4 || value.length > 32_768) return false;
-  const prefix = ['burrow://share/v1/', 'fmcl://share/v1/'].find((candidate) => value.startsWith(candidate));
-  const payload = prefix ? value.slice(prefix.length) : value;
+  const prefix = 'burrow://share/v1/';
+  const payload = value.startsWith(prefix) ? value.slice(prefix.length) : value;
   return /^[A-Za-z0-9+/=_-]+$/.test(payload);
 }
 function isErrorCode(value: unknown): boolean { return typeof value === 'string' && /^[A-Z0-9_]{1,64}$/.test(value); }

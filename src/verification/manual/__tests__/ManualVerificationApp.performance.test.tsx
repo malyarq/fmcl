@@ -29,7 +29,7 @@ describe('manual verification performance profiler', () => {
 
     profiler.reset();
     expect(profiler.read()).toEqual({ samples: [], excludedDevelopmentProbes: [] });
-    expect(getManualPerformanceProfiler()).toBe(window.__fmclPerformanceProfiler);
+    expect(getManualPerformanceProfiler()).toBe(window.__burrowPerformanceProfiler);
   });
 
   it('labels and excludes development StrictMode probes from production observations', () => {

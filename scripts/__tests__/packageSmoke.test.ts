@@ -253,7 +253,7 @@ describe('package smoke artifact contract', () => {
     const releaseRoot = createRelease(version);
     roots.push(releaseRoot);
     writeArtifact(releaseRoot, version, `Burrow-Mac-${version}-Installer.dmg`);
-    const previousArtifact = path.join(releaseRoot, `FriendLauncher-Mac-${previousVersion}-Installer.dmg`);
+    const previousArtifact = path.join(releaseRoot, `Burrow-Mac-${previousVersion}-Installer.dmg`);
     fs.writeFileSync(previousArtifact, 'previous fixture');
     const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-package-smoke-upgrade-'));
     roots.push(workspace);
@@ -303,22 +303,19 @@ describe('package smoke artifact contract', () => {
       },
     });
     expect(verifiedVersions).toEqual([
-      [previousVersion, { allowMissingMarker: true }],
+      [previousVersion, undefined],
       [version, undefined],
     ]);
     expect(spawnedEnvironments[0]).toMatchObject({
       BURROW_TEST_USER_DATA: path.join(workspace, 'user-data'),
       BURROW_PACKAGE_SMOKE_CONFIG: path.join(workspace, 'package-smoke-config.json'),
-      FMCL_TEST_USER_DATA: path.join(workspace, 'user-data'),
-      FMCL_PACKAGE_SMOKE_CONFIG: path.join(workspace, 'package-smoke-config.json'),
     });
     expect(spawnedEnvironments[1]).toMatchObject({
       BURROW_TEST_USER_DATA: path.join(workspace, 'user-data'),
       BURROW_PACKAGE_SMOKE_CONFIG: path.join(workspace, 'package-smoke-config.json'),
     });
-    expect(spawnedEnvironments[1]).not.toHaveProperty('FMCL_TEST_USER_DATA');
     expect(waitForProfileRelease).toHaveBeenCalledTimes(2);
-    expect(smoke.productNameForArtifact(previousArtifact, previousVersion, 'darwin')).toBe('FriendLauncher');
+    expect(smoke.productNameForArtifact(previousArtifact, previousVersion, 'darwin')).toBe('Burrow');
     expect(waitForProfileRelease).toHaveBeenNthCalledWith(1, path.join(workspace, 'user-data'), 5_000);
     expect(waitForProfileRelease).toHaveBeenNthCalledWith(2, path.join(workspace, 'user-data'), 5_000);
     expect(removeWorkspace).toHaveBeenCalledWith(workspace, {

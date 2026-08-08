@@ -14,37 +14,10 @@ const config: InstanceEditableConfig = {
 
 type Fixture = { rootPath: string; root: LauncherRoot; store: JsonControlPlaneStore };
 
-function createFixture(options: { afterPublish?: () => void; withLegacy?: boolean } = {}): Fixture {
+function createFixture(): Fixture {
   const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-control-plane-commit-'));
   const root = {} as LauncherRoot;
-  if (options.withLegacy !== false) {
-    fs.writeFileSync(path.join(rootPath, 'modpacks.json'), JSON.stringify({
-      _fmclSchemaVersion: 1, selectedModpack: 'pack-one', modpacks: { 'pack-one': { name: 'Pack One' } },
-    }));
-    fs.writeFileSync(path.join(rootPath, 'modpacks-metadata.json'), JSON.stringify({
-      _fmclSchemaVersion: 1, selectedModpack: 'pack-one', modpacks: {
-        'pack-one': { id: 'pack-one', name: 'Pack One', source: 'local', minecraftVersion: '1.21.1', createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-01T00:00:00.000Z' },
-      },
-    }));
-    fs.mkdirSync(path.join(rootPath, 'modpacks', 'pack-one'), { recursive: true });
-    fs.writeFileSync(path.join(rootPath, 'modpacks', 'pack-one', 'modpack.json'), JSON.stringify({
-      _fmclSchemaVersion: 1, id: 'pack-one', name: 'Pack One', runtime: { minecraft: '1.21.1' }, memory: { maxMb: 4096 }, vmOptions: [],
-      createdAt: '2026-08-01T00:00:00.000Z', updatedAt: '2026-08-01T00:00:00.000Z',
-    }));
-  }
-  return {
-    rootPath,
-    root,
-    store: new JsonControlPlaneStore(() => rootPath, options),
-  };
-}
-
-function coordinatorFor(fixture: Fixture, execute = (command: unknown) => applicationFor(fixture).execute(fixture.root, command)) {
-  return {
-    read: () => fixture.store.read(fixture.root),
-    prepare: () => fixture.store.prepareFromLegacy(fixture.root),
-    execute,
-  };
+  return { rootPath, root, store: new JsonControlPlaneStore(() => rootPath) };
 }
 
 function applicationFor(fixture: Fixture): InstanceApplication {
@@ -53,6 +26,14 @@ function applicationFor(fixture: Fixture): InstanceApplication {
     clock: { now: () => '2026-08-04T00:00:00.000Z' },
     ids: { next: () => 'created-pack' },
   });
+}
+
+function coordinatorFor(fixture: Fixture, execute = (command: unknown) => applicationFor(fixture).execute(fixture.root, command)) {
+  return {
+    read: () => fixture.store.read(fixture.root),
+    prepare: () => fixture.store.prepare(fixture.root),
+    execute,
+  };
 }
 
 describe('OperationRunner control-plane commits', () => {
@@ -90,28 +71,23 @@ describe('OperationRunner control-plane commits', () => {
     expect(JSON.parse(JSON.stringify(first))).toEqual(first);
     expect(first).toMatchObject({ status: 'failed', code: 'ROOT_MUTATION_FAILED', message: 'injected commit failure' });
     expect(second).toMatchObject({ status: 'committed' });
-    if (second.status === 'committed') {
-      expect(second.snapshot.records).toContainEqual(expect.objectContaining({ name: 'Retry Pack' }));
-    }
   });
 
-  it('returns canonical provenance on retry after a post-publish preparation crash', async () => {
-    const fixture = createFixture({ afterPublish: () => { throw new Error('injected post-publish crash'); } });
+  it('returns a typed preparation failure for corrupt canonical state', async () => {
+    const fixture = createFixture();
     roots.push(fixture.rootPath);
-    const crashed = new OperationRunner([], { rootMutationCoordinator: { forRoot: () => coordinatorFor(fixture) } });
+    fs.writeFileSync(path.join(fixture.rootPath, 'instance-control-plane.json'), '{not-json');
+    const runner = new OperationRunner([], { rootMutationCoordinator: { forRoot: () => coordinatorFor(fixture) } });
 
-    await expect(crashed.prepareControlPlane(fixture.rootPath)).resolves.toMatchObject({
-      status: 'failed', code: 'ROOT_MUTATION_PREPARE_FAILED', message: 'injected post-publish crash',
-    });
-
-    const recovered = new OperationRunner([], { rootMutationCoordinator: { forRoot: () => coordinatorFor(fixture) } });
-    await expect(recovered.prepareControlPlane(fixture.rootPath)).resolves.toMatchObject({
-      status: 'ready', source: 'canonical', snapshot: { selectedId: 'pack-one' },
+    await expect(runner.prepareControlPlane(fixture.rootPath)).resolves.toMatchObject({
+      status: 'failed',
+      code: 'ROOT_MUTATION_PREPARE_FAILED',
+      message: expect.stringContaining('State and recovery backup are unavailable'),
     });
   });
 
   it('does not commit after cancellation and leaves the runner recoverable for a later prepare', async () => {
-    const fixture = createFixture({ withLegacy: false });
+    const fixture = createFixture();
     roots.push(fixture.rootPath);
     let release: (() => void) | undefined;
     const gate = new Promise<void>((resolve) => { release = resolve; });

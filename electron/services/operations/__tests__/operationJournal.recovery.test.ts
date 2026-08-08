@@ -21,7 +21,7 @@ describe('operation recovery', () => {
     const journal = new OperationJournal(rootPath);
     const stagedId = '11111111-1111-4111-8111-111111111111';
     const publishedId = '22222222-2222-4222-8222-222222222222';
-    fs.mkdirSync(path.join(rootPath, '.fmcl-operations', 'staging', stagedId), { recursive: true });
+    fs.mkdirSync(path.join(rootPath, '.burrow-operations', 'staging', stagedId), { recursive: true });
     fs.mkdirSync(path.join(rootPath, 'modpacks', 'ambiguous'), { recursive: true });
     fs.writeFileSync(path.join(rootPath, 'modpacks', 'ambiguous', 'payload.txt'), 'do not guess');
     journal.save({ id: stagedId, kind: 'duplicate', rootPath, instanceId: 'source', status: 'running', phase: 'validated', progress: { completed: 0, total: 1 }, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), input: { kind: 'duplicate', rootPath, sourceId: 'source' }, recovery: { sourceId: 'source', destinationId: 'staged', destinationName: 'Staged' } });
@@ -30,7 +30,7 @@ describe('operation recovery', () => {
     const runner = new OperationRunner([createDuplicateOperationAdapter()]);
     await runner.recover(rootPath);
 
-    expect(fs.existsSync(path.join(rootPath, '.fmcl-operations', 'staging', stagedId))).toBe(false);
+    expect(fs.existsSync(path.join(rootPath, '.burrow-operations', 'staging', stagedId))).toBe(false);
     expect(runner.get(stagedId)).toMatchObject({ status: 'recovered', phase: 'completed' });
     expect(runner.get(publishedId)).toMatchObject({ status: 'recovery-required', phase: 'recovery-required' });
     expect(fs.readFileSync(path.join(rootPath, 'modpacks', 'ambiguous', 'payload.txt'), 'utf8')).toBe('do not guess');
@@ -142,9 +142,9 @@ describe('operation recovery', () => {
     tempDirs.push(rootPath);
     const journal = new OperationJournal(rootPath);
     const operationId = '55555555-5555-4555-8555-555555555555';
-    fs.mkdirSync(path.join(rootPath, '.fmcl-operations', 'backups', operationId, 'modpacks', 'target'), { recursive: true });
-    fs.writeFileSync(path.join(rootPath, '.fmcl-operations', 'backups', operationId, 'modpacks', 'target', 'payload.bin'), Buffer.from([0, 1, 2, 255]));
-    fs.writeFileSync(path.join(rootPath, '.fmcl-operations', 'backups', operationId, 'modpacks', 'target', 'modpack.json'), JSON.stringify({ id: 'target', name: 'Target', runtime: { minecraft: '1.20.1' }, memory: { maxMb: 4096 }, vmOptions: [] }));
+    fs.mkdirSync(path.join(rootPath, '.burrow-operations', 'backups', operationId, 'modpacks', 'target'), { recursive: true });
+    fs.writeFileSync(path.join(rootPath, '.burrow-operations', 'backups', operationId, 'modpacks', 'target', 'payload.bin'), Buffer.from([0, 1, 2, 255]));
+    fs.writeFileSync(path.join(rootPath, '.burrow-operations', 'backups', operationId, 'modpacks', 'target', 'modpack.json'), JSON.stringify({ id: 'target', name: 'Target', runtime: { minecraft: '1.20.1' }, memory: { maxMb: 4096 }, vmOptions: [] }));
     fs.writeFileSync(path.join(rootPath, 'modpacks.json'), JSON.stringify({ selectedModpack: 'target', modpacks: { target: { name: 'Target' } } }));
     fs.writeFileSync(path.join(rootPath, 'modpacks-metadata.json'), JSON.stringify({ selectedModpack: 'target', modpacks: { target: { id: 'target' } } }));
     journal.save({
@@ -157,7 +157,7 @@ describe('operation recovery', () => {
 
     expect(runner.get(operationId)).toMatchObject({ status: 'recovery-required', result: { status: 'recovery-required' } });
     expect(fs.existsSync(path.join(rootPath, 'modpacks', 'target', 'payload.bin'))).toBe(false);
-    expect(fs.readFileSync(path.join(rootPath, '.fmcl-operations', 'backups', operationId, 'modpacks', 'target', 'payload.bin'))).toEqual(Buffer.from([0, 1, 2, 255]));
+    expect(fs.readFileSync(path.join(rootPath, '.burrow-operations', 'backups', operationId, 'modpacks', 'target', 'payload.bin'))).toEqual(Buffer.from([0, 1, 2, 255]));
   });
 
   it('fails closed without cleaning a foreign root when a journal record changes its root paths', async () => {
@@ -165,7 +165,7 @@ describe('operation recovery', () => {
     const foreignRootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-journal-root-b-'));
     tempDirs.push(rootPath, foreignRootPath);
     const operationId = '66666666-6666-4666-8666-666666666666';
-    const foreignResidue = path.join(foreignRootPath, '.fmcl-operations', 'staging', operationId, 'preserve.txt');
+    const foreignResidue = path.join(foreignRootPath, '.burrow-operations', 'staging', operationId, 'preserve.txt');
     fs.mkdirSync(path.dirname(foreignResidue), { recursive: true });
     fs.writeFileSync(foreignResidue, 'do not touch');
     writeRawJournal(rootPath, {
@@ -211,7 +211,7 @@ describe('operation recovery', () => {
     tempDirs.push(rootPath, foreignRootPath);
     const operationId = '88888888-8888-4888-8888-888888888888';
     const foreignOutputPath = path.join(foreignRootPath, 'exports', 'victim.zip');
-    const foreignWorkspace = path.join(path.dirname(foreignOutputPath), `.${path.basename(foreignOutputPath)}.fmcl-export-${operationId}`);
+    const foreignWorkspace = path.join(path.dirname(foreignOutputPath), `.${path.basename(foreignOutputPath)}.burrow-export-${operationId}`);
     const foreignStagedPath = path.join(foreignWorkspace, 'archive.zip');
     const foreignBackupPath = path.join(foreignWorkspace, 'previous-output.zip');
     fs.mkdirSync(foreignWorkspace, { recursive: true });
@@ -248,7 +248,7 @@ describe('operation recovery', () => {
 });
 
 function writeRawJournal(rootPath: string, operations: Record<string, unknown>): void {
-  const journalPath = path.join(rootPath, '.fmcl-operations', 'journal.json');
+  const journalPath = path.join(rootPath, '.burrow-operations', 'journal.json');
   fs.mkdirSync(path.dirname(journalPath), { recursive: true });
-  fs.writeFileSync(journalPath, JSON.stringify({ operations, _fmclSchemaVersion: 1 }));
+  fs.writeFileSync(journalPath, JSON.stringify({ operations, _burrowSchemaVersion: 1 }));
 }

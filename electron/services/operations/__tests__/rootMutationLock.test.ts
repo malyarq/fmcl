@@ -48,7 +48,7 @@ describe('RootMutationLock', () => {
     expect(contenderEvents(beforeRelease, 'enter')).toHaveLength(1);
     expect(contenderEvents(beforeRelease, 'exit')).toHaveLength(0);
 
-    const locksDirectory = path.join(rootPath, '.fmcl-operations', 'locks');
+    const locksDirectory = path.join(rootPath, '.burrow-operations', 'locks');
     await waitForActiveTickets(locksDirectory, 2);
     expect(activeTicketPids(locksDirectory)).toHaveLength(2);
 
@@ -78,7 +78,7 @@ describe('RootMutationLock', () => {
     await waitForEventCount(eventsPath, 'enter', 1);
     await delay(150);
     expect(contenderEvents(readEvents(eventsPath), 'enter')).toHaveLength(1);
-    expect(activeTicketPids(path.join(rootPath, '.fmcl-operations', 'locks'))).toHaveLength(2);
+    expect(activeTicketPids(path.join(rootPath, '.burrow-operations', 'locks'))).toHaveLength(2);
 
     fs.writeFileSync(releasePath, 'release');
     await Promise.all([waitForExit(first), waitForExit(second)]);
@@ -91,7 +91,7 @@ describe('RootMutationLock', () => {
   it('removes a forged same-PID ticket only after its authenticated endpoint is dead', async () => {
     const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-root-lock-forged-'));
     temporary.push(rootPath);
-    const directory = path.join(rootPath, '.fmcl-operations', 'locks');
+    const directory = path.join(rootPath, '.burrow-operations', 'locks');
     fs.mkdirSync(directory, { recursive: true });
     const forgedPath = path.join(directory, 'mutation.lock.ticket-1-forged');
     fs.writeFileSync(forgedPath, JSON.stringify({ protocol: 3, pid: process.pid, token: 'forged', endpoint: { path: path.join(os.tmpdir(), `burrow-lock-${randomBytes(16).toString('hex')}.sock`) }, ticket: 1 }));
@@ -116,7 +116,7 @@ describe('RootMutationLock', () => {
     }
 
     await new RootMutationLock().run(rootPath, async () => undefined);
-    const directory = path.join(rootPath, '.fmcl-operations', 'locks');
+    const directory = path.join(rootPath, '.burrow-operations', 'locks');
     expect(fs.readdirSync(directory).filter((name) => name.startsWith('mutation.lock.ticket-') || name.startsWith('mutation.lock.choosing-'))).toEqual([]);
     expect(fs.existsSync(path.join(directory, 'mutation.lock'))).toBe(false);
   }, 30_000);
@@ -130,7 +130,7 @@ describe('RootMutationLock', () => {
     children.push(owner);
     await waitForEvent(eventsPath, 'enter owner');
 
-    const directory = path.join(rootPath, '.fmcl-operations', 'locks');
+    const directory = path.join(rootPath, '.burrow-operations', 'locks');
     const ownerTicketPath = fs.readdirSync(directory).find((name) => name.startsWith('mutation.lock.ticket-'));
     expect(ownerTicketPath).toBeDefined();
     const ownerTicket = JSON.parse(fs.readFileSync(path.join(directory, ownerTicketPath!), 'utf8')) as {
@@ -168,7 +168,7 @@ describe('RootMutationLock', () => {
     await waitForEvent(eventsPath, 'turn first');
 
     const oldReleasePath = path.join(rootPath, 'old-release');
-    const oldOwner = spawnOldCanonicalOwner(path.join(rootPath, '.fmcl-operations', 'locks', 'mutation.lock'), oldReleasePath);
+    const oldOwner = spawnOldCanonicalOwner(path.join(rootPath, '.burrow-operations', 'locks', 'mutation.lock'), oldReleasePath);
     children.push(oldOwner);
     await waitForEvent(eventsPath, 'old-ready');
     fs.writeFileSync(bakeryTurnBarrierPath, 'bridge');

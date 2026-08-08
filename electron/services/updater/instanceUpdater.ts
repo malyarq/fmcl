@@ -148,7 +148,7 @@ export class Updater {
             throw new Error(`Download size mismatch for ${file.path}`);
         }
 
-        const tempPath = `${destPath}.fmcl-download-${process.pid}-${crypto.randomUUID()}`;
+        const tempPath = `${destPath}.burrow-download-${process.pid}-${crypto.randomUUID()}`;
         const hash = crypto.createHash('sha1');
         let received = 0;
         const verifier = new Transform({

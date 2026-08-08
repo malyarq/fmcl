@@ -72,7 +72,7 @@ export class OperationRunner {
     }
   }
 
-  /** Explicitly prepares canonical state while holding the root mutation scope. */
+  /** Explicitly validates canonical state while holding the root mutation scope. */
   public async prepareControlPlane(rootPath: string): Promise<RootMutationPreparationResult | RootMutationFailure> {
     this.assertAccepting();
     try {
@@ -91,8 +91,8 @@ export class OperationRunner {
 
   /**
    * Executes one short canonical command in the same root scope as staged
-   * operations. Only create may prepare legacy state; ordinary commands never
-   * turn a read into a migration write.
+   * operations. Create validates the root before publishing its first
+   * canonical snapshot; ordinary commands stay read-only until execution.
    */
   public async commitControlPlane(rootPath: string, command: InstanceCommand): Promise<RootMutationCommandResult> {
     this.assertAccepting();
@@ -410,8 +410,8 @@ export class OperationRunner {
       { rootPath },
       async () => await this.rootMutationLock.run(rootPath, async () => {
         const coordinator = this.coordinatorFor(rootPath);
-        // Every contender must reread after the local queue and filesystem lock. This is also
-        // what makes a second first-use caller observe a published migration.
+        // Every contender must reread after the local queue and filesystem lock so a
+        // second first-use caller observes the snapshot published by the first.
         const current = coordinator ? await coordinator.read() : undefined;
         const scope: RootMutationScope & { coordinator?: RootMutationCoordinator } = {
           current,

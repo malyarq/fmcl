@@ -78,11 +78,9 @@ The game-data directory is configurable in Settings. New installations store app
 - macOS: `~/Library/Application Support/Burrow`
 - Linux: `~/.config/Burrow`
 
-An installation upgraded from FriendLauncher may continue to use the legacy `.fmcl` directory. This is intentional: Burrow reuses it so an upgrade or rollback cannot strand existing accounts, settings, or game data. Do not rename or merge these directories by hand.
-
 Use **Settings → Storage → Export settings** to create a portable JSON backup. The file deliberately excludes account credentials, analytics consent and identifier, Burrow Link room codes, local filesystem paths, game files, worlds, and modpacks. Importing a backup replaces only the supported settings and then restarts the interface.
 
-Export important modpacks separately. For a complete manual backup, save both the configured game-data directory and the active application-data directory (`Burrow` or legacy `.fmcl`). Do not delete either directory as a generic troubleshooting step.
+Export important modpacks separately. For a complete manual backup, save both the configured game-data directory and the `Burrow` application-data directory. Do not delete either directory as a generic troubleshooting step.
 
 ## Privacy and feedback
 

@@ -7,8 +7,8 @@ export class StagingWorkspace {
   public readonly backupRoot: string;
 
   constructor(rootPath: string, operationId: string) {
-    this.stagingRoot = resolvePathWithinRoot(rootPath, `.fmcl-operations/staging/${operationId}`, 'Operation staging directory');
-    this.backupRoot = resolvePathWithinRoot(rootPath, `.fmcl-operations/backups/${operationId}`, 'Operation backup directory');
+    this.stagingRoot = resolvePathWithinRoot(rootPath, `.burrow-operations/staging/${operationId}`, 'Operation staging directory');
+    this.backupRoot = resolvePathWithinRoot(rootPath, `.burrow-operations/backups/${operationId}`, 'Operation backup directory');
   }
 
   public stagedModpack(destinationId: string): string {
@@ -29,7 +29,7 @@ export class StagingWorkspace {
 
   /** Attach an operation-owned marker before the staged directory can be renamed live. */
   public markStaged(destinationPath: string): void {
-    fs.writeFileSync(path.join(destinationPath, '.fmcl-operation-publish.json'), JSON.stringify({ operationId: path.basename(this.stagingRoot) }), { mode: 0o600 });
+    fs.writeFileSync(path.join(destinationPath, '.burrow-operation-publish.json'), JSON.stringify({ operationId: path.basename(this.stagingRoot) }), { mode: 0o600 });
     fsyncDirectory(destinationPath);
   }
 
@@ -102,12 +102,12 @@ export class StagingWorkspace {
   }
 
   public removePublishMarker(destinationPath: string): void {
-    fs.rmSync(path.join(destinationPath, '.fmcl-operation-publish.json'), { force: true });
+    fs.rmSync(path.join(destinationPath, '.burrow-operation-publish.json'), { force: true });
   }
 
   private isOwnedPublishedDestination(destinationPath: string): boolean {
     try {
-      const marker = JSON.parse(fs.readFileSync(path.join(destinationPath, '.fmcl-operation-publish.json'), 'utf8')) as { operationId?: unknown };
+      const marker = JSON.parse(fs.readFileSync(path.join(destinationPath, '.burrow-operation-publish.json'), 'utf8')) as { operationId?: unknown };
       return marker.operationId === path.basename(this.stagingRoot);
     } catch {
       return false;

@@ -132,17 +132,6 @@ describe('ShareService', () => {
     expect(manifest.overrides).toBe('overrides');
   });
 
-  it('keeps pre-rebrand Burrow share codes importable', async () => {
-    const { instances, content } = createDependencies();
-    const service = new ShareService(instances, content);
-    const currentCode = encodeShareCode({ v: 1, n: 'Legacy Pack', mc: '1.20.1', ml: { t: 'vanilla' }, f: [] });
-
-    await expect(service.resolveShareCode(currentCode.replace('burrow://', 'fmcl://'))).resolves.toMatchObject({
-      name: 'Legacy Pack',
-      minecraft: { version: '1.20.1' },
-    });
-  });
-
   it('wraps generation failures with a stable public error', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { content } = createDependencies();

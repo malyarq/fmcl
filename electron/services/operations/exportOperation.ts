@@ -234,7 +234,7 @@ function validatePublishedManifest(instancePath: string, input: ManifestExportOp
 }
 
 function privateSiblingWorkspacePath(outputPath: string, operationId: string): string {
-  return path.join(path.dirname(outputPath), `.${path.basename(outputPath)}.fmcl-export-${operationId}`);
+  return path.join(path.dirname(outputPath), `.${path.basename(outputPath)}.burrow-export-${operationId}`);
 }
 
 function createPrivateSiblingWorkspace(workspace: string): void {

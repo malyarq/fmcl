@@ -73,7 +73,7 @@ jobs:
       - run: |
           git ls-remote origin refs/heads/main
           sha256sum --check SHA256SUMS.txt
-          node scripts/changelog-release-notes.js --current 0.9.2 --previous 0.9.1 --output release-notes.md
+          node scripts/changelog-release-notes.js --current 0.9.2 --output release-notes.md
           cleanup_unpublished_tag() { git push origin ":refs/tags/$TAG"; }
           trap cleanup_unpublished_tag ERR
           git tag -a "$TAG" -m "Release $TAG"
@@ -110,7 +110,7 @@ describe('offline workflow structure enforcement', () => {
     ['missing deterministic smoke aggregation', fixture({ release: fixture().release.replace('node scripts/aggregate-platform-smoke.js', 'node inline-aggregate.js') })],
     ['flattened artifact download path', fixture({ release: fixture().release.replaceAll('/release-assets/${{ needs.verify.outputs.version }}', '/release-assets') })],
     ['tag created before protected publish', fixture({ release: fixture().release.replace('  verify:\n', '  verify:\n    env:\n      EARLY: git tag -a "$TAG"\n') })],
-    ['generated release notes', fixture({ release: fixture().release.replace('node scripts/changelog-release-notes.js --current 0.9.2 --previous 0.9.1 --output release-notes.md', 'true').replace('--notes-file release-notes.md', '--generate-notes') })],
+    ['generated release notes', fixture({ release: fixture().release.replace('node scripts/changelog-release-notes.js --current 0.9.2 --output release-notes.md', 'true').replace('--notes-file release-notes.md', '--generate-notes') })],
     ['mutable action tag', fixture({ release: fixture().release.replace(/@[0-9a-f]{40}/, '@v7') })],
     ['untrusted pinned action', fixture({ release: `${fixture().release}\n      - uses: attacker/payload@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n` })],
   ])('rejects %s', (_name, workflows) => {

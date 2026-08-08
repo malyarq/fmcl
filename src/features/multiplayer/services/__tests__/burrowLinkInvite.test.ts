@@ -19,8 +19,6 @@ describe('Burrow Link invitations', () => {
     expect(normalizeBurrowLinkInvite(roomCode.toUpperCase())).toBe(roomCode);
     expect(normalizeBurrowLinkInvite(`BURROW-${formatBurrowLinkCode(roomCode)}`)).toBe(roomCode);
     expect(normalizeBurrowLinkInvite(createBurrowLinkInvite(roomCode))).toBe(roomCode);
-    expect(normalizeBurrowLinkInvite(`FMCL-${formatBurrowLinkCode(roomCode)}`)).toBe(roomCode);
-    expect(normalizeBurrowLinkInvite(`fmcl://join/${roomCode}`)).toBe(roomCode);
   });
 
   it('rejects partial, malformed, and decorated invitations', () => {

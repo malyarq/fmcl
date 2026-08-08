@@ -80,21 +80,6 @@ describe('privacy-first analytics client', () => {
     expect(localStorage.getItem(ANALYTICS_INSTALL_ID_KEY)).toBeNull();
   });
 
-  it('migrates pre-rebrand consent and anonymous id without changing their meaning', async () => {
-    localStorage.setItem('fmcl_analytics_consent', 'granted');
-    localStorage.setItem('fmcl_analytics_install_id', 'legacy-install-id');
-    const fetcher = vi.fn().mockResolvedValue({ ok: true } as Response);
-    const client = createAnalyticsClient({ fetcher, projectToken: 'phc_public_project_token', storage: localStorage });
-
-    await expect(client.capture('app_opened', { language: 'ru', ui_mode: 'simple' })).resolves.toBe('sent');
-    const payload = JSON.parse(String(fetcher.mock.calls[0]?.[1]?.body)) as { distinct_id: string };
-    expect(payload.distinct_id).toBe('legacy-install-id');
-    expect(localStorage.getItem(ANALYTICS_CONSENT_KEY)).toBe('granted');
-    expect(localStorage.getItem(ANALYTICS_INSTALL_ID_KEY)).toBe('legacy-install-id');
-    expect(localStorage.getItem('fmcl_analytics_consent')).toBeNull();
-    expect(localStorage.getItem('fmcl_analytics_install_id')).toBeNull();
-  });
-
   it('rejects insecure or credential-bearing analytics hosts', () => {
     expect(normalizePostHogHost('http://posthog.example')).toBeNull();
     expect(normalizePostHogHost('https://user:pass@posthog.example')).toBeNull();

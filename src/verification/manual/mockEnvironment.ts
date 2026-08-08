@@ -122,7 +122,7 @@ const baseConfigs: Record<string, ModpackConfig> = {
       resolution: { width: 1600, height: 900, fullscreen: false },
       extraArgs: ['--demo-mode=false'],
     },
-    server: { host: 'play.friendlauncher.local', port: 25565 },
+    server: { host: 'play.burrow.test', port: 25565 },
     networkMode: 'hyperswarm',
     createdAt: '2026-04-01T10:00:00.000Z',
     updatedAt: '2026-04-13T08:30:00.000Z',

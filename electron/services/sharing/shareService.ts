@@ -28,7 +28,7 @@ const MAX_NAME_LENGTH = 120;
 const MAX_RUNTIME_LENGTH = 64;
 const MAX_IDENTIFIER_LENGTH = 128;
 const MAX_LOADER_VERSION_LENGTH = 120;
-const SHARE_CODE_PREFIXES = ['burrow://share/v1/', 'fmcl://share/v1/'] as const;
+const SHARE_CODE_PREFIX = 'burrow://share/v1/';
 
 type ShareManifestMod = Readonly<{
     source: 'curseforge' | 'modrinth';
@@ -110,8 +110,7 @@ export class ShareService {
 
     public async resolveShareCode(code: string): Promise<ModpackManifest> {
         try {
-            const prefix = SHARE_CODE_PREFIXES.find((candidate) => code.startsWith(candidate));
-            const base64 = prefix ? code.slice(prefix.length) : code;
+            const base64 = code.startsWith(SHARE_CODE_PREFIX) ? code.slice(SHARE_CODE_PREFIX.length) : code;
 
             const buffer = Buffer.from(base64, 'base64');
             if (buffer.length === 0 || buffer.length > MAX_SHARE_COMPRESSED_BYTES) {

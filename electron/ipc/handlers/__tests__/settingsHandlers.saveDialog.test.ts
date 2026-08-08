@@ -95,17 +95,17 @@ describe('settings native save dialog authorization', () => {
 
     fs.writeFileSync(filePath, JSON.stringify({
       schemaVersion: 1,
-      product: 'FriendLauncher',
+      product: 'OtherLauncher',
       createdAt: '2026-08-06T00:00:00.000Z',
       values: { settings_language: 'ru' },
     }));
-    await expect(importBackup?.({})).resolves.toMatchObject({ values: { settings_language: 'ru' } });
+    await expect(importBackup?.({})).rejects.toThrow('Unsupported Burrow settings backup');
 
     fs.writeFileSync(filePath, JSON.stringify({
       schemaVersion: 1,
       product: 'Burrow',
       createdAt: '2026-08-06T00:00:00.000Z',
-      values: { fmcl_analytics_install_id: 'secret' },
+      values: { burrow_analytics_install_id: 'secret' },
     }));
     await expect(importBackup?.({})).rejects.toThrow(/unsupported key/i);
 

@@ -1,6 +1,6 @@
 # Troubleshooting
 
-Use this page for common user-facing failures in the stable release. Do not delete the game-data, `Burrow`, or legacy `.fmcl` directories before making a backup.
+Use this page for common user-facing failures in the stable release. Do not delete the game-data or `Burrow` directories before making a backup.
 
 ## The operating system blocks the installer
 
