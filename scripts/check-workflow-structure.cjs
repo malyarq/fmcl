@@ -36,13 +36,21 @@ function checkWorkflowStructure({ ci, release }) {
   if (!/VITE_POSTHOG_PROJECT_TOKEN:\s*\$\{\{\s*vars\.POSTHOG_PROJECT_TOKEN\s*\}\}/.test(release) || !/test -n "\$VITE_POSTHOG_PROJECT_TOKEN"/.test(release)) errors.push('release builds must require the configured privacy-reviewed analytics project token')
   if (/npm run (?:smoke:package|release:evidence)[^\n]*>/.test(release)) errors.push('workflow must not redirect npm banners into JSON evidence')
   if (!/scripts\/package-smoke\.js[^\n]*--output/.test(release) || !/scripts\/release-evidence\.js[^\n]*--output/.test(release)) errors.push('workflow must persist smoke and release evidence through explicit output files')
-  if (!/gh release download[^\n]*PREVIOUS_TAG/.test(release) || !/scripts\/package-smoke\.js[^\n]*--previous-artifact[^\n]*--previous-version/.test(release)) errors.push('native release smoke must prove upgrade from the previous published package')
+  if (!/PREVIOUS_TAG=.*gh release view[^\n]*\|\| true/.test(release)
+    || !/if:\s*needs\.verify\.outputs\.previous_tag != ''/.test(release)
+    || !/gh release download[^\n]*PREVIOUS_TAG/.test(release)
+    || !/if \[ -n "\$PREVIOUS_ARTIFACT" \][\s\S]*--previous-artifact[^\n]*--previous-version/.test(release)) {
+    errors.push('native release smoke must require an upgrade only when a previous public release exists')
+  }
   if (!/\$\{\{\s*runner\.temp\s*\}\}/.test(release)) errors.push('downloaded and generated evidence must stay outside the checkout')
   if (/pattern:\s*release-\*\s*$/m.test(release)) errors.push('broad release artifact patterns can mix packages with evidence')
   if (!/pattern:\s*release-package-\*/.test(release) || !/name:\s*verified-release-assets/.test(release)) errors.push('publish must consume only the verified release-assets handoff')
   if (!/runner\.temp\s*\}\}\/release-assets\/\$\{\{\s*needs\.verify\.outputs\.version\s*\}\}/.test(release)) errors.push('downloaded packages must retain the version-scoped directory expected by smoke')
   if (!/SHA256SUMS-\$\{\{\s*runner\.os\s*\}\}\.txt/.test(release) || !/sha256sum --check[^\n]*\$?\(?['"]?\$?\(?basename/.test(release)) errors.push('clean verification must check preserved per-platform build manifests')
-  if (!/scripts\/aggregate-platform-smoke\.js[^\n]*--require-upgrade/.test(release)) errors.push('release platform smoke aggregation must require verified package upgrades')
+  if (!/scripts\/aggregate-platform-smoke\.js/.test(release)
+    || !/if \[ -n "\$PREVIOUS_TAG" \][^\n]*--require-upgrade/.test(release)) {
+    errors.push('release platform smoke aggregation must conditionally require verified package upgrades')
+  }
   const publish = release.match(/^ {2}publish:\s*$[\s\S]*/m)?.[0] ?? ''
   const beforePublish = publish ? release.slice(0, release.indexOf(publish)) : release
   if (/git tag\s+-[a-zA-Z]*a/.test(beforePublish)) errors.push('release tag must not be created before protected publication')

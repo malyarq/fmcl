@@ -38,8 +38,10 @@ jobs:
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: false
     steps:
+      - run: PREVIOUS_TAG=$(gh release view --json tagName --jq .tagName || true)
+      - if: needs.verify.outputs.previous_tag != ''
       - run: gh release download "$PREVIOUS_TAG"
-      - run: node scripts/package-smoke.js --previous-artifact "$PREVIOUS_ARTIFACT" --previous-version 0.9.1 --output "\${{ runner.temp }}/smoke.json"
+      - run: if [ -n "$PREVIOUS_ARTIFACT" ]; then node scripts/package-smoke.js --previous-artifact "$PREVIOUS_ARTIFACT" --previous-version 0.9.1 --output "\${{ runner.temp }}/smoke.json"; fi
       - run: node scripts/release-evidence.js --output "\${{ runner.temp }}/evidence.json"
       - run: cp SHA256SUMS.txt SHA256SUMS-\${{ runner.os }}.txt
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -54,7 +56,7 @@ jobs:
           path: \${{ runner.temp }}/release-assets/\${{ needs.verify.outputs.version }}
       - run: sha256sum --check "$(basename "$manifest")"
       - run: xvfb-run --auto-servernum npm run quality:check -- --profile=release --releaseDir "\${{ runner.temp }}/release-assets/\${{ needs.verify.outputs.version }}" --version 0.9.2 --tag v0.9.2 --commit "\${{ inputs.commit }}" --report "\${{ runner.temp }}/verified/release-evidence.json"
-      - run: node scripts/aggregate-platform-smoke.js --input "\${{ runner.temp }}/evidence" --output "\${{ runner.temp }}/verified/platform-smoke.json" --require-upgrade
+      - run: if [ -n "$PREVIOUS_TAG" ]; then node scripts/aggregate-platform-smoke.js --input "\${{ runner.temp }}/evidence" --output "\${{ runner.temp }}/verified/platform-smoke.json" --require-upgrade; fi
       - run: node scripts/prepush-release-report.js --tag v0.9.2 --commit "\${{ inputs.commit }}" --version 0.9.2 --quality quality/evidence/quality-contract.json --release-evidence "\${{ runner.temp }}/verified/release-evidence.json" --platform-smoke "\${{ runner.temp }}/verified/platform-smoke.json" --output "\${{ runner.temp }}/verified/prepush-release-report.json"
       - run: test -f quality/schemas/prepush-release-report.schema.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7

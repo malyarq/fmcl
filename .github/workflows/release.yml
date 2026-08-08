@@ -62,7 +62,7 @@ jobs:
           test "$VERSION" = "$(node -p "require('./package.json').version")"
           test -z "$(git ls-remote --tags origin "refs/tags/$TAG" "refs/tags/$TAG^{}")"
           ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1
-          PREVIOUS_TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)
+          PREVIOUS_TAG=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName 2>/dev/null || true)
           PREVIOUS_VERSION=${PREVIOUS_TAG#v}
           printf 'tag=%s\nversion=%s\ncommit=%s\nprevious_tag=%s\nprevious_version=%s\n' "$TAG" "$VERSION" "$COMMIT" "$PREVIOUS_TAG" "$PREVIOUS_VERSION" >> "$GITHUB_OUTPUT"
 
@@ -112,6 +112,7 @@ jobs:
           test "$(node -p "require('./package.json').version")" = "${{ needs.verify.outputs.version }}"
 
       - name: Download previous published package for upgrade smoke
+        if: needs.verify.outputs.previous_tag != ''
         id: previous
         shell: bash
         env:
@@ -154,10 +155,14 @@ jobs:
           PREVIOUS_ARTIFACT: ${{ steps.previous.outputs.path }}
         run: |
           mkdir -p "$EVIDENCE_ROOT"
+          SMOKE_ARGS=(--release-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --output "$EVIDENCE_ROOT/${{ runner.os }}-package-smoke.json")
+          if [ -n "$PREVIOUS_ARTIFACT" ]; then
+            SMOKE_ARGS+=(--previous-artifact "$PREVIOUS_ARTIFACT" --previous-version ${{ needs.verify.outputs.previous_version }})
+          fi
           if [ "${{ runner.os }}" = "Linux" ]; then
-            xvfb-run --auto-servernum node scripts/package-smoke.js --release-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --previous-artifact "$PREVIOUS_ARTIFACT" --previous-version ${{ needs.verify.outputs.previous_version }} --output "$EVIDENCE_ROOT/${{ runner.os }}-package-smoke.json"
+            xvfb-run --auto-servernum node scripts/package-smoke.js "${SMOKE_ARGS[@]}"
           else
-            node scripts/package-smoke.js --release-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --previous-artifact "$PREVIOUS_ARTIFACT" --previous-version ${{ needs.verify.outputs.previous_version }} --output "$EVIDENCE_ROOT/${{ runner.os }}-package-smoke.json"
+            node scripts/package-smoke.js "${SMOKE_ARGS[@]}"
           fi
           node scripts/release-evidence.js --artifacts-dir release/${{ needs.verify.outputs.version }} --version ${{ needs.verify.outputs.version }} --tag ${{ needs.verify.outputs.tag }} --commit ${{ needs.verify.outputs.commit }} --output "$EVIDENCE_ROOT/${{ runner.os }}-release-evidence.json"
           cp release/${{ needs.verify.outputs.version }}/SHA256SUMS.txt release/${{ needs.verify.outputs.version }}/SHA256SUMS-${{ runner.os }}.txt
@@ -252,8 +257,11 @@ jobs:
         env:
           DOWNLOADED_EVIDENCE: ${{ runner.temp }}/downloaded-evidence
           VERIFIED_EVIDENCE: ${{ runner.temp }}/verified-release-evidence
+          PREVIOUS_TAG: ${{ needs.verify.outputs.previous_tag }}
         run: |
-          node scripts/aggregate-platform-smoke.js --input "$DOWNLOADED_EVIDENCE" --output "$VERIFIED_EVIDENCE/platform-smoke.json" --require-upgrade
+          AGGREGATE_ARGS=(--input "$DOWNLOADED_EVIDENCE" --output "$VERIFIED_EVIDENCE/platform-smoke.json")
+          if [ -n "$PREVIOUS_TAG" ]; then AGGREGATE_ARGS+=(--require-upgrade); fi
+          node scripts/aggregate-platform-smoke.js "${AGGREGATE_ARGS[@]}"
 
       - name: Validate schema-bound pre-push report
         id: report
