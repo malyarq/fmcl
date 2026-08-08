@@ -49,7 +49,7 @@ Stack: `Electron` + `React` + `TypeScript` + `TailwindCSS` + `Vite`.
 - Start from the narrowest relevant entrypoint instead of scanning the whole repository.
 - For UI bugs, inspect the component, its hooks, its IPC wrapper, and nearby tests together.
 - For IPC work, trace the full path in this order: shared contract -> preload bridge -> IPC handler -> renderer wrapper -> UI consumer.
-- For documentation tasks, update both language variants when the document is mirrored in `docs/en` and `docs/ru`.
+- For documentation tasks, treat Russian as the primary project language, then keep the English mirror aligned when the document exists in both `docs/ru` and `docs/en`.
 
 ## Process Hygiene
 - Do not leave long-lived processes, terminals, browser sessions, watchers, or spawned agents running after the task.
@@ -60,6 +60,8 @@ Stack: `Electron` + `React` + `TypeScript` + `TailwindCSS` + `Vite`.
 
 ## Git
 - Make one commit for one finished, coherent result; do not preserve intermediate agent iterations as history.
-- Write a short, concrete subject that explains the result without task context. Conventional prefixes are allowed, but the words after the prefix must carry the meaning.
+- Read the staged diff before committing. Write a short, concrete lowercase English subject, usually three to eight words, that names the finished result without task context or a trailing period.
+- Do not add conventional prefixes such as `feat:` or `fix:`; the project history uses plain human-readable subjects.
 - Never put phase, plan, wave, review, or agent-task numbers in commit messages. Avoid subjects such as `progress`, `checkpoint`, `address feedback`, or `continue work`.
+- Never add `Co-authored-by`, `Generated-by`, agent, model, or automation attribution to the subject, body, or trailers.
 - Add a body only when a maintainer needs the reason, migration consequence, or non-obvious tradeoff.

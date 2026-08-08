@@ -1,35 +1,8 @@
-# Burrow documentation
+# Документация Burrow
 
-The documentation is split by audience and language. English and Russian variants describe the same behavior; code, tests, and workflow files remain the final source of truth.
+Русский — основной язык документации проекта. Английские версии полностью описывают то же поведение; окончательным источником истины остаются код, тесты и файлы автоматизации.
 
-[English](#english) · [Русский](#russian)
-
-## English
-
-### Players
-
-- [User guide](en/user-guide.md) — installation, first launch, updates, and data safety
-- [Troubleshooting](en/troubleshooting.md) — common launch, Java, content, network, and update failures
-- [Known issues](en/known-issues.md) — confirmed limitations in the current stable release
-- [Privacy and analytics](en/privacy.md) — opt-in telemetry, exact event fields, retention, and feedback behavior
-
-### Contributors
-
-- [Development](en/development.md) — environment, commands, and day-to-day workflow
-- [Testing](en/testing.md) — unit, visual, installation, CI, and release checks
-- [Architecture](en/architecture.md) — process boundaries and directory ownership
-- [Code style](en/code-style.md) — reviewable engineering rules
-- [IPC contracts](en/contracts.md) and [contract map](en/contracts-map.md)
-- [Design system](en/design-system.md) — tokens, shared components, and accessibility rules
-- [Contributing](../CONTRIBUTING.md)
-
-### Maintainers
-
-- [Release runbook](en/releasing.md)
-- [Security model](en/security.md) and [reporting policy](../SECURITY.md)
-- [Product gate](en/roadmap.md)
-- [Changelog](../CHANGELOG.md)
-- [Third-party notices](../THIRD_PARTY_NOTICES.md)
+[Русский](#русский) · [English](#english)
 
 ## Русский
 
@@ -58,10 +31,39 @@ The documentation is split by audience and language. English and Russian variant
 - [История изменений](../CHANGELOG.md)
 - [Уведомления о сторонних компонентах](../THIRD_PARTY_NOTICES.md)
 
-## Maintenance rules
+## English
 
-- Update both language variants when a mirrored document changes.
-- Do not keep dated plans as current product documentation; Git history preserves completed planning material.
-- Verify commands against `package.json` and workflows against `.github/workflows/`.
-- Run `npm run contracts:check` after changing the IPC channel map.
-- Keep local Markdown links valid.
+English documentation mirrors the Russian source and describes the same product behavior.
+
+### Players
+
+- [User guide](en/user-guide.md) — installation, first launch, updates, and data safety
+- [Troubleshooting](en/troubleshooting.md) — common launch, Java, content, network, and update failures
+- [Known issues](en/known-issues.md) — confirmed limitations in the current stable release
+- [Privacy and analytics](en/privacy.md) — opt-in telemetry, exact event fields, retention, and feedback behavior
+
+### Contributors
+
+- [Development](en/development.md) — environment, commands, and day-to-day workflow
+- [Testing](en/testing.md) — unit, visual, installation, CI, and release checks
+- [Architecture](en/architecture.md) — process boundaries and directory ownership
+- [Code style](en/code-style.md) — reviewable engineering rules
+- [IPC contracts](en/contracts.md) and [contract map](en/contracts-map.md)
+- [Design system](en/design-system.md) — tokens, shared components, and accessibility rules
+- [Contributing](../CONTRIBUTING.md)
+
+### Maintainers
+
+- [Release runbook](en/releasing.md)
+- [Security model](en/security.md) and [reporting policy](../SECURITY.md)
+- [Product gate](en/roadmap.md)
+- [Changelog](../CHANGELOG.md)
+- [Third-party notices](../THIRD_PARTY_NOTICES.md)
+
+## Правила поддержки
+
+- Сначала обновляйте русскую версию документа, затем синхронизируйте английское зеркало.
+- Не храните датированные планы как актуальную документацию продукта: завершённая работа остаётся в истории Git.
+- Сверяйте команды с `package.json`, а процессы выпуска — с `.github/workflows/`.
+- После изменения карты IPC-каналов запускайте `npm run contracts:check`.
+- Сохраняйте локальные Markdown-ссылки рабочими.

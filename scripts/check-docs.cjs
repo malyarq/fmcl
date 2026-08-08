@@ -5,7 +5,7 @@ const path = require('node:path')
 const root = path.join(__dirname, '..')
 const requiredRootDocs = [
   'README.md',
-  'README.ru.md',
+  'README.en.md',
   'CHANGELOG.md',
   'CONTRIBUTING.md',
   'SECURITY.md',
@@ -107,10 +107,16 @@ function main() {
     if (!index.includes(`en/${name}`)) failures.push(`Missing from docs index: en/${name}`)
     if (!index.includes(`ru/${name}`)) failures.push(`Missing from docs index: ru/${name}`)
   }
+  if (index.indexOf('## Русский') === -1 || index.indexOf('## English') === -1 || index.indexOf('## Русский') > index.indexOf('## English')) {
+    failures.push('docs/README.md must present Russian documentation before the English mirror')
+  }
 
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8')
   if (!readme.includes('https://github.com/malyarq/burrow/releases/latest')) {
     failures.push('README.md does not link to the latest GitHub release')
+  }
+  if (!readme.includes('[English](README.en.md)') || !readme.includes('**Играй локально. Зови друга.**')) {
+    failures.push('README.md must remain the Russian primary project page with an English mirror link')
   }
 
   if (failures.length) {

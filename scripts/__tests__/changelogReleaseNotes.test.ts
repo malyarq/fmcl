@@ -1,13 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { extractReleaseNotes } from '../changelog-release-notes.js';
 
-const changelog = `# Changelog
+const changelog = `# История изменений / Changelog
 
-## Unreleased
+## Не выпущено / Unreleased
 
-Nothing.
+Изменений нет. / Nothing.
 
 ## [0.9.1] — 2026-08-07
+
+### Русский
+
+- Исправление безопасности.
+
+### English
 
 - Security fix.
 
@@ -27,6 +33,8 @@ describe('release notes from the current changelog entry', () => {
     expect(notes).not.toContain('## [0.9.0]');
     expect(notes).not.toContain('## [0.8.1]');
     expect(notes).toContain('Пакеты не подписаны издателем');
+    expect(notes.indexOf('### Русский')).toBeLessThan(notes.indexOf('### English'));
+    expect(notes.indexOf('Пакеты не подписаны издателем')).toBeLessThan(notes.indexOf('Packages are unsigned'));
   });
 
   it('fails instead of silently publishing incomplete notes', () => {

@@ -2,7 +2,7 @@
 
 ## Scope
 
-This directory contains player, contributor, maintainer, architecture, and historical documentation in English and Russian.
+This directory contains player, contributor, maintainer, architecture, and historical documentation in Russian and English. Russian is the primary project language; English is a complete mirror for international users and contributors.
 
 ## Current documentation
 
@@ -15,7 +15,7 @@ This directory contains player, contributor, maintainer, architecture, and histo
 
 ## Working rules
 
-- Keep English and Russian variants aligned when a document is mirrored.
+- Update the Russian source first and keep the English variant aligned when a document is mirrored.
 - Verify behavior against code, `package.json`, and `.github/workflows/*`; documentation is not allowed to override runtime truth.
 - Update both contract maps when IPC channels change, then run `npm run contracts:check` and `npm run ipc:check`.
 - Keep current guides free of phase numbers, temporary audit language, and completed milestone instructions.

@@ -1,57 +1,57 @@
 # Burrow
 
-[English](README.md) · [Русский](README.ru.md) · [Download](https://github.com/malyarq/burrow/releases/latest) · [Documentation](docs/README.md)
+[Русский](README.md) · [English](README.en.md) · [Скачать](https://github.com/malyarq/burrow/releases/latest) · [Документация](docs/README.md)
 
-[![CI](https://github.com/malyarq/burrow/actions/workflows/ci.yml/badge.svg)](https://github.com/malyarq/burrow/actions/workflows/ci.yml) [![Release](https://img.shields.io/github/v/release/malyarq/burrow?display_name=tag&sort=semver)](https://github.com/malyarq/burrow/releases/latest) [![MIT License](https://img.shields.io/badge/license-MIT-58d6a6.svg)](LICENSE)
+[![CI](https://github.com/malyarq/burrow/actions/workflows/ci.yml/badge.svg)](https://github.com/malyarq/burrow/actions/workflows/ci.yml) [![Релиз](https://img.shields.io/github/v/release/malyarq/burrow?display_name=tag&sort=semver)](https://github.com/malyarq/burrow/releases/latest) [![Лицензия MIT](https://img.shields.io/badge/license-MIT-58d6a6.svg)](LICENSE)
 
-<img src="public/launcher-mark.png" width="112" height="112" alt="Burrow voxel cave app icon">
+<img src="public/launcher-mark.png" width="112" height="112" alt="Воксельная иконка Burrow с пещерой">
 
-**Play local. Bring a friend.**
+**Играй локально. Зови друга.**
 
-Burrow is a privacy-first desktop Minecraft launcher for vanilla play, isolated modpacks, local content management, and direct play with a friend. It runs on Windows, macOS, and Linux.
+Burrow — приватный настольный лаунчер Minecraft для обычной игры, изолированных модпаков, управления локальным контентом и прямой игры с другом. Работает на Windows, macOS и Linux.
 
-![Burrow first launch](docs/assets/screenshots/welcome-en.png)
+![Первый запуск Burrow](docs/assets/screenshots/welcome-ru.png)
 
-## Why Burrow
+## Зачем Burrow
 
-- **Play together without renting a server.** Burrow Link connects a world opened to LAN through a copyable invitation. The joining player uses the local address shown by Burrow.
-- **Keep control of your data.** Game data, settings, accounts, and instances stay local. Anonymous product analytics is off by default and has a documented event allowlist.
-- **Use vanilla or modded Minecraft.** Burrow supports Forge, Fabric, NeoForge, OptiFine, isolated instances, and Modrinth content.
-- **Move safely between computers.** Export launcher settings without account tokens or analytics identifiers, and export important modpacks separately.
-- **Understand what the launcher is doing.** Long installs and updates expose progress, cancellation, recovery, and actionable failure states.
+- **Играть вдвоём без аренды сервера.** Burrow Link соединяет открытый для LAN мир по копируемому приглашению. Второй игрок использует локальный адрес, который покажет Burrow.
+- **Сохранять контроль над данными.** Игровые данные, настройки, аккаунты и сборки остаются на компьютере. Анонимная продуктовая аналитика по умолчанию выключена, а список событий зафиксирован в документации.
+- **Запускать обычный и модифицированный Minecraft.** Burrow поддерживает Forge, Fabric, NeoForge, OptiFine, изолированные сборки и контент из Modrinth.
+- **Безопасно переносить настройки.** Настройки можно экспортировать без токенов аккаунтов и идентификатора аналитики, а важные модпаки — сохранить отдельными архивами.
+- **Понимать состояние операции.** Долгие установки и обновления показывают прогресс, отмену, восстановление и понятную причину ошибки.
 
-## Current capabilities
+## Что уже работает
 
-| Area | Available now |
+| Область | Возможности |
 | --- | --- |
-| Minecraft | Vanilla launch, automatic Java 8/17/21 selection, Forge, Fabric, NeoForge, OptiFine |
-| Modpacks | Create, import, export, duplicate, rename, update, delete, browse Modrinth |
-| Content | Mods, resource packs, shaders, worlds, datapacks, screenshots |
-| Accounts | Offline profiles and supported third-party Yggdrasil/authlib-injector providers |
-| Multiplayer | Burrow Link, optional LAN discovery, optional UPnP diagnostics |
-| Safety | Atomic writes, operation recovery, archive/path validation, checksummed release artifacts |
-| Languages | English and Russian |
+| Minecraft | Обычный запуск, автоматический выбор Java 8/17/21, Forge, Fabric, NeoForge, OptiFine |
+| Модпаки | Создание, импорт, экспорт, копирование, переименование, обновление, удаление, каталог Modrinth |
+| Контент | Моды, ресурспаки, шейдеры, миры, датапаки, скриншоты |
+| Аккаунты | Офлайн-профили и поддерживаемые сторонние Yggdrasil/authlib-injector провайдеры |
+| Совместная игра | Burrow Link, дополнительный поиск в LAN и диагностика UPnP |
+| Надёжность | Атомарная запись, восстановление операций, проверка архивов и путей, контрольные суммы релизов |
+| Языки | Русский и английский |
 
-Microsoft sign-in is not available yet. CurseForge archive import/export works, but official builds do not browse CurseForge until its API and distribution contract are configured end to end.
+Вход через Microsoft пока недоступен. Импорт и экспорт архивов CurseForge работает, но каталог CurseForge в официальных сборках выключен до полного решения вопросов API и правил распространения.
 
-## Install
+## Установка
 
-Download the latest package and `SHA256SUMS.txt` from [GitHub Releases](https://github.com/malyarq/burrow/releases/latest).
+Скачайте последний пакет и `SHA256SUMS.txt` со страницы [GitHub Releases](https://github.com/malyarq/burrow/releases/latest).
 
-| Platform | Artifact |
+| Платформа | Файл |
 | --- | --- |
 | Windows | `Burrow-Windows-<version>-Setup.exe` |
 | macOS | `Burrow-Mac-<version>-Installer.dmg` |
 | Linux | `Burrow-Linux-<version>.AppImage` |
 
 > [!WARNING]
-> Windows packages and macOS DMGs are not publisher-signed. Local macOS builds use an ad-hoc signature only so the app can run after Electron fuses are applied; it does not authenticate the publisher. Download only from this repository and verify the matching SHA-256 checksum. Your operating system may show an unknown-developer warning.
+> Windows-пакеты и macOS DMG пока не подписаны издателем. Локальная macOS-сборка получает только ad-hoc подпись, чтобы приложение запускалось после настройки Electron fuses; личность издателя она не подтверждает. Скачивайте файлы только из этого репозитория и до запуска сверяйте SHA-256. Операционная система может показать предупреждение о неизвестном разработчике.
 
-The [user guide](docs/en/user-guide.md) explains checksum verification, first launch, Burrow Link, updates, and backups.
+Проверка контрольной суммы, первый запуск, Burrow Link, обновления и резервные копии описаны в [руководстве пользователя](docs/ru/user-guide.md).
 
-## Development
+## Разработка
 
-Requirements: Node.js 24.x, npm 11.x, and Git.
+Нужны Node.js 24.x, npm 11.x и Git.
 
 ```bash
 nvm use
@@ -60,30 +60,30 @@ npm run verify
 npm run dev
 ```
 
-Build production packages locally without publishing:
+Локальная сборка пакетов без публикации:
 
 ```bash
 npm run build -- --publish never
 ```
 
-`npm run verify` runs unit tests, ESLint, TypeScript, documentation and IPC contract checks, and the production dependency audit. Packaging and real Minecraft installation are separate checks; see [Testing](docs/en/testing.md).
+`npm run verify` запускает модульные тесты, ESLint, TypeScript, проверки документации и IPC-контрактов и аудит production-зависимостей. Упаковка и реальная установка Minecraft проверяются отдельно; подробности — в документе [Тестирование](docs/ru/testing.md).
 
-## Documentation
+## Документация
 
-- [User guide](docs/en/user-guide.md)
-- [Troubleshooting](docs/en/troubleshooting.md)
-- [Privacy](docs/en/privacy.md)
-- [Security](docs/en/security.md)
-- [Development](docs/en/development.md)
-- [Architecture](docs/en/architecture.md)
-- [Testing](docs/en/testing.md)
-- [Release process](docs/en/releasing.md)
-- [Known issues](docs/en/known-issues.md)
-- [Contributing](CONTRIBUTING.md)
-- [Changelog](CHANGELOG.md)
+- [Руководство пользователя](docs/ru/user-guide.md)
+- [Решение проблем](docs/ru/troubleshooting.md)
+- [Приватность](docs/ru/privacy.md)
+- [Безопасность](docs/ru/security.md)
+- [Разработка](docs/ru/development.md)
+- [Архитектура](docs/ru/architecture.md)
+- [Тестирование](docs/ru/testing.md)
+- [Выпуск релиза](docs/ru/releasing.md)
+- [Известные проблемы](docs/ru/known-issues.md)
+- [Участие в разработке](CONTRIBUTING.md)
+- [История изменений](CHANGELOG.md)
 
-## Project status
+## Состояние проекта
 
-The launcher is engineering-complete for its current feature set, but public alpha confidence still depends on fresh-install smoke tests on each target OS. Code signing, Microsoft authentication, and external-user product proof remain separate gates. Product direction is summarized in the short [product gate](docs/en/roadmap.md).
+Текущий набор функций доведён до инженерной готовности. Для уверенной публичной альфы ещё нужны проверки чистой установки на каждой целевой ОС. Подпись пакетов, вход Microsoft и проверка продукта внешними пользователями — отдельные условия. Краткое направление описано в [продуктовом ограничителе](docs/ru/roadmap.md).
 
-Burrow is not affiliated with Mojang or Microsoft and does not grant ownership of Minecraft. The project is available under the [MIT License](LICENSE).
+Burrow не связан с Mojang или Microsoft и не предоставляет право владения Minecraft. Проект распространяется по [лицензии MIT](LICENSE).

@@ -21,13 +21,13 @@ export function extractReleaseNotes(changelog, currentVersion) {
   return [
     `# Burrow ${currentVersion}`,
     '',
-    'All documented changes for this release / все документированные изменения этого релиза.',
+    'Все документированные изменения этого релиза. / All documented changes for this release.',
     '',
     section,
     '',
-    'Packages are unsigned. Verify the downloaded file against `SHA256SUMS.txt`.',
-    '',
     'Пакеты не подписаны издателем. Сверьте скачанный файл с `SHA256SUMS.txt`.',
+    '',
+    'Packages are unsigned. Verify the downloaded file against `SHA256SUMS.txt`.',
     '',
   ].join('\n');
 }
