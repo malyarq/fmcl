@@ -137,7 +137,7 @@ describe('Sidebar accessibility', () => {
       />
     );
 
-    expect(screen.getByRole('complementary', { name: 'FriendLauncher sidebar' })).toBeTruthy();
+    expect(screen.getByRole('complementary', { name: 'Burrow sidebar' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Multiplayer' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Settings' })).toBeTruthy();
     expect(screen.getByText('Launching...')).toBeTruthy();

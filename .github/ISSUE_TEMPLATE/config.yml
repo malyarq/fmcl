@@ -1,8 +1,8 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerability
-    url: https://github.com/malyarq/fmcl/security/advisories/new
+    url: https://github.com/malyarq/burrow/security/advisories/new
     about: Report vulnerabilities privately. Do not publish exploit details in an issue.
   - name: User documentation
-    url: https://github.com/malyarq/fmcl/blob/main/docs/README.md
+    url: https://github.com/malyarq/burrow/blob/main/docs/README.md
     about: Installation, troubleshooting, known issues, development, and release documentation.

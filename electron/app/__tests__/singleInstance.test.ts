@@ -30,15 +30,17 @@ describe('single application instance', () => {
     expect(isNewerApplicationVersion('0.9.1', '0.10.0')).toBe(true);
     expect(isNewerApplicationVersion('0.9.1', '0.9.0')).toBe(false);
     expect(isNewerApplicationVersion('1.0.0-rc.1', '1.0.0')).toBe(true);
+    expect(resolveIncomingUpgrade('0.9.1', { version: '0.9.2', executablePath: '/Applications/Burrow.app/Contents/MacOS/Burrow' }))
+      .toEqual({ version: '0.9.2', executablePath: '/Applications/Burrow.app/Contents/MacOS/Burrow' });
     expect(resolveIncomingUpgrade('0.9.1', { version: '0.9.2', executablePath: '/Applications/FriendLauncher.app/Contents/MacOS/FriendLauncher' }))
       .toEqual({ version: '0.9.2', executablePath: '/Applications/FriendLauncher.app/Contents/MacOS/FriendLauncher' });
     expect(resolveIncomingUpgrade('0.9.1', { version: '0.9.2', executablePath: '/tmp/not-the-launcher' })).toBeUndefined();
-    expect(resolveIncomingUpgrade('0.9.1', { version: '0.9.1', executablePath: '/tmp/FriendLauncher.AppImage' })).toBeUndefined();
+    expect(resolveIncomingUpgrade('0.9.1', { version: '0.9.1', executablePath: '/tmp/Burrow.AppImage' })).toBeUndefined();
   });
 
   it('uses the stable AppImage path for Linux relaunch handoff', () => {
-    expect(getCurrentExecutablePath({ APPIMAGE: '/opt/FriendLauncher-Linux-0.9.2.AppImage' }, '/tmp/.mount/AppRun'))
-      .toBe('/opt/FriendLauncher-Linux-0.9.2.AppImage');
+    expect(getCurrentExecutablePath({ APPIMAGE: '/opt/Burrow-Linux-0.9.2.AppImage' }, '/tmp/.mount/AppRun'))
+      .toBe('/opt/Burrow-Linux-0.9.2.AppImage');
   });
 
   it('gracefully relaunches a newer installed package instead of focusing stale code', () => {
@@ -46,13 +48,13 @@ describe('single application instance', () => {
     const quit = vi.fn();
     const result = handleSecondApplicationInstance({
       currentVersion: '0.9.1',
-      additionalData: { version: '0.9.2', executablePath: '/opt/FriendLauncher-Linux-0.9.2.AppImage' },
+      additionalData: { version: '0.9.2', executablePath: '/opt/Burrow-Linux-0.9.2.AppImage' },
       window: null,
       relaunch,
       quit,
     });
     expect(result).toBe('upgrade');
-    expect(relaunch).toHaveBeenCalledWith({ execPath: '/opt/FriendLauncher-Linux-0.9.2.AppImage' });
+    expect(relaunch).toHaveBeenCalledWith({ execPath: '/opt/Burrow-Linux-0.9.2.AppImage' });
     expect(quit).toHaveBeenCalledOnce();
   });
 

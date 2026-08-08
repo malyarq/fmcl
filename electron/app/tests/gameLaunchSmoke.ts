@@ -75,7 +75,7 @@ export async function runGameLaunchSmoke(params: {
 
   try {
     await launcher.launchGame(
-      { nickname: 'FMCLSmoke', version, ram: 2, instanceId: 'game-smoke', downloadProvider: providerId },
+      { nickname: 'BurrowSmoke', version, ram: 2, instanceId: 'game-smoke', downloadProvider: providerId },
       onGameLog,
       () => undefined,
       (code) => {

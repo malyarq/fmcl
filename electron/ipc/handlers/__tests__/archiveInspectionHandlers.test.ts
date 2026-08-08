@@ -19,7 +19,7 @@ import {
   consumeArchiveReference,
 } from '../../../security/archiveReferenceAuthorizations';
 
-const archivePath = '/tmp/fmcl-import.zip';
+const archivePath = '/tmp/burrow-import.zip';
 const inspection = {
   format: 'modrinth' as const,
   manifest: {

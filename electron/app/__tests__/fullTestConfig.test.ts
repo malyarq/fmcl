@@ -7,7 +7,7 @@ import { loadFullTestConfig } from '../fullTestConfig';
 const tempDirs: string[] = [];
 
 function writeConfig(value: unknown): string {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-test-config-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-test-config-'));
   tempDirs.push(dir);
   const configPath = path.join(dir, 'config.json');
   fs.writeFileSync(configPath, JSON.stringify(value), 'utf8');
@@ -37,7 +37,7 @@ describe('loadFullTestConfig', () => {
 
     expect(loadFullTestConfig({
       NODE_ENV: 'test',
-      FMCL_FULL_TEST_CONFIG: configPath,
+      BURROW_FULL_TEST_CONFIG: configPath,
     })).toEqual({
       enabled: true,
       stage: 'vanilla',
@@ -53,17 +53,17 @@ describe('loadFullTestConfig', () => {
 
     expect(() => loadFullTestConfig({
       NODE_ENV: 'production',
-      FMCL_FULL_TEST_CONFIG: configPath,
+      BURROW_FULL_TEST_CONFIG: configPath,
     })).toThrow(/NODE_ENV=test/);
     expect(() => loadFullTestConfig({
       NODE_ENV: 'test',
-      FMCL_FULL_TEST_CONFIG: configPath,
+      BURROW_FULL_TEST_CONFIG: configPath,
     })).toThrow(/invalid/);
 
     const invalidLaunch = writeConfig({ enabled: true, launchSmoke: 'yes' });
     expect(() => loadFullTestConfig({
       NODE_ENV: 'test',
-      FMCL_FULL_TEST_CONFIG: invalidLaunch,
+      BURROW_FULL_TEST_CONFIG: invalidLaunch,
     })).toThrow(/invalid/);
   });
 });

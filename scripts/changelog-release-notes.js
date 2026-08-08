@@ -33,7 +33,7 @@ export function extractReleaseNotes(changelog, currentVersion, previousVersion) 
     : 'for this release / для этого релиза';
 
   return [
-    `# FriendLauncher ${currentVersion}`,
+    `# Burrow ${currentVersion}`,
     '',
     `All documented changes ${range}.`,
     '',

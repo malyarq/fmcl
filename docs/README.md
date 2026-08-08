@@ -1,4 +1,4 @@
-# FriendLauncher documentation
+# Burrow documentation
 
 The documentation is split by audience and language. English and Russian variants describe the same behavior; code, tests, and workflow files remain the final source of truth.
 

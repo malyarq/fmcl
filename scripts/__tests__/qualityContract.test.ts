@@ -46,7 +46,7 @@ describe('shared source quality contract', () => {
   });
 
   it('records machine-readable results and stops after the first failed high-severity gate', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-quality-contract-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-quality-contract-'));
     roots.push(root);
     const result = contract.runQualityPlan({
       plan: { stages: [

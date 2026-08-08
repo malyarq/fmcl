@@ -51,7 +51,7 @@ export function ManualVerificationApp() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <div className="kicker-label">Manual Verification Harness</div>
-              <h1 className="text-3xl font-black tracking-tight text-foreground">FriendLauncher Manual Verification</h1>
+              <h1 className="text-3xl font-black tracking-tight text-foreground">Burrow Manual Verification</h1>
               <p className="max-w-3xl text-sm leading-6 text-secondary">
                 Behavior-driven browser entry for live launcher proof routes. Ready-state is granted only when observable route checks pass, so screenshot review, DOM capture, and manual signoff point at the same product evidence instead of static wording alone.
               </p>

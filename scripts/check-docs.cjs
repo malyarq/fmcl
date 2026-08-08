@@ -109,7 +109,7 @@ function main() {
   }
 
   const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8')
-  if (!readme.includes('https://github.com/malyarq/fmcl/releases/latest')) {
+  if (!readme.includes('https://github.com/malyarq/burrow/releases/latest')) {
     failures.push('README.md does not link to the latest GitHub release')
   }
 

@@ -182,7 +182,7 @@ describe('guided content fallback', () => {
     expect(shaderAddMock).toHaveBeenCalledWith('alpha');
     expect(resourcePackAddMock).not.toHaveBeenCalled();
     expect(notice.getAttribute('data-tone')).toBe('error');
-    expect(notice.textContent).toContain('FMCL could not treat this file as a valid shader pack');
+    expect(notice.textContent).toContain('Burrow could not treat this file as a valid shader pack');
     expect(notice.textContent).toContain('bad-shader.zip');
     expect(onBack).not.toHaveBeenCalled();
     expect(toastSuccessMock).not.toHaveBeenCalled();

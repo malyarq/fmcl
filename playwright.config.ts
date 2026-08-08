@@ -65,7 +65,7 @@ export default defineConfig({
       env: {
         NODE_ENV: 'production',
       },
-      url: `${PRODUCTION_PREVIEW_URL}/fmcl-production-preview.json`,
+      url: `${PRODUCTION_PREVIEW_URL}/burrow-production-preview.json`,
       reuseExistingServer: false,
       stdout: 'pipe',
       stderr: 'pipe',
@@ -74,7 +74,7 @@ export default defineConfig({
     : [{
       command: `npm run dev -- --host 127.0.0.1 --port ${visualPort}`,
       env: {
-        FMCL_RENDERER_ONLY: '1',
+        BURROW_RENDERER_ONLY: '1',
       },
       url: `${visualBaseURL}/manual-verification.html?view=overview`,
       reuseExistingServer: true,

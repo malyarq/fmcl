@@ -17,7 +17,7 @@ afterEach(() => {
 
 describe('canonical recovery commands', () => {
   it('rejects malformed, unversioned, root-mismatched, and unsupported canonical recovery commands', () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-canonical-recovery-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-canonical-recovery-'));
     temporaryRoots.push(rootPath);
 
     const journal = new OperationJournal(rootPath);
@@ -35,7 +35,7 @@ describe('canonical recovery commands', () => {
   });
 
   it('round-trips bounded update-metadata commands and rejects malformed descriptions', () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-canonical-recovery-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-canonical-recovery-'));
     temporaryRoots.push(rootPath);
     const journal = new OperationJournal(rootPath);
     const metadataCommand = { version: 1 as const, type: 'update-metadata' as const, id: 'target', description: 'Reviewed description' };
@@ -73,7 +73,7 @@ describe('canonical recovery commands', () => {
   });
 
   it('persists a full canonical command before publication and replays exactly that command after a crash', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-canonical-recovery-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-canonical-recovery-'));
     temporaryRoots.push(rootPath);
     const events: string[] = [];
     const expected = command();
@@ -110,7 +110,7 @@ describe('canonical recovery commands', () => {
   });
 
   it('replays an already-committed command once as a canonical no-op', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-canonical-recovery-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-canonical-recovery-'));
     temporaryRoots.push(rootPath);
     const execute = vi.fn(async () => ({ status: 'noop' as const, snapshot: canonicalSnapshot() }));
     const journal = new OperationJournal(rootPath);

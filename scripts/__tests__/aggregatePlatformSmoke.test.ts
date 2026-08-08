@@ -12,10 +12,10 @@ function evidence(platform: 'darwin' | 'linux' | 'win32', marker: string) {
     status: 'passed',
     platform,
     version: '0.8.0-rc.1',
-    artifact: { path: `FriendLauncher-${platform}`, kind: platform === 'darwin' ? 'dmg' : platform === 'linux' ? 'appimage' : 'nsis', sha256: marker.repeat(64) },
+    artifact: { path: `Burrow-${platform}`, kind: platform === 'darwin' ? 'dmg' : platform === 'linux' ? 'appimage' : 'nsis', sha256: marker.repeat(64) },
     signing: { status: 'not-checked' },
     workspace: { cleanUserData: true, cleaned: true },
-    launch: { command: 'FriendLauncher', readiness: 'remote-debugging-page', windowCount: 1, startedAt: '2026-08-05T00:00:00.000Z' },
+    launch: { command: 'Burrow', readiness: 'remote-debugging-page', windowCount: 1, startedAt: '2026-08-05T00:00:00.000Z' },
     quit: { requested: true, graceful: true, exitCode: 0 },
     logs: { stdout: '', stderr: '' },
     upgrade: {
@@ -29,7 +29,7 @@ function evidence(platform: 'darwin' | 'linux' | 'win32', marker: string) {
 }
 
 function createInput(records = [evidence('win32', 'c'), evidence('darwin', 'a'), evidence('linux', 'b')]) {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-platform-smoke-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-platform-smoke-'));
   roots.push(root);
   records.forEach((record, index) => {
     const directory = path.join(root, `artifact-${index}`);

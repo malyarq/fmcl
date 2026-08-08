@@ -84,7 +84,7 @@ describe('renderer bundle budget checker', () => {
     ['gzip-only breach', { manifest: { ...fixture().manifest, chunks: [{ logicalPath: 'index.html', rawBytes: 102, gzipBytes: 52 }] } }, /gzip/i],
     ['unknown chunk', { manifest: { ...fixture().manifest, chunks: [{ logicalPath: 'other.tsx', rawBytes: 1, gzipBytes: 1 }] } }, /unknown|dropped/i],
   ])('reports a sorted fail-closed result for %s', (_case, overrides, expected) => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-check-bundle-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-check-bundle-'));
     roots.push(root);
     fs.mkdirSync(root, { recursive: true });
     const result = checker.checkBundle({ ...fixture(overrides), outputDir: root, expectedCommit: 'a'.repeat(40), now: () => new Date('2026-08-04T22:00:02.000Z') });
@@ -93,7 +93,7 @@ describe('renderer bundle budget checker', () => {
   });
 
   it('accepts exact raw and gzip thresholds and records ignored evidence', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-check-bundle-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-check-bundle-'));
     roots.push(root);
     fs.writeFileSync(path.join(root, 'asset.js'), 'current build');
     const result = checker.checkBundle({
@@ -107,7 +107,7 @@ describe('renderer bundle budget checker', () => {
   });
 
   it('accepts a different recorded host when the pinned build toolchain and bytes match', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-check-bundle-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-check-bundle-'));
     roots.push(root);
     fs.writeFileSync(path.join(root, 'asset.js'), 'current build');
     const result = checker.checkBundle({
@@ -129,7 +129,7 @@ describe('renderer bundle budget checker', () => {
     ['stale output', (root: string) => fs.utimesSync(root, new Date('2026-08-04T21:00:00.000Z'), new Date('2026-08-04T21:00:00.000Z')), /stale/i],
     ['different commit', (_root: string) => undefined, /commit/i],
   ])('rejects %s provenance', (_case, prepare, expected) => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-check-bundle-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-check-bundle-'));
     roots.push(root);
     const values = fixture();
     if (_case === 'different commit') values.manifest.environment = environment({ commit: 'b'.repeat(40) });

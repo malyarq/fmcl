@@ -1,7 +1,7 @@
-# AGENTS.md — FriendLauncher (FMCL)
+# AGENTS.md — Burrow
 
 ## Project Purpose
-FriendLauncher is an Electron-based Minecraft launcher with vanilla play, modpacks, updater flows, account management, and FriendTunnel multiplayer.
+Burrow is an Electron-based Minecraft launcher with vanilla play, modpacks, updater flows, account management, and Burrow Link multiplayer.
 
 Stack: `Electron` + `React` + `TypeScript` + `TailwindCSS` + `Vite`.
 
@@ -55,9 +55,11 @@ Stack: `Electron` + `React` + `TypeScript` + `TailwindCSS` + `Vite`.
 - Do not leave long-lived processes, terminals, browser sessions, watchers, or spawned agents running after the task.
 - Before final handoff, stop any `npm run dev`, `vite`, `electron`, `vitest --watch`, manual verification server, headless browser, or MCP watch that you started.
 - Reuse an existing interactive session when possible; do not open duplicate dev servers for the same repo.
-- If you are unsure what is still running, inspect with `ps -ax | rg '/Users/kszinikov/fmcl|vite|electron|vitest|playwright|chromium'` and stop only the processes started for this repo/task.
+- If you are unsure what is still running, inspect with `ps -ax | rg '/Users/kszinikov/work/(fmcl|burrow)|vite|electron|vitest|playwright|chromium'` and stop only the processes started for this repo/task.
 - If you spawned sub-agents, watches, or background PTY sessions, close or unwatch them before finishing.
 
 ## Git
-- Keep commits atomic: one feature or fix per commit.
-- Use conventional commit prefixes: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`.
+- Make one commit for one finished, coherent result; do not preserve intermediate agent iterations as history.
+- Write a short, concrete subject that explains the result without task context. Conventional prefixes are allowed, but the words after the prefix must carry the meaning.
+- Never put phase, plan, wave, review, or agent-task numbers in commit messages. Avoid subjects such as `progress`, `checkpoint`, `address feedback`, or `continue work`.
+- Add a body only when a maintainer needs the reason, migration consequence, or non-obvious tradeoff.

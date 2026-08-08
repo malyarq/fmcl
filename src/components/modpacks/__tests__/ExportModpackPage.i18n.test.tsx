@@ -64,7 +64,7 @@ describe('ExportModpackPage i18n seams', () => {
     await screen.findByRole('heading', { name: 'Export Modpack' });
 
     expect(screen.getByText('Export Format')).toBeTruthy();
-    expect(screen.getByRole('option', { name: 'MultiMC / Prism Launcher / FriendLauncher (.zip)' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'MultiMC / Prism Launcher / Burrow (.zip)' })).toBeTruthy();
     expect(screen.getByRole('option', { name: 'Raw ZIP Archive (Instance Copy)' })).toBeTruthy();
     expect(screen.getByText('Export options')).toBeTruthy();
     expect(screen.getByText('Include saved worlds (saves)')).toBeTruthy();

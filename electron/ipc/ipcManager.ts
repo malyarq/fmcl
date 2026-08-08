@@ -54,7 +54,7 @@ export class IPCManager {
      */
     public static registerAllHandlers(params: { window: BrowserWindow; composition: HandlerComposition }) {
         const { window, composition } = params
-        const { application, getDefaultRootPath, getDefaultInstanceRoot, scanJava, inspectArchive, launcher, friendTunnel, lanDiscovery, portMapping, modPlatforms, instanceMods, storageMaintenance, accountService, mirrorsService, statisticsService, shareService, operations, consumeArchiveReference } = composition
+        const { application, getDefaultRootPath, getDefaultInstanceRoot, scanJava, inspectArchive, launcher, burrowLink, lanDiscovery, portMapping, modPlatforms, instanceMods, storageMaintenance, accountService, mirrorsService, statisticsService, shareService, operations, consumeArchiveReference } = composition
         const sendLog = createThrottledLauncherLogSender()
 
         registerWindowHandlers({ window })
@@ -73,7 +73,7 @@ export class IPCManager {
             scanJava,
         }))
         registerInstanceModsHandlers({ instanceMods })
-        registerNetworkHandlers({ window, friendTunnel, lanDiscovery, portMapping })
+        registerNetworkHandlers({ window, burrowLink, lanDiscovery, portMapping })
         registerSettingsHandlers({ window })
         registerAssetsHandlers()
         registerAppUpdaterHandlers()

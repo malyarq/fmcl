@@ -1,7 +1,7 @@
-import type { FriendLauncherApi, JavaRuntimeSelectRequest } from '@shared/contracts';
+import type { BurrowApi, JavaRuntimeSelectRequest } from '@shared/contracts';
 import { toIpcError } from './ipcError';
 
-type JavaRuntimeApi = NonNullable<FriendLauncherApi['javaRuntime']>;
+type JavaRuntimeApi = NonNullable<BurrowApi['javaRuntime']>;
 
 function api(): JavaRuntimeApi {
   const javaRuntime = typeof window !== 'undefined' ? window.api?.javaRuntime : undefined;

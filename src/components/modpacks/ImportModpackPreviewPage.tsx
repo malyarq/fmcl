@@ -153,7 +153,7 @@ export const ImportModpackPreviewPage: React.FC<ImportModpackPreviewPageProps> =
                     <p className="text-sm font-medium text-foreground capitalize">
                       {inspection.format === 'curseforge' ? t('modpacks.platform_curseforge') :
                         inspection.format === 'modrinth' ? t('modpacks.platform_modrinth') :
-                          inspection.format === 'multimc' ? 'MultiMC / Prism / FriendLauncher' :
+                          inspection.format === 'multimc' ? 'MultiMC / Prism / Burrow' :
                             inspection.format || 'Unknown'}
                     </p>
                   </div>

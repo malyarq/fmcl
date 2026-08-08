@@ -1,6 +1,6 @@
 import { ipcMain, type BrowserWindow } from 'electron';
 import { NETWORK_CHANNELS } from '../../../shared/contracts/network';
-import type { FriendTunnelService } from '../../services/network/friendTunnelService';
+import type { BurrowLinkService } from '../../services/network/burrowLinkService';
 import type { LanDiscoveryService } from '../../services/network/lanDiscoveryService';
 import type { PortMappingService } from '../../services/network/portMappingService';
 import { validateBoundedString, validateEnum, validateInteger } from '../validation/privilegedPayloads';
@@ -22,22 +22,22 @@ function port(value: unknown, label: string): number {
 
 export function registerNetworkHandlers(deps: {
   window: BrowserWindow;
-  friendTunnel: FriendTunnelService;
+  burrowLink: BurrowLinkService;
   lanDiscovery: LanDiscoveryService;
   portMapping: PortMappingService;
 }) {
-  const { window, friendTunnel, lanDiscovery, portMapping } = deps;
+  const { window, burrowLink, lanDiscovery, portMapping } = deps;
   const handlers: Array<[string, (...args: unknown[]) => unknown]> = [
-    [NETWORK_CHANNELS.tunnelGetState, () => friendTunnel.getState()],
+    [NETWORK_CHANNELS.tunnelGetState, () => burrowLink.getState()],
     [NETWORK_CHANNELS.tunnelHost, async (value) => {
       const request = requestObject(value, 'Tunnel host request'); exactKeys(request, ['port'], 'Tunnel host request');
-      return await friendTunnel.host(port(request.port, 'LAN port'));
+      return await burrowLink.host(port(request.port, 'LAN port'));
     }],
     [NETWORK_CHANNELS.tunnelJoin, async (value) => {
       const request = requestObject(value, 'Tunnel join request'); exactKeys(request, ['roomCode'], 'Tunnel join request');
-      return await friendTunnel.join(validateBoundedString(request.roomCode, 'Room code', { minLength: 64, maxLength: 64 }));
+      return await burrowLink.join(validateBoundedString(request.roomCode, 'Room code', { minLength: 64, maxLength: 64 }));
     }],
-    [NETWORK_CHANNELS.tunnelStop, async () => await friendTunnel.stop()],
+    [NETWORK_CHANNELS.tunnelStop, async () => await burrowLink.stop()],
     [NETWORK_CHANNELS.lanGetState, () => lanDiscovery.getState()],
     [NETWORK_CHANNELS.lanStart, async (value) => {
       const request = value === undefined ? {} : requestObject(value, 'LAN start request'); exactKeys(request, ['family'], 'LAN start request');
@@ -76,7 +76,7 @@ export function registerNetworkHandlers(deps: {
     if (!window.isDestroyed()) window.webContents.send(channel, value);
   };
   const unsubscribe = [
-    friendTunnel.subscribe((snapshot) => send(NETWORK_CHANNELS.tunnelState, snapshot)),
+    burrowLink.subscribe((snapshot) => send(NETWORK_CHANNELS.tunnelState, snapshot)),
     lanDiscovery.subscribe((snapshot) => send(NETWORK_CHANNELS.lanState, snapshot)),
     lanDiscovery.onDiscover((event) => send(NETWORK_CHANNELS.lanDiscover, event)),
     portMapping.subscribe((snapshot) => send(NETWORK_CHANNELS.upnpState, snapshot)),

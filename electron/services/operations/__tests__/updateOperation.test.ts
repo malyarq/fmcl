@@ -210,7 +210,7 @@ function request(rootPath: string) {
 }
 
 function seedRoot(): string {
-  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-update-operation-'));
+  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-update-operation-'));
   const instancePath = path.join(rootPath, 'modpacks', 'updated-pack');
   fs.mkdirSync(instancePath, { recursive: true });
   fs.writeFileSync(path.join(instancePath, 'payload.txt'), 'original bytes');

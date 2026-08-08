@@ -15,7 +15,7 @@ describe('OperationRunner', () => {
   });
 
   it('assigns a stable serializable id and exposes a truthful terminal snapshot', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-runner-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-runner-'));
     tempDirs.push(rootPath);
     seed(rootPath);
     const runner = new OperationRunner([createDuplicateOperationAdapter()], { rootMutationCoordinator: coordinator() });
@@ -36,7 +36,7 @@ describe('OperationRunner', () => {
   });
 
   it('rescans the durable journal under every writer acquisition', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-rescan-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-rescan-'));
     tempDirs.push(rootPath);
     seed(rootPath);
     const list = vi.spyOn(OperationJournal.prototype, 'list');
@@ -49,7 +49,7 @@ describe('OperationRunner', () => {
   });
 
   it('keeps queued cancellation memory-only until the root writer lock is acquired', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-queued-cancel-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-queued-cancel-'));
     tempDirs.push(rootPath);
     let release: (() => void) | undefined;
     const hold = new Promise<void>((resolve) => { release = resolve; });

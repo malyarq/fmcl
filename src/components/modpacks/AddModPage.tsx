@@ -133,7 +133,7 @@ function ModAddPage({ modpackId, onBack, onCommitted }: AddModPageProps) {
             title={t('modpacks.add_mod_runtime_error') || 'Unable to load this modpack'}
             description={toDisplayErrorMessage(
               runtimeState.error,
-              t('modpacks.add_mod_runtime_error_desc') || 'FMCL could not read the current Minecraft and modloader versions.',
+              t('modpacks.add_mod_runtime_error_desc') || 'Burrow could not read the current Minecraft and modloader versions.',
             )}
             footer={<Button onClick={() => { void loadRuntime(); }}>{t('operations.retry') || 'Retry'}</Button>}
           />
@@ -188,7 +188,7 @@ function ResourcePackAddPage({ modpackId, onBack, onCommitted }: AddModPageProps
             description={toDisplayErrorMessage(
               readCanonicalErrorMessage(snapshot.error),
               t('modpacks.add_resourcepack_runtime_error_desc')
-                || 'FMCL could not read the canonical Minecraft version for this resource-pack install.',
+                || 'Burrow could not read the canonical Minecraft version for this resource-pack install.',
             )}
             retry={() => invalidateInstance(modpackId)}
           />
@@ -276,7 +276,7 @@ function ShaderAddPage({ modpackId, onBack, onCommitted }: AddModPageProps) {
             description={toDisplayErrorMessage(
               readCanonicalErrorMessage(snapshot.error),
               t('modpacks.add_shader_runtime_error_desc')
-                || 'FMCL could not verify the canonical runtime for this shader install.',
+                || 'Burrow could not verify the canonical runtime for this shader install.',
             )}
             retry={() => invalidateInstance(modpackId)}
           />

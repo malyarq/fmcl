@@ -22,7 +22,7 @@ describe('instances IPC boundary wiring', () => {
     expect(bridge).toContain('INSTANCE_CHANNELS');
     expect(bridge).not.toMatch(/modpacks|instanceContent|rootPath/);
     expect(preload).toContain("import { instances } from './preload/bridges/InstancesBridge'");
-    expect(preload).toMatch(/const api: FriendLauncherApi = \{[\s\S]*\binstances,\n[\s\S]*\n\}/);
+    expect(preload).toMatch(/const api: BurrowApi = \{[\s\S]*\binstances,\n[\s\S]*\n\}/);
     expect(preload.match(/\binstances,\n/g)).toHaveLength(1);
 
     const exposedNamespaces = Array.from(

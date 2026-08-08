@@ -28,7 +28,7 @@
 Для новой или изменённой cross-process операции обновите всю цепочку:
 
 1. payload/result type в `shared/contracts/*`;
-2. `FriendLauncherApi`, если меняется preload surface;
+2. `BurrowApi`, если меняется preload surface;
 3. preload bridge в `electron/preload/bridges/*` и exposure в `electron/preload.ts`;
 4. валидацию входа main process;
 5. регистрацию handler в `electron/ipc/*`;

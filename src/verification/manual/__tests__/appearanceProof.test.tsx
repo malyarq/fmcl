@@ -8,7 +8,7 @@ import { ManualVerificationScenarios } from '../scenarios';
 let renderBehaviorReady = true;
 
 vi.mock('../../../components/TitleBar', () => ({
-  default: () => <div>FriendLauncher</div>,
+  default: () => <div>Burrow</div>,
 }));
 
 vi.mock('../../../components/Sidebar', () => ({

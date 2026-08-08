@@ -1,6 +1,6 @@
 # IPC contract map
 
-Goal: document the live IPC, preload, and renderer contract surface for FMCL.
+Goal: document the live IPC, preload, and renderer contract surface for Burrow.
 
 **Sources of truth**
 
@@ -196,7 +196,7 @@ On the first registration for a newly created instance, main derives the manifes
 - `network:upnp:stop`
 - `network:upnp:state`
 
-`window.api.network` contains three focused capabilities. FriendTunnel, LAN discovery and UPnP expose independent typed lifecycle snapshots and subscriptions; there is no mutable main-process network mode. Native errors, gateway details and peer identities do not cross the preload boundary.
+`window.api.network` contains three focused capabilities. Burrow Link, LAN discovery and UPnP expose independent typed lifecycle snapshots and subscriptions; there is no mutable main-process network mode. Native errors, gateway details and peer identities do not cross the preload boundary.
 
 ### 3.6 Settings and dialogs
 
@@ -209,7 +209,7 @@ On the first registration for a newly created instance, main derives the manifes
 - `dialog:showOpenDialog`
 - `dialog:getDesktopPath`
 
-Settings backup accepts only an explicit, size-bounded allowlist of launcher preferences and recent launch choices. Main owns the native file dialogs, atomic write, schema validation, and import size limit. Accounts, tokens, analytics identity, FriendTunnel invitations, local filesystem paths, and game content are excluded.
+Settings backup accepts only an explicit, size-bounded allowlist of launcher preferences and recent launch choices. Main owns the native file dialogs, atomic write, schema validation, and import size limit. Accounts, tokens, analytics identity, Burrow Link invitations, local filesystem paths, and game content are excluded.
 
 ### 3.7 Assets and cache
 

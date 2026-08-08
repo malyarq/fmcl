@@ -32,9 +32,9 @@ function fixture(overrides: Record<string, unknown> = {}) {
       status: 'passed',
       candidate,
       artifacts: [
-        { path: 'FriendLauncher-Mac-0.8.0-rc.1-Installer.dmg', platform: 'darwin', kind: 'dmg', bytes: 1, sha256: sha('a') },
-        { path: 'FriendLauncher-Linux-0.8.0-rc.1.AppImage', platform: 'linux', kind: 'appimage', bytes: 1, sha256: sha('b') },
-        { path: 'FriendLauncher-Windows-0.8.0-rc.1-Setup.exe', platform: 'win32', kind: 'nsis', bytes: 1, sha256: sha('c') },
+        { path: 'Burrow-Mac-0.8.0-rc.1-Installer.dmg', platform: 'darwin', kind: 'dmg', bytes: 1, sha256: sha('a') },
+        { path: 'Burrow-Linux-0.8.0-rc.1.AppImage', platform: 'linux', kind: 'appimage', bytes: 1, sha256: sha('b') },
+        { path: 'Burrow-Windows-0.8.0-rc.1-Setup.exe', platform: 'win32', kind: 'nsis', bytes: 1, sha256: sha('c') },
       ],
       integrity: { algorithm: 'sha256', manifest: 'SHA256SUMS.txt', verification: 'clean-verification-directory', status: 'passed' },
       authenticity: [
@@ -73,7 +73,7 @@ describe('pre-push release report', () => {
   });
 
   it('writes a report to the ignored evidence path without shelling out and rejects malformed schemas', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-prepush-report-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-prepush-report-'));
     roots.push(root);
     const output = path.join(root, 'prepush-release-report.json');
     const result = report.writePrepushReleaseReport({ ...fixture(), outputFile: output });

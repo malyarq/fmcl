@@ -211,7 +211,7 @@ export class ShadersService {
                 this.createAcquisitionIssue(
                     fallbackFileName,
                     'failure',
-                    'FMCL could not import the selected shader pack into this instance.',
+                    'Burrow could not import the selected shader pack into this instance.',
                 ),
             ]);
         }

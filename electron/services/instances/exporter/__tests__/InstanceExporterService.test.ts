@@ -30,7 +30,7 @@ afterEach(() => {
 
 describe('InstanceExporterService', () => {
   it('reads the canonical record through the injected port and writes only through opaque content authority', async () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-exporter-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-exporter-'));
     temporaryDirectories.push(directory);
     const instanceDirectory = path.join(directory, 'instance');
     const outputPath = path.join(directory, 'export.zip');
@@ -61,7 +61,7 @@ describe('InstanceExporterService', () => {
     };
     const service = new InstanceExporterService(read, content);
 
-    await expect(service.exportInstance('/tmp/fmcl-root', 'missing', 'zip', '/tmp/fmcl-export.zip')).rejects.toThrow('Instance not found: missing');
+    await expect(service.exportInstance('/tmp/burrow-root', 'missing', 'zip', '/tmp/burrow-export.zip')).rejects.toThrow('Instance not found: missing');
 
     expect(content.getInstanceDirectory).not.toHaveBeenCalled();
   });

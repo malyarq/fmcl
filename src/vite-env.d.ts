@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { FriendLauncherApi } from '@shared/contracts';
+import type { BurrowApi } from '@shared/contracts';
 
 declare global {
   interface ImportMetaEnv {
@@ -13,7 +13,7 @@ declare global {
   }
 
   interface Window {
-    api: FriendLauncherApi;
+    api: BurrowApi;
   }
 }
 

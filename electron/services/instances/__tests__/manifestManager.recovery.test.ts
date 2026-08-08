@@ -14,7 +14,7 @@ describe('InstanceManifestManager recovery', () => {
   });
 
   it('versions new manifests and refuses to mutate a malformed manifest', () => {
-    const instancePath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-manifest-'));
+    const instancePath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-manifest-'));
     tempDirs.push(instancePath);
     const manager = new InstanceManifestManager();
     const manifestPath = path.join(instancePath, 'instance-manifest.json');

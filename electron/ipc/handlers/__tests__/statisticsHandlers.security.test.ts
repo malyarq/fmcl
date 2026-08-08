@@ -28,7 +28,7 @@ describe('statistics export authorization', () => {
   });
 
   it('requires a one-time path authorization owned by the calling renderer', async () => {
-    const outputPath = path.join(os.tmpdir(), 'fmcl-statistics.json');
+    const outputPath = path.join(os.tmpdir(), 'burrow-statistics.json');
     const exportStats = vi.fn().mockReturnValue({ filePath: outputPath });
     registerStatisticsHandlers({ statisticsService: { exportStats, getStats: vi.fn() } as never });
     const handler = mocked.handlers.get('stats:export');

@@ -16,7 +16,7 @@ const evidence = require('../release-evidence.js') as ReleaseEvidence;
 const roots: string[] = [];
 
 function createArtifacts(): string {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-release-evidence-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-release-evidence-'));
   roots.push(root);
   return root;
 }
@@ -33,9 +33,9 @@ describe('release evidence integrity and authenticity contract', () => {
   it('writes a sorted SHA-256 manifest and verifies it from a clean directory without turning unsigned into signed', () => {
     const artifactsDir = createArtifacts();
     const verificationRoot = createArtifacts();
-    writeArtifact(artifactsDir, 'FriendLauncher-Windows-0.7.1-Setup.exe', 'windows');
-    writeArtifact(artifactsDir, 'FriendLauncher-Linux-0.7.1.AppImage', 'linux');
-    writeArtifact(artifactsDir, 'FriendLauncher-Mac-0.7.1-Installer.dmg', 'mac');
+    writeArtifact(artifactsDir, 'Burrow-Windows-0.7.1-Setup.exe', 'windows');
+    writeArtifact(artifactsDir, 'Burrow-Linux-0.7.1.AppImage', 'linux');
+    writeArtifact(artifactsDir, 'Burrow-Mac-0.7.1-Installer.dmg', 'mac');
     writeArtifact(artifactsDir, 'latest-mac.yml', 'updater metadata');
     writeArtifact(artifactsDir, 'builder-debug.yml', 'must not ship');
     writeArtifact(artifactsDir, 'unexpected-secret.txt', 'must not ship');
@@ -60,9 +60,9 @@ describe('release evidence integrity and authenticity contract', () => {
       expect.objectContaining({ platform: 'win32', codeSigning: expect.objectContaining({ status: 'unavailable' }), notarization: expect.objectContaining({ status: 'unavailable' }) }),
     ]);
     expect(fs.readFileSync(path.join(artifactsDir, 'SHA256SUMS.txt'), 'utf8').split('\n').filter(Boolean).map((line) => line.slice(66))).toEqual([
-      'FriendLauncher-Linux-0.7.1.AppImage',
-      'FriendLauncher-Mac-0.7.1-Installer.dmg',
-      'FriendLauncher-Windows-0.7.1-Setup.exe',
+      'Burrow-Linux-0.7.1.AppImage',
+      'Burrow-Mac-0.7.1-Installer.dmg',
+      'Burrow-Windows-0.7.1-Setup.exe',
       'latest-mac.yml',
     ]);
     expect(result.artifacts).toEqual(expect.arrayContaining([expect.objectContaining({ path: 'latest-mac.yml', kind: 'release-asset', platform: 'shared' })]));
@@ -79,9 +79,9 @@ describe('release evidence integrity and authenticity contract', () => {
     const firstVerification = createArtifacts();
     const secondVerification = createArtifacts();
     for (const [name, contents] of [
-      ['FriendLauncher-Windows-0.7.1-Setup.exe', 'windows'],
-      ['FriendLauncher-Mac-0.7.1-Installer.dmg', 'mac'],
-      ['FriendLauncher-Linux-0.7.1.AppImage', 'linux'],
+      ['Burrow-Windows-0.7.1-Setup.exe', 'windows'],
+      ['Burrow-Mac-0.7.1-Installer.dmg', 'mac'],
+      ['Burrow-Linux-0.7.1.AppImage', 'linux'],
       ['latest-mac.yml', 'updater metadata'],
     ]) {
       writeArtifact(first, name, contents);
@@ -93,8 +93,8 @@ describe('release evidence integrity and authenticity contract', () => {
     const secondEvidence = evidence.collectReleaseEvidence({ artifactsDir: second, verificationRoot: secondVerification, candidate, platform: 'linux', fileSystem: reverseDirectoryOrder, command: { has: () => false, run: () => ({ status: 127, stdout: '', stderr: '' }) } });
 
     expect(secondEvidence.artifacts).toEqual(firstEvidence.artifacts);
-    fs.writeFileSync(path.join(firstVerification, 'FriendLauncher-Linux-0.7.1.AppImage'), 'tampered');
-    expect(evidence.verifySha256Sums({ verificationDir: firstVerification })).toEqual({ valid: false, mismatches: ['FriendLauncher-Linux-0.7.1.AppImage: checksum mismatch'] });
+    fs.writeFileSync(path.join(firstVerification, 'Burrow-Linux-0.7.1.AppImage'), 'tampered');
+    expect(evidence.verifySha256Sums({ verificationDir: firstVerification })).toEqual({ valid: false, mismatches: ['Burrow-Linux-0.7.1.AppImage: checksum mismatch'] });
 
     const macHash = (firstEvidence.artifacts as Array<Record<string, string>>).find((artifact) => artifact.platform === 'darwin')?.sha256;
     const linked = evidence.collectReleaseEvidence({
@@ -110,8 +110,8 @@ describe('release evidence integrity and authenticity contract', () => {
 
   it('reports explicit macOS and Windows verification status without treating unknown output as signed', () => {
     const artifactsDir = createArtifacts();
-    writeArtifact(artifactsDir, 'FriendLauncher-Mac-0.7.1-Installer.dmg', 'mac');
-    writeArtifact(artifactsDir, 'FriendLauncher-Windows-0.7.1-Setup.exe', 'windows');
+    writeArtifact(artifactsDir, 'Burrow-Mac-0.7.1-Installer.dmg', 'mac');
+    writeArtifact(artifactsDir, 'Burrow-Windows-0.7.1-Setup.exe', 'windows');
     const candidate = { version: '0.7.1', tag: 'v0.7.1', commit: 'c'.repeat(40) };
     const mac = evidence.collectReleaseEvidence({
       artifactsDir,
@@ -150,7 +150,7 @@ describe('release evidence integrity and authenticity contract', () => {
 
   it('rejects a smoke hash without a release artifact and any overwrite rollback policy', () => {
     const artifactsDir = createArtifacts();
-    writeArtifact(artifactsDir, 'FriendLauncher-Linux-0.7.1.AppImage', 'linux');
+    writeArtifact(artifactsDir, 'Burrow-Linux-0.7.1.AppImage', 'linux');
     const candidate = { version: '0.7.1', tag: 'v0.7.1', commit: 'd'.repeat(40) };
     const result = evidence.collectReleaseEvidence({ artifactsDir, verificationRoot: createArtifacts(), candidate, platform: 'linux', command: { has: () => false, run: () => ({ status: 127, stdout: '', stderr: '' }) } });
 

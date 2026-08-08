@@ -1,17 +1,17 @@
 # Security model
 
-This document explains FriendLauncher's trust boundaries and current protections. It is not a claim that the application is vulnerability-free. Report suspected vulnerabilities through [SECURITY.md](../../SECURITY.md), not a public issue.
+This document explains Burrow's trust boundaries and current protections. It is not a claim that the application is vulnerability-free. Report suspected vulnerabilities through [SECURITY.md](../../SECURITY.md), not a public issue.
 
 ## Trust boundaries
 
-FriendLauncher handles several kinds of untrusted input:
+Burrow handles several kinds of untrusted input:
 
 - renderer messages crossing into the Electron main process;
 - remote metadata, images, downloads, update manifests, and authentication servers;
 - imported modpack, world, datapack, resource-pack, and shader archives;
 - local paths chosen by the user or supplied by imported metadata;
 - account tokens stored on the local machine;
-- LAN peers, UPnP devices, FriendTunnel peers, and local callback traffic.
+- LAN peers, UPnP devices, Burrow Link peers, and local callback traffic.
 
 The renderer is never treated as trusted merely because it was bundled with the application.
 
@@ -36,7 +36,7 @@ Preload exposes one typed `window.api` namespace. Renderer code cannot select ar
 - Destructive operations should preserve explicit user intent and avoid following untrusted links.
 - Maintained JSON state is written through a versioned atomic store with backup recovery. Corrupt or unsupported state fails closed and is preserved instead of being silently replaced.
 - Save and export handlers consume a path authorized by a native save dialog for the issuing renderer; another window or a renderer-supplied absolute path alone has no authority.
-- The root mutation lock uses a token-authenticated local Node socket for process-incarnation liveness. A missing or refusing unique socket marks the referenced lease dead; timeouts and ambiguous errors fail closed. Token death can remove only its immutable ticket, never the process-shared endpoint. Never delete another build's canonical lock during a live upgrade: stop all FMCL processes sharing that root before upgrade, downgrade, or custom-root build mixing.
+- The root mutation lock uses a token-authenticated local Node socket for process-incarnation liveness. A missing or refusing unique socket marks the referenced lease dead; timeouts and ambiguous errors fail closed. Token death can remove only its immutable ticket, never the process-shared endpoint. Never delete another build's canonical lock during a live upgrade: stop all Burrow processes sharing that root before upgrade, downgrade, or custom-root build mixing.
 
 ## Network input
 
@@ -54,7 +54,7 @@ Do not broaden the URL allowlist merely to make one provider work. Add a narrow 
 - If encryption is unavailable, third-party account persistence is disabled rather than falling back to plaintext. Electron's Linux `basic_text` backend is explicitly treated as unavailable.
 - Logs, diagnostics, screenshots, fixtures, and bug reports must not contain tokens, passwords, signing material, or private provider keys.
 
-On Linux, a supported desktop keyring must be available for third-party accounts. FMCL does not claim that desktop keyring storage is equivalent to hardware-backed storage.
+On Linux, a supported desktop keyring must be available for third-party accounts. Burrow does not claim that desktop keyring storage is equivalent to hardware-backed storage.
 
 ## Analytics and feedback
 

@@ -67,7 +67,7 @@ describe('provider staging installers', () => {
 });
 
 function temporaryRoot(): string {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-provider-installer-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-provider-installer-'));
   temporaryDirectories.push(root);
   return root;
 }
@@ -82,7 +82,7 @@ function fakeArchive(manifestName: string, manifest: string): ProviderArchivePor
 
 function nodeContent(): ProviderContentPort {
   return {
-    createTemporaryDirectory: () => fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-provider-content-')),
+    createTemporaryDirectory: () => fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-provider-content-')),
     removeDirectory: (directory) => fs.rmSync(directory, { recursive: true, force: true }),
     exists: fs.existsSync,
     readText: (file) => fs.readFileSync(file, 'utf8'),

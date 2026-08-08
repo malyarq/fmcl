@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { ImageCacheService } from '../imageCacheService'
 
 function createTempRoot(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-image-cache-'))
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-image-cache-'))
 }
 
 function createResponse(body: string, contentType = 'image/png'): Response {

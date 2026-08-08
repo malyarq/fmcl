@@ -8,7 +8,7 @@ import type { InstanceReadPort, LauncherRootResolver } from '../../../domains/in
 import { InstanceModContentService } from '../instanceModContentService';
 
 function createInstance(): { rootPath: string; instancePath: string } {
-  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-instance-mods-'));
+  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-instance-mods-'));
   const instancePath = path.join(rootPath, 'modpacks', 'pack');
   fs.mkdirSync(path.join(instancePath, 'mods'), { recursive: true });
   return { rootPath, instancePath };

@@ -36,7 +36,7 @@ const DEFAULT_BRAND_DOCUMENT_TOKENS: Record<Theme, BrandDocumentTokens> = {
     surfacePanelShadow: '0 24px 80px rgba(24, 31, 27, 0.16)',
     surfaceCardShadow: '0 14px 48px rgba(24, 31, 27, 0.12)',
     surfaceSoftShadow: '0 8px 24px rgba(24, 31, 27, 0.08)',
-    wordmarkWeight: '820', wordmarkSpacing: '0.08em',
+    wordmarkWeight: '460', wordmarkSpacing: '-0.035em',
   },
   dark: {
     shellGlow: '#7aa57d', markFrame: '#131916', markBorder: '#344138', markGlow: '#8eb795',
@@ -44,7 +44,7 @@ const DEFAULT_BRAND_DOCUMENT_TOKENS: Record<Theme, BrandDocumentTokens> = {
     surfacePanelShadow: '0 24px 80px rgba(0, 0, 0, 0.26)',
     surfaceCardShadow: '0 14px 48px rgba(0, 0, 0, 0.22)',
     surfaceSoftShadow: '0 8px 24px rgba(0, 0, 0, 0.18)',
-    wordmarkWeight: '820', wordmarkSpacing: '0.08em',
+    wordmarkWeight: '460', wordmarkSpacing: '-0.035em',
   },
 };
 

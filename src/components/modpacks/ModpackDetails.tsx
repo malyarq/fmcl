@@ -114,7 +114,7 @@ export const ModpackDetails: React.FC<ModpackDetailsProps> = ({
               {t('modpacks.details_load_error_title') || 'Modpack details are unavailable'}
             </h2>
             <p className="mt-2 text-sm leading-6 text-secondary">
-              {t('modpacks.details_load_error_desc') || 'FMCL could not read this modpack metadata.'}
+              {t('modpacks.details_load_error_desc') || 'Burrow could not read this modpack metadata.'}
             </p>
             <Button variant="secondary" size="sm" onClick={() => { void controller.retryDetails(); }} className="mt-4">
               {t('modpacks.retry_details') || 'Retry details'}

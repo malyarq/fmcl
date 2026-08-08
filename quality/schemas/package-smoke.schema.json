@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://friendlauncher.app/quality/package-smoke.schema.json",
-  "title": "FriendLauncher packaged artifact smoke evidence",
+  "title": "Burrow packaged artifact smoke evidence",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "status", "platform", "version", "artifact", "signing", "workspace", "launch", "quit", "logs"],

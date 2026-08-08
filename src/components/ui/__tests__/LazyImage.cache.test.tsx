@@ -24,7 +24,7 @@ describe('LazyImage image cache integration', () => {
 
   it('resolves remote sources through the cache IPC seam before rendering the image', async () => {
     resolveImageMock.mockResolvedValue({
-      localUrl: 'file:///tmp/fmcl-cache/modpack.png',
+      localUrl: 'file:///tmp/burrow-cache/modpack.png',
       sourceUrl: 'https://cdn.example.com/modpack.png',
       cacheHit: true,
       stale: false,
@@ -44,7 +44,7 @@ describe('LazyImage image cache integration', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('img', { name: 'Cached modpack' }).getAttribute('src')).toBe(
-        'file:///tmp/fmcl-cache/modpack.png',
+        'file:///tmp/burrow-cache/modpack.png',
       )
     })
   })
@@ -73,7 +73,7 @@ describe('LazyImage image cache integration', () => {
 
   it('retries the original remote source before using the provided fallback when a cached image fails to load', async () => {
     resolveImageMock.mockResolvedValue({
-      localUrl: 'file:///tmp/fmcl-cache/broken-modpack.png',
+      localUrl: 'file:///tmp/burrow-cache/broken-modpack.png',
       sourceUrl: 'https://cdn.example.com/broken-modpack.png',
       cacheHit: true,
       stale: false,
@@ -91,7 +91,7 @@ describe('LazyImage image cache integration', () => {
     const image = await screen.findByRole('img', { name: 'Broken modpack' })
 
     await waitFor(() => {
-      expect(image.getAttribute('src')).toBe('file:///tmp/fmcl-cache/broken-modpack.png')
+      expect(image.getAttribute('src')).toBe('file:///tmp/burrow-cache/broken-modpack.png')
     })
 
     fireEvent.error(image)
@@ -109,7 +109,7 @@ describe('LazyImage image cache integration', () => {
 
   it('retries the original remote source before the neutral fallback when a cached image fails without an explicit fallback', async () => {
     resolveImageMock.mockResolvedValue({
-      localUrl: 'file:///tmp/fmcl-cache/missing-mark.png',
+      localUrl: 'file:///tmp/burrow-cache/missing-mark.png',
       sourceUrl: 'https://cdn.example.com/missing-mark.png',
       cacheHit: true,
       stale: false,
@@ -126,7 +126,7 @@ describe('LazyImage image cache integration', () => {
     const image = await screen.findByRole('img', { name: 'Fallback artwork' })
 
     await waitFor(() => {
-      expect(image.getAttribute('src')).toBe('file:///tmp/fmcl-cache/missing-mark.png')
+      expect(image.getAttribute('src')).toBe('file:///tmp/burrow-cache/missing-mark.png')
     })
 
     fireEvent.error(image)

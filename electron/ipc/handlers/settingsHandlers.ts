@@ -47,13 +47,13 @@ export function validateSettingsBackupValues(value: unknown): SettingsBackupValu
 }
 
 function parseSettingsBackup(value: unknown): SettingsBackupValues {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid FMCL settings backup')
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid Burrow settings backup')
   const backup = value as Record<string, unknown>
   if (backup.schemaVersion !== 1
-    || backup.product !== 'FriendLauncher'
+    || (backup.product !== 'Burrow' && backup.product !== 'FriendLauncher')
     || !isCanonicalIsoTimestamp(backup.createdAt)
     || !hasExactSettingsBackupFields(backup)) {
-    throw new Error('Unsupported FMCL settings backup')
+    throw new Error('Unsupported Burrow settings backup')
   }
   return validateSettingsBackupValues(backup.values)
 }
@@ -101,15 +101,15 @@ export function registerSettingsHandlers(deps: { window: BrowserWindow }) {
     const safeValues = validateSettingsBackupValues(values)
     const date = new Date().toISOString().slice(0, 10)
     const result = await dialog.showSaveDialog(window, {
-      title: 'Export FriendLauncher settings',
-      defaultPath: path.join(app.getPath('documents'), `FriendLauncher-settings-${date}.fmcl-settings.json`),
-      filters: [{ name: 'FriendLauncher settings', extensions: ['json'] }],
+      title: 'Export Burrow settings',
+      defaultPath: path.join(app.getPath('documents'), `Burrow-settings-${date}.burrow-settings.json`),
+      filters: [{ name: 'Burrow settings', extensions: ['json'] }],
     })
     if (result.canceled || !result.filePath) return { canceled: true }
 
     const backup = JSON.stringify({
       schemaVersion: 1,
-      product: 'FriendLauncher',
+      product: 'Burrow',
       createdAt: new Date().toISOString(),
       values: safeValues,
     }, null, 2)
@@ -127,9 +127,9 @@ export function registerSettingsHandlers(deps: { window: BrowserWindow }) {
   ipcMain.removeHandler('settings:importBackup')
   ipcMain.handle('settings:importBackup', async () => {
     const result = await dialog.showOpenDialog(window, {
-      title: 'Import FriendLauncher settings',
+      title: 'Import Burrow settings',
       properties: ['openFile'],
-      filters: [{ name: 'FriendLauncher settings', extensions: ['json'] }],
+      filters: [{ name: 'Burrow settings', extensions: ['json'] }],
     })
     if (result.canceled || result.filePaths.length !== 1) return { canceled: true }
 

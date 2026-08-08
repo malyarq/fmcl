@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { describe, expect, it, vi } from 'vitest';
-import { FriendTunnelService } from '../friendTunnelService';
+import { BurrowLinkService } from '../burrowLinkService';
 
 class FakeDiscovery {
   public flushed = vi.fn(async () => undefined);
@@ -17,13 +17,13 @@ class FakeSwarm extends EventEmitter {
 
 function serviceWith(...swarms: FakeSwarm[]) {
   let index = 0;
-  return new FriendTunnelService({
+  return new BurrowLinkService({
     createSwarm: (() => swarms[index++]) as never,
     randomBytes: (() => Buffer.alloc(32, 7)) as never,
   });
 }
 
-describe('FriendTunnelService', () => {
+describe('BurrowLinkService', () => {
   it('owns and destroys a complete host session', async () => {
     const swarm = new FakeSwarm();
     const service = serviceWith(swarm);

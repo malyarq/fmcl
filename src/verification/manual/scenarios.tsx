@@ -770,7 +770,7 @@ function OverviewScenario() {
 }
 
 function WelcomeScenario({ onReady }: ManualVerificationScenarioProps) {
-  useReadyByText(onReady, ['FriendLauncher', 'What do you want to do first?', 'Open launcher'], 'Welcome overlay rendered.');
+  useReadyByText(onReady, ['Burrow', 'What do you want to do first?', 'Open launcher'], 'Welcome overlay rendered.');
 
   return (
     <SettingsProviders>
@@ -841,7 +841,7 @@ function TourScenario({ onReady }: ManualVerificationScenarioProps) {
 function DashboardScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Fabric', 'Play'],
+    ['Burrow', 'Fabric', 'Play'],
     'Phase 33 classic-truth proof rendered inside the real shell with Fabric wording and runtime labels that match the canonical launch target.',
   );
 
@@ -865,7 +865,7 @@ function DashboardScenario({ onReady }: ManualVerificationScenarioProps) {
 function Phase24HomeCloseoutScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Fabric', 'Play', 'Launcher home closeout'],
+    ['Burrow', 'Fabric', 'Play', 'Launcher home closeout'],
     'Phase 24 home closeout rendered inside the real shell with deterministic launcher-home proof for final release review.',
   );
 
@@ -948,7 +948,7 @@ function SettingsAppearanceScenario({ onReady }: ManualVerificationScenarioProps
 function Phase24ThemeDarkScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Launcher Settings', 'Theme Presets', 'Dark closeout pair'],
+    ['Burrow', 'Launcher Settings', 'Theme Presets', 'Dark closeout pair'],
     'Phase 24 dark-theme closeout rendered inside the real shell with deterministic appearance state for release review.',
   );
 
@@ -968,7 +968,7 @@ function Phase24ThemeDarkScenario({ onReady }: ManualVerificationScenarioProps) 
 function Phase24ThemeLightScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Launcher Settings', 'Theme Presets', 'Light closeout pair'],
+    ['Burrow', 'Launcher Settings', 'Theme Presets', 'Light closeout pair'],
     'Phase 24 light-theme closeout rendered inside the real shell with deterministic appearance state for release review.',
   );
 
@@ -988,7 +988,7 @@ function Phase24ThemeLightScenario({ onReady }: ManualVerificationScenarioProps)
 function Phase22ThemeDarkScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Launcher Settings', 'Theme Presets'],
+    ['Burrow', 'Launcher Settings', 'Theme Presets'],
     'Phase 22 dark-theme proof rendered inside the real shell with a shipped preset so shared appearance controls can be inspected under the final state contract.',
   );
 
@@ -1008,7 +1008,7 @@ function Phase22ThemeDarkScenario({ onReady }: ManualVerificationScenarioProps) 
 function Phase22ThemeLightScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Launcher Settings', 'Theme Presets'],
+    ['Burrow', 'Launcher Settings', 'Theme Presets'],
     'Phase 22 light-theme proof rendered inside the real shell with a custom accent so shared appearance controls can be compared against the preset state.',
   );
 
@@ -1200,7 +1200,7 @@ function ModpackListScenario({ onReady }: ManualVerificationScenarioProps) {
 function ModpackCreateScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Create New Modpack', 'Next'],
+    ['Burrow', 'Create New Modpack', 'Next'],
     'Phase 35 create-wizard proof rendered inside the real shell with a fixed action rail, runtime-aware failure explanations, and explicit post-commit recovery.',
   );
 
@@ -1270,7 +1270,7 @@ function Phase21BrowserDensityScenario({ onReady }: ManualVerificationScenarioPr
 function Phase24ModpacksCloseoutScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Modpack Browser', 'Alpha Pack', 'Modpacks closeout'],
+    ['Burrow', 'Modpack Browser', 'Alpha Pack', 'Modpacks closeout'],
     'Phase 24 modpacks closeout rendered inside the real shell with deterministic browse-state proof for final release review.',
   );
 
@@ -1298,7 +1298,7 @@ function ModpackDetailsScenario({ onReady }: ManualVerificationScenarioProps) {
 
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Runtime and dependency state', 'Update available', 'Screenshots'],
+    ['Burrow', 'Runtime and dependency state', 'Update available', 'Screenshots'],
     'Phase 34 modpack-details proof rendered inside the real shell with tab reachability, first-read runtime authority, and one shared content workspace contract.',
   );
 
@@ -1330,7 +1330,7 @@ function Phase21DetailsDensityScenario({ onReady }: ManualVerificationScenarioPr
 
   useReadyByText(
     onReady,
-    ['FriendLauncher', PHASE_21_RUNTIME_FIXTURE.name, 'Legacy density regression route'],
+    ['Burrow', PHASE_21_RUNTIME_FIXTURE.name, 'Legacy density regression route'],
     'Phase 21 constrained-width details regression route rendered after the main Phase 34 proof so long metadata and long tab labels can still stress the real shell.',
   );
 
@@ -1380,7 +1380,7 @@ function Phase21RuntimeEditScenario({ onReady }: ManualVerificationScenarioProps
 
   useReadyByText(
     onReady,
-    ['FriendLauncher', PHASE_21_RUNTIME_FIXTURE.name, 'Runtime dependencies'],
+    ['Burrow', PHASE_21_RUNTIME_FIXTURE.name, 'Runtime dependencies'],
     'Phase 21 edit-summary proof rendered inside the real shell with the shared runtime fixture loaded into settings.',
   );
 
@@ -1410,7 +1410,7 @@ function Phase21RuntimeEditScenario({ onReady }: ManualVerificationScenarioProps
 function ExportScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Export Modpack', 'Format'],
+    ['Burrow', 'Export Modpack', 'Format'],
     'Phase 19 export-route proof rendered inside the real shell with title-bar clearance, demoted shell launch, and visible final action edges.',
   );
 
@@ -1424,7 +1424,7 @@ function ExportScenario({ onReady }: ManualVerificationScenarioProps) {
 function AddModScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Modrinth', 'Sodium'],
+    ['Burrow', 'Modrinth', 'Sodium'],
     'Phase 35 add-content proof rendered inside the real shell with a fixed action rail, retained selections, and itemized mixed-success recovery.',
   );
 
@@ -1438,7 +1438,7 @@ function AddModScenario({ onReady }: ManualVerificationScenarioProps) {
 function GuidedResourcePacksScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Painterly Depth Reloaded', 'Have a local resource pack .zip already?', 'Instance-scoped resource packs'],
+    ['Burrow', 'Painterly Depth Reloaded', 'Have a local resource pack .zip already?', 'Instance-scoped resource packs'],
     'Phase 35 guided resource-pack browser proof rendered with direct catalog fixtures, explicit local fallback, and runtime-scoped copy on the live route.',
   );
 
@@ -1478,7 +1478,7 @@ function GuidedResourcePacksRecoveryScenario({ onReady }: ManualVerificationScen
 function GuidedShadersScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Shader runtime', 'Needs setup', 'Photon Bloom Lite', 'Have a local shader pack .zip already?'],
+    ['Burrow', 'Shader runtime', 'Needs setup', 'Photon Bloom Lite', 'Have a local shader pack .zip already?'],
     'Phase 35 guided shader browser proof rendered with needs-setup runtime guidance, shader-specific fixtures, and honest live-route capability copy.',
   );
 
@@ -1487,7 +1487,7 @@ function GuidedShadersScenario({ onReady }: ManualVerificationScenarioProps) {
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 sm:p-6">
         <Phase35ProofCallout
           title="Guided shader browsing now carries honest capability guidance"
-          detail="Use this route to verify that the shader browser mounts with runtime-aware capability messaging, keeps local .zip fallback secondary, and stays honest about what FMCL knows or has not confirmed yet."
+          detail="Use this route to verify that the shader browser mounts with runtime-aware capability messaging, keeps local .zip fallback secondary, and stays honest about what Burrow knows or has not confirmed yet."
         />
         <AddModPage modpackId="alpha" contentType="shader" onBack={() => undefined} />
       </div>
@@ -1671,7 +1671,7 @@ function OperationRecoveryScenario({ onReady }: ManualVerificationScenarioProps)
 function InstallScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Alpha Pack', 'Install modpack'],
+    ['Burrow', 'Alpha Pack', 'Install modpack'],
     'Phase 19 install-route proof rendered inside the real shell with title-bar clearance, demoted shell launch, and one route-owned install action.',
   );
 
@@ -1690,7 +1690,7 @@ function InstallScenario({ onReady }: ManualVerificationScenarioProps) {
 function ImportPreviewScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Alpha Pack', 'Import'],
+    ['Burrow', 'Alpha Pack', 'Import'],
     'Phase 19 import-preview proof rendered inside the real shell with title-bar clearance, demoted shell launch, and visible final import controls.',
   );
 
@@ -1716,7 +1716,7 @@ function AddModModalScenario({ onReady }: ManualVerificationScenarioProps) {
 
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Gamma Runtime', 'Add mods', 'Sodium'],
+    ['Burrow', 'Gamma Runtime', 'Add mods', 'Sodium'],
     'Phase 35 add-mod modal proof rendered over the real shell with a fixed action rail, locked exits during install, and on-surface mixed-success recovery.',
   );
 
@@ -1750,7 +1750,7 @@ function AddModModalScenario({ onReady }: ManualVerificationScenarioProps) {
 function ResourcePacksScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByTextAndImageSource(
     onReady,
-    ['FriendLauncher', 'Installed Resource Packs', 'Painterly Depth'],
+    ['Burrow', 'Installed Resource Packs', 'Painterly Depth'],
     MEDIA_FALLBACK_PATH,
     1,
     'Phase 20 deep-media proof rendered inside the real shell with no-art resource pack thumbnails using the shared neutral fallback policy.',
@@ -1778,7 +1778,7 @@ function ResourcePacksScenario({ onReady }: ManualVerificationScenarioProps) {
 function Phase21SecondaryDensityScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByTextAndImageSource(
     onReady,
-    ['FriendLauncher', 'Installed Resource Packs', 'Legacy secondary-workspace regression route'],
+    ['Burrow', 'Installed Resource Packs', 'Legacy secondary-workspace regression route'],
     MEDIA_FALLBACK_PATH,
     1,
     'Phase 21 secondary-content regression route rendered after the main Phase 34 proof so dense resource-pack rows and fallback art can still stress the shared workspace.',
@@ -1808,7 +1808,7 @@ function Phase21SecondaryDensityScenario({ onReady }: ManualVerificationScenario
 function Phase22LocaleEnScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Modpack Browser', 'Alpha Pack', 'Datapacks for Alpha World', 'Downloads', 'Updated'],
+    ['Burrow', 'Modpack Browser', 'Alpha Pack', 'Datapacks for Alpha World', 'Downloads', 'Updated'],
     'Phase 22 English locale proof rendered inside the real shell with route metadata and a secondary-content overlay using the shared formatting contract.',
   );
 
@@ -1842,7 +1842,7 @@ function Phase22LocaleEnScenario({ onReady }: ManualVerificationScenarioProps) {
 function Phase24LocaleEnScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Modpack Browser', 'Alpha Pack', 'Datapacks for Alpha World', 'English closeout pair'],
+    ['Burrow', 'Modpack Browser', 'Alpha Pack', 'Datapacks for Alpha World', 'English closeout pair'],
     'Phase 24 English locale closeout rendered inside the real shell with deterministic route and secondary-content proof.',
   );
 
@@ -1876,7 +1876,7 @@ function Phase24LocaleEnScenario({ onReady }: ManualVerificationScenarioProps) {
 function Phase24LocaleRuScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Браузер модпаков', 'Alpha Pack', 'Датапаки для мира Alpha World', 'Russian closeout pair'],
+    ['Burrow', 'Браузер модпаков', 'Alpha Pack', 'Датапаки для мира Alpha World', 'Russian closeout pair'],
     'Phase 24 Russian locale closeout rendered inside the real shell with deterministic route and secondary-content proof.',
   );
 
@@ -1910,7 +1910,7 @@ function Phase24LocaleRuScenario({ onReady }: ManualVerificationScenarioProps) {
 function Phase22LocaleRuScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Браузер модпаков', 'Alpha Pack', 'Датапаки для мира Alpha World', 'Загрузок', 'Обновлено'],
+    ['Burrow', 'Браузер модпаков', 'Alpha Pack', 'Датапаки для мира Alpha World', 'Загрузок', 'Обновлено'],
     'Phase 22 Russian locale proof rendered inside the real shell with route metadata and a secondary-content overlay using the same shared formatting contract.',
   );
 
@@ -1944,7 +1944,7 @@ function Phase22LocaleRuScenario({ onReady }: ManualVerificationScenarioProps) {
 function Phase24DegradedCloseoutScenario({ onReady }: ManualVerificationScenarioProps) {
   useReadyByText(
     onReady,
-    ['FriendLauncher', 'Unable to search right now', 'Failed to load screenshots.', 'Unavailable'],
+    ['Burrow', 'Unable to search right now', 'Failed to load screenshots.', 'Unavailable'],
     'Phase 24 degraded closeout rendered inside the real shell with representative route and secondary-content failed-load proof.',
   );
 
@@ -2040,7 +2040,7 @@ function Phase42NetworkScenario({ view, onReady }: ManualVerificationScenarioPro
   useReadyByText(
     onReady,
     isLan ? ['Мультиплеер', 'Мир Beta Pack', '192.168.1.42:25565'] : ['Multiplayer', 'Room Active!', 'abababab'],
-    `Phase 42 ${isLan ? 'RU LAN discovery' : 'EN FriendTunnel'} live-state surface rendered from the typed network capability fixture.`,
+    `Phase 42 ${isLan ? 'RU LAN discovery' : 'EN Burrow Link'} live-state surface rendered from the typed network capability fixture.`,
   );
   return <ModpackProviders><MultiplayerPage onBack={() => undefined} /></ModpackProviders>;
 }

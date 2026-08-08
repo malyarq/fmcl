@@ -306,7 +306,7 @@ export function collectReleaseEvidence(options = {}) {
   const rollback = options.rollback ?? defaultRollback(options.rollbackDecision);
   if (!validRollback(rollback)) throw new Error('rollback policy must preserve immutable stable bytes');
   const packagedSmoke = normalizePackageSmoke(options.packagedSmoke);
-  const verificationDir = resolve(options.verificationRoot ?? fileSystem.mkdtemp(join(tmpdir(), 'fmcl-release-evidence-')));
+  const verificationDir = resolve(options.verificationRoot ?? fileSystem.mkdtemp(join(tmpdir(), 'burrow-release-evidence-')));
   writeSha256Sums({ artifactsDir, artifacts, fileSystem });
   const failures = [];
   let integrity = { algorithm: 'sha256', manifest: 'SHA256SUMS.txt', verification: 'clean-verification-directory', status: 'passed' };
@@ -357,10 +357,10 @@ function optionValue(args, flag) {
 }
 
 function fixtureUnsigned() {
-  const fixtureDir = mkdtempSync(join(tmpdir(), 'fmcl-release-evidence-fixture-'));
-  const verifyDir = mkdtempSync(join(tmpdir(), 'fmcl-release-evidence-verify-'));
+  const fixtureDir = mkdtempSync(join(tmpdir(), 'burrow-release-evidence-fixture-'));
+  const verifyDir = mkdtempSync(join(tmpdir(), 'burrow-release-evidence-verify-'));
   try {
-    writeFileSync(join(fixtureDir, 'FriendLauncher-Linux-0.7.1.AppImage'), 'fixture-linux');
+    writeFileSync(join(fixtureDir, 'Burrow-Linux-0.7.1.AppImage'), 'fixture-linux');
     const result = collectReleaseEvidence({
       artifactsDir: fixtureDir,
       verificationRoot: verifyDir,

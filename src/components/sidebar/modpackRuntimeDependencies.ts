@@ -204,7 +204,7 @@ export function getCreateRuntimeDependencyErrorMessage(
   const template = translateWithFallback(
     t,
     'modpacks.create_runtime_warning',
-    'FMCL still sees a runtime issue in this draft: {{warning}} {{nextStep}}',
+    'Burrow still sees a runtime issue in this draft: {{warning}} {{nextStep}}',
   );
 
   return template

@@ -22,7 +22,7 @@ describe('EmptyStateView brand contract', () => {
     expect(mark.getAttribute('data-brand-role')).toBe('app-icon')
     expect(mark.closest('.brand-mark-frame')).toBeNull()
     expect(screen.getByTestId('empty-state-placeholder')).toBeTruthy()
-    expect(screen.queryByText('FriendLauncher')).toBeNull()
+    expect(screen.queryByText('Burrow')).toBeNull()
   })
 
   it('falls back to the app icon when a custom empty-state icon fails', () => {
@@ -50,6 +50,6 @@ describe('EmptyStateView brand contract', () => {
     const degradedState = screen.getByTestId('degraded-state')
     expect(degradedState.getAttribute('data-variant')).toBe('empty')
     expect(screen.queryByTestId('empty-state-brand-mark')).toBeNull()
-    expect(screen.queryByText('FriendLauncher')).toBeNull()
+    expect(screen.queryByText('Burrow')).toBeNull()
   })
 })

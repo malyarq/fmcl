@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://friendlauncher.app/quality/prepush-release-report.schema.json",
-  "title": "FriendLauncher pre-push release decision evidence",
+  "title": "Burrow pre-push release decision evidence",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "reportId", "status", "candidate", "quality", "artifacts", "platformSmoke", "authenticity", "knownFailures", "rollback"],

@@ -1,7 +1,7 @@
-import type { FriendLauncherApi } from '@shared/contracts';
+import type { BurrowApi } from '@shared/contracts';
 import { toIpcError } from './ipcError';
 
-type StorageMaintenanceApi = FriendLauncherApi['storageMaintenance'];
+type StorageMaintenanceApi = BurrowApi['storageMaintenance'];
 
 function api(): StorageMaintenanceApi {
   const storageMaintenance = typeof window !== 'undefined' ? window.api?.storageMaintenance : undefined;

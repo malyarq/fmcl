@@ -83,17 +83,17 @@ describe('share flows', () => {
   });
 
   it('loads a share code into the shared dialog surface and copies it to the clipboard', async () => {
-    generateCodeMock.mockResolvedValue('fmcl://share/alpha-pack');
+    generateCodeMock.mockResolvedValue('burrow://share/alpha-pack');
 
     render(<ShareModal isOpen={true} onClose={vi.fn()} modpackId="alpha-pack" />);
 
     expect(await screen.findByRole('dialog', { name: 'Share Modpack' })).toBeTruthy();
-    expect(await screen.findByDisplayValue('fmcl://share/alpha-pack')).toBeTruthy();
+    expect(await screen.findByDisplayValue('burrow://share/alpha-pack')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Copy Code' }));
 
     await waitFor(() => {
-      expect(writeTextMock).toHaveBeenCalledWith('fmcl://share/alpha-pack');
+      expect(writeTextMock).toHaveBeenCalledWith('burrow://share/alpha-pack');
     });
 
     expect(await screen.findByRole('button', { name: 'Copied!' })).toBeTruthy();
@@ -109,9 +109,9 @@ describe('share flows', () => {
     expect(alert.textContent).not.toContain('generateCode failed');
     expect(alert.textContent).not.toContain('${file.jarVersion}');
 
-    generateCodeMock.mockResolvedValue('fmcl://share/recovered-pack');
+    generateCodeMock.mockResolvedValue('burrow://share/recovered-pack');
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
-    expect(await screen.findByDisplayValue('fmcl://share/recovered-pack')).toBeTruthy();
+    expect(await screen.findByDisplayValue('burrow://share/recovered-pack')).toBeTruthy();
   });
 
   it('keeps import disabled until a code is provided and forwards only the share code to the operation owner', async () => {
@@ -129,8 +129,8 @@ describe('share flows', () => {
     const importButton = screen.getByRole('button', { name: 'Import' });
     expect(importButton.getAttribute('disabled')).not.toBeNull();
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'Paste fmcl://share/... code here' }), {
-      target: { value: 'fmcl://share/alpha-pack' },
+    fireEvent.change(screen.getByRole('textbox', { name: 'Paste burrow://share/... code here' }), {
+      target: { value: 'burrow://share/alpha-pack' },
     });
 
     expect(screen.getByRole('button', { name: 'Import' }).getAttribute('disabled')).toBeNull();
@@ -138,7 +138,7 @@ describe('share flows', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Import' }));
 
     await waitFor(() => {
-      expect(startMock).toHaveBeenCalledWith({ kind: 'import-share', code: 'fmcl://share/alpha-pack' });
+      expect(startMock).toHaveBeenCalledWith({ kind: 'import-share', code: 'burrow://share/alpha-pack' });
     });
 
     await waitFor(() => expect(onCommittedMock).toHaveBeenCalledTimes(1));
@@ -153,8 +153,8 @@ describe('share flows', () => {
 
     render(<ImportShareModal isOpen={true} onClose={vi.fn()} onCommitted={onCommittedMock} />);
 
-    fireEvent.change(screen.getByRole('textbox', { name: 'Paste fmcl://share/... code here' }), {
-      target: { value: 'fmcl://share/broken-pack' },
+    fireEvent.change(screen.getByRole('textbox', { name: 'Paste burrow://share/... code here' }), {
+      target: { value: 'burrow://share/broken-pack' },
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Import' }));
@@ -178,8 +178,8 @@ describe('share flows', () => {
     });
 
     render(<ImportShareModal isOpen={true} onClose={onCloseMock} onCommitted={onCommittedMock} />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Paste fmcl://share/... code here' }), {
-      target: { value: 'fmcl://share/partial-pack' },
+    fireEvent.change(screen.getByRole('textbox', { name: 'Paste burrow://share/... code here' }), {
+      target: { value: 'burrow://share/partial-pack' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Import' }));
     await waitFor(() => expect(listener).toBeTypeOf('function'));
@@ -205,8 +205,8 @@ describe('share flows', () => {
     });
 
     render(<ImportShareModal isOpen={true} onClose={onCloseMock} onCommitted={onCommittedMock} />);
-    fireEvent.change(screen.getByRole('textbox', { name: 'Paste fmcl://share/... code here' }), {
-      target: { value: 'fmcl://share/recovery-pack' },
+    fireEvent.change(screen.getByRole('textbox', { name: 'Paste burrow://share/... code here' }), {
+      target: { value: 'burrow://share/recovery-pack' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Import' }));
     await waitFor(() => expect(listener).toBeTypeOf('function'));

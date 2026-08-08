@@ -34,7 +34,7 @@ const TitleBar = () => {
                 <BrandMark
                     role="app-icon"
                     src={iconPath}
-                    alt="FriendLauncher app icon"
+                    alt="Burrow app icon"
                     size="xs"
                     data-testid="title-bar-brand-icon"
                     className="opacity-80"

@@ -1,7 +1,7 @@
-import type { FriendLauncherApi, ProviderCatalogSearchRequest, ProviderCatalogVersionsRequest } from '@shared/contracts';
+import type { BurrowApi, ProviderCatalogSearchRequest, ProviderCatalogVersionsRequest } from '@shared/contracts';
 import { toIpcError } from './ipcError';
 
-type ProviderCatalogApi = FriendLauncherApi['providerCatalog'];
+type ProviderCatalogApi = BurrowApi['providerCatalog'];
 
 function api(): ProviderCatalogApi {
   const providerCatalog = typeof window !== 'undefined' ? window.api?.providerCatalog : undefined;

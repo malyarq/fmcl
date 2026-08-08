@@ -20,7 +20,7 @@ const metadata: ModpackMetadata = {
     version: '0.15.11',
   },
   version: '2.4.0',
-  author: 'FMCL Team',
+  author: 'Burrow Team',
   createdAt: '2026-04-13T00:00:00.000Z',
   updatedAt: '2026-04-13T00:00:00.000Z',
 };

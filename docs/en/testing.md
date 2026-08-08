@@ -1,6 +1,6 @@
 # Testing
 
-FriendLauncher uses layered checks. No single local command proves every operating system, provider, router, Java runtime, and installed updater path.
+Burrow uses layered checks. No single local command proves every operating system, provider, router, Java runtime, and installed updater path.
 
 ## Test layers
 
@@ -63,7 +63,7 @@ Update baselines only after reviewing the rendered result:
 npm run test:visual:closeout -- --update-snapshots
 ```
 
-The baselines are intentionally Darwin-specific and live in `tests/visual/manual-closeout.spec.ts-snapshots/`. The Playwright server uses `FMCL_RENDERER_ONLY=1`; it verifies deterministic UI states, not Electron-native behavior.
+The baselines are intentionally Darwin-specific and live in `tests/visual/manual-closeout.spec.ts-snapshots/`. The Playwright server uses `BURROW_RENDERER_ONLY=1`; it verifies deterministic UI states, not Electron-native behavior.
 
 ## Full Minecraft installation
 

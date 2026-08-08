@@ -39,7 +39,7 @@ export function FirstRunReadiness() {
   if (!available) return null;
 
   return (
-    <section className="border-b border-border/60 px-6 py-4 sm:px-8" aria-labelledby="readiness-title">
+    <section className="border-b border-border/60 px-6 py-3 sm:px-8" aria-labelledby="readiness-title">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           {checking ? (
@@ -69,7 +69,7 @@ export function FirstRunReadiness() {
       </div>
 
       {report && (
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" data-testid="first-run-readiness">
+        <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4" data-testid="first-run-readiness">
           {report.checks.map((check) => (
             <div
               key={check.id}

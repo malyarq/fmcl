@@ -13,7 +13,7 @@ import { InstanceModContentService } from '../services/mods/instanceModContentSe
 import { ManifestContentInstaller } from '../services/mods/manifestContentInstaller';
 import { javaScanner, type DetectedJava } from '../services/java/javaScanner';
 import { getModpackInfoFromFile } from '../services/modpacks/importers';
-import { FriendTunnelService } from '../services/network/friendTunnelService';
+import { BurrowLinkService } from '../services/network/burrowLinkService';
 import { LanDiscoveryService } from '../services/network/lanDiscoveryService';
 import { PortMappingService } from '../services/network/portMappingService';
 import { createDeleteOperationAdapter } from '../services/operations/deleteOperation';
@@ -50,7 +50,7 @@ export type HandlerComposition = Readonly<{
   modPlatforms: ModPlatformService;
   instanceMods: InstanceModContentService;
   storageMaintenance: StorageMaintenanceAdapter;
-  friendTunnel: FriendTunnelService;
+  burrowLink: BurrowLinkService;
   lanDiscovery: LanDiscoveryService;
   portMapping: PortMappingService;
   accountService: AccountService;
@@ -102,7 +102,7 @@ export function createCompositionRoot(options: CompositionRootOptions): MainComp
       return await contentManager.cleanup();
     },
   };
-  const friendTunnel = new FriendTunnelService();
+  const burrowLink = new BurrowLinkService();
   const lanDiscovery = new LanDiscoveryService();
   const portMapping = new PortMappingService();
   const accountService = new AccountService(options.paths.userDataPath);
@@ -216,7 +216,7 @@ export function createCompositionRoot(options: CompositionRootOptions): MainComp
     modPlatforms,
     instanceMods,
     storageMaintenance,
-    friendTunnel,
+    burrowLink,
     lanDiscovery,
     portMapping,
     accountService,
@@ -238,7 +238,7 @@ export function createCompositionRoot(options: CompositionRootOptions): MainComp
       await settleOwner('operations', () => operations.beginShutdown(), failures);
       await settleOwner('instances', () => application.beginShutdown(), failures);
       await Promise.all([
-        settleOwner('friend-tunnel', () => friendTunnel.stop(), failures),
+        settleOwner('friend-tunnel', () => burrowLink.stop(), failures),
         settleOwner('lan-discovery', () => lanDiscovery.stop(), failures),
         settleOwner('port-mapping', () => portMapping.stop(), failures),
       ]);

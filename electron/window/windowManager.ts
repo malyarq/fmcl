@@ -124,7 +124,7 @@ export function createMainWindow(params: CreateMainWindowParams): BrowserWindow 
     minHeight: 600,
     minWidth: 800,
     icon: appIcon,
-    title: 'FriendLauncher',
+    title: 'Burrow',
     webPreferences: {
       preload: preloadPath,
       sandbox: true,

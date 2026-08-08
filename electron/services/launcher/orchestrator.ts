@@ -257,8 +257,8 @@ export class LauncherManager {
           jar: destInjectorPath,
           server: resolvedAuthServerUrl,
         },
-        launcherName: 'FriendLauncher',
-        launcherBrand: 'FriendLauncher',
+        launcherName: 'Burrow',
+        launcherBrand: 'Burrow',
       },
     });
 

@@ -18,7 +18,7 @@ function writeFixture(root: string, relativePath: string, source: string): void 
 }
 
 function createFixture(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-dependency-graph-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-dependency-graph-'));
 }
 
 describe('dependency-direction graph guard', () => {

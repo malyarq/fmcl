@@ -30,7 +30,7 @@ function writeFixture(root: string, relativePath: string, source: string): void 
 }
 
 function createFixture(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-complexity-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-complexity-'));
 }
 
 function ratchet(exceptions: Record<string, { maxLoc: number; maxFunctionComplexity: number }> = {}): unknown {

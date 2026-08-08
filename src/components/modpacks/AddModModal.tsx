@@ -111,7 +111,7 @@ export function AddModModal({
           title={t('modpacks.add_mod_runtime_error') || 'Unable to load this modpack'}
           description={toDisplayErrorMessage(
             runtimeState.error,
-            t('modpacks.add_mod_runtime_error_desc') || 'FMCL could not read the current Minecraft and modloader versions.',
+            t('modpacks.add_mod_runtime_error_desc') || 'Burrow could not read the current Minecraft and modloader versions.',
           )}
           footer={(
             <div className="flex gap-2">

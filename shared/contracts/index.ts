@@ -33,8 +33,8 @@ export { INSTANCE_MODS_CHANNELS } from './instanceMods';
 export type { InstanceModRegistrationRequest, InstanceModsAPI, InstanceModsChannel } from './instanceMods';
 export { NETWORK_CHANNELS } from './network';
 export type {
-  FriendTunnelAPI,
-  FriendTunnelSnapshot,
+  BurrowLinkAPI,
+  BurrowLinkSnapshot,
   LanDiscoverEvent,
   LanDiscoveryAPI,
   LanDiscoverySnapshot,
@@ -99,7 +99,7 @@ export type {
   InstanceSourceDto,
   InstanceSummaryDto,
 } from './instances';
-export type { FriendLauncherApi } from './windowApi';
+export type { BurrowApi } from './windowApi';
 export type { AccountAPI, AccountSkinState } from './account';
 export type { MirrorsAPI } from './mirrors';
 export type { StatisticsAPI, StatisticsExportPayload, StatisticsExportResult, StatisticsOverview } from './statistics';

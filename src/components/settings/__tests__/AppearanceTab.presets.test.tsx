@@ -219,7 +219,7 @@ describe('AppearanceTab preset contract', () => {
 
     fireEvent.change(fileInput!, {
       target: {
-        files: [new File(['{}'], 'friend-launcher-theme.json', { type: 'application/json' })],
+        files: [new File(['{}'], 'burrow-launcher-theme.json', { type: 'application/json' })],
       },
     });
 

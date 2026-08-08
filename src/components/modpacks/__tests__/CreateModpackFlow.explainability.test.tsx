@@ -125,7 +125,7 @@ describe('ModpackCreationWizard explainability', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain('FMCL still sees a runtime issue in this draft');
+      expect(screen.getByRole('alert').textContent).toContain('Burrow still sees a runtime issue in this draft');
     });
 
     expect(screen.getByRole('alert').textContent).toContain('OptiFine is only available for supported Minecraft versions.');
@@ -148,7 +148,7 @@ describe('ModpackCreationWizard explainability', () => {
       expect(screen.getByRole('alert').textContent).toContain('Error creating modpack');
     });
 
-    expect(screen.queryByText(/FMCL still sees a runtime issue in this draft/)).toBeNull();
+    expect(screen.queryByText(/Burrow still sees a runtime issue in this draft/)).toBeNull();
   });
 
   it('separates optional follow-up guidance from the successful create boundary', async () => {

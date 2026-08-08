@@ -1,10 +1,20 @@
 # Changelog
 
-This file summarizes user-visible and operational changes. Git history remains the detailed record, and [GitHub Releases](https://github.com/malyarq/fmcl/releases) is the canonical source for downloadable artifacts.
+This file summarizes user-visible and operational changes. Git history remains the detailed record, and [GitHub Releases](https://github.com/malyarq/burrow/releases) is the canonical source for downloadable artifacts.
 
 ## Unreleased
 
-No changes after the local v0.10.0 candidate.
+No changes after the local v0.11.0 candidate.
+
+## [0.11.0] — 2026-08-07
+
+### Changed
+
+- Rebranded FriendLauncher as **Burrow**, including the voxel cave app icon, the **Burrow Link** multiplayer name, application copy, future package names, documentation, and repository links.
+- New installations use the `Burrow` user-data directory. Existing FriendLauncher installations keep the legacy `.fmcl` directory so upgrades and rollbacks cannot strand accounts, settings, or game data.
+- New multiplayer invitations use the `BURROW-…` prefix and modpack share codes use `burrow://`; existing `FMCL-…` invitations and `fmcl://` share codes remain importable.
+- Renamed the three consent-gated multiplayer analytics events to the `burrow_link_*` namespace; the event payload and privacy allowlist are unchanged.
+- Kept the existing application and installer identity internally for a safe in-place upgrade from v0.10.0; this compatibility identifier is not part of the public brand.
 
 ## [0.10.0] — 2026-08-07
 
@@ -43,10 +53,10 @@ No changes after the local v0.10.0 candidate.
 
 ### Added
 
-- Replaced the generic first-run tour with an immediate English/Russian choice and outcome-based actions for ordinary play, FriendTunnel, and modpacks; the short tour is now optional.
-- Added readable, copyable FriendTunnel invitations and concrete Direct Connection guidance for the joining player.
+- Replaced the generic first-run tour with an immediate English/Russian choice and outcome-based actions for ordinary play, Burrow Link, and modpacks; the short tour is now optional.
+- Added readable, copyable Burrow Link invitations and concrete Direct Connection guidance for the joining player.
 - Added settings export/import through native dialogs with a strict allowlist that excludes credentials, analytics identity and consent, room secrets, local paths, worlds, and modpacks.
-- Added consent-gated outcome analytics for onboarding, FriendTunnel, long operations, and settings transfer without collecting paths, account data, room secrets, or error contents.
+- Added consent-gated outcome analytics for onboarding, Burrow Link, long operations, and settings transfer without collecting paths, account data, room secrets, or error contents.
 - Added a complete Russian project README and current English/Russian first-run screenshots.
 
 ### Changed
@@ -82,7 +92,7 @@ No changes after the local v0.10.0 candidate.
 
 - Rebuilt instance ownership around one canonical control plane, composition root, typed renderer capabilities, and transactional operation engine.
 - Replaced duplicate renderer contexts and workflow state with focused feature owners, deterministic recovery, and measured lazy boundaries.
-- Split FriendTunnel, LAN discovery, and UPnP mapping into independently owned lifecycles with ordered shutdown and bounded diagnostics.
+- Split Burrow Link, LAN discovery, and UPnP mapping into independently owned lifecycles with ordered shutdown and bounded diagnostics.
 - Reorganized and synchronized the player, contributor, maintainer, architecture, security, testing, release, and historical documentation in English and Russian.
 - Added explicit opt-in, personless product analytics with a reviewed event allowlist and an editable privacy-safe GitHub feedback report.
 - Published the project under the MIT License.
@@ -135,13 +145,14 @@ No changes after the local v0.10.0 candidate.
 
 ## Earlier releases
 
-Historical changes before v0.6.0 are available in [GitHub Releases](https://github.com/malyarq/fmcl/releases) and Git history.
+Historical changes before v0.6.0 are available in [GitHub Releases](https://github.com/malyarq/burrow/releases) and Git history.
 
-[0.10.0]: https://github.com/malyarq/fmcl/compare/v0.9.1...v0.10.0
-[0.9.1]: https://github.com/malyarq/fmcl/compare/v0.9.0...v0.9.1
-[0.9.0]: https://github.com/malyarq/fmcl/compare/v0.8.1...v0.9.0
-[0.8.1]: https://github.com/malyarq/fmcl/compare/v0.8.0...v0.8.1
-[0.8.0]: https://github.com/malyarq/fmcl/compare/v0.7.1...v0.8.0
-[0.7.1]: https://github.com/malyarq/fmcl/compare/v0.7.0...v0.7.1
-[0.7.0]: https://github.com/malyarq/fmcl/compare/v0.6.0...v0.7.0
-[0.6.0]: https://github.com/malyarq/fmcl/compare/v0.5.0...v0.6.0
+[0.11.0]: https://github.com/malyarq/burrow/compare/v0.10.0...v0.11.0
+[0.10.0]: https://github.com/malyarq/burrow/compare/v0.9.1...v0.10.0
+[0.9.1]: https://github.com/malyarq/burrow/compare/v0.9.0...v0.9.1
+[0.9.0]: https://github.com/malyarq/burrow/compare/v0.8.1...v0.9.0
+[0.8.1]: https://github.com/malyarq/burrow/compare/v0.8.0...v0.8.1
+[0.8.0]: https://github.com/malyarq/burrow/compare/v0.7.1...v0.8.0
+[0.7.1]: https://github.com/malyarq/burrow/compare/v0.7.0...v0.7.1
+[0.7.0]: https://github.com/malyarq/burrow/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/malyarq/burrow/compare/v0.5.0...v0.6.0

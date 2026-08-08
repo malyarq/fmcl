@@ -19,7 +19,7 @@ vi.mock('../../contexts/SettingsContext', () => ({
 }))
 
 describe('SimplePlayHome visual truth', () => {
-  it('uses the shipped app icon for a restrained classic surface and easter-egg particles', async () => {
+  it('uses the shipped app icon and wordmark as one classic-surface lockup', async () => {
     const { container } = render(<SimplePlayHome />)
 
     const logo = screen.getByTestId('classic-launcher-mark')
@@ -29,7 +29,7 @@ describe('SimplePlayHome visual truth', () => {
     expect(
       screen.getByText('Use the sidebar to choose your version, nickname, and launch settings before you play.'),
     ).toBeTruthy()
-    expect(container.querySelector('[data-brand-wordmark]')).toBeNull()
+    expect(container.querySelector('[data-brand-wordmark]')?.textContent).toBe('Burrow')
 
     const logoButton = logo.closest('.logo-container')
     expect(logoButton).toBeTruthy()

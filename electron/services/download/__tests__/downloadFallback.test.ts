@@ -28,7 +28,7 @@ import { DownloadManager } from '../downloadManager';
 import { RuntimeDownloadService } from '../../runtime/downloadService';
 
 function createTempDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-download-fallback-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-download-fallback-'));
 }
 
 function createJarBuffer(): Promise<Buffer> {

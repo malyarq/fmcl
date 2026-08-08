@@ -17,7 +17,7 @@ export async function replaceFileAtomically(tempPath: string, outputPath: string
     return;
   }
 
-  const backupPath = `${outputPath}.fmcl-backup-${randomUUID()}`;
+  const backupPath = `${outputPath}.burrow-backup-${randomUUID()}`;
   await fs.promises.rename(outputPath, backupPath);
   try {
     await fs.promises.rename(tempPath, outputPath);
@@ -54,7 +54,7 @@ export class SafeZipWriter {
 
     const safeOutputPath = assertAbsolutePath(outputPath, 'ZIP output path');
     await fs.promises.mkdir(path.dirname(safeOutputPath), { recursive: true });
-    const tempPath = `${safeOutputPath}.fmcl-write-${process.pid}-${randomUUID()}`;
+    const tempPath = `${safeOutputPath}.burrow-write-${process.pid}-${randomUUID()}`;
     const writePromise = pipeline(
       this.zip.outputStream,
       fs.createWriteStream(tempPath, { flags: 'wx', mode: 0o600 }),

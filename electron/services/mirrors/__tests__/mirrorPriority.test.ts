@@ -21,7 +21,7 @@ import { MirrorsService } from '../mirrorsService';
 import { AtomicJsonStore } from '../../storage/atomicJsonStore';
 
 function createTempDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-mirrors-service-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-mirrors-service-'));
 }
 
 describe('MirrorsService priority ordering', () => {

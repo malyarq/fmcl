@@ -163,7 +163,7 @@ function request(kind: 'install-curseforge' | 'install-modrinth', rootPath: stri
 }
 
 function seedRoot(): string {
-  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-provider-operation-'));
+  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-provider-operation-'));
   fs.mkdirSync(path.join(rootPath, 'modpacks', 'provider-pack'), { recursive: true });
   fs.writeFileSync(path.join(rootPath, 'modpacks', 'provider-pack', 'payload.txt'), 'original bytes');
   fs.writeFileSync(path.join(rootPath, 'modpacks', 'provider-pack', 'modpack.json'), JSON.stringify(config('provider-pack')));

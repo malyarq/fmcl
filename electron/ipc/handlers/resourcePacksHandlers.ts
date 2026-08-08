@@ -145,7 +145,7 @@ export function registerResourcePacksHandlers() {
                         {
                             fileName: 'resourcepacks',
                             status: 'failure',
-                            message: 'FMCL could not prepare the resourcepacks folder for imports.',
+                            message: 'Burrow could not prepare the resourcepacks folder for imports.',
                         },
                     ],
                 };

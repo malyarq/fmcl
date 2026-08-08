@@ -89,7 +89,7 @@ vi.mock('../../security/externalUrls', () => ({
 import { createMainWindow, getNativeWindowIconCandidates } from '../windowManager';
 
 function createTempDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-window-manager-macos-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-window-manager-macos-'));
 }
 
 const originalPlatformDescriptor = Object.getOwnPropertyDescriptor(process, 'platform');
@@ -155,7 +155,7 @@ describe('createMainWindow macOS chrome contract', () => {
       height: 850,
       minWidth: 800,
       minHeight: 600,
-      title: 'FriendLauncher',
+      title: 'Burrow',
       webPreferences: {
         preload: '/preload.js',
         sandbox: true,

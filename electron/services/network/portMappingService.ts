@@ -27,7 +27,7 @@ export class PortMappingService {
         const gateway = await this.ensureGateway();
         let mapped: PortMappingDto | undefined;
         for await (const result of gateway.mapAll(privatePort, {
-          protocol: 'TCP', externalPort: publicPort, description: 'FriendLauncher', ttl: 30 * 60 * 1_000,
+          protocol: 'TCP', externalPort: publicPort, description: 'Burrow', ttl: 30 * 60 * 1_000,
         })) {
           mapped = { publicPort: result.externalPort, privatePort: result.internalPort, externalIp: result.externalHost };
           break;

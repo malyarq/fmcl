@@ -183,7 +183,7 @@ function record(id: string, name: string) {
 }
 
 function makeRoot(tempDirs: string[]): string {
-  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-delete-operation-'));
+  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-delete-operation-'));
   tempDirs.push(rootPath);
   fs.mkdirSync(path.join(rootPath, 'modpacks', 'source'), { recursive: true });
   fs.mkdirSync(path.join(rootPath, 'modpacks', 'target'), { recursive: true });

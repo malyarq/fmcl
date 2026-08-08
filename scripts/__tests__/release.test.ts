@@ -16,10 +16,10 @@ function smokeEvidence(platform: 'darwin' | 'linux' | 'win32') {
     status: platform === 'darwin' ? 'passed' : 'unsupported-runner',
     platform,
     version: '0.8.0-rc.1',
-    artifact: { path: `FriendLauncher-${platform}`, kind: platform === 'darwin' ? 'dmg' : platform === 'linux' ? 'appimage' : 'nsis', sha256: marker.repeat(64) },
+    artifact: { path: `Burrow-${platform}`, kind: platform === 'darwin' ? 'dmg' : platform === 'linux' ? 'appimage' : 'nsis', sha256: marker.repeat(64) },
     signing: { status: 'not-checked' },
     workspace: { cleanUserData: true, cleaned: true },
-    launch: { command: 'FriendLauncher', readiness: 'remote-debugging-page', windowCount: platform === 'darwin' ? 1 : 0, startedAt: '2026-08-05T00:00:00.000Z' },
+    launch: { command: 'Burrow', readiness: 'remote-debugging-page', windowCount: platform === 'darwin' ? 1 : 0, startedAt: '2026-08-05T00:00:00.000Z' },
     quit: { requested: platform === 'darwin', graceful: platform === 'darwin', exitCode: platform === 'darwin' ? 0 : null },
     logs: { stdout: '', stderr: '' },
     ...(platform === 'darwin' ? {} : { error: 'unsupported runner: foreign host' }),
@@ -37,7 +37,7 @@ describe('release candidate guard', () => {
   });
 
   it('writes fresh platform smoke files with the aggregate-compatible suffix', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-release-smoke-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-release-smoke-'));
     roots.push(root);
     const evidenceDir = path.join(root, 'evidence');
     const output = await collectPlatformSmoke({

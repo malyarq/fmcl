@@ -15,7 +15,7 @@ const config: InstanceEditableConfig = {
 type Fixture = { rootPath: string; root: LauncherRoot; store: JsonControlPlaneStore };
 
 function createFixture(options: { afterPublish?: () => void; withLegacy?: boolean } = {}): Fixture {
-  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-control-plane-commit-'));
+  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-control-plane-commit-'));
   const root = {} as LauncherRoot;
   if (options.withLegacy !== false) {
     fs.writeFileSync(path.join(rootPath, 'modpacks.json'), JSON.stringify({

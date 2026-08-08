@@ -59,7 +59,7 @@ export function OperationRecoveryInbox({
                 translate(
                   t,
                   'operations.recovery_inbox_error_desc',
-                  'FMCL could not read the recovery journal. Your current workspace remains unchanged.',
+                  'Burrow could not read the recovery journal. Your current workspace remains unchanged.',
                 ),
               )}
             </p>
@@ -209,12 +209,12 @@ function RecoveryDetails({
   const resultMessage = snapshot.result?.status === 'recovery-required'
     ? toRecoveryErrorMessage(
         snapshot.result.message,
-        translate(t, 'operations.recovery_inbox_required_desc', 'FMCL could not prove a safe automatic recovery.'),
+        translate(t, 'operations.recovery_inbox_required_desc', 'Burrow could not prove a safe automatic recovery.'),
       )
     : translate(
         t,
         'operations.recovery_inbox_recovered_desc',
-        'FMCL verified that this operation reached durable completion.',
+        'Burrow verified that this operation reached durable completion.',
       );
   const updatedAt = Date.parse(snapshot.updatedAt);
 
@@ -255,7 +255,7 @@ function recoveryGuidance(
   return translate(
     t,
     'operations.recovery_inbox_required_guidance',
-    'FMCL cannot safely replay the original request. Open Modpacks to inspect current state before taking a new action.',
+    'Burrow cannot safely replay the original request. Open Modpacks to inspect current state before taking a new action.',
   );
 }
 

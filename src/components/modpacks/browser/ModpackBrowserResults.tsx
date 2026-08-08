@@ -248,7 +248,7 @@ export function ModpackBrowserResults({
             {t('modpacks.no_history') || 'История просмотров пуста'}
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" role="list" aria-label={t('modpacks.history') || 'Viewed modpacks'}>
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,19rem),22rem))] justify-center gap-4" role="list" aria-label={t('modpacks.history') || 'Viewed modpacks'}>
             {history.map(renderCard)}
           </div>
         )}
@@ -300,7 +300,7 @@ export function ModpackBrowserResults({
 
   return (
     <div>
-      <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" role="list" aria-label={t('modpacks.browser') || 'Modpack results'}>
+      <div className="mb-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,19rem),22rem))] justify-center gap-4" role="list" aria-label={t('modpacks.browser') || 'Modpack results'}>
         {results.map(renderCard)}
       </div>
       {totalPages > 1 && (

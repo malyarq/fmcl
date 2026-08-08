@@ -107,13 +107,13 @@ export function ResourcePackContentAcquisition({
       duplicate: t('modpacks.resourcepack_issue_duplicate')
         || 'Already in this modpack. Review installed resource packs or choose a different pack.',
       'invalid-archive': t('modpacks.resourcepack_issue_invalid_archive')
-        || 'FMCL could not treat this file as a valid resource pack. Try another version or another local .zip.',
+        || 'Burrow could not treat this file as a valid resource pack. Try another version or another local .zip.',
       'runtime-blocked': t('modpacks.resourcepack_issue_runtime_blocked')
         || 'The current Minecraft runtime blocks this resource pack.',
       'install-failure': t('modpacks.resourcepack_issue_install_failure')
-        || 'FMCL could not add this resource pack right now. Retry from this screen or keep browsing.',
+        || 'Burrow could not add this resource pack right now. Retry from this screen or keep browsing.',
       'manifest-failure': t('modpacks.resourcepack_issue_manifest_failure')
-        || 'FMCL could not finish this resource-pack install.',
+        || 'Burrow could not finish this resource-pack install.',
       unknown: t('modpacks.resourcepack_recovery_refresh_failure')
         || 'The files were added, but the canonical instance view could not be refreshed.',
     },
@@ -139,7 +139,7 @@ export function ResourcePackContentAcquisition({
             </h3>
             <p className="text-sm text-secondary">
               {t('modpacks.resourcepack_scope_desc')
-                || 'Resource packs added here only affect this modpack. FMCL does not mark them compatible or incompatible for you.'}
+                || 'Resource packs added here only affect this modpack. Burrow does not mark them compatible or incompatible for you.'}
             </p>
           </section>
 

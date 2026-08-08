@@ -19,7 +19,10 @@ type PlainObject = Record<string, unknown>
 type ModpackFile = ModpackManifest['files'][number]
 
 const URL_SCHEME_PATTERN = /^[a-z][a-z\d+\-.]*:/i
-const SHARE_CODE_PREFIX = 'fmcl://share/v1/'
+const SHARE_CODE_PREFIX = 'burrow://share/v1/'
+const LEGACY_SHARE_CODE_PREFIX = 'fmcl://share/v1/'
+const SHARE_CODE_PREFIXES = [SHARE_CODE_PREFIX, LEGACY_SHARE_CODE_PREFIX] as const
+const SHARE_CODE_SCHEMES = ['burrow://share/', 'fmcl://share/'] as const
 const MAX_PATH_LENGTH = 4096
 const MAX_URL_LENGTH = 2048
 const MAX_SHARE_CODE_LENGTH = 32_768
@@ -253,6 +256,10 @@ function looksLikeUrl(candidate: string): boolean {
   return URL_SCHEME_PATTERN.test(candidate) && !isAbsoluteFilesystemPath(candidate)
 }
 
+function findMatchingPrefix(value: string, prefixes: readonly string[]): string | undefined {
+  return prefixes.find((prefix) => value.startsWith(prefix))
+}
+
 type FilesystemPathOptions = {
   allowUndefined?: boolean
   allowRelative?: boolean
@@ -340,12 +347,14 @@ export function validateShareCode(value: unknown): string {
   const rawCode = validateBoundedString(value, 'Share code', {
     maxLength: MAX_SHARE_CODE_LENGTH,
   })
+  const matchedScheme = findMatchingPrefix(rawCode, SHARE_CODE_SCHEMES)
+  const matchedPrefix = findMatchingPrefix(rawCode, SHARE_CODE_PREFIXES)
 
-  if (rawCode.startsWith('fmcl://share/') && !rawCode.startsWith(SHARE_CODE_PREFIX)) {
+  if (matchedScheme && !matchedPrefix) {
     fail('Share code version is not supported.')
   }
 
-  const payload = rawCode.startsWith(SHARE_CODE_PREFIX) ? rawCode.slice(SHARE_CODE_PREFIX.length) : rawCode
+  const payload = matchedPrefix ? rawCode.slice(matchedPrefix.length) : rawCode
   if (payload.length === 0) {
     fail('Share code payload is empty.')
   }
@@ -371,7 +380,7 @@ export function validateShareCode(value: unknown): string {
     fail('Share code is malformed or unsupported.')
   }
 
-  return rawCode.startsWith(SHARE_CODE_PREFIX) ? `${SHARE_CODE_PREFIX}${paddedPayload}` : paddedPayload
+  return matchedPrefix ? `${SHARE_CODE_PREFIX}${paddedPayload}` : paddedPayload
 }
 
 export function validateOfflineNickname(value: unknown): string {

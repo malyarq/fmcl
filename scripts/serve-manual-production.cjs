@@ -5,7 +5,7 @@ const path = require('node:path')
 
 const REQUIRED_NODE_MAJOR = 24
 const defaultRoot = path.join(__dirname, '..')
-const previewProofName = 'fmcl-production-preview.json'
+const previewProofName = 'burrow-production-preview.json'
 
 function readNodeMajor(version) {
   const match = /^v?(\d+)\./.exec(version)
@@ -48,8 +48,8 @@ function createProductionPreviewPlan({
   const buildEnv = {
     ...environment,
     NODE_ENV: 'production',
-    FMCL_RENDERER_ONLY: '1',
-    FMCL_MANUAL_PROFILING: '1',
+    BURROW_RENDERER_ONLY: '1',
+    BURROW_MANUAL_PROFILING: '1',
   }
 
   return {

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ContentManager } from '../contentManager';
 
 function createTempRoot(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-content-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-content-'));
 }
 
 function writeFile(filePath: string, contents: string): void {
@@ -29,7 +29,7 @@ describe('ContentManager', () => {
     tempDirs.push(rootDir);
 
     const sourcePath = path.join(rootDir, 'source.txt');
-    writeFile(sourcePath, 'hello fmcl');
+    writeFile(sourcePath, 'hello burrow');
 
     const manager = new ContentManager(rootDir);
 
@@ -38,7 +38,7 @@ describe('ContentManager', () => {
 
     expect(hash).toMatch(/^[a-f0-9]{40}$/);
     expect(storePath).toBe(path.join(rootDir, 'content-store', hash.slice(0, 2), hash));
-    expect(fs.readFileSync(storePath, 'utf-8')).toBe('hello fmcl');
+    expect(fs.readFileSync(storePath, 'utf-8')).toBe('hello burrow');
   });
 
   it('falls back to copying when hard links cannot be created', async () => {

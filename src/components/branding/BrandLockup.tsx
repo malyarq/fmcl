@@ -32,7 +32,7 @@ export function BrandLockup({
       {...props}
       className={cn(
         'inline-flex',
-        isVertical ? 'flex-col gap-3' : 'items-center gap-3',
+        isVertical ? 'flex-col gap-4' : 'items-center gap-3',
         align === 'start' ? 'items-start' : 'items-center',
         className,
       )}

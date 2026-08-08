@@ -215,7 +215,7 @@ function canonicalRecord() {
 }
 
 function seedOutput(tempDirs: string[]): { rootPath: string; outputPath: string } {
-  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-export-operation-'));
+  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-export-operation-'));
   tempDirs.push(rootPath);
   fs.mkdirSync(path.join(rootPath, 'modpacks', 'export-me'), { recursive: true });
   const outputPath = path.join(rootPath, 'exports', 'export-me.zip');
@@ -237,7 +237,7 @@ function manifestRequest(rootPath: string) {
 }
 
 function seedManifestInstance(tempDirs: string[]): string {
-  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-manifest-export-operation-'));
+  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-manifest-export-operation-'));
   tempDirs.push(rootPath);
   const instancePath = path.join(rootPath, 'modpacks', 'export-me');
   fs.mkdirSync(path.join(instancePath, 'mods'), { recursive: true });

@@ -28,7 +28,7 @@ Prefer predictable code that matches the surrounding module. ESLint and TypeScri
 For a new or changed cross-process operation, update the complete chain:
 
 1. payload/result type in `shared/contracts/*`;
-2. `FriendLauncherApi` when the preload surface changes;
+2. `BurrowApi` when the preload surface changes;
 3. preload bridge in `electron/preload/bridges/*` and exposure in `electron/preload.ts`;
 4. main-process input validation;
 5. handler registration in `electron/ipc/*`;

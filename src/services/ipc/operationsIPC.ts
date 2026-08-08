@@ -1,11 +1,11 @@
 import type {
-  FriendLauncherApi,
+  BurrowApi,
   OperationSnapshot,
   OperationStartRequest,
 } from '@shared/contracts';
 import { toIpcError } from './ipcError';
 
-type OperationsApi = FriendLauncherApi['operations'];
+type OperationsApi = BurrowApi['operations'];
 
 function api(): OperationsApi {
   const operations = typeof window !== 'undefined' ? window.api?.operations : undefined;

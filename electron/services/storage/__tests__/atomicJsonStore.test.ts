@@ -24,7 +24,7 @@ describe('AtomicJsonStore', () => {
   });
 
   function createStore() {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-atomic-json-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-atomic-json-'));
     tempDirs.push(root);
     const filePath = path.join(root, 'state.json');
     const store = new AtomicJsonStore<TestState>(filePath, {

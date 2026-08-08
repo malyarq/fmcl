@@ -133,7 +133,7 @@ function option(args, name) {
 
 function fixture() {
   const candidate = { version: '0.8.0-rc.1', tag: 'v0.8.0-rc.1', commit: 'a'.repeat(40) };
-  const artifact = (platform, suffix, char) => ({ path: `FriendLauncher-${suffix}`, platform, kind: 'release-asset', bytes: 1, sha256: char.repeat(64) });
+  const artifact = (platform, suffix, char) => ({ path: `Burrow-${suffix}`, platform, kind: 'release-asset', bytes: 1, sha256: char.repeat(64) });
   const artifacts = [artifact('darwin', 'Mac-0.8.0-rc.1-Installer.dmg', 'a'), artifact('linux', 'Linux-0.8.0-rc.1.AppImage', 'b'), artifact('win32', 'Windows-0.8.0-rc.1-Setup.exe', 'c')];
   return createPrepushReleaseReport({ candidate, packageVersion: candidate.version, cleanWorktree: true, qualityResult: { profile: 'release', status: 'passed' }, releaseEvidence: { status: 'passed', candidate, artifacts, authenticity: platforms.map((platform) => ({ platform })), rollback: { immutable: true, decision: 'withdraw-or-mark-non-latest', permittedActions: ['withdraw-or-mark-non-latest', 'publish-new-patch'], prohibitedActions: ['overwrite-stable-tag', 'overwrite-stable-asset'], instructions: 'Never overwrite an existing stable tag or asset' }, failures: [] }, platformSmoke: artifacts.map((artifact) => ({ platform: artifact.platform, status: 'passed', artifactSha256: artifact.sha256, evidencePath: `smoke/${artifact.platform}.json`, signing: 'unsigned' })) });
 }

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { BrandMark } from './branding/BrandMark';
+import { BrandWordmark } from './branding/BrandWordmark';
 import { useSettings } from '../contexts/SettingsContext';
 
 interface Particle {
@@ -121,13 +122,13 @@ export const SimplePlayHome: React.FC = () => {
       <div className="launcher-content-width relative flex min-h-full items-center justify-center px-4 py-10 text-center sm:px-6">
         <div className="relative z-10 w-full max-w-xl animate-fade-in-up">
           <section className="surface-panel relative overflow-visible p-6 text-left sm:p-7">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
               <div className="relative shrink-0 overflow-visible">
                 <button
                   type="button"
                   onClick={handleLogoClick}
-                  aria-label="FriendLauncher app icon"
-                  className="logo-container relative rounded-2xl border border-border/60 bg-background/80 p-3 transition-all duration-300 ease-out hover:scale-105 active:scale-[0.98]"
+                  aria-label="Burrow app icon"
+                  className="logo-container relative rounded-2xl transition-all duration-300 ease-out hover:scale-105 active:scale-[0.98]"
                   style={{
                     filter: showEasterEgg
                       ? `drop-shadow(0 0 18px ${accentHex}55) drop-shadow(0 0 34px ${accentHex}35)`
@@ -145,9 +146,9 @@ export const SimplePlayHome: React.FC = () => {
                   />
                   <BrandMark
                     role="app-icon"
-                    alt="FriendLauncher app icon"
+                    alt="Burrow app icon"
                     data-testid="classic-launcher-mark"
-                    className="h-10 w-10 transition-transform duration-300 md:h-11 md:w-11"
+                    className="h-20 w-20 transition-transform duration-300"
                     style={{
                       transform: showEasterEgg ? 'rotate(360deg) scale(1.12)' : 'none',
                       filter: showEasterEgg ? `drop-shadow(0 0 10px ${accentHex})` : undefined,
@@ -198,9 +199,12 @@ export const SimplePlayHome: React.FC = () => {
                 })}
               </div>
 
-              <div className="space-y-3">
-                <div className="inline-flex items-center rounded-full border border-border/60 bg-background/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary">
-                  {t('ui_mode.simple') || 'Classic'}
+              <div className="min-w-0 flex-1 space-y-4">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border/60 pb-3">
+                  <BrandWordmark as="p" className="text-[1.65rem]" />
+                  <p className="text-sm font-medium text-secondary">
+                    {t('ui_mode.simple') || 'Classic'}
+                  </p>
                 </div>
                 <div className="space-y-2">
                   <h1 className="text-2xl font-semibold text-foreground sm:text-[1.75rem]">

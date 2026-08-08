@@ -28,6 +28,7 @@ const MAX_NAME_LENGTH = 120;
 const MAX_RUNTIME_LENGTH = 64;
 const MAX_IDENTIFIER_LENGTH = 128;
 const MAX_LOADER_VERSION_LENGTH = 120;
+const SHARE_CODE_PREFIXES = ['burrow://share/v1/', 'fmcl://share/v1/'] as const;
 
 type ShareManifestMod = Readonly<{
     source: 'curseforge' | 'modrinth';
@@ -99,7 +100,7 @@ export class ShareService {
             const compressed = gzipSync(buffer);
             const base64 = compressed.toString('base64');
 
-            return `fmcl://share/v1/${base64}`;
+            return `burrow://share/v1/${base64}`;
         } catch (error) {
              
             console.error('Failed to generate share code:', error);
@@ -109,10 +110,8 @@ export class ShareService {
 
     public async resolveShareCode(code: string): Promise<ModpackManifest> {
         try {
-            let base64 = code;
-            if (code.startsWith('fmcl://share/v1/')) {
-                base64 = code.replace('fmcl://share/v1/', '');
-            }
+            const prefix = SHARE_CODE_PREFIXES.find((candidate) => code.startsWith(candidate));
+            const base64 = prefix ? code.slice(prefix.length) : code;
 
             const buffer = Buffer.from(base64, 'base64');
             if (buffer.length === 0 || buffer.length > MAX_SHARE_COMPRESSED_BYTES) {

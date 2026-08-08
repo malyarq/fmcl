@@ -18,7 +18,7 @@ function writeFixture(root: string, relativePath: string, source: string): void 
 }
 
 function createFixture(): string {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-architecture-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-architecture-'));
   writeFixture(root, 'shared/contracts/ipcChannels.ts', 'export const channels = []\n');
   writeFixture(root, 'electron/preload.ts', "contextBridge.exposeInMainWorld('api', {})\n");
   return root;

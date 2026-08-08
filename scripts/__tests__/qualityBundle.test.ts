@@ -30,7 +30,7 @@ describe('atomic quality bundle entrypoint', () => {
     expect(plan.preflight).toMatchObject({ args: ['scripts/assert-node24.cjs'] });
     expect(plan.cleanOutput).toBe('dist');
     expect(plan.build.args).toContain('--manifest');
-    expect(plan.manifestPath).toBe('dist/fmcl-bundle-manifest.json');
-    expect(plan.check.args).toEqual(expect.arrayContaining(['scripts/check-bundle.cjs', '--manifest', 'dist/fmcl-bundle-manifest.json']));
+    expect(plan.manifestPath).toBe('dist/burrow-bundle-manifest.json');
+    expect(plan.check.args).toEqual(expect.arrayContaining(['scripts/check-bundle.cjs', '--manifest', 'dist/burrow-bundle-manifest.json']));
   });
 });

@@ -12,7 +12,7 @@ describe('duplicate operation', () => {
   afterEach(() => { for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
 
   it('reports the published instance id only after a successful duplicate', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-duplicate-success-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-duplicate-success-'));
     tempDirs.push(rootPath);
     seed(rootPath);
     const { runner, execute } = createRunner();
@@ -36,7 +36,7 @@ describe('duplicate operation', () => {
   it.each(['copy', 'validation', 'publish', 'control-plane'] as const)(
     'preserves source, existing destination and control-plane files when %s fails',
     async (fault) => {
-      const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-duplicate-fault-'));
+      const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-duplicate-fault-'));
       tempDirs.push(rootPath);
       seed(rootPath);
       const before = capture(rootPath);
@@ -52,7 +52,7 @@ describe('duplicate operation', () => {
   );
 
   it('cancels before publish without changing live files', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-duplicate-cancel-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-duplicate-cancel-'));
     tempDirs.push(rootPath);
     seed(rootPath);
     const before = capture(rootPath);
@@ -69,7 +69,7 @@ describe('duplicate operation', () => {
   });
 
   it('persists the complete canonical command before a post-publish fault', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-duplicate-command-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-duplicate-command-'));
     tempDirs.push(rootPath);
     seed(rootPath);
     let recorded: unknown;

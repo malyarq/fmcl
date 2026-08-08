@@ -9,7 +9,7 @@ import type { ManualVerificationView } from '../views';
 const marketplaceFramingPattern = /\b(marketplace|wishlist|store|storefront)\b/i;
 
 vi.mock('../../../components/TitleBar', () => ({
-  default: () => <div>FriendLauncher</div>,
+  default: () => <div>Burrow</div>,
 }));
 
 vi.mock('../../../components/Sidebar', () => ({

@@ -211,7 +211,7 @@ function main(args = process.argv.slice(2)) {
       manifest: readJson(path.resolve(defaultRoot, values.manifest), 'bundle manifest'),
       outputDir,
     })
-    const evidencePath = path.resolve(defaultRoot, values.evidence || path.join('dist', 'fmcl-bundle-budget-evidence.json'))
+    const evidencePath = path.resolve(defaultRoot, values.evidence || path.join('dist', 'burrow-bundle-budget-evidence.json'))
     writeEvidence(evidencePath, result.ignoredEvidence)
     if (result.failures.length > 0) throw new Error(result.failures.join('\n'))
     console.log(JSON.stringify(result.ignoredEvidence, null, 2))

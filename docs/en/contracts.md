@@ -24,7 +24,7 @@ When adding or changing a cross-process operation:
 1. Define a typed request/result in `shared/contracts/*` or a shared domain type.
 2. Add the channel to `shared/contracts/ipcChannels.ts` if a channel is required.
 3. Expose the narrow capability through a domain preload bridge.
-4. Add it to `FriendLauncherApi` when it belongs in `window.api`.
+4. Add it to `BurrowApi` when it belongs in `window.api`.
 5. Validate every renderer-controlled value in the main process.
 6. Register a thin handler that delegates to a domain service.
 7. Add or update the renderer wrapper in `src/services/ipc/*`.

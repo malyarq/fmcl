@@ -23,10 +23,10 @@ interface MiniManifestPayload {
 function encodeShareCode(payload: MiniManifestPayload | unknown): string {
   const encoded = gzipSync(Buffer.from(JSON.stringify(payload), 'utf-8')).toString('base64');
 
-  return `fmcl://share/v1/${encoded}`;
+  return `burrow://share/v1/${encoded}`;
 }
 
-const root = '/tmp/fmcl-share-root' as unknown as LauncherRoot;
+const root = '/tmp/burrow-share-root' as unknown as LauncherRoot;
 
 function readySnapshot(): CanonicalInstanceSnapshot {
   return {
@@ -102,7 +102,7 @@ describe('ShareService', () => {
     const service = new ShareService(instances, content);
 
     const shareCode = await service.generateShareCode('fabric-pack');
-    expect(shareCode.startsWith('fmcl://share/v1/')).toBe(true);
+    expect(shareCode.startsWith('burrow://share/v1/')).toBe(true);
 
     const manifest = await service.resolveShareCode(shareCode);
     expect(manifest.name).toBe('Fabric Pack');
@@ -132,6 +132,17 @@ describe('ShareService', () => {
     expect(manifest.overrides).toBe('overrides');
   });
 
+  it('keeps pre-rebrand Burrow share codes importable', async () => {
+    const { instances, content } = createDependencies();
+    const service = new ShareService(instances, content);
+    const currentCode = encodeShareCode({ v: 1, n: 'Legacy Pack', mc: '1.20.1', ml: { t: 'vanilla' }, f: [] });
+
+    await expect(service.resolveShareCode(currentCode.replace('burrow://', 'fmcl://'))).resolves.toMatchObject({
+      name: 'Legacy Pack',
+      minecraft: { version: '1.20.1' },
+    });
+  });
+
   it('wraps generation failures with a stable public error', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { content } = createDependencies();
@@ -151,11 +162,11 @@ describe('ShareService', () => {
     const { instances, content } = createDependencies();
     const service = new ShareService(instances, content);
 
-    await expect(service.resolveShareCode('fmcl://share/v1/not-base64')).rejects.toThrow(
+    await expect(service.resolveShareCode('burrow://share/v1/not-base64')).rejects.toThrow(
       'Invalid or corrupted share code',
     );
 
-    await expect(service.resolveShareCode('fmcl://share/v2/not-supported')).rejects.toThrow(
+    await expect(service.resolveShareCode('burrow://share/v2/not-supported')).rejects.toThrow(
       'Invalid or corrupted share code',
     );
 
@@ -189,7 +200,7 @@ describe('ShareService', () => {
       ml: { t: 'fabric', v: '0.16.0' },
       f: [],
     };
-    const gzipBomb = `fmcl://share/v1/${gzipSync(Buffer.alloc(300 * 1024, 65)).toString('base64')}`;
+    const gzipBomb = `burrow://share/v1/${gzipSync(Buffer.alloc(300 * 1024, 65)).toString('base64')}`;
     const oversizedFiles = encodeShareCode({ ...valid, f: Array.from({ length: 1_001 }, () => ({ m: 'project', v: 'version' })) });
     const malformedProvider = encodeShareCode({ ...valid, f: [{ p: 1, f: 2, m: 'project', v: 'version' }] });
 

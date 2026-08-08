@@ -70,7 +70,7 @@ describe('PrivacyFeedbackCard', () => {
     expect(mocks.setEnabled).toHaveBeenCalledWith(true);
 
     fireEvent.click(screen.getByText('Посмотреть безопасную диагностику'));
-    expect(screen.getByText(new RegExp(`FMCL: ${pkg.version.replaceAll('.', '\\.')}`))).toBeTruthy();
+    expect(screen.getByText(new RegExp(`Burrow: ${pkg.version.replaceAll('.', '\\.')}`))).toBeTruthy();
     expect(screen.queryByText(/nickname|token|\/Users\//i)).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Сообщить о проблеме на GitHub' }));
@@ -102,7 +102,7 @@ describe('PrivacyFeedbackCard', () => {
     expect(url.length).toBeLessThan(2048);
     expect(russianUrl.length).toBeLessThan(2048);
     expect(new URL(url).origin).toBe('https://github.com');
-    expect(body).toContain(`FMCL: ${pkg.version}`);
+    expect(body).toContain(`Burrow: ${pkg.version}`);
     expect(body).toContain('OS: windows');
     expect(body).toContain('System readiness: storage:unwritable');
     expect(body).not.toContain('/Users/');

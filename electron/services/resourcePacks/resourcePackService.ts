@@ -325,7 +325,7 @@ export class ResourcePacksService {
                 this.createAcquisitionIssue(
                     fallbackFileName,
                     'failure',
-                    'FMCL could not import the selected resource pack into this instance.',
+                    'Burrow could not import the selected resource pack into this instance.',
                 ),
             ]);
         }

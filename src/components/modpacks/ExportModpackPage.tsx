@@ -95,7 +95,7 @@ export const ExportModpackPage: React.FC<ExportModpackPageProps> = ({ modpackId,
         <div className="space-y-6 max-w-2xl mx-auto">
           <div className="surface-muted p-4"><p className="text-sm text-secondary">{t('modpacks.export_desc')?.replace('{{name}}', modpackName) || `Экспортировать модпак "${modpackName}" в выбранном формате.`}</p></div>
           <Select label={t('modpacks.export_format') || 'Формат экспорта'} value={format} disabled={isActive} onChange={(event) => setFormat(event.target.value as ExportFormat)}>
-            <option value="multimc">{t('modpacks.export_format_multimc') || 'MultiMC / Prism Launcher / FriendLauncher (.zip)'}</option>
+            <option value="multimc">{t('modpacks.export_format_multimc') || 'MultiMC / Prism Launcher / Burrow (.zip)'}</option>
             <option value="zip">{t('modpacks.export_format_zip') || 'Raw ZIP Archive (Instance Copy)'}</option>
           </Select>
           <div className="surface-card space-y-3 p-4">

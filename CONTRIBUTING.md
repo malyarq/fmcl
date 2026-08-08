@@ -1,10 +1,10 @@
-# Contributing to FriendLauncher
+# Contributing to Burrow
 
-Thanks for improving FriendLauncher. Keep changes focused, testable, and consistent across the Electron boundary and the English/Russian documentation.
+Thanks for improving Burrow. Keep changes focused, testable, and consistent across the Electron boundary and the English/Russian documentation.
 
 ## Before starting
 
-- Search existing [issues](https://github.com/malyarq/fmcl/issues) and the [roadmap](docs/en/roadmap.md).
+- Search existing [issues](https://github.com/malyarq/burrow/issues) and the [roadmap](docs/en/roadmap.md).
 - For a security issue, stop and use the private process in [SECURITY.md](SECURITY.md).
 - For a large behavior, format, migration, or dependency change, open an issue first so the contract can be agreed before implementation.
 - Read the nearest `AGENTS.md` in the directory you change.
@@ -16,8 +16,8 @@ The repository currently has no project-wide open-source license. A public repos
 Use Node.js 24 and npm 11:
 
 ```bash
-git clone https://github.com/malyarq/fmcl.git
-cd fmcl
+git clone https://github.com/malyarq/burrow.git
+cd burrow
 nvm use
 npm ci
 npm run verify

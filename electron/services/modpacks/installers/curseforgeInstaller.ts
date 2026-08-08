@@ -27,7 +27,7 @@ export async function stageCurseForgeModpack(ports: CurseForgeInstallerPorts, in
   const packFile = await ports.provider.getModFile(input.projectId, input.fileId);
   if (!packFile.downloadUrl) throw new Error('CurseForge modpack file has no downloadUrl');
   const pack = await ports.provider.getMod(input.projectId);
-  const temporaryDirectory = ports.content.createTemporaryDirectory('fmcl-curseforge-');
+  const temporaryDirectory = ports.content.createTemporaryDirectory('burrow-curseforge-');
   const stagePath = resolvePathWithinRoot(input.stagingRoot, `modpacks/${input.destinationId}`, 'CurseForge staged modpack');
   const archivePath = path.join(temporaryDirectory, 'modpack.zip');
   const extractPath = path.join(temporaryDirectory, 'extracted');

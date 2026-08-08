@@ -50,7 +50,7 @@ export function classifyExternalUrl(candidate: string): ClassifiedExternalUrl {
     return {
       disposition: 'block',
       normalizedUrl: candidate,
-      reason: 'FMCL blocked this link because it is not a valid URL.',
+      reason: 'Burrow blocked this link because it is not a valid URL.',
     }
   }
 
@@ -60,7 +60,7 @@ export function classifyExternalUrl(candidate: string): ClassifiedExternalUrl {
     return {
       disposition: 'block',
       normalizedUrl,
-      reason: `FMCL blocked this link because the ${parsedUrl.protocol} scheme is not allowed.`,
+      reason: `Burrow blocked this link because the ${parsedUrl.protocol} scheme is not allowed.`,
     }
   }
 
@@ -68,7 +68,7 @@ export function classifyExternalUrl(candidate: string): ClassifiedExternalUrl {
     return {
       disposition: 'block',
       normalizedUrl,
-      reason: 'FMCL only opens external HTTP and HTTPS links.',
+      reason: 'Burrow only opens external HTTP and HTTPS links.',
     }
   }
 
@@ -76,7 +76,7 @@ export function classifyExternalUrl(candidate: string): ClassifiedExternalUrl {
     return {
       disposition: 'block',
       normalizedUrl,
-      reason: 'FMCL blocked this link because it does not include a hostname.',
+      reason: 'Burrow blocked this link because it does not include a hostname.',
     }
   }
 
@@ -84,7 +84,7 @@ export function classifyExternalUrl(candidate: string): ClassifiedExternalUrl {
     return {
       disposition: 'block',
       normalizedUrl,
-      reason: 'FMCL blocked this link because embedded credentials are not allowed.',
+      reason: 'Burrow blocked this link because embedded credentials are not allowed.',
     }
   }
 
@@ -102,7 +102,7 @@ export function classifyExternalUrl(candidate: string): ClassifiedExternalUrl {
     normalizedUrl,
     hostname,
     reason: parsedUrl.protocol === 'http:'
-      ? 'This link uses insecure HTTP, so FMCL requires confirmation before opening it.'
+      ? 'This link uses insecure HTTP, so Burrow requires confirmation before opening it.'
       : undefined,
   }
 }
@@ -143,7 +143,7 @@ async function showBlockedExternalUrl(
   parentWindow?: BrowserWindow,
 ): Promise<void> {
   const detailLines = [
-    classification.reason ?? 'FMCL blocked this external link.',
+    classification.reason ?? 'Burrow blocked this external link.',
     request.context ? `Context: ${request.context}` : undefined,
     `URL: ${classification.normalizedUrl}`,
   ].filter(Boolean)

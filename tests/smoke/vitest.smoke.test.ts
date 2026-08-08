@@ -7,8 +7,8 @@ import { CLASSIC_MODPACK_ID } from '@shared/constants';
 
 describe('Vitest harness', () => {
   it('renders a React element in jsdom and resolves shared aliases', () => {
-    render(createElement('span', null, `FMCL ${CLASSIC_MODPACK_ID}`));
+    render(createElement('span', null, `Burrow ${CLASSIC_MODPACK_ID}`));
 
-    expect(screen.getByText(`FMCL ${CLASSIC_MODPACK_ID}`)).toBeTruthy();
+    expect(screen.getByText(`Burrow ${CLASSIC_MODPACK_ID}`)).toBeTruthy();
   });
 });

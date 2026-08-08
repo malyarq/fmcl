@@ -33,7 +33,7 @@ describe('persistent control-plane fault matrix', () => {
   });
 
   function createStore(fault?: FaultName) {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-control-plane-fault-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-control-plane-fault-'));
     roots.push(root);
     const filePath = path.join(root, 'instance-control-plane.json');
     const store = new AtomicJsonStore<State>(filePath, {

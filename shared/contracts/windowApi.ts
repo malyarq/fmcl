@@ -31,7 +31,7 @@ import type { SystemReadinessAPI } from './systemReadiness'
  *
  * This is the renderer's only supported main-process boundary.
  */
-export type FriendLauncherApi = {
+export type BurrowApi = {
   launcher: LauncherAPI
   providerCatalog: ProviderCatalogAPI
   storageMaintenance: StorageMaintenanceAPI

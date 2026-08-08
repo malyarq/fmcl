@@ -55,12 +55,12 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     return (
         <>
             <div 
-                className="fixed inset-0 z-[100] animate-in fade-in bg-background/72 backdrop-blur-sm duration-200 pointer-events-auto" 
+                className="fixed inset-0 z-[210] animate-in fade-in bg-background/72 backdrop-blur-sm duration-200 pointer-events-auto"
                 onClick={onCancel}
                 style={{ isolation: 'isolate' }}
             />
             <div 
-                className="fixed inset-0 z-[101] flex items-center justify-center p-8 pointer-events-none animate-in fade-in duration-200"
+                className="fixed inset-0 z-[211] flex items-center justify-center p-8 pointer-events-none animate-in fade-in duration-200"
                 style={{ isolation: 'isolate' }}
             >
                 <div

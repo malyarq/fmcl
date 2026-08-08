@@ -133,7 +133,7 @@ const Sidebar = ({
 
     return (
         <aside
-            aria-label="FriendLauncher sidebar"
+            aria-label="Burrow sidebar"
             data-instance-owner="canonical"
             data-selected-instance-id={effectiveModpackId}
             className={cn(

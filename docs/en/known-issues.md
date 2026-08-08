@@ -31,4 +31,4 @@ Checksums detect corruption or asset replacement only when users compare them wi
 - An unknown-developer warning on Windows or macOS is expected without publisher signing and notarization.
 - `npm run verify` does not package the application and does not run visual or real installation tests; see [Testing](testing.md).
 
-The project stop condition is documented in the short [product gate](roadmap.md). Report an ordinary regression through [GitHub Issues](https://github.com/malyarq/fmcl/issues/new) and a vulnerability according to [SECURITY.md](../../SECURITY.md).
+The project stop condition is documented in the short [product gate](roadmap.md). Report an ordinary regression through [GitHub Issues](https://github.com/malyarq/burrow/issues/new) and a vulnerability according to [SECURITY.md](../../SECURITY.md).

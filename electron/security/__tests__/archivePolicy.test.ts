@@ -128,7 +128,7 @@ describe('archivePolicy', () => {
   });
 
   it('extracts validated entries inside the chosen directory', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-archive-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-archive-'));
     tempDirs.push(root);
     const buffer = await createZipBuffer([['config/options.txt', Buffer.from('safe')]]);
 

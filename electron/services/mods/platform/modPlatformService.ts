@@ -179,8 +179,8 @@ export class ModPlatformService {
 
   private getGuidedContentFailureMessage(contentType: 'resourcepack' | 'shader'): string {
     return contentType === 'resourcepack'
-      ? 'FMCL could not download this resource pack into the current modpack.'
-      : 'FMCL could not download this shader pack into the current modpack.';
+      ? 'Burrow could not download this resource pack into the current modpack.'
+      : 'Burrow could not download this shader pack into the current modpack.';
   }
 
   public async searchMods(query: ModSearchQuery): Promise<ModSearchResult> {

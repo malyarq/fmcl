@@ -19,7 +19,7 @@ describe('launcher root paths', () => {
   });
 
   it('accepts the canonical filesystem path of the default launcher root', () => {
-    const actualUserData = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-paths-actual-'));
+    const actualUserData = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-paths-actual-'));
     const aliasUserData = `${actualUserData}-alias`;
     cleanup.push(aliasUserData, actualUserData);
     fs.symlinkSync(actualUserData, aliasUserData, process.platform === 'win32' ? 'junction' : 'dir');

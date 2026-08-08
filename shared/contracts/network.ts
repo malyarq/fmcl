@@ -49,7 +49,7 @@ interface NetworkSnapshotBase {
   diagnostic?: NetworkDiagnostic;
 }
 
-export interface FriendTunnelSnapshot extends NetworkSnapshotBase {
+export interface BurrowLinkSnapshot extends NetworkSnapshotBase {
   role: 'host' | 'join' | null;
   roomCode?: string;
   localPort?: number;
@@ -90,12 +90,12 @@ export type MinecraftServerStatusResult =
   | { status: 'ok'; server: MinecraftServerStatus }
   | { status: 'failed'; diagnostic: NetworkDiagnostic };
 
-export interface FriendTunnelAPI {
-  getState: () => Promise<FriendTunnelSnapshot>;
-  host: (request: { port: number }) => Promise<FriendTunnelSnapshot>;
-  join: (request: { roomCode: string }) => Promise<FriendTunnelSnapshot>;
-  stop: () => Promise<FriendTunnelSnapshot>;
-  onState: (callback: (snapshot: FriendTunnelSnapshot) => void) => () => void;
+export interface BurrowLinkAPI {
+  getState: () => Promise<BurrowLinkSnapshot>;
+  host: (request: { port: number }) => Promise<BurrowLinkSnapshot>;
+  join: (request: { roomCode: string }) => Promise<BurrowLinkSnapshot>;
+  stop: () => Promise<BurrowLinkSnapshot>;
+  onState: (callback: (snapshot: BurrowLinkSnapshot) => void) => () => void;
 }
 
 export interface LanDiscoveryAPI {
@@ -117,7 +117,7 @@ export interface PortMappingAPI {
 }
 
 export interface NetworkAPI {
-  tunnel: FriendTunnelAPI;
+  tunnel: BurrowLinkAPI;
   lan: LanDiscoveryAPI;
   upnp: PortMappingAPI;
 }

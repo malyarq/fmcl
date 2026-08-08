@@ -7,7 +7,7 @@ import pkg from './package.json';
 const sharedAlias = {
   '@shared': path.resolve(__dirname, 'shared')
 };
-const rendererOnly = process.env.FMCL_RENDERER_ONLY === '1';
+const rendererOnly = process.env.BURROW_RENDERER_ONLY === '1';
 
 export default defineConfig({
   build: {

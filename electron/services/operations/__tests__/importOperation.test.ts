@@ -103,7 +103,7 @@ describe('staged archive import operation', () => {
 });
 
 function seedRoot(): string {
-  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-import-operation-'));
+  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-import-operation-'));
   fs.mkdirSync(path.join(rootPath, 'modpacks', 'destination'), { recursive: true });
   fs.writeFileSync(path.join(rootPath, 'modpacks', 'destination', 'payload.txt'), 'original destination');
   fs.writeFileSync(path.join(rootPath, 'modpacks', 'destination', 'modpack.json'), JSON.stringify({ id: 'destination', name: 'Original', runtime: { minecraft: '1.20.1' }, memory: { maxMb: 4096 }, vmOptions: [] }));

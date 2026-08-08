@@ -15,7 +15,7 @@ afterEach(() => {
 });
 
 function root(): string {
-  const value = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-fault-'));
+  const value = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-fault-'));
   roots.push(value);
   return value;
 }

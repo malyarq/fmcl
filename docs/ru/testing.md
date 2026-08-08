@@ -1,6 +1,6 @@
 # Тестирование
 
-В FriendLauncher используется несколько уровней проверок. Ни одна локальная команда не может доказать работу на всех ОС, провайдерах, роутерах, Java runtime и путях установленного обновления.
+В Burrow используется несколько уровней проверок. Ни одна локальная команда не может доказать работу на всех ОС, провайдерах, роутерах, Java runtime и путях установленного обновления.
 
 ## Уровни проверок
 
@@ -63,7 +63,7 @@ npm run test:visual:closeout
 npm run test:visual:closeout -- --update-snapshots
 ```
 
-Эталоны намеренно относятся к Darwin и лежат в `tests/visual/manual-closeout.spec.ts-snapshots/`. Playwright запускает сервер с `FMCL_RENDERER_ONLY=1`: это проверка детерминированных UI-state, а не нативного поведения Electron.
+Эталоны намеренно относятся к Darwin и лежат в `tests/visual/manual-closeout.spec.ts-snapshots/`. Playwright запускает сервер с `BURROW_RENDERER_ONLY=1`: это проверка детерминированных UI-state, а не нативного поведения Electron.
 
 ## Полная установка Minecraft
 

@@ -124,7 +124,7 @@ describe('share import operation', () => {
 });
 
 function seedRoot(): string {
-  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-share-import-operation-'));
+  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-share-import-operation-'));
   roots.push(rootPath);
   fs.mkdirSync(path.join(rootPath, 'modpacks'), { recursive: true });
   return rootPath;

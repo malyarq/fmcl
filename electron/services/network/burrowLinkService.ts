@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import net from 'node:net';
 import Hyperswarm from 'hyperswarm';
-import type { FriendTunnelSnapshot } from '../../../shared/contracts/network';
+import type { BurrowLinkSnapshot } from '../../../shared/contracts/network';
 import { handleHostPeerConnection } from './hostPeer';
 import { bridgeLocalSocketToMuxer, ensureMuxerOnConnection, getOrWaitPeerConnection } from './joinPeer';
 import { diagnostic, SerialQueue, StatePublisher, type StateListener } from './networkState';
@@ -19,22 +19,22 @@ type TunnelResources = {
   peerCount: number;
 };
 
-export type FriendTunnelServiceOptions = {
+export type BurrowLinkServiceOptions = {
   createSwarm?: () => Swarm;
   createServer?: typeof net.createServer;
   randomBytes?: typeof crypto.randomBytes;
   onLog?: (message: string) => void;
 };
 
-const INITIAL_STATE: FriendTunnelSnapshot = {
+const INITIAL_STATE: BurrowLinkSnapshot = {
   revision: 0,
   state: 'idle',
   role: null,
   peerCount: 0,
 };
 
-export class FriendTunnelService {
-  private readonly state = new StatePublisher<FriendTunnelSnapshot>(INITIAL_STATE);
+export class BurrowLinkService {
+  private readonly state = new StatePublisher<BurrowLinkSnapshot>(INITIAL_STATE);
   private readonly queue = new SerialQueue();
   private readonly createSwarm: () => Swarm;
   private readonly createServer: typeof net.createServer;
@@ -42,17 +42,17 @@ export class FriendTunnelService {
   private readonly onLog: (message: string) => void;
   private resources?: TunnelResources;
 
-  constructor(options: FriendTunnelServiceOptions = {}) {
+  constructor(options: BurrowLinkServiceOptions = {}) {
     this.createSwarm = options.createSwarm ?? (() => new Hyperswarm());
     this.createServer = options.createServer ?? net.createServer;
     this.randomBytes = options.randomBytes ?? crypto.randomBytes;
     this.onLog = options.onLog ?? (() => undefined);
   }
 
-  public getState(): FriendTunnelSnapshot { return this.state.get(); }
-  public subscribe(listener: StateListener<FriendTunnelSnapshot>): () => void { return this.state.subscribe(listener); }
+  public getState(): BurrowLinkSnapshot { return this.state.get(); }
+  public subscribe(listener: StateListener<BurrowLinkSnapshot>): () => void { return this.state.subscribe(listener); }
 
-  public host(port: number): Promise<FriendTunnelSnapshot> {
+  public host(port: number): Promise<BurrowLinkSnapshot> {
     return this.queue.run(async () => {
       await this.stopUnlocked();
       this.state.publish({ state: 'starting', role: 'host', peerCount: 0 });
@@ -69,19 +69,19 @@ export class FriendTunnelService {
         });
         resources.discovery = resources.swarm.join(topic, { server: true, client: false });
         await resources.discovery.flushed();
-        this.onLog('[Network] FriendTunnel host is active.');
+        this.onLog('[Network] Burrow Link host is active.');
         return this.state.publish({ state: 'active', role: 'host', roomCode, peerCount: resources.peerCount });
       } catch (error) {
         await this.cleanup(resources);
         return this.state.publish({
           state: 'failed', role: 'host', peerCount: 0,
-          diagnostic: diagnostic('TUNNEL_DISCOVERY_FAILED', 'FriendTunnel discovery could not start', error),
+          diagnostic: diagnostic('TUNNEL_DISCOVERY_FAILED', 'Burrow Link discovery could not start', error),
         });
       }
     });
   }
 
-  public join(roomCode: string): Promise<FriendTunnelSnapshot> {
+  public join(roomCode: string): Promise<BurrowLinkSnapshot> {
     return this.queue.run(async () => {
       await this.stopUnlocked();
       if (!/^[0-9a-f]{64}$/.test(roomCode)) {
@@ -114,19 +114,19 @@ export class FriendTunnelService {
         });
         resources.server = server;
         const localPort = await listen(server);
-        this.onLog(`[Network] FriendTunnel join endpoint is active on localhost:${localPort}.`);
+        this.onLog(`[Network] Burrow Link join endpoint is active on localhost:${localPort}.`);
         return this.state.publish({ state: 'active', role: 'join', roomCode, localPort, peerCount: resources.peerCount });
       } catch (error) {
         await this.cleanup(resources);
         return this.state.publish({
           state: 'failed', role: 'join', peerCount: 0,
-          diagnostic: diagnostic('TUNNEL_LISTEN_FAILED', 'FriendTunnel local endpoint could not start', error),
+          diagnostic: diagnostic('TUNNEL_LISTEN_FAILED', 'Burrow Link local endpoint could not start', error),
         });
       }
     });
   }
 
-  public stop(): Promise<FriendTunnelSnapshot> {
+  public stop(): Promise<BurrowLinkSnapshot> {
     return this.queue.run(async () => await this.stopUnlocked());
   }
 
@@ -143,7 +143,7 @@ export class FriendTunnelService {
     this.state.publish({ ...current, peerCount: resources.peerCount });
   }
 
-  private async stopUnlocked(): Promise<FriendTunnelSnapshot> {
+  private async stopUnlocked(): Promise<BurrowLinkSnapshot> {
     const resources = this.resources;
     if (!resources) {
       const current = this.state.get();
@@ -153,7 +153,7 @@ export class FriendTunnelService {
     this.state.publish({ ...current, state: 'stopping', diagnostic: undefined });
     const errors = await this.cleanup(resources);
     return errors.length
-      ? this.state.publish({ state: 'failed', role: null, peerCount: 0, diagnostic: diagnostic('TUNNEL_CLEANUP_FAILED', 'FriendTunnel cleanup was incomplete') })
+      ? this.state.publish({ state: 'failed', role: null, peerCount: 0, diagnostic: diagnostic('TUNNEL_CLEANUP_FAILED', 'Burrow Link cleanup was incomplete') })
       : this.state.publish({ state: 'idle', role: null, peerCount: 0 });
   }
 

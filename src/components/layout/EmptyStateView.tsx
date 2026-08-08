@@ -17,7 +17,7 @@ export function EmptyStateView(props: {
             <BrandMark
               role="app-icon"
               src={iconPath}
-              alt="FriendLauncher app icon"
+              alt="Burrow app icon"
               data-testid="empty-state-brand-mark"
               frame="none"
               size="lg"

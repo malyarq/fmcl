@@ -23,7 +23,7 @@ vi.mock('../../contexts/SettingsContext', () => ({
         'ui_mode.simple': 'Classic',
         'general.settings': 'Settings',
         'dashboard.welcome': 'Welcome',
-        'dashboard.welcome_title': 'Welcome to FriendLauncher!',
+        'dashboard.welcome_title': 'Welcome to Burrow!',
         'dashboard.welcome_desc': 'Simple Play mode is the fastest way to launch Minecraft.',
         'dashboard.dismiss': 'Got it',
         'dashboard.quick_actions': 'Quick actions',
@@ -250,7 +250,7 @@ describe('SimplePlayDashboard route flow', () => {
       /></ModpackNavigationProvider>
     )
 
-    expect(screen.getByRole('heading', { name: 'Welcome to FriendLauncher!' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Welcome to Burrow!' })).toBeTruthy()
     expect(screen.getByText('Choose version and nickname in the sidebar, then press Play to start.')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Got it' }).className).toContain('whitespace-nowrap')
 
@@ -261,7 +261,7 @@ describe('SimplePlayDashboard route flow', () => {
     expect(setModeMock).toHaveBeenCalledWith('modpacks')
 
     fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
-    expect(screen.queryByRole('heading', { name: 'Welcome to FriendLauncher!' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Welcome to Burrow!' })).toBeNull()
   })
 
   it('keeps canonical loading and failure states visible with an in-place retry', async () => {

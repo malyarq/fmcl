@@ -332,16 +332,16 @@ const livenessRegistry = new LivenessRegistry();
 
 function isValidLivenessPipePath(socketPath: string): boolean {
   const suffix = '[0-9a-f]{32}';
-  const windowsPrefix = '\\\\.\\pipe\\fmcl-lock-';
+  const windowsPrefix = '\\\\.\\pipe\\burrow-lock-';
   if (process.platform === 'win32') return socketPath.startsWith(windowsPrefix) && new RegExp(`^${suffix}$`, 'i').test(socketPath.slice(windowsPrefix.length));
   return [os.tmpdir(), '/tmp'].includes(path.dirname(socketPath))
-    && new RegExp(`^fmcl-lock-${suffix}[.]sock$`, 'i').test(path.basename(socketPath));
+    && new RegExp(`^burrow-lock-${suffix}[.]sock$`, 'i').test(path.basename(socketPath));
 }
 
 function createLivenessPipePath(): string {
   const suffix = randomBytes(16).toString('hex');
-  if (process.platform === 'win32') return `\\\\.\\pipe\\fmcl-lock-${suffix}`;
-  const name = `fmcl-lock-${suffix}.sock`;
+  if (process.platform === 'win32') return `\\\\.\\pipe\\burrow-lock-${suffix}`;
+  const name = `burrow-lock-${suffix}.sock`;
   const preferred = path.join(os.tmpdir(), name);
   return Buffer.byteLength(preferred) <= 100 ? preferred : path.join('/tmp', name);
 }

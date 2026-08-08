@@ -67,7 +67,7 @@ const manifest: ModpackManifest = {
   },
   name: 'Alpha Pack',
   version: '1.0.0',
-  author: 'FriendLauncher',
+  author: 'Burrow',
   files: [{ projectID: 1, fileID: 2, required: true }],
 };
 const inspection = { format: 'modrinth' as const, manifest };

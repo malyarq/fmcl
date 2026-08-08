@@ -198,7 +198,7 @@ describe('operations IPC security boundary', () => {
   });
 
   it('does not expose absolute paths from a recovered journal snapshot', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-public-operation-snapshot-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-public-operation-snapshot-'));
     try {
       const journal = new OperationJournal(rootPath);
       journal.save({
@@ -295,7 +295,7 @@ describe('operations IPC security boundary', () => {
     const start = mocked.handlers.get('operations:start');
     const owner = { sender: { id: 7 } };
     const foreign = { sender: { id: 8 } };
-    const outputPath = path.join(os.tmpdir(), 'fmcl-operation-export.zip');
+    const outputPath = path.join(os.tmpdir(), 'burrow-operation-export.zip');
     const request = { kind: 'export', instanceId: 'source-pack', format: 'zip', outputPath };
 
     await expect(start?.(owner, request)).rejects.toThrow(/not authorized/i);

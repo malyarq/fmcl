@@ -12,13 +12,13 @@ export function createTray(params: CreateTrayParams): Tray {
 
   const tray = new Tray(nativeImage.createFromPath(iconPath).resize({ width: 32, height: 32 }));
   const contextMenu = Menu.buildFromTemplate([
-    { label: 'FriendLauncher', enabled: false },
+    { label: 'Burrow', enabled: false },
     { type: 'separator' },
     { label: 'Show Window', click: () => onShowWindow() },
     { label: 'Quit', click: () => onQuit() },
   ]);
 
-  tray.setToolTip('FriendLauncher');
+  tray.setToolTip('Burrow');
   tray.setContextMenu(contextMenu);
 
   tray.on('click', () => {

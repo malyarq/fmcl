@@ -36,12 +36,12 @@ describe('settings native save dialog authorization', () => {
   });
 
   it('returns and authorizes the exact native path for the originating renderer', async () => {
-    mocked.showSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/fmcl-authorized-export.zip' });
+    mocked.showSaveDialog.mockResolvedValue({ canceled: false, filePath: '/tmp/burrow-authorized-export.zip' });
     registerSettingsHandlers({ window: {} as never });
     const showSaveDialog = mocked.handlers.get('dialog:showSaveDialog');
 
-    await expect(showSaveDialog?.({ sender: { id: 7 } }, {})).resolves.toEqual({ canceled: false, filePath: '/tmp/fmcl-authorized-export.zip' });
-    expect(consumeAuthorizedSavePath(7, '/tmp/fmcl-authorized-export.zip')).toBe('/tmp/fmcl-authorized-export.zip');
+    await expect(showSaveDialog?.({ sender: { id: 7 } }, {})).resolves.toEqual({ canceled: false, filePath: '/tmp/burrow-authorized-export.zip' });
+    expect(consumeAuthorizedSavePath(7, '/tmp/burrow-authorized-export.zip')).toBe('/tmp/burrow-authorized-export.zip');
   });
 
   it('does not create an authorization when the native save dialog is cancelled', async () => {
@@ -50,11 +50,11 @@ describe('settings native save dialog authorization', () => {
     const showSaveDialog = mocked.handlers.get('dialog:showSaveDialog');
 
     await expect(showSaveDialog?.({ sender: { id: 7 } }, {})).resolves.toEqual({ canceled: true, filePath: undefined });
-    expect(() => consumeAuthorizedSavePath(7, '/tmp/fmcl-cancelled-export.zip')).toThrow('not authorized');
+    expect(() => consumeAuthorizedSavePath(7, '/tmp/burrow-cancelled-export.zip')).toThrow('not authorized');
   });
 
   it('exports only allowlisted settings in a versioned backup', async () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-settings-backup-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-settings-backup-'));
     temporaryDirectories.push(directory);
     const filePath = path.join(directory, 'settings.json');
     mocked.showSaveDialog.mockResolvedValue({ canceled: false, filePath });
@@ -67,19 +67,19 @@ describe('settings native save dialog authorization', () => {
     });
     expect(JSON.parse(fs.readFileSync(filePath, 'utf8'))).toMatchObject({
       schemaVersion: 1,
-      product: 'FriendLauncher',
+      product: 'Burrow',
       values: { settings_language: 'ru', nickname: 'Alex' },
     });
     await expect(exportBackup?.({}, { mp_join_code: 'secret' })).rejects.toThrow(/unsupported key/i);
   });
 
   it('imports a valid backup and rejects unsupported keys', async () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-settings-backup-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-settings-backup-'));
     temporaryDirectories.push(directory);
     const filePath = path.join(directory, 'settings.json');
     fs.writeFileSync(filePath, JSON.stringify({
       schemaVersion: 1,
-      product: 'FriendLauncher',
+      product: 'Burrow',
       createdAt: '2026-08-06T00:00:00.000Z',
       values: { settings_language: 'en' },
     }));
@@ -97,6 +97,14 @@ describe('settings native save dialog authorization', () => {
       schemaVersion: 1,
       product: 'FriendLauncher',
       createdAt: '2026-08-06T00:00:00.000Z',
+      values: { settings_language: 'ru' },
+    }));
+    await expect(importBackup?.({})).resolves.toMatchObject({ values: { settings_language: 'ru' } });
+
+    fs.writeFileSync(filePath, JSON.stringify({
+      schemaVersion: 1,
+      product: 'Burrow',
+      createdAt: '2026-08-06T00:00:00.000Z',
       values: { fmcl_analytics_install_id: 'secret' },
     }));
     await expect(importBackup?.({})).rejects.toThrow(/unsupported key/i);
@@ -106,27 +114,27 @@ describe('settings native save dialog authorization', () => {
 
     fs.writeFileSync(filePath, JSON.stringify({
       schemaVersion: 1,
-      product: 'FriendLauncher',
+      product: 'Burrow',
       createdAt: 'not-a-date',
       values: { settings_language: 'en' },
     }));
-    await expect(importBackup?.({})).rejects.toThrow('Unsupported FMCL settings backup');
+    await expect(importBackup?.({})).rejects.toThrow('Unsupported Burrow settings backup');
 
     fs.writeFileSync(filePath, JSON.stringify({
       schemaVersion: 1,
-      product: 'FriendLauncher',
+      product: 'Burrow',
       createdAt: '2026-08-06',
       values: {},
     }));
-    await expect(importBackup?.({})).rejects.toThrow('Unsupported FMCL settings backup');
+    await expect(importBackup?.({})).rejects.toThrow('Unsupported Burrow settings backup');
 
     fs.writeFileSync(filePath, JSON.stringify({
       schemaVersion: 1,
-      product: 'FriendLauncher',
+      product: 'Burrow',
       createdAt: '2026-08-06T00:00:00.000Z',
       values: {},
       unexpected: true,
     }));
-    await expect(importBackup?.({})).rejects.toThrow('Unsupported FMCL settings backup');
+    await expect(importBackup?.({})).rejects.toThrow('Unsupported Burrow settings backup');
   });
 });

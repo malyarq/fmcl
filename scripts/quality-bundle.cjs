@@ -30,12 +30,12 @@ function createQualityBundlePlan({ cwd = defaultRoot, startedAt = new Date(), ge
     build: {
       command: process.execPath,
       args: [viteCliPath, 'build', '--manifest'],
-      env: { ...process.env, NODE_ENV: 'production', FMCL_RENDERER_ONLY: '1' },
+      env: { ...process.env, NODE_ENV: 'production', BURROW_RENDERER_ONLY: '1' },
     },
-    manifestPath: path.join(outputDir, 'fmcl-bundle-manifest.json'),
+    manifestPath: path.join(outputDir, 'burrow-bundle-manifest.json'),
     check: {
       command: process.execPath,
-      args: ['scripts/check-bundle.cjs', '--manifest', path.join(outputDir, 'fmcl-bundle-manifest.json'), '--baseline', 'quality/baselines/node24-vite.json', '--budget', 'quality/budgets/renderer-performance.json', '--output', outputDir, '--evidence', path.join(outputDir, 'fmcl-bundle-budget-evidence.json')],
+      args: ['scripts/check-bundle.cjs', '--manifest', path.join(outputDir, 'burrow-bundle-manifest.json'), '--baseline', 'quality/baselines/node24-vite.json', '--budget', 'quality/budgets/renderer-performance.json', '--output', outputDir, '--evidence', path.join(outputDir, 'burrow-bundle-budget-evidence.json')],
     },
   }
 }

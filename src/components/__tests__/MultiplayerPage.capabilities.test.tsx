@@ -21,7 +21,7 @@ describe('MultiplayerPage capability surfaces', () => {
     window.matchMedia = vi.fn(() => ({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() })) as never;
   });
 
-  it('shows room-code controls only for FriendTunnel', () => {
+  it('shows room-code controls only for Burrow Link', () => {
     state.current = { ...base, networkMode: 'hyperswarm', mode: 'join' };
     render(<MultiplayerPage onBack={vi.fn()} />);
     expect(screen.getByText('multiplayer.invite_or_code')).toBeTruthy();

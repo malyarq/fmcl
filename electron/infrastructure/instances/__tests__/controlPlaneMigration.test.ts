@@ -26,7 +26,7 @@ function createFixture(options: {
   config?: unknown;
   withoutConfig?: boolean;
 } = {}): LegacyFixture {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-control-plane-migration-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-control-plane-migration-'));
   const rootCapability = {} as LauncherRoot;
   const indexPath = path.join(root, 'modpacks.json');
   const metadataPath = path.join(root, 'modpacks-metadata.json');

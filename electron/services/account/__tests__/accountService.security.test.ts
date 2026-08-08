@@ -34,7 +34,7 @@ describe('AccountService secret boundaries', () => {
   });
 
   it('does not touch secure storage for an empty persisted account list', () => {
-    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-account-'));
     tempDirs.push(userDataPath);
     fs.writeFileSync(path.join(userDataPath, 'accounts.json'), JSON.stringify({
       accounts: [],
@@ -47,7 +47,7 @@ describe('AccountService secret boundaries', () => {
   });
 
   it('migrates plaintext tokens to encrypted persistence and never returns them to the renderer DTO', () => {
-    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-account-'));
     tempDirs.push(userDataPath);
     fs.writeFileSync(path.join(userDataPath, 'accounts.json'), JSON.stringify({
       accounts: [{
@@ -76,7 +76,7 @@ describe('AccountService secret boundaries', () => {
   });
 
   it('decrypts stored secrets only for main-process launch use', async () => {
-    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-account-'));
     tempDirs.push(userDataPath);
     const encoded = (value: string) => Buffer.from(`encrypted:${value}`).toString('base64');
     fs.writeFileSync(path.join(userDataPath, 'accounts.json'), JSON.stringify({
@@ -100,7 +100,7 @@ describe('AccountService secret boundaries', () => {
 
   it('disables provider accounts and removes plaintext secrets when secure storage is unavailable', async () => {
     mocked.encryptionAvailable = false;
-    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-account-'));
     tempDirs.push(userDataPath);
     fs.writeFileSync(path.join(userDataPath, 'accounts.json'), JSON.stringify({
       accounts: [{
@@ -143,7 +143,7 @@ describe('AccountService secret boundaries', () => {
 
   it('rejects Electron basic_text as insecure credential storage', async () => {
     mocked.storageBackend = 'basic_text';
-    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-account-'));
     tempDirs.push(userDataPath);
     const accountsPath = path.join(userDataPath, 'accounts.json');
     const encoded = Buffer.from('encrypted:access').toString('base64');
@@ -175,7 +175,7 @@ describe('AccountService secret boundaries', () => {
   });
 
   it('does not replace malformed account state with an empty account list', () => {
-    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-account-'));
     tempDirs.push(userDataPath);
     const accountsPath = path.join(userDataPath, 'accounts.json');
     fs.writeFileSync(accountsPath, '{malformed account state');
@@ -187,7 +187,7 @@ describe('AccountService secret boundaries', () => {
   });
 
   it('rejects structurally invalid account entries instead of crashing during hydration', () => {
-    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-account-'));
     tempDirs.push(userDataPath);
     const accountsPath = path.join(userDataPath, 'accounts.json');
     fs.writeFileSync(accountsPath, JSON.stringify({
@@ -201,7 +201,7 @@ describe('AccountService secret boundaries', () => {
   });
 
   it('recovers from a valid backup and preserves the corrupt primary for diagnosis', () => {
-    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-account-'));
+    const userDataPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-account-'));
     tempDirs.push(userDataPath);
     const accountsPath = path.join(userDataPath, 'accounts.json');
     fs.writeFileSync(accountsPath, '{malformed account state');

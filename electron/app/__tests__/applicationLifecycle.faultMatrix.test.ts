@@ -14,7 +14,7 @@ describe('application lifecycle fault matrix', () => {
   });
 
   it('closes admission, drains an admitted operation once, and preserves terminal recovery truth through partial cleanup', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-lifecycle-fault-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-lifecycle-fault-'));
     roots.push(rootPath);
     let release: (() => void) | undefined;
     const gate = new Promise<void>((resolve) => { release = resolve; });

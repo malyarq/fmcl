@@ -37,8 +37,8 @@ describe('TitleBar brand contract', () => {
     const icon = screen.getByTestId('title-bar-brand-icon')
     expect(icon.getAttribute('data-brand-role')).toBe('app-icon')
     expect(icon.getAttribute('src')).toBe(APP_ICON_PATH)
-    expect(screen.getByText('FriendLauncher').closest('[data-brand-wordmark]')).toBeTruthy()
-    expect(screen.getAllByText('FriendLauncher')).toHaveLength(1)
+    expect(screen.getByText('Burrow').closest('[data-brand-wordmark]')).toBeTruthy()
+    expect(screen.getAllByText('Burrow')).toHaveLength(1)
   })
 
   it('falls back from a broken title-bar icon source to the canonical app icon instead of the product mark', () => {
@@ -66,7 +66,7 @@ describe('TitleBar brand contract', () => {
     expect(titleBar.className).toContain('bg-background/52')
     expect(screen.queryByTestId('title-bar-window-controls')).toBeNull()
     expect(screen.queryByTestId('title-bar-brand-icon')).toBeNull()
-    expect(screen.queryByText('FriendLauncher')).toBeNull()
+    expect(screen.queryByText('Burrow')).toBeNull()
   })
 
   it('keeps product brand tokens separate from the active accent token', () => {

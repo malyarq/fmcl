@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://friendlauncher.app/quality/release-evidence.schema.json",
-  "title": "FriendLauncher release integrity and authenticity evidence",
+  "title": "Burrow release integrity and authenticity evidence",
   "type": "object",
   "additionalProperties": false,
   "required": ["schemaVersion", "status", "candidate", "artifacts", "integrity", "authenticity", "packagedSmoke", "rollback", "failures"],

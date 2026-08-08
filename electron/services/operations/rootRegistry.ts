@@ -11,7 +11,7 @@ export class OperationRootRegistry {
 
   public register(rootPath: string): void {
     const canonical = fs.realpathSync.native(rootPath);
-    const directory = path.join(this.basePath, 'FriendLauncher', 'operation-roots');
+    const directory = path.join(this.basePath, 'Burrow', 'operation-roots');
     fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
     const id = createHash('sha256').update(canonical).digest('hex');
     const target = path.join(directory, `${id}.json`);
@@ -19,7 +19,7 @@ export class OperationRootRegistry {
   }
 
   public list(): { roots: string[]; errors: Error[] } {
-    const directory = path.join(this.basePath, 'FriendLauncher', 'operation-roots');
+    const directory = path.join(this.basePath, 'Burrow', 'operation-roots');
     if (!fs.existsSync(directory)) return { roots: [], errors: [] };
     const roots: string[] = [];
     const errors: Error[] = [];

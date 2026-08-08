@@ -23,7 +23,7 @@ describe('RootMutationLock', () => {
   });
 
   it('serializes child-process contenders after a production stale lease without deleting the winner', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-root-lock-child-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-root-lock-child-'));
     temporary.push(rootPath);
     const eventsPath = path.join(rootPath, 'events.log');
     const startPath = path.join(rootPath, 'start');
@@ -63,7 +63,7 @@ describe('RootMutationLock', () => {
   }, 30_000);
 
   it('serializes simultaneous child contenders that select the same bakery ticket', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-root-lock-tie-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-root-lock-tie-'));
     temporary.push(rootPath);
     const eventsPath = path.join(rootPath, 'events.log');
     const ticketBarrierPath = path.join(rootPath, 'ticket-barrier');
@@ -89,12 +89,12 @@ describe('RootMutationLock', () => {
   }, 30_000);
 
   it('removes a forged same-PID ticket only after its authenticated endpoint is dead', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-root-lock-forged-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-root-lock-forged-'));
     temporary.push(rootPath);
     const directory = path.join(rootPath, '.fmcl-operations', 'locks');
     fs.mkdirSync(directory, { recursive: true });
     const forgedPath = path.join(directory, 'mutation.lock.ticket-1-forged');
-    fs.writeFileSync(forgedPath, JSON.stringify({ protocol: 3, pid: process.pid, token: 'forged', endpoint: { path: path.join(os.tmpdir(), `fmcl-lock-${randomBytes(16).toString('hex')}.sock`) }, ticket: 1 }));
+    fs.writeFileSync(forgedPath, JSON.stringify({ protocol: 3, pid: process.pid, token: 'forged', endpoint: { path: path.join(os.tmpdir(), `burrow-lock-${randomBytes(16).toString('hex')}.sock`) }, ticket: 1 }));
 
     let completed = false;
     await new RootMutationLock().run(rootPath, async () => { completed = true; });
@@ -103,7 +103,7 @@ describe('RootMutationLock', () => {
   });
 
   it('cleans repeated crashed v3 tickets instead of growing the bakery queue', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-root-lock-crashes-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-root-lock-crashes-'));
     temporary.push(rootPath);
     const eventsPath = path.join(rootPath, 'events.log');
     const releasePath = path.join(rootPath, 'release');
@@ -122,7 +122,7 @@ describe('RootMutationLock', () => {
   }, 30_000);
 
   it('removes a forged ticket without unlinking its live owner endpoint', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-root-lock-shared-endpoint-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-root-lock-shared-endpoint-'));
     temporary.push(rootPath);
     const eventsPath = path.join(rootPath, 'events.log');
     const releasePath = path.join(rootPath, 'release');
@@ -158,7 +158,7 @@ describe('RootMutationLock', () => {
   }, 30_000);
 
   it('fails closed at the offline-upgrade boundary for an old canonical O_EXCL owner', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-root-lock-old-owner-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-root-lock-old-owner-'));
     temporary.push(rootPath);
     const eventsPath = path.join(rootPath, 'events.log');
     const releasePath = path.join(rootPath, 'release');
@@ -185,14 +185,14 @@ function spawnLockChild(id: string, rootPath: string, eventsPath: string, releas
     cwd: path.resolve('.'),
     env: {
       ...process.env,
-      FMCL_ROOT_LOCK_CHILD: '1',
-      FMCL_ROOT_LOCK_ID: id,
-      FMCL_ROOT_LOCK_ROOT: rootPath,
-      FMCL_ROOT_LOCK_EVENTS: eventsPath,
-      FMCL_ROOT_LOCK_RELEASE: releasePath,
-      FMCL_ROOT_LOCK_START: startPath ?? '',
-      FMCL_ROOT_LOCK_TICKET_BARRIER: ticketBarrierPath ?? '',
-      FMCL_ROOT_LOCK_BAKERY_TURN_BARRIER: bakeryTurnBarrierPath ?? '',
+      BURROW_ROOT_LOCK_CHILD: '1',
+      BURROW_ROOT_LOCK_ID: id,
+      BURROW_ROOT_LOCK_ROOT: rootPath,
+      BURROW_ROOT_LOCK_EVENTS: eventsPath,
+      BURROW_ROOT_LOCK_RELEASE: releasePath,
+      BURROW_ROOT_LOCK_START: startPath ?? '',
+      BURROW_ROOT_LOCK_TICKET_BARRIER: ticketBarrierPath ?? '',
+      BURROW_ROOT_LOCK_BAKERY_TURN_BARRIER: bakeryTurnBarrierPath ?? '',
     },
     stdio: ['ignore', 'ignore', 'ignore'],
   });

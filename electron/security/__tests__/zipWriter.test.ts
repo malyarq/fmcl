@@ -29,7 +29,7 @@ afterEach(() => {
 
 describe('SafeZipWriter', () => {
   it('streams files and buffers into a replaceable archive', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-zip-writer-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-zip-writer-'));
     tempDirs.push(root);
     const source = path.join(root, 'source.txt');
     const output = path.join(root, 'output.zip');
@@ -45,7 +45,7 @@ describe('SafeZipWriter', () => {
   });
 
   it('rejects traversal entry names and symbolic-link sources', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-zip-writer-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-zip-writer-'));
     tempDirs.push(root);
     const source = path.join(root, 'source.txt');
     const link = path.join(root, 'source-link.txt');

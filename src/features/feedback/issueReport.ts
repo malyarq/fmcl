@@ -2,7 +2,7 @@ import pkg from '../../../package.json';
 import { detectAnalyticsPlatform } from '../analytics/analyticsClient';
 import type { SystemReadinessReport } from '@shared/contracts';
 
-const ISSUE_URL = 'https://github.com/malyarq/fmcl/issues/new';
+const ISSUE_URL = 'https://github.com/malyarq/burrow/issues/new';
 
 export function buildSafeIssueBody(options: {
   analyticsEnabled: boolean;
@@ -24,7 +24,7 @@ export function buildSafeIssueBody(options: {
         '1. ',
         '',
         '## Безопасная диагностика',
-        `- FMCL: ${pkg.version}`,
+        `- Burrow: ${pkg.version}`,
         `- ОС: ${platform}`,
         `- Язык: ${language}`,
         `- Аналитика: ${analyticsEnabled ? 'включена' : 'выключена'}`,
@@ -43,7 +43,7 @@ export function buildSafeIssueBody(options: {
         '1. ',
         '',
         '## Safe diagnostics',
-        `- FMCL: ${pkg.version}`,
+        `- Burrow: ${pkg.version}`,
         `- OS: ${platform}`,
         `- Language: ${language}`,
         `- Analytics: ${analyticsEnabled ? 'enabled' : 'disabled'}`,

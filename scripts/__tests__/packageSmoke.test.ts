@@ -20,7 +20,7 @@ const require = createRequire(import.meta.url);
 const smoke = require('../package-smoke.js') as PackageSmoke;
 
 function createRelease(version = '0.7.1'): string {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-package-smoke-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-package-smoke-'));
   fs.mkdirSync(path.join(root, version), { recursive: true });
   return root;
 }
@@ -40,9 +40,9 @@ describe('package smoke artifact contract', () => {
     const version = '0.7.1';
     const releaseRoot = createRelease(version);
     roots.push(releaseRoot);
-    writeArtifact(releaseRoot, version, `FriendLauncher-Mac-${version}-Installer.dmg`);
-    writeArtifact(releaseRoot, version, `FriendLauncher-Windows-${version}-Setup.exe`);
-    writeArtifact(releaseRoot, version, `FriendLauncher-Linux-${version}.AppImage`);
+    writeArtifact(releaseRoot, version, `Burrow-Mac-${version}-Installer.dmg`);
+    writeArtifact(releaseRoot, version, `Burrow-Windows-${version}-Setup.exe`);
+    writeArtifact(releaseRoot, version, `Burrow-Linux-${version}.AppImage`);
 
     expect(smoke.findPackagedArtifact({ releaseDir: releaseRoot, version, platform: 'darwin' })).toMatchObject({
       kind: 'dmg', platform: 'darwin', path: expect.stringMatching(/Installer\.dmg$/),
@@ -59,7 +59,7 @@ describe('package smoke artifact contract', () => {
     const version = '0.8.0-rc.1';
     const releaseRoot = createRelease(version);
     roots.push(releaseRoot);
-    writeArtifact(releaseRoot, version, `FriendLauncher-Mac-${version}-Installer.dmg`);
+    writeArtifact(releaseRoot, version, `Burrow-Mac-${version}-Installer.dmg`);
 
     expect(smoke.findPackagedArtifact({ releaseDir: path.join(releaseRoot, version), version, platform: 'darwin' })).toMatchObject({
       kind: 'dmg', platform: 'darwin', path: expect.stringMatching(new RegExp(`${version}-Installer\\.dmg$`)),
@@ -72,10 +72,10 @@ describe('package smoke artifact contract', () => {
     roots.push(releaseRoot);
 
     expect(() => smoke.findPackagedArtifact({ releaseDir: releaseRoot, version, platform: 'darwin' })).toThrow(/missing/i);
-    writeArtifact(releaseRoot, version, `FriendLauncher-Mac-${version}-Installer.dmg`);
-    writeArtifact(releaseRoot, version, `FriendLauncher-Mac-${version}-Installer (copy).dmg`);
+    writeArtifact(releaseRoot, version, `Burrow-Mac-${version}-Installer.dmg`);
+    writeArtifact(releaseRoot, version, `Burrow-Mac-${version}-Installer (copy).dmg`);
     expect(() => smoke.findPackagedArtifact({ releaseDir: releaseRoot, version, platform: 'darwin' })).not.toThrow();
-    fs.writeFileSync(path.join(releaseRoot, version, 'FriendLauncher-Mac-0.7.1-Installer.dmg'), 'fixture');
+    fs.writeFileSync(path.join(releaseRoot, version, 'Burrow-Mac-0.7.1-Installer.dmg'), 'fixture');
     expect(() => smoke.findPackagedArtifact({ releaseDir: releaseRoot, version, platform: 'darwin' })).not.toThrow();
     expect(() => smoke.findPackagedArtifact({ releaseDir: releaseRoot, version, platform: 'freebsd' })).toThrow(/unsupported/i);
   });
@@ -86,10 +86,10 @@ describe('package smoke artifact contract', () => {
       status: 'passed',
       platform: 'darwin',
       version: '0.7.1',
-      artifact: { path: 'FriendLauncher-Mac-0.7.1-Installer.dmg', kind: 'dmg', sha256: 'a'.repeat(64) },
+      artifact: { path: 'Burrow-Mac-0.7.1-Installer.dmg', kind: 'dmg', sha256: 'a'.repeat(64) },
       signing: { status: 'not-checked' },
       workspace: { cleanUserData: true, cleaned: true },
-      launch: { command: 'FriendLauncher', readiness: 'remote-debugging-page', windowCount: 1, startedAt: '2026-08-05T00:00:00.000Z' },
+      launch: { command: 'Burrow', readiness: 'remote-debugging-page', windowCount: 1, startedAt: '2026-08-05T00:00:00.000Z' },
       quit: { requested: true, graceful: true, exitCode: 0 },
       logs: { stdout: '', stderr: '' },
     };
@@ -125,8 +125,8 @@ describe('package smoke artifact contract', () => {
     roots.push(root);
     const calls: string[] = [];
     const macMount = path.join(root, 'workspace', 'mounted-dmg');
-    fs.mkdirSync(path.join(macMount, 'FriendLauncher.app', 'Contents', 'MacOS'), { recursive: true });
-    fs.writeFileSync(path.join(macMount, 'FriendLauncher.app', 'Contents', 'MacOS', 'FriendLauncher'), 'fixture');
+    fs.mkdirSync(path.join(macMount, 'Burrow.app', 'Contents', 'MacOS'), { recursive: true });
+    fs.writeFileSync(path.join(macMount, 'Burrow.app', 'Contents', 'MacOS', 'Burrow'), 'fixture');
     const ports = {
       mkdir: (target: string) => fs.mkdirSync(target, { recursive: true }),
       exists: fs.existsSync,
@@ -134,23 +134,23 @@ describe('package smoke artifact contract', () => {
       execFile: (command: string, args: string[]) => { calls.push(`${command}:${args.join(' ')}`); },
       chmod: (target: string, mode: number) => calls.push(`chmod:${target}:${mode.toString(8)}`),
     };
-    const mac = smoke.createPlatformAdapter('darwin', { artifactPath: '/artifacts/FriendLauncher-Mac-0.7.1-Installer.dmg', workspace: path.join(root, 'workspace'), ports });
+    const mac = smoke.createPlatformAdapter('darwin', { artifactPath: '/artifacts/Burrow-Mac-0.7.1-Installer.dmg', workspace: path.join(root, 'workspace'), ports });
     const win = smoke.createPlatformAdapter('win32', {
-      artifactPath: '/artifacts/FriendLauncher-Windows-0.7.1-Setup.exe', workspace: path.join(root, 'windows'),
-      ports: { ...ports, exists: (target: string) => target.endsWith('FriendLauncher.exe') },
+      artifactPath: '/artifacts/Burrow-Windows-0.7.1-Setup.exe', workspace: path.join(root, 'windows'),
+      ports: { ...ports, exists: (target: string) => target.endsWith('Burrow.exe') },
     });
-    const linux = smoke.createPlatformAdapter('linux', { artifactPath: '/artifacts/FriendLauncher-Linux-0.7.1.AppImage', workspace: path.join(root, 'linux'), ports });
+    const linux = smoke.createPlatformAdapter('linux', { artifactPath: '/artifacts/Burrow-Linux-0.7.1.AppImage', workspace: path.join(root, 'linux'), ports });
     win.cleanup();
 
-    expect(mac.command).toMatch(/FriendLauncher\.app\/Contents\/MacOS\/FriendLauncher$/);
-    expect(win.command).toMatch(/installed[\\/]FriendLauncher\.exe$/);
-    expect(linux).toMatchObject({ command: '/artifacts/FriendLauncher-Linux-0.7.1.AppImage', args: [] });
+    expect(mac.command).toMatch(/Burrow\.app\/Contents\/MacOS\/Burrow$/);
+    expect(win.command).toMatch(/installed[\\/]Burrow\.exe$/);
+    expect(linux).toMatchObject({ command: '/artifacts/Burrow-Linux-0.7.1.AppImage', args: [] });
     expect(calls).toEqual(expect.arrayContaining([
       expect.stringContaining('hdiutil:attach'),
       expect.stringContaining('hdiutil:detach'),
-      expect.stringContaining('FriendLauncher-Windows-0.7.1-Setup.exe:/S'),
+      expect.stringContaining('Burrow-Windows-0.7.1-Setup.exe:/S'),
       expect.stringMatching(/^powershell\.exe:.*GetFullPath\('.*installed'\).*Win32_Process/),
-      expect.stringContaining('chmod:/artifacts/FriendLauncher-Linux-0.7.1.AppImage:755'),
+      expect.stringContaining('chmod:/artifacts/Burrow-Linux-0.7.1.AppImage:755'),
     ]));
     const powershellCall = calls.find((call) => call.startsWith('powershell.exe:'));
     expect(powershellCall).toContain("$root = [IO.Path]::GetFullPath('");
@@ -191,8 +191,8 @@ describe('package smoke artifact contract', () => {
     const version = '0.7.1';
     const releaseRoot = createRelease(version);
     roots.push(releaseRoot);
-    writeArtifact(releaseRoot, version, `FriendLauncher-Mac-${version}-Installer.dmg`);
-    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-package-smoke-runtime-'));
+    writeArtifact(releaseRoot, version, `Burrow-Mac-${version}-Installer.dmg`);
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-package-smoke-runtime-'));
     roots.push(workspace);
     const createChild = () => Object.assign(new EventEmitter(), {
       exitCode: null as number | null,
@@ -221,15 +221,15 @@ describe('package smoke artifact contract', () => {
     expect(adapters).toBe(1);
     expect(result).toMatchObject({ status: 'failed', workspace: { cleaned: true }, quit: { requested: false } });
     expect(String(result.error)).toMatch(/readiness timed out/);
-    expect(fs.existsSync(path.join(releaseRoot, version, `FriendLauncher-Mac-${version}-Installer.dmg`))).toBe(true);
+    expect(fs.existsSync(path.join(releaseRoot, version, `Burrow-Mac-${version}-Installer.dmg`))).toBe(true);
   });
 
   it('marks an exited fixture process as a failed graceful quit without deleting the artifact directory', async () => {
     const version = '0.7.1';
     const releaseRoot = createRelease(version);
     roots.push(releaseRoot);
-    writeArtifact(releaseRoot, version, `FriendLauncher-Mac-${version}-Installer.dmg`);
-    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-package-smoke-exit-'));
+    writeArtifact(releaseRoot, version, `Burrow-Mac-${version}-Installer.dmg`);
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-package-smoke-exit-'));
     roots.push(workspace);
     const child = Object.assign(new EventEmitter(), { exitCode: 1, stdout: new EventEmitter(), stderr: new EventEmitter(), kill: () => undefined });
     const result = await smoke.runPackageSmoke({
@@ -244,7 +244,7 @@ describe('package smoke artifact contract', () => {
     });
 
     expect(result).toMatchObject({ status: 'failed', workspace: { cleaned: true }, quit: { requested: true, graceful: false, exitCode: 1 } });
-    expect(fs.existsSync(path.join(releaseRoot, version, `FriendLauncher-Mac-${version}-Installer.dmg`))).toBe(true);
+    expect(fs.existsSync(path.join(releaseRoot, version, `Burrow-Mac-${version}-Installer.dmg`))).toBe(true);
   });
 
   it('launches the previous package, upgrades in place, and preserves user data before passing', async () => {
@@ -252,12 +252,13 @@ describe('package smoke artifact contract', () => {
     const previousVersion = '0.9.1';
     const releaseRoot = createRelease(version);
     roots.push(releaseRoot);
-    writeArtifact(releaseRoot, version, `FriendLauncher-Mac-${version}-Installer.dmg`);
+    writeArtifact(releaseRoot, version, `Burrow-Mac-${version}-Installer.dmg`);
     const previousArtifact = path.join(releaseRoot, `FriendLauncher-Mac-${previousVersion}-Installer.dmg`);
     fs.writeFileSync(previousArtifact, 'previous fixture');
-    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-package-smoke-upgrade-'));
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-package-smoke-upgrade-'));
     roots.push(workspace);
     const verifiedVersions: Array<[string, unknown]> = [];
+    const spawnedEnvironments: NodeJS.ProcessEnv[] = [];
     const waitForProfileRelease = vi.fn().mockResolvedValue(undefined);
     const removeWorkspace = vi.fn((target: string) => fs.rmSync(target, { recursive: true, force: true }));
     let port = 44000;
@@ -273,7 +274,10 @@ describe('package smoke artifact contract', () => {
         rm: removeWorkspace,
         exists: fs.existsSync,
         writeFile: fs.writeFileSync,
-        spawn: () => createChild(),
+        spawn: (_command: string, _args: string[], options: { env: NodeJS.ProcessEnv }) => {
+          spawnedEnvironments.push(options.env);
+          return createChild();
+        },
         reservePort: async () => { port += 1; return port; },
         waitForRendererReadiness: async () => [{ type: 'page', url: 'file:///index.html' }],
         verifyRenderedVersion: async (_page: unknown, expectedVersion: string, options: unknown) => { verifiedVersions.push([expectedVersion, options]); },
@@ -281,7 +285,7 @@ describe('package smoke artifact contract', () => {
         requestGracefulQuit: () => undefined,
         waitForExit: async () => 0,
       },
-      createAdapter: (_platform: string, options: { artifactPath: string }) => ({
+      createAdapter: (_platform: string, options: { artifactPath: string; productName: string }) => ({
         command: options.artifactPath,
         args: [],
         cleanup: () => undefined,
@@ -302,7 +306,19 @@ describe('package smoke artifact contract', () => {
       [previousVersion, { allowMissingMarker: true }],
       [version, undefined],
     ]);
+    expect(spawnedEnvironments[0]).toMatchObject({
+      BURROW_TEST_USER_DATA: path.join(workspace, 'user-data'),
+      BURROW_PACKAGE_SMOKE_CONFIG: path.join(workspace, 'package-smoke-config.json'),
+      FMCL_TEST_USER_DATA: path.join(workspace, 'user-data'),
+      FMCL_PACKAGE_SMOKE_CONFIG: path.join(workspace, 'package-smoke-config.json'),
+    });
+    expect(spawnedEnvironments[1]).toMatchObject({
+      BURROW_TEST_USER_DATA: path.join(workspace, 'user-data'),
+      BURROW_PACKAGE_SMOKE_CONFIG: path.join(workspace, 'package-smoke-config.json'),
+    });
+    expect(spawnedEnvironments[1]).not.toHaveProperty('FMCL_TEST_USER_DATA');
     expect(waitForProfileRelease).toHaveBeenCalledTimes(2);
+    expect(smoke.productNameForArtifact(previousArtifact, previousVersion, 'darwin')).toBe('FriendLauncher');
     expect(waitForProfileRelease).toHaveBeenNthCalledWith(1, path.join(workspace, 'user-data'), 5_000);
     expect(waitForProfileRelease).toHaveBeenNthCalledWith(2, path.join(workspace, 'user-data'), 5_000);
     expect(removeWorkspace).toHaveBeenCalledWith(workspace, {
@@ -318,8 +334,8 @@ describe('package smoke artifact contract', () => {
     const version = '0.7.1';
     const releaseRoot = createRelease(version);
     roots.push(releaseRoot);
-    writeArtifact(releaseRoot, version, `FriendLauncher-Windows-${version}-Setup.exe`);
-    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-package-smoke-locked-'));
+    writeArtifact(releaseRoot, version, `Burrow-Windows-${version}-Setup.exe`);
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-package-smoke-locked-'));
     roots.push(workspace);
     const removeWorkspace = vi.fn(() => { throw Object.assign(new Error('locked'), { code: 'EPERM' }); });
     const child = Object.assign(new EventEmitter(), {
@@ -366,8 +382,8 @@ describe('package smoke artifact contract', () => {
     const version = '0.7.1';
     const releaseRoot = createRelease(version);
     roots.push(releaseRoot);
-    writeArtifact(releaseRoot, version, `FriendLauncher-Linux-${version}.AppImage`);
-    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-package-smoke-linux-'));
+    writeArtifact(releaseRoot, version, `Burrow-Linux-${version}.AppImage`);
+    const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-package-smoke-linux-'));
     roots.push(workspace);
     const stdout = Object.assign(new EventEmitter(), { destroy: vi.fn() });
     const stderr = Object.assign(new EventEmitter(), { destroy: vi.fn() });
@@ -401,9 +417,9 @@ describe('package smoke artifact contract', () => {
   });
 
   it.each([
-    ['darwin', 'linux', `FriendLauncher-Mac-0.7.1-Installer.dmg`, 'dmg'],
-    ['linux', 'win32', `FriendLauncher-Linux-0.7.1.AppImage`, 'appimage'],
-    ['win32', 'darwin', `FriendLauncher-Windows-0.7.1-Setup.exe`, 'nsis'],
+    ['darwin', 'linux', `Burrow-Mac-0.7.1-Installer.dmg`, 'dmg'],
+    ['linux', 'win32', `Burrow-Linux-0.7.1.AppImage`, 'appimage'],
+    ['win32', 'darwin', `Burrow-Windows-0.7.1-Setup.exe`, 'nsis'],
   ] as const)('binds %s foreign-runner evidence to the artifact without invoking an adapter', async (platform, hostPlatform, artifactName, kind) => {
     const version = '0.7.1';
     const releaseRoot = createRelease(version);
@@ -434,7 +450,7 @@ describe('package smoke artifact contract', () => {
   });
 
   it('writes schema-valid machine output without relying on npm stdout', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-package-smoke-output-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-package-smoke-output-'));
     roots.push(root);
     const output = path.join(root, 'package-smoke.json');
     const result = spawnSync(process.execPath, [path.join(process.cwd(), 'scripts/package-smoke.js'), '--fixture-unsupported-platform', '--output', output], { encoding: 'utf8' });

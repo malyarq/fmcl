@@ -89,7 +89,7 @@ export const StatisticsTab: React.FC<StatisticsTabProps> = ({ embedded = false }
         try {
             const result = await dialogIPC.showSaveDialog({
                 title: t('stats.export'),
-                defaultPath: `fmcl-statistics-${new Date().toISOString().slice(0, 10)}.json`,
+                defaultPath: `burrow-statistics-${new Date().toISOString().slice(0, 10)}.json`,
                 filters: [{ name: 'JSON', extensions: ['json'] }],
             });
 

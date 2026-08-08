@@ -2,7 +2,7 @@ import type { ImgHTMLAttributes } from 'react'
 import { getBrandAsset, type BrandAssetRole } from '../../app/assets/branding'
 import { cn } from '../../utils/cn'
 
-export type BrandMarkSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl'
+export type BrandMarkSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl'
 export type BrandMarkFrame = 'none' | 'brand' | 'media'
 
 const SIZE_CLASS_MAP: Record<BrandMarkSize, string> = {
@@ -11,6 +11,7 @@ const SIZE_CLASS_MAP: Record<BrandMarkSize, string> = {
   md: 'h-10 w-10',
   lg: 'h-14 w-14',
   xl: 'h-20 w-20',
+  '2xl': 'h-32 w-32',
 }
 
 type BrandMarkProps = Omit<ImgHTMLAttributes<HTMLImageElement>, 'alt'> & {

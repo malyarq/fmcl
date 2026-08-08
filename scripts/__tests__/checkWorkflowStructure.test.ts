@@ -118,7 +118,7 @@ describe('offline workflow structure enforcement', () => {
   });
 
   it('checks repository workflows without a YAML parser or network', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-workflow-check-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-workflow-check-'));
     roots.push(root);
     const ciPath = path.join(root, 'ci.yml');
     const releasePath = path.join(root, 'release.yml');

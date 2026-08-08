@@ -1,5 +1,5 @@
 import type {
-  FriendLauncherApi,
+  BurrowApi,
   InstanceConfigDto,
   InstanceListItemDto,
   InstanceMetadataDto,
@@ -174,7 +174,7 @@ const baseMetadata: Record<string, ModpackMetadata> = {
     modLoader: { type: 'fabric', version: '0.16.9' },
     iconUrl: ICON_PATH,
     description: 'Route truth test pack with export, add-mod, and content flows.',
-    author: 'FMCL',
+    author: 'Burrow',
     createdAt: '2026-04-01T10:00:00.000Z',
     updatedAt: '2026-04-13T08:30:00.000Z',
   },
@@ -187,7 +187,7 @@ const baseMetadata: Record<string, ModpackMetadata> = {
     modLoader: { type: 'fabric', version: '0.16.9' },
     iconUrl: ICON_PATH,
     description: 'Classic route fixture for manual launcher proof.',
-    author: 'FMCL',
+    author: 'Burrow',
     createdAt: '2026-04-01T10:00:00.000Z',
     updatedAt: '2026-04-13T08:30:00.000Z',
   },
@@ -200,7 +200,7 @@ const baseMetadata: Record<string, ModpackMetadata> = {
     modLoader: { type: 'neoforge', version: '21.1.84' },
     iconUrl: ICON_PATH,
     description: 'Secondary instance fixture for canonical multi-consumer selection proof.',
-    author: 'FMCL',
+    author: 'Burrow',
     createdAt: '2026-04-02T10:00:00.000Z',
     updatedAt: '2026-04-14T08:30:00.000Z',
   },
@@ -412,7 +412,7 @@ function getMetadataForView(view: string): Record<string, ModpackMetadata> {
       modLoader: structuredClone(PHASE_21_RUNTIME_FIXTURE.modLoader),
       description:
         'Constrained-width details proof with intentionally long metadata, crowded supporting copy, and the shared runtime truth fixture.',
-      author: 'FMCL Dense Surface Validation Crew',
+      author: 'Burrow Dense Surface Validation Crew',
       updatedAt: '2026-04-18T08:30:00.000Z',
     };
   }
@@ -585,7 +585,7 @@ const modpackVersions: ProviderCatalogVersionDescriptor[] = [
     versionNumber: '1.4.2',
     mcVersions: ['1.20.1'],
     loaders: ['fabric'],
-    changelog: 'Stabilized the FMCL manual verification fixture.',
+    changelog: 'Stabilized the Burrow manual verification fixture.',
     files: [
       {
         url: 'https://example.invalid/alpha-pack-1.4.2.mrpack',
@@ -788,7 +788,7 @@ const sharedManifest: ModpackManifest = {
   },
   name: 'Alpha Pack',
   version: '1.4.2',
-  author: 'FMCL',
+  author: 'Burrow',
   files: [
     {
       projectId: 'sodium',
@@ -1319,7 +1319,7 @@ export function installManualVerificationEnvironment() {
       if (view === PHASE_24_DEGRADED_CLOSEOUT_VIEW) {
         throw new Error('[shareIPC] generateCode failed: ${file.jarVersion}');
       }
-      return `fmcl://share/${modpackId}?v=1.4.2`;
+      return `burrow://share/${modpackId}?v=1.4.2`;
     },
   };
 
@@ -1361,7 +1361,7 @@ export function installManualVerificationEnvironment() {
             {
               fileName: 'Painterly Depth Reloaded.zip',
               status: 'failure',
-              message: 'FMCL could not add this resource pack right now.',
+              message: 'Burrow could not add this resource pack right now.',
             },
           ],
         };
@@ -1661,7 +1661,7 @@ export function installManualVerificationEnvironment() {
       rename: async (_oldName: string, _newName: string, _instanceId: string) => ({ ok: true }),
       openFolder: async (_instanceId: string) => ({ ok: true }),
     },
-  } as unknown as FriendLauncherApi;
+  } as unknown as BurrowApi;
 
   window.api = api;
 }

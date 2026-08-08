@@ -24,8 +24,8 @@ vi.mock('../../../contexts/SettingsContext', () => ({
       'onboarding.welcome.play_now_desc': 'Play offline now.',
       'onboarding.welcome.play_now_action': 'Open launcher',
       'onboarding.welcome.play_together': 'Play with a friend',
-      'onboarding.welcome.play_together_desc': 'Use FriendTunnel.',
-      'onboarding.welcome.play_together_action': 'Open FriendTunnel',
+      'onboarding.welcome.play_together_desc': 'Use Burrow Link.',
+      'onboarding.welcome.play_together_action': 'Open Burrow Link',
       'onboarding.welcome.modpacks': 'Use a modpack',
       'onboarding.welcome.modpacks_desc': 'Import or create a pack.',
       'onboarding.welcome.modpacks_action': 'Open modpacks',
@@ -70,8 +70,8 @@ describe('WelcomePage flow', () => {
     expect(dialog.getAttribute('aria-modal')).toBe('true')
     expect(screen.getByRole('group', { name: 'Interface language' })).toBeTruthy()
 
-    const primaryAction = screen.getByRole('button', { name: 'Open launcher' })
-    await waitFor(() => expect(document.activeElement).toBe(primaryAction))
+    const languageControl = screen.getByRole('button', { name: 'en' })
+    await waitFor(() => expect(document.activeElement).toBe(languageControl))
 
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
     expect(dialog.contains(document.activeElement)).toBe(true)
@@ -90,7 +90,7 @@ describe('WelcomePage flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open launcher' }))
     expect(completeMock).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open FriendTunnel' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Burrow Link' }))
     expect(multiplayerMock).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Open modpacks' }))

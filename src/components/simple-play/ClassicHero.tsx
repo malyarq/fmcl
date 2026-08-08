@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Boxes, Settings2, Sparkles } from 'lucide-react';
+import { Boxes, Settings2 } from 'lucide-react';
 import { useSettings } from '../../contexts/SettingsContext';
 import { cn } from '../../utils/cn';
 import { BrandMark } from '../branding/BrandMark';
+import { BrandWordmark } from '../branding/BrandWordmark';
 import { Button } from '../ui/Button';
 
 interface Particle {
@@ -171,13 +172,10 @@ export function ClassicHero({
           <div className="flex flex-col gap-5 p-5 sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  {t('ui_mode.simple') || 'Classic'}
-                </div>
+                <p className="kicker-label">{t('ui_mode.simple') || 'Classic'}</p>
                 <div>
                   <h2 className="text-xl font-semibold text-foreground">
-                    {t('dashboard.welcome_title') || 'Welcome to FriendLauncher!'}
+                    {t('dashboard.welcome_title') || 'Welcome to Burrow!'}
                   </h2>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-secondary">
                     {t('dashboard.welcome_desc') || 'Simple Play mode is the fastest way to launch Minecraft.'}
@@ -213,14 +211,14 @@ export function ClassicHero({
 
       <div className="relative mb-6 w-full max-w-2xl overflow-visible">
         <section className="surface-panel relative overflow-visible border border-border/70 bg-card/82 p-5">
-          <div className="flex flex-col gap-4 text-left sm:flex-row sm:items-start">
+          <div className="flex flex-col gap-5 text-left sm:flex-row sm:items-start">
             <div className="relative shrink-0 overflow-visible">
               <button
                 type="button"
                 onClick={handleLogoClick}
-                aria-label="FriendLauncher app icon"
+                aria-label="Burrow app icon"
                 className={cn(
-                  'logo-container motion-safe-transform relative rounded-2xl border border-border/60 bg-background/80 p-3',
+                  'logo-container motion-safe-transform relative rounded-2xl',
                   reducedMotion ? 'transition-none' : 'transition-all duration-300 ease-out hover:scale-105 active:scale-[0.98]',
                 )}
                 style={{
@@ -240,9 +238,9 @@ export function ClassicHero({
                 />
                 <BrandMark
                   role="app-icon"
-                  alt="FriendLauncher app icon"
+                  alt="Burrow app icon"
                   data-testid="dashboard-launcher-mark"
-                  className="h-10 w-10 transition-transform duration-300 md:h-11 md:w-11"
+                  className="h-20 w-20 transition-transform duration-300"
                   style={{
                     transform: !reducedMotion && showEasterEgg ? 'rotate(360deg) scale(1.12)' : 'none',
                     filter: !reducedMotion && showEasterEgg ? `drop-shadow(0 0 10px ${accentHex})` : undefined,
@@ -281,10 +279,12 @@ export function ClassicHero({
               })}
             </div>
 
-            <div className="min-w-0 flex-1 space-y-3">
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/72 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-secondary">
-                <Sparkles className="h-3.5 w-3.5" />
-                {t('ui_mode.simple') || 'Classic'}
+            <div className="min-w-0 flex-1 space-y-4">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-border/60 pb-3">
+                <BrandWordmark as="p" className="text-[1.65rem]" />
+                <p className="text-sm font-medium text-secondary">
+                  {t('ui_mode.simple') || 'Classic'}
+                </p>
               </div>
               <div className="min-w-0 space-y-1">
                 <h1 className="break-words text-2xl font-semibold text-foreground sm:text-[1.75rem]">{name}</h1>

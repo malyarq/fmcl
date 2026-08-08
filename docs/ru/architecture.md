@@ -1,6 +1,6 @@
 # Архитектура
 
-FriendLauncher — десктопное Electron-приложение с React renderer, собранным через Vite. Все нативные возможности принадлежат main process; там же собирается один канонический домен инстансов. Renderer получает типизированные операции без доступа к файловой системе.
+Burrow — десктопное Electron-приложение с React renderer, собранным через Vite. Все нативные возможности принадлежат main process; там же собирается один канонический домен инстансов. Renderer получает типизированные операции без доступа к файловой системе.
 
 ```mermaid
 flowchart LR
@@ -72,7 +72,7 @@ Main process отвечает за lifecycle, окна, нативные диа�
 | Запуск и Java | `electron/services/launcher/`, `electron/services/java/`, внедрённые instance/launch ports | `src/features/launcher/`, `src/components/SimplePlayDashboard.tsx` |
 | Каталог и установка контента провайдеров | `electron/services/mods/platform/` и provider operation adapters | `useModpackBrowserCatalog`, типизированные content adapters и семантические IPC wrappers |
 | Аккаунты | `electron/services/account/` | `src/features/accounts/` |
-| Мультиплеер | `FriendTunnelService`, `LanDiscoveryService` и `PortMappingService` в `electron/services/network/` | единый live capability controller в `src/features/multiplayer/` |
+| Мультиплеер | `Burrow LinkService`, `LanDiscoveryService` и `PortMappingService` в `electron/services/network/` | единый live capability controller в `src/features/multiplayer/` |
 | Обновления | `electron/services/updater/` | `src/features/updater/` |
 | Ресурспаки, шейдеры, миры, датапаки, скриншоты | узкие services и проверяемые handlers в `electron/services/` и `electron/ipc/handlers/` | modpack detail/content features |
 
@@ -125,7 +125,7 @@ Shell, список установленных сборок, Details, Classic, S
 
 ```mermaid
 flowchart LR
-  UI["Multiplayer controller"] --> T["FriendTunnelService\nновый Hyperswarm на сессию"]
+  UI["Multiplayer controller"] --> T["Burrow LinkService\nновый Hyperswarm на сессию"]
   UI --> L["LanDiscoveryService\nодно поколение XMCL socket"]
   UI --> U["PortMappingService\nвладелец gateway и mappings"]
   T --> TS["discovery + peer links + TCP bridge + muxers"]
@@ -133,7 +133,7 @@ flowchart LR
   U --> US["coalesced discovery + owned mappings"]
 ```
 
-FriendTunnel проверяет room code фиксированного размера, подключает обработчик соединений до discovery flush, отменяет ожидающие peer waits и дожидается уничтожения discovery, локального TCP server, sockets и swarm. Mux parser ограничивает frames и буфер, отвергает неверные переходы command/session, выделяет session ID без коллизий и локализует protocol fault в peer connection. Remote close не отправляет повторный close.
+Burrow Link проверяет room code фиксированного размера, подключает обработчик соединений до discovery flush, отменяет ожидающие peer waits и дожидается уничтожения discovery, локального TCP server, sockets и swarm. Mux parser ограничивает frames и буфер, отвергает неверные переходы command/session, выделяет session ID без коллизий и локализует protocol fault в peer connection. Remote close не отправляет повторный close.
 
 LAN start/stop сериализованы, а очистка listener захватывает точное поколение XMCL. Ответ ping копируется в ограниченный serializable DTO. UPnP объединяет параллельный gateway discovery, удаляет mapping state только после успешного unmap и вызывает `gateway.stop()` для полной очистки. Ошибка очистки остаётся типизированным failed state, а не ложным idle. Сбой одной capability не останавливает две другие.
 
@@ -159,7 +159,7 @@ Electron ready
 закрыть IPC admission
   -> закрыть admission OperationRunner и дождаться durable terminal records
   -> закрыть admission InstanceApplication и дождаться принятых config writes
-  -> независимо остановить FriendTunnel, LAN и UPnP
+  -> независимо остановить Burrow Link, LAN и UPnP
   -> остановить принадлежащий приложению AuthServer
   -> уничтожить tray
   -> повторно вызвать app.quit под completion guard
@@ -197,7 +197,7 @@ Archive import использует непрозрачный `archiveRef`; rende
 
 Разрушительные root-wide операции используют протокол v3 в `.fmcl-operations/locks`. Неизменяемые записи Lamport bakery (`choosing` и `ticket`) выбирают одного writer; каждая запись содержит случайный token и уникальный путь к локальному Node socket владельца. Contender удаляет запись только когда socket однозначно отказал или отклонил token. Таймауты и неоднозначные ошибки локальной сети считаются live и блокируют операцию. Протокол не опирается на PID reuse или прошедшее время и безопасен при suspend процесса.
 
-После победы writer удерживает атомарно опубликованный canonical bridge `mutation.lock` весь callback. Marker `mutation.lock.v3` задаёт границу offline upgrade: перед обновлением до v3, откатом или смешиванием сборок остановите все процессы FMCL с общим custom launcher root. Pre-v3 marker не reclaim-ится; операция fail-closed завершается `ROOT_LOCK_OFFLINE_UPGRADE_REQUIRED`.
+После победы writer удерживает атомарно опубликованный canonical bridge `mutation.lock` весь callback. Marker `mutation.lock.v3` задаёт границу offline upgrade: перед обновлением до v3, откатом или смешиванием сборок остановите все процессы Burrow с общим custom launcher root. Pre-v3 marker не reclaim-ится; операция fail-closed завершается `ROOT_LOCK_OFFLINE_UPGRADE_REQUIRED`.
 
 ## Направление зависимостей
 

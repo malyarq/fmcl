@@ -3,12 +3,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const mocked = vi.hoisted(() => ({ userDataPath: '/tmp/fmcl-composition-root-test' }));
+const mocked = vi.hoisted(() => ({ userDataPath: '/tmp/burrow-composition-root-test' }));
 
 vi.mock('electron', () => ({
   app: {
     getPath: () => mocked.userDataPath,
-    getAppPath: () => '/tmp/fmcl-composition-root-test',
+    getAppPath: () => '/tmp/burrow-composition-root-test',
     isPackaged: false,
   },
   safeStorage: {
@@ -24,13 +24,13 @@ describe('createCompositionRoot', () => {
   const cleanup: string[] = [];
 
   afterEach(() => {
-    mocked.userDataPath = '/tmp/fmcl-composition-root-test';
+    mocked.userDataPath = '/tmp/burrow-composition-root-test';
     for (const target of cleanup.splice(0)) fs.rmSync(target, { recursive: true, force: true });
   });
 
   it('exposes one canonical application identity to the IPC handler seam', () => {
     const composition = createCompositionRoot({
-      paths: { userDataPath: '/tmp/fmcl-user-data', appDataPath: '/tmp/fmcl-app-data' },
+      paths: { userDataPath: '/tmp/burrow-user-data', appDataPath: '/tmp/burrow-app-data' },
       authServerUrl: 'http://127.0.0.1:25530',
     });
 
@@ -40,7 +40,7 @@ describe('createCompositionRoot', () => {
 
   it('injects the same canonical application into sharing', () => {
     const composition = createCompositionRoot({
-      paths: { userDataPath: '/tmp/fmcl-user-data', appDataPath: '/tmp/fmcl-app-data' },
+      paths: { userDataPath: '/tmp/burrow-user-data', appDataPath: '/tmp/burrow-app-data' },
       authServerUrl: 'http://127.0.0.1:25530',
     });
 
@@ -49,7 +49,7 @@ describe('createCompositionRoot', () => {
 
   it('injects the same canonical application into provider infrastructure', () => {
     const composition = createCompositionRoot({
-      paths: { userDataPath: '/tmp/fmcl-user-data', appDataPath: '/tmp/fmcl-app-data' },
+      paths: { userDataPath: '/tmp/burrow-user-data', appDataPath: '/tmp/burrow-app-data' },
       authServerUrl: 'http://127.0.0.1:25530',
     });
 
@@ -58,7 +58,7 @@ describe('createCompositionRoot', () => {
 
   it('does not create a second graph while handlers are registered', () => {
     const composition = createCompositionRoot({
-      paths: { userDataPath: '/tmp/fmcl-user-data', appDataPath: '/tmp/fmcl-app-data' },
+      paths: { userDataPath: '/tmp/burrow-user-data', appDataPath: '/tmp/burrow-app-data' },
       authServerUrl: 'http://127.0.0.1:25530',
     });
     const register = vi.fn();
@@ -72,19 +72,19 @@ describe('createCompositionRoot', () => {
 
   it('rejects incomplete production dependencies instead of defaulting a graph', () => {
     expect(() => createCompositionRoot({
-      paths: { userDataPath: '', appDataPath: '/tmp/fmcl-app-data' },
+      paths: { userDataPath: '', appDataPath: '/tmp/burrow-app-data' },
       authServerUrl: 'http://127.0.0.1:25530',
     })).toThrow('Composition root requires user-data, app-data, and auth-server dependencies');
   });
 
   it('drains canonical owners and stops each independent network capability', async () => {
     const composition = createCompositionRoot({
-      paths: { userDataPath: '/tmp/fmcl-user-data', appDataPath: '/tmp/fmcl-app-data' },
+      paths: { userDataPath: '/tmp/burrow-user-data', appDataPath: '/tmp/burrow-app-data' },
       authServerUrl: 'http://127.0.0.1:25530',
     });
     const operations = vi.spyOn(composition.operations, 'beginShutdown');
     const instances = vi.spyOn(composition.application, 'beginShutdown');
-    const tunnel = vi.spyOn(composition.friendTunnel, 'stop');
+    const tunnel = vi.spyOn(composition.burrowLink, 'stop');
     const lan = vi.spyOn(composition.lanDiscovery, 'stop');
     const upnp = vi.spyOn(composition.portMapping, 'stop');
     await expect(composition.shutdown()).resolves.toEqual({ failures: [] });
@@ -96,7 +96,7 @@ describe('createCompositionRoot', () => {
   });
 
   it('seeds the canonical Classic profile on a clean first startup', async () => {
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-composition-first-start-'));
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-composition-first-start-'));
     cleanup.push(base);
     mocked.userDataPath = path.join(base, 'user-data');
     const composition = createCompositionRoot({

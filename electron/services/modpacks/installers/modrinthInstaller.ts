@@ -28,7 +28,7 @@ export async function stageModrinthModpack(ports: ModrinthInstallerPorts, input:
   const packFile = version.files?.find((file) => file.filename.endsWith('.mrpack')) ?? version.files?.[0];
   if (!packFile?.url) throw new Error('Modrinth modpack version has no download URL');
   const project = await ports.provider.getProject(input.projectId);
-  const temporaryDirectory = ports.content.createTemporaryDirectory('fmcl-modrinth-');
+  const temporaryDirectory = ports.content.createTemporaryDirectory('burrow-modrinth-');
   const stagePath = resolvePathWithinRoot(input.stagingRoot, `modpacks/${input.destinationId}`, 'Modrinth staged modpack');
   const archivePath = path.join(temporaryDirectory, 'modpack.mrpack');
   const extractPath = path.join(temporaryDirectory, 'extracted');

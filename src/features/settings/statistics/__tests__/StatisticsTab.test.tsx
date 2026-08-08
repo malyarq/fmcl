@@ -89,10 +89,10 @@ describe('StatisticsTab', () => {
     });
     showSaveDialogMock.mockResolvedValue({
       canceled: false,
-      filePath: '/tmp/fmcl-statistics.json',
+      filePath: '/tmp/burrow-statistics.json',
     });
     exportStatsMock.mockResolvedValue({
-      filePath: '/tmp/fmcl-statistics.json',
+      filePath: '/tmp/burrow-statistics.json',
       exportedAt: '2026-04-12T08:15:00.000Z',
     });
   });
@@ -128,7 +128,7 @@ describe('StatisticsTab', () => {
     });
 
     await waitFor(() => {
-      expect(exportStatsMock).toHaveBeenCalledWith('/tmp/fmcl-statistics.json');
+      expect(exportStatsMock).toHaveBeenCalledWith('/tmp/burrow-statistics.json');
     });
 
     await waitFor(() => {

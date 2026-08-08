@@ -21,7 +21,7 @@ vi.mock('../../../contexts/SettingsContext', () => ({
         'accounts.disabledInsecureAuthServer': 'This saved account was disabled because its auth server uses insecure remote HTTP.',
         'accounts.disabledRecovery': 'Remove it and add it again with an HTTPS server URL or a local loopback URL.',
         'accounts.disabledSecureStorage': 'This account is disabled because secure credential storage is unavailable on this system.',
-        'accounts.disabledSecureStorageRecovery': 'Enable the operating-system keyring, restart FMCL, then add the account again.',
+        'accounts.disabledSecureStorageRecovery': 'Enable the operating-system keyring, restart Burrow, then add the account again.',
         'accounts.disabledReauthentication': 'This account no longer has valid saved credentials.',
         'accounts.disabledReauthenticationRecovery': 'Remove it and sign in again to restore encrypted credentials.',
         'accounts.typeOffline': 'Offline',

@@ -10,7 +10,7 @@ describe('OperationRunner shutdown', () => {
   afterEach(() => tempDirectories.splice(0).forEach((directory) => fs.rmSync(directory, { recursive: true, force: true })));
 
   it('closes admission, requests cancellation and drains durable terminal state', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-shutdown-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-shutdown-'));
     tempDirectories.push(rootPath);
     let release: (() => void) | undefined;
     const gate = new Promise<void>((resolve) => { release = resolve; });

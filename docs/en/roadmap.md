@@ -4,7 +4,7 @@ This document deliberately replaces the former phase-by-phase engineering roadma
 
 ## Current stop condition
 
-Do not start another architecture milestone after the next release until at least **20 external users** have tried FriendLauncher and the maintainer has reviewed their opt-in usage and feedback. Fix observed installation, launch, update, recovery, and FriendTunnel failures before adding speculative subsystems.
+Do not start another architecture milestone after the next release until at least **20 external users** have tried Burrow and the maintainer has reviewed their opt-in usage and feedback. Fix observed installation, launch, update, recovery, and Burrow Link failures before adding speculative subsystems.
 
 ## What still gates public confidence
 

@@ -176,7 +176,7 @@ export function ResourcePacksTab({ instanceId, onUpdate, onAddResourcePack }: Re
                     </p>
                     <p className="mt-1 text-sm text-secondary">
                         {t('modpacks.resourcepack_scope_desc')
-                            || 'Resource packs added here only affect this modpack. FMCL does not mark them compatible or incompatible for you.'}
+                            || 'Resource packs added here only affect this modpack. Burrow does not mark them compatible or incompatible for you.'}
                     </p>
                 </div>
             </div>

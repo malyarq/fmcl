@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('electron', () => ({ app: { getPath: () => '/tmp/fmcl-test-user-data' } }));
+vi.mock('electron', () => ({ app: { getPath: () => '/tmp/burrow-test-user-data' } }));
 
 import { DatapackService } from '../datapacksService';
 
@@ -15,7 +15,7 @@ describe('DatapackService path boundaries', () => {
   });
 
   function createModpack(): { root: string; instance: string } {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-datapacks-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-datapacks-'));
     tempDirs.push(root);
     const instance = path.join(root, 'modpacks', 'safe-pack');
     fs.mkdirSync(path.join(instance, 'saves', 'world', 'datapacks'), { recursive: true });

@@ -1,6 +1,6 @@
 # Release runbook
 
-FriendLauncher releases use a tag-last, dispatch-only GitHub workflow. A protected publication job creates the immutable annotated SemVer tag only after source checks, native builds, package smoke, checksums, and downloaded-artifact evidence pass. A prerelease version is published as non-latest; a normal `MAJOR.MINOR.PATCH` version becomes the latest stable release.
+Burrow releases use a tag-last, dispatch-only GitHub workflow. A protected publication job creates the immutable annotated SemVer tag only after source checks, native builds, package smoke, checksums, and downloaded-artifact evidence pass. A prerelease version is published as non-latest; a normal `MAJOR.MINOR.PATCH` version becomes the latest stable release.
 
 ## Prepare an exact candidate
 

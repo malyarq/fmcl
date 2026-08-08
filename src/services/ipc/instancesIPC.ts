@@ -1,5 +1,5 @@
 import type {
-  FriendLauncherApi,
+  BurrowApi,
   InstanceConfigRequest,
   InstanceCreateRequest,
   InstanceMetadataRequest,
@@ -13,7 +13,7 @@ import type {
 } from '@shared/contracts';
 import { toIpcError } from './ipcError';
 
-type InstancesApi = FriendLauncherApi['instances'];
+type InstancesApi = BurrowApi['instances'];
 
 function api(): InstancesApi {
   const instances = typeof window !== 'undefined' ? window.api?.instances : undefined;

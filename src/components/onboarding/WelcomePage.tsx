@@ -35,7 +35,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
   };
 
   const openMultiplayer = () => {
-    void analyticsClient.capture('onboarding_action', { action: 'friend_tunnel' });
+    void analyticsClient.capture('onboarding_action', { action: 'burrow_link' });
     onShowMultiplayer();
   };
 
@@ -86,32 +86,10 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
         style={{ background: `radial-gradient(circle at top, ${getAccentHex()}28 0%, transparent 38%), radial-gradient(circle at bottom left, ${getAccentHex()}18 0%, transparent 26%)` }}
       />
       <div className="relative overflow-hidden">
-        <div className="border-b border-border/60 p-6 sm:p-8">
-          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <BrandLockup
-                align="start"
-                markFrame="brand"
-                markRole="product-mark"
-                markSize="lg"
-                className="mb-5"
-                wordmarkTone="hero"
-                wordmarkClassName="text-3xl sm:text-4xl"
-              />
-              <h1
-                id="welcome-title"
-                className={cn('text-2xl font-black tracking-tight sm:text-3xl', getAccentStyles('text').className)}
-                style={getAccentStyles('text').style}
-              >
-                {t('onboarding.welcome.title')}
-              </h1>
-              <p className="mt-3 max-w-2xl text-base leading-7 text-secondary">
-                {t('onboarding.welcome.intro')}
-              </p>
-            </div>
-
+        <div className="relative border-b border-border/60 px-6 py-4 sm:px-8">
+          <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
             <div
-              className="surface-soft flex shrink-0 items-center gap-1 rounded-xl p-1"
+              className="surface-soft mb-4 flex items-center gap-1 rounded-xl p-1 sm:absolute sm:right-6 sm:top-6 sm:mb-0"
               role="group"
               aria-label={t('onboarding.welcome.language')}
             >
@@ -131,26 +109,45 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
                 </button>
               ))}
             </div>
+
+            <BrandLockup
+              direction="horizontal"
+              markFrame="none"
+              markRole="product-mark"
+              markSize="xl"
+              className="mb-4"
+              wordmarkTone="default"
+              wordmarkClassName="text-[2rem]"
+            />
+              <h1
+                id="welcome-title"
+                className={cn('text-xl font-semibold tracking-tight sm:text-2xl', getAccentStyles('text').className)}
+                style={getAccentStyles('text').style}
+              >
+                {t('onboarding.welcome.title')}
+              </h1>
+              <p className="mt-2 max-w-2xl text-base leading-6 text-secondary">
+                {t('onboarding.welcome.intro')}
+              </p>
           </div>
         </div>
 
         <FirstRunReadiness />
 
-        <div className="grid gap-4 p-6 sm:p-8 lg:grid-cols-3">
+        <div className="grid gap-3 p-5 md:grid-cols-3">
           {choices.map(({ icon: Icon, title, description, action, button }, index) => (
-            <article key={title} className="surface-card flex min-w-0 flex-col p-5">
-              <div className="mb-4 flex items-center gap-3">
+            <article key={title} className="surface-card flex min-w-0 flex-col p-4">
+              <div className="mb-3 flex items-center gap-3">
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" style={{ backgroundColor: `${getAccentHex()}14`, color: getAccentHex() }}>
                   <Icon className="h-5 w-5" aria-hidden="true" />
                 </div>
                 <h2 className="text-base font-bold text-foreground">{title}</h2>
               </div>
-              <p className="mb-5 flex-1 text-sm leading-6 text-secondary">{description}</p>
+              <p className="mb-4 flex-1 text-sm leading-6 text-secondary">{description}</p>
               <Button
                 variant={index === 0 ? 'primary' : 'secondary'}
                 onClick={action}
                 className="w-full"
-                data-autofocus={index === 0 ? 'true' : undefined}
               >
                 {button}
               </Button>
@@ -158,7 +155,7 @@ export const WelcomePage: React.FC<WelcomePageProps> = ({
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-border/60 bg-background/28 px-6 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="flex flex-col gap-3 border-t border-border/60 bg-background/28 px-6 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <p className="max-w-2xl text-sm leading-6 text-secondary">
             {t('onboarding.welcome.account_note')}
           </p>

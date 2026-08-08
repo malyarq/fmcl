@@ -2,17 +2,17 @@ import fs from 'node:fs';
 import { describe, it } from 'vitest';
 import { RootMutationLock } from '../rootMutationLock';
 
-const enabled = process.env.FMCL_ROOT_LOCK_CHILD === '1';
+const enabled = process.env.BURROW_ROOT_LOCK_CHILD === '1';
 
 describe.skipIf(!enabled)('RootMutationLock child contender', () => {
   it('acquires and runs the production lock', async () => {
-    const id = requiredEnvironment('FMCL_ROOT_LOCK_ID');
-    const rootPath = requiredEnvironment('FMCL_ROOT_LOCK_ROOT');
-    const eventsPath = requiredEnvironment('FMCL_ROOT_LOCK_EVENTS');
-    const releasePath = requiredEnvironment('FMCL_ROOT_LOCK_RELEASE');
-    const startPath = process.env.FMCL_ROOT_LOCK_START;
-    const ticketBarrierPath = process.env.FMCL_ROOT_LOCK_TICKET_BARRIER;
-    const bakeryTurnBarrierPath = process.env.FMCL_ROOT_LOCK_BAKERY_TURN_BARRIER;
+    const id = requiredEnvironment('BURROW_ROOT_LOCK_ID');
+    const rootPath = requiredEnvironment('BURROW_ROOT_LOCK_ROOT');
+    const eventsPath = requiredEnvironment('BURROW_ROOT_LOCK_EVENTS');
+    const releasePath = requiredEnvironment('BURROW_ROOT_LOCK_RELEASE');
+    const startPath = process.env.BURROW_ROOT_LOCK_START;
+    const ticketBarrierPath = process.env.BURROW_ROOT_LOCK_TICKET_BARRIER;
+    const bakeryTurnBarrierPath = process.env.BURROW_ROOT_LOCK_BAKERY_TURN_BARRIER;
     if (startPath) {
       appendEvent(eventsPath, `ready ${id}`);
       await waitForFile(startPath);

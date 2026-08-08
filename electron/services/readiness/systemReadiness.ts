@@ -17,7 +17,7 @@ type SystemReadinessDependencies = Readonly<{
 
 async function verifyStorage(rootPath: string): Promise<void> {
   await fs.mkdir(rootPath, { recursive: true });
-  const probe = path.join(rootPath, `.fmcl-readiness-${randomUUID()}`);
+  const probe = path.join(rootPath, `.burrow-readiness-${randomUUID()}`);
   try {
     await fs.writeFile(probe, 'ok', { flag: 'wx', mode: 0o600 });
   } finally {

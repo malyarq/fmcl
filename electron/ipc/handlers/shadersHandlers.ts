@@ -128,7 +128,7 @@ export function registerShadersHandlers() {
                         {
                             fileName: 'shaderpacks',
                             status: 'failure',
-                            message: 'FMCL could not prepare the shaderpacks folder for imports.',
+                            message: 'Burrow could not prepare the shaderpacks folder for imports.',
                         },
                     ],
                 };

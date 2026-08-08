@@ -17,7 +17,7 @@ describe('OperationRunner import registry', () => {
   afterEach(() => { for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
 
   it('routes start({ kind: import }) to the registered staged archive adapter', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-import-registry-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-import-registry-'));
     tempDirs.push(rootPath);
     fs.mkdirSync(path.join(rootPath, 'modpacks'), { recursive: true });
     fs.writeFileSync(path.join(rootPath, 'modpacks.json'), JSON.stringify({ selectedModpack: 'default', modpacks: {} }));
@@ -36,7 +36,7 @@ describe('OperationRunner import registry', () => {
   });
 
   it.each(['install-curseforge', 'install-modrinth'] as const)('routes start({ kind: %s }) to the registered provider adapter', async (kind) => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-provider-registry-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-provider-registry-'));
     tempDirs.push(rootPath);
     fs.mkdirSync(path.join(rootPath, 'modpacks'), { recursive: true });
     fs.writeFileSync(path.join(rootPath, 'modpacks.json'), JSON.stringify({ selectedModpack: 'default', modpacks: {} }));
@@ -57,7 +57,7 @@ describe('OperationRunner import registry', () => {
   });
 
   it('routes start({ kind: update }) to the registered staged manifest adapter', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-update-registry-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-update-registry-'));
     tempDirs.push(rootPath);
     fs.mkdirSync(path.join(rootPath, 'modpacks', 'updated-pack'), { recursive: true });
     fs.writeFileSync(path.join(rootPath, 'modpacks', 'updated-pack', 'modpack.json'), JSON.stringify({ id: 'updated-pack', name: 'Updated', runtime: { minecraft: '1.20.1' } }));
@@ -69,7 +69,7 @@ describe('OperationRunner import registry', () => {
   });
 
   it('routes start({ kind: delete }) to the registered quarantine adapter', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-delete-registry-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-delete-registry-'));
     tempDirs.push(rootPath);
     fs.mkdirSync(path.join(rootPath, 'modpacks', 'delete-me'), { recursive: true });
     fs.writeFileSync(path.join(rootPath, 'modpacks', 'delete-me', 'modpack.json'), JSON.stringify({ id: 'delete-me', name: 'Delete me', runtime: { minecraft: '1.20.1' }, memory: { maxMb: 4096 }, vmOptions: [] }));
@@ -82,7 +82,7 @@ describe('OperationRunner import registry', () => {
   });
 
   it('routes archive and manifest export variants to the registered staged adapter', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-export-registry-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-export-registry-'));
     tempDirs.push(rootPath);
     const sourcePath = path.join(rootPath, 'modpacks', 'export-me');
     fs.mkdirSync(sourcePath, { recursive: true });

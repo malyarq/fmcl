@@ -8,7 +8,7 @@ import type { ArchiveImportContentPort } from '../InstanceImporterService';
 
 const archivePolicy = vi.hoisted(() => ({ openValidatedZip: vi.fn() }));
 
-vi.mock('electron', () => ({ app: { getPath: () => '/tmp/fmcl-importer-default' } }));
+vi.mock('electron', () => ({ app: { getPath: () => '/tmp/burrow-importer-default' } }));
 
 vi.mock('../../../../security/archivePolicy', async (importOriginal) => {
   const original = await importOriginal<typeof import('../../../../security/archivePolicy')>();
@@ -49,7 +49,7 @@ function makeContent(root: LauncherRoot, overrides: Partial<ArchiveImportContent
     resolveRoot: vi.fn(async () => root),
     inspectArchive: vi.fn(async () => ({ format: null })),
     importArchive: vi.fn(async () => ({ id: 'provider-import' })),
-    getInstanceDirectory: vi.fn(() => '/tmp/fmcl-import-target'),
+    getInstanceDirectory: vi.fn(() => '/tmp/burrow-import-target'),
     publishInstance: vi.fn(async () => undefined),
     removeInstance: vi.fn(async () => undefined),
     ...overrides,
@@ -70,14 +70,14 @@ describe('InstanceImporterService', () => {
     const application = { execute: vi.fn() } as unknown as InstanceApplication;
     const service = new InstanceImporterService(application, content);
 
-    await expect(service.importInstance('/tmp/fmcl-root', 'relative.zip')).rejects.toThrow('Modpack import path must be an absolute path');
+    await expect(service.importInstance('/tmp/burrow-root', 'relative.zip')).rejects.toThrow('Modpack import path must be an absolute path');
 
     expect(content.inspectArchive).not.toHaveBeenCalled();
     expect(archivePolicy.openValidatedZip).not.toHaveBeenCalled();
   });
 
   it('creates a MultiMC instance through the injected canonical application and opaque content port', async () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-importer-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-importer-'));
     temporaryDirectories.push(directory);
     const archivePath = path.join(directory, 'pack.zip');
     fs.writeFileSync(archivePath, 'archive');
@@ -101,7 +101,7 @@ describe('InstanceImporterService', () => {
   });
 
   it('removes canonical and staged content when publication fails', async () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-importer-'));
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-importer-'));
     temporaryDirectories.push(directory);
     const archivePath = path.join(directory, 'pack.zip');
     fs.writeFileSync(archivePath, 'archive');

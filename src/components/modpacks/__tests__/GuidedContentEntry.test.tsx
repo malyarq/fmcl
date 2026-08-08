@@ -19,7 +19,7 @@ const translations: Record<string, string> = {
   'general.modloader': 'Modloader',
   'general.offline': 'Offline',
   'dashboard.welcome': 'Welcome',
-  'dashboard.welcome_title': 'Welcome to FriendLauncher!',
+  'dashboard.welcome_title': 'Welcome to Burrow!',
   'dashboard.welcome_desc': 'Simple Play mode is the fastest way to launch Minecraft.',
   'dashboard.dismiss': 'Got it',
   'dashboard.quick_actions': 'Quick actions',

@@ -9,10 +9,10 @@ describe('OperationRootRegistry', () => {
   const dirs: string[] = [];
   afterEach(() => dirs.splice(0).forEach((dir) => fs.rmSync(dir, { recursive: true, force: true })));
   it('keeps valid roots available when a descriptor primary and backup are corrupt', () => {
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-registry-')); dirs.push(base);
-    const first = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-root-one-')); const second = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-root-two-')); dirs.push(first, second);
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-registry-')); dirs.push(base);
+    const first = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-root-one-')); const second = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-root-two-')); dirs.push(first, second);
     const registry = new OperationRootRegistry(base); registry.register(first); registry.register(second);
-    const directory = path.join(base, 'FriendLauncher', 'operation-roots');
+    const directory = path.join(base, 'Burrow', 'operation-roots');
     const corrupt = fs.readdirSync(directory).find((name) => name.endsWith('.json'))!;
     fs.writeFileSync(path.join(directory, corrupt), '{bad'); fs.writeFileSync(`${path.join(directory, corrupt)}.bak`, '{bad');
     const listed = registry.list();
@@ -20,7 +20,7 @@ describe('OperationRootRegistry', () => {
   });
 
   it('creates and registers the default root during a clean first startup', async () => {
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-first-start-'));
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-first-start-'));
     dirs.push(base);
     const defaultRoot = path.join(base, 'user-data', 'minecraft_data');
     const runner = new OperationRunner([], { registryPath: base });
@@ -33,12 +33,12 @@ describe('OperationRootRegistry', () => {
   });
 
   it('uses a stable id when the same registry failure returns after restart', async () => {
-    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-registry-stable-')); dirs.push(base);
-    const brokenRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-registry-broken-root-')); dirs.push(brokenRoot);
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-registry-stable-')); dirs.push(base);
+    const brokenRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-registry-broken-root-')); dirs.push(brokenRoot);
     const defaultRoot = path.join(base, 'user-data', 'minecraft_data');
     const registry = new OperationRootRegistry(base);
     registry.register(brokenRoot);
-    const directory = path.join(base, 'FriendLauncher', 'operation-roots');
+    const directory = path.join(base, 'Burrow', 'operation-roots');
     const descriptor = path.join(directory, fs.readdirSync(directory).find((name) => name.endsWith('.json'))!);
     fs.writeFileSync(descriptor, '{bad');
     fs.writeFileSync(`${descriptor}.bak`, '{bad');

@@ -25,7 +25,7 @@ function writeJson(filePath: string, value: unknown): void {
 }
 
 function createFixture(withLegacy = true): Fixture {
-  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-root-mutation-coordinator-'));
+  const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-root-mutation-coordinator-'));
   const root = {} as LauncherRoot;
   if (withLegacy) {
     writeJson(path.join(rootPath, 'modpacks.json'), {

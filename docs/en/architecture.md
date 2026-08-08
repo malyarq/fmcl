@@ -1,6 +1,6 @@
 # Architecture
 
-FriendLauncher is an Electron desktop application with a React renderer built by Vite. The main process owns every native capability and composes one canonical instance domain; the renderer receives typed, path-free operations rather than filesystem access.
+Burrow is an Electron desktop application with a React renderer built by Vite. The main process owns every native capability and composes one canonical instance domain; the renderer receives typed, path-free operations rather than filesystem access.
 
 ```mermaid
 flowchart LR
@@ -72,7 +72,7 @@ Do not create a second copy of a cross-process payload type in renderer or main 
 | Launch and Java | `electron/services/launcher/`, `electron/services/java/`, injected instance/launch ports | `src/features/launcher/`, `src/components/SimplePlayDashboard.tsx` |
 | Provider catalog and installs | `electron/services/mods/platform/` and provider operation adapters | `useModpackBrowserCatalog`, typed content adapters, and semantic IPC wrappers |
 | Accounts | `electron/services/account/` | `src/features/accounts/` |
-| Multiplayer | `FriendTunnelService`, `LanDiscoveryService`, and `PortMappingService` under `electron/services/network/` | one live capability controller under `src/features/multiplayer/` |
+| Multiplayer | `Burrow LinkService`, `LanDiscoveryService`, and `PortMappingService` under `electron/services/network/` | one live capability controller under `src/features/multiplayer/` |
 | Updates | `electron/services/updater/` | `src/features/updater/` |
 | Resource packs, shaders, worlds, datapacks, screenshots | narrow services and validated handlers under `electron/services/` and `electron/ipc/handlers/` | modpack detail/content features |
 
@@ -125,7 +125,7 @@ Networking has no global mutable mode and no mixed god service. The selected ins
 
 ```mermaid
 flowchart LR
-  UI["Multiplayer controller"] --> T["FriendTunnelService\nfresh Hyperswarm per session"]
+  UI["Multiplayer controller"] --> T["Burrow LinkService\nfresh Hyperswarm per session"]
   UI --> L["LanDiscoveryService\none XMCL socket generation"]
   UI --> U["PortMappingService\ngateway and mapping owner"]
   T --> TS["discovery + peer links + TCP bridge + muxers"]
@@ -133,7 +133,7 @@ flowchart LR
   U --> US["coalesced discovery + owned mappings"]
 ```
 
-FriendTunnel validates fixed-size room codes, attaches connection handling before discovery flush, aborts pending peer waits, and awaits discovery, local TCP server, sockets, and swarm destruction. Its mux parser bounds frames and buffered bytes, rejects invalid command/session transitions, allocates collision-free session IDs, and contains protocol faults to the peer connection. Remote close never echoes another close.
+Burrow Link validates fixed-size room codes, attaches connection handling before discovery flush, aborts pending peer waits, and awaits discovery, local TCP server, sockets, and swarm destruction. Its mux parser bounds frames and buffered bytes, rejects invalid command/session transitions, allocates collision-free session IDs, and contains protocol faults to the peer connection. Remote close never echoes another close.
 
 LAN start/stop is serialized and listener cleanup captures the exact XMCL generation. Ping responses are copied into bounded serializable DTOs. UPnP coalesces gateway discovery, removes mapping state only after successful unmap, and uses `gateway.stop()` for complete cleanup. A failed cleanup remains a typed failed state instead of falsely reporting idle. One capability failure never stops the other two.
 
@@ -159,7 +159,7 @@ The first `before-quit` event is prevented while one shared shutdown promise run
 unregister IPC admission
   -> stop OperationRunner admission and drain durable terminal records
   -> stop InstanceApplication admission and drain admitted config writes
-  -> stop FriendTunnel, LAN, and UPnP independently
+  -> stop Burrow Link, LAN, and UPnP independently
   -> stop the owned AuthServer
   -> destroy the tray
   -> reissue app.quit under a completion guard
@@ -197,7 +197,7 @@ Archive import consumes an opaque `archiveRef`; the renderer never receives the 
 
 Destructive root-wide operations use protocol v3 in `.fmcl-operations/locks`. Immutable Lamport choosing and ticket records select one writer; each record carries a random token and the owning process's unique local Node socket path. A contender removes a record only after the socket definitively refuses or rejects that token. Timeouts and ambiguous local-network failures remain live and block the operation. This avoids PID-reuse and elapsed-time liveness decisions, including while a process is suspended.
 
-After winning the bakery turn, the writer holds the atomically published canonical `mutation.lock` bridge for the whole callback. The `mutation.lock.v3` marker is an offline upgrade boundary: stop every FMCL process sharing a custom launcher root before upgrading to v3, downgrading, or mixing builds. A pre-v3 marker is not reclaimed; the operation fails closed with `ROOT_LOCK_OFFLINE_UPGRADE_REQUIRED`.
+After winning the bakery turn, the writer holds the atomically published canonical `mutation.lock` bridge for the whole callback. The `mutation.lock.v3` marker is an offline upgrade boundary: stop every Burrow process sharing a custom launcher root before upgrading to v3, downgrading, or mixing builds. A pre-v3 marker is not reclaimed; the operation fails closed with `ROOT_LOCK_OFFLINE_UPGRADE_REQUIRED`.
 
 ## Dependency direction
 

@@ -94,7 +94,7 @@ describe('SidebarHeader compact mode', () => {
 
     const title = screen.getByTestId('sidebar-app-title');
 
-    expect(title.textContent).toBe('FriendLauncher');
+    expect(title.textContent).toBe('Burrow');
     expect(title.className).not.toContain('truncate');
     expect(screen.getByText('Modpacks • v0.4.0')).toBeTruthy();
     expect(screen.queryByTestId('sidebar-app-icon')).toBeNull();

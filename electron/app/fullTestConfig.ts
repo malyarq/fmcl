@@ -11,13 +11,13 @@ function isOptionalString(value: unknown): value is string | null | undefined {
 export function loadFullTestConfig(
   env: Readonly<Record<string, string | undefined>> = process.env,
 ): EnabledFullTestConfig | null {
-  const configPath = env['FMCL_FULL_TEST_CONFIG'];
+  const configPath = env['BURROW_FULL_TEST_CONFIG'];
   if (!configPath) {
     return null;
   }
 
   if (env['NODE_ENV'] !== 'test' || !path.isAbsolute(configPath)) {
-    throw new Error('FMCL_FULL_TEST_CONFIG requires NODE_ENV=test and an absolute path');
+    throw new Error('BURROW_FULL_TEST_CONFIG requires NODE_ENV=test and an absolute path');
   }
 
   const parsed: unknown = JSON.parse(fs.readFileSync(configPath, 'utf8'));

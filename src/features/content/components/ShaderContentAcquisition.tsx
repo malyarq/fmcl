@@ -119,13 +119,13 @@ export function ShaderContentAcquisition({
       duplicate: t('modpacks.shader_issue_duplicate')
         || 'Already in this modpack. Review installed shader packs or choose a different pack.',
       'invalid-archive': t('modpacks.shader_issue_invalid_archive')
-        || 'FMCL could not treat this file as a valid shader pack. Try another version or another local .zip.',
+        || 'Burrow could not treat this file as a valid shader pack. Try another version or another local .zip.',
       'runtime-blocked': t('modpacks.shader_issue_runtime_blocked')
         || 'This shader is blocked for the current runtime. Review the shader runtime card above, then retry.',
       'install-failure': t('modpacks.shader_issue_install_failure')
-        || 'FMCL could not add this shader pack right now. Retry from this screen or keep browsing.',
+        || 'Burrow could not add this shader pack right now. Retry from this screen or keep browsing.',
       'manifest-failure': t('modpacks.shader_issue_manifest_failure')
-        || 'FMCL could not finish this shader-pack install.',
+        || 'Burrow could not finish this shader-pack install.',
       unknown: t('modpacks.shader_recovery_refresh_failure')
         || 'The files were added, but the canonical instance view could not be refreshed.',
     },

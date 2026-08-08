@@ -12,7 +12,7 @@ afterEach(() => {
 
 describe('findJavaExecutable', () => {
   it('finds the native console executable in a nested downloaded runtime', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-java-runtime-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-java-runtime-'));
     roots.push(root);
     const executable = path.join(
       root,
@@ -26,7 +26,7 @@ describe('findJavaExecutable', () => {
   });
 
   it('returns null for missing or unrelated runtime content', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-java-runtime-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-java-runtime-'));
     roots.push(root);
     fs.writeFileSync(path.join(root, 'release'), 'JAVA_VERSION=21');
 
@@ -35,7 +35,7 @@ describe('findJavaExecutable', () => {
   });
 
   it.runIf(process.platform !== 'win32')('restores executable bits lost during runtime extraction', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-java-runtime-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-java-runtime-'));
     roots.push(root);
     const executable = path.join(root, 'bin', 'java');
     fs.mkdirSync(path.dirname(executable), { recursive: true });

@@ -26,7 +26,7 @@ describe('JsonControlPlaneStore', () => {
   });
 
   function createStore() {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-control-plane-store-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-control-plane-store-'));
     roots.push(root);
     const rootCapability = {} as LauncherRoot;
     return {

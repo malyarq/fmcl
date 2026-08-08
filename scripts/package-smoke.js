@@ -7,6 +7,7 @@ import { createServer, get as httpGet } from 'node:http';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { WebSocket as UndiciWebSocket } from 'undici';
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const projectRoot = resolve(scriptDir, '..');
@@ -18,11 +19,28 @@ const packageSmokeSchema = JSON.parse(readFileSync(join(projectRoot, 'quality/sc
 
 function expectedArtifactName(version, platform) {
   switch (platform) {
-    case 'darwin': return `FriendLauncher-Mac-${version}-Installer.dmg`;
-    case 'win32': return `FriendLauncher-Windows-${version}-Setup.exe`;
-    case 'linux': return `FriendLauncher-Linux-${version}.AppImage`;
+    case 'darwin': return `Burrow-Mac-${version}-Installer.dmg`;
+    case 'win32': return `Burrow-Windows-${version}-Setup.exe`;
+    case 'linux': return `Burrow-Linux-${version}.AppImage`;
     default: throw new Error(`unsupported platform: ${platform}`);
   }
+}
+
+function artifactNameForProduct(productName, version, platform) {
+  switch (platform) {
+    case 'darwin': return `${productName}-Mac-${version}-Installer.dmg`;
+    case 'win32': return `${productName}-Windows-${version}-Setup.exe`;
+    case 'linux': return `${productName}-Linux-${version}.AppImage`;
+    default: throw new Error(`unsupported platform: ${platform}`);
+  }
+}
+
+export function productNameForArtifact(artifactPath, version, platform) {
+  const artifactName = basename(artifactPath);
+  for (const productName of ['Burrow', 'FriendLauncher']) {
+    if (artifactName === artifactNameForProduct(productName, version, platform)) return productName;
+  }
+  throw new Error(`unexpected previous release artifact: ${artifactName}`);
 }
 
 function artifactKind(platform) {
@@ -172,7 +190,7 @@ async function waitForProfileRelease(userDataPath, timeoutMs = CLEANUP_TIMEOUT_M
   if (existsSync(singletonSocket)) throw new Error(`previous packaged profile remained locked after ${timeoutMs}ms`);
 }
 
-export function evaluateDebugTarget(target, expression, WebSocketConstructor = globalThis.WebSocket) {
+export function evaluateDebugTarget(target, expression, WebSocketConstructor = globalThis.WebSocket ?? UndiciWebSocket) {
   if (!target?.webSocketDebuggerUrl || typeof WebSocketConstructor !== 'function') {
     return Promise.reject(new Error('renderer debug target has no WebSocket endpoint'));
   }
@@ -248,9 +266,9 @@ function findSingleApp(root) {
   return join(root, apps[0].name);
 }
 
-function macAdapter({ artifactPath, workspace, ports }) {
+function macAdapter({ artifactPath, workspace, ports, productName = 'Burrow' }) {
   const mountPath = join(workspace, 'mounted-dmg');
-  const copiedApp = join(workspace, 'FriendLauncher.app');
+  const copiedApp = join(workspace, `${productName}.app`);
   ports.mkdir(mountPath);
   ports.execFile('hdiutil', ['attach', artifactPath, '-nobrowse', '-readonly', '-mountpoint', mountPath]);
   try {
@@ -262,7 +280,7 @@ function macAdapter({ artifactPath, workspace, ports }) {
     // not block on an otherwise healthy launcher process.
     ports.execFile('hdiutil', ['detach', mountPath, '-force']);
   }
-  const executable = join(copiedApp, 'Contents', 'MacOS', 'FriendLauncher');
+  const executable = join(copiedApp, 'Contents', 'MacOS', productName);
   if (!ports.exists(executable)) throw new Error(`mounted app has no expected executable: ${executable}`);
   return {
     command: executable,
@@ -271,13 +289,13 @@ function macAdapter({ artifactPath, workspace, ports }) {
   };
 }
 
-function windowsAdapter({ artifactPath, workspace, ports }) {
+function windowsAdapter({ artifactPath, workspace, ports, productName = 'Burrow' }) {
   const installDir = join(workspace, 'installed');
   const escapedInstallDir = installDir.replaceAll("'", "''");
   const escapedWorkspace = workspace.replaceAll("'", "''");
   ports.mkdir(installDir);
   ports.execFile(artifactPath, ['/S', `/D=${installDir}`]);
-  const executable = join(installDir, 'FriendLauncher.exe');
+  const executable = join(installDir, `${productName}.exe`);
   if (!ports.exists(executable)) throw new Error(`NSIS installer has no expected executable: ${executable}`);
   return {
     command: executable,
@@ -384,7 +402,7 @@ export async function runPackageSmoke(options = {}) {
     if (platform === 'darwin' && hostPlatform !== 'darwin') throw new Error('unsupported runner: DMG packages require a macOS host');
     if (platform === 'win32' && hostPlatform !== 'win32') throw new Error('unsupported runner: NSIS packages require a Windows host');
     if (platform === 'linux' && hostPlatform !== 'linux') throw new Error('unsupported runner: AppImage packages require a Linux host');
-    workspace = runtime.mkdtemp(join(tmpdir(), 'fmcl-package-smoke-'));
+    workspace = runtime.mkdtemp(join(tmpdir(), 'burrow-package-smoke-'));
     const userDataPath = join(workspace, 'user-data');
     const configPath = join(workspace, 'package-smoke-config.json');
     makeDirectory(userDataPath);
@@ -397,18 +415,25 @@ export async function runPackageSmoke(options = {}) {
       if (!options.previousArtifactPath || !options.previousVersion) throw new Error('upgrade smoke requires both previous artifact and previous version');
       const previousArtifactPath = resolve(options.previousArtifactPath);
       if (!runtime.exists(previousArtifactPath)) throw new Error(`missing previous release artifact: ${previousArtifactPath}`);
-      if (basename(previousArtifactPath) !== expectedArtifactName(options.previousVersion, platform)) {
-        throw new Error(`unexpected previous release artifact: ${basename(previousArtifactPath)}`);
-      }
+      const previousProductName = productNameForArtifact(previousArtifactPath, options.previousVersion, platform);
       evidence.upgrade.previousArtifactSha256 = sha256(previousArtifactPath);
       runtime.writeFile(preservationMarker, `upgrade ${options.previousVersion} -> ${version}\n`, 'utf8');
-      previousAdapter = (options.createAdapter ?? createPlatformAdapter)(platform, { artifactPath: previousArtifactPath, workspace, ports });
+      previousAdapter = (options.createAdapter ?? createPlatformAdapter)(platform, {
+        artifactPath: previousArtifactPath,
+        workspace,
+        ports,
+        productName: previousProductName,
+      });
       const previousDebugPort = await runtime.reservePort();
       previousChild = runtime.spawn(previousAdapter.command, [...previousAdapter.args, `--remote-debugging-port=${previousDebugPort}`, `--user-data-dir=${userDataPath}`], {
         cwd: tmpdir(),
         env: {
           ...process.env,
           NODE_ENV: 'test',
+          // The previous public package still reads the legacy variables.
+          // Keep both namespaces for the one-process upgrade probe only.
+          BURROW_TEST_USER_DATA: userDataPath,
+          BURROW_PACKAGE_SMOKE_CONFIG: configPath,
           FMCL_TEST_USER_DATA: userDataPath,
           FMCL_PACKAGE_SMOKE_CONFIG: configPath,
           ELECTRON_ENABLE_LOGGING: '1',
@@ -438,8 +463,8 @@ export async function runPackageSmoke(options = {}) {
       env: {
         ...process.env,
         NODE_ENV: 'test',
-        FMCL_TEST_USER_DATA: userDataPath,
-        FMCL_PACKAGE_SMOKE_CONFIG: configPath,
+        BURROW_TEST_USER_DATA: userDataPath,
+        BURROW_PACKAGE_SMOKE_CONFIG: configPath,
         ELECTRON_ENABLE_LOGGING: '1',
         ...(platform === 'linux' ? { APPIMAGE_EXTRACT_AND_RUN: '1' } : {}),
       },

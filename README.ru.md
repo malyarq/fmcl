@@ -1,16 +1,22 @@
-# FriendLauncher
+# Burrow
 
-[English](README.md) · [Русский](README.ru.md) · [Скачать](https://github.com/malyarq/fmcl/releases/latest) · [Документация](docs/README.md)
+[English](README.md) · [Русский](README.ru.md) · [Скачать](https://github.com/malyarq/burrow/releases/latest) · [Документация](docs/README.md)
 
-FriendLauncher (FMCL) — приватный настольный лаунчер Minecraft для обычной игры, изолированных модпаков, управления локальным контентом и прямой игры с другом. Работает на Windows, macOS и Linux.
+[![CI](https://github.com/malyarq/burrow/actions/workflows/ci.yml/badge.svg)](https://github.com/malyarq/burrow/actions/workflows/ci.yml) [![Релиз](https://img.shields.io/github/v/release/malyarq/burrow?display_name=tag&sort=semver)](https://github.com/malyarq/burrow/releases/latest) [![Лицензия MIT](https://img.shields.io/badge/license-MIT-58d6a6.svg)](LICENSE)
 
-![Первый запуск FriendLauncher](docs/assets/screenshots/welcome-ru.png)
+<img src="public/launcher-mark.png" width="112" height="112" alt="Воксельная иконка Burrow с пещерой">
 
-## Зачем FriendLauncher
+**Играй локально. Зови друга.**
 
-- **Играть вдвоём без аренды сервера.** FriendTunnel соединяет открытый для LAN мир по копируемому приглашению. Второй игрок использует локальный адрес, который покажет FMCL.
+Burrow — приватный настольный лаунчер Minecraft для обычной игры, изолированных модпаков, управления локальным контентом и прямой игры с другом. Работает на Windows, macOS и Linux.
+
+![Первый запуск Burrow](docs/assets/screenshots/welcome-ru.png)
+
+## Зачем Burrow
+
+- **Играть вдвоём без аренды сервера.** Burrow Link соединяет открытый для LAN мир по копируемому приглашению. Второй игрок использует локальный адрес, который покажет Burrow.
 - **Сохранять контроль над данными.** Игровые данные, настройки, аккаунты и сборки остаются на компьютере. Анонимная продуктовая аналитика по умолчанию выключена, а список событий зафиксирован в документации.
-- **Запускать обычный и модифицированный Minecraft.** FMCL поддерживает Forge, Fabric, NeoForge, OptiFine, изолированные сборки и контент из Modrinth.
+- **Запускать обычный и модифицированный Minecraft.** Burrow поддерживает Forge, Fabric, NeoForge, OptiFine, изолированные сборки и контент из Modrinth.
 - **Безопасно переносить настройки.** Настройки можно экспортировать без токенов аккаунтов и идентификатора аналитики, а важные модпаки — сохранить отдельными архивами.
 - **Понимать состояние операции.** Долгие установки и обновления показывают прогресс, отмену, восстановление и понятную причину ошибки.
 
@@ -22,7 +28,7 @@ FriendLauncher (FMCL) — приватный настольный лаунчер
 | Модпаки | Создание, импорт, экспорт, копирование, переименование, обновление, удаление, каталог Modrinth |
 | Контент | Моды, ресурспаки, шейдеры, миры, датапаки, скриншоты |
 | Аккаунты | Офлайн-профили и поддерживаемые сторонние Yggdrasil/authlib-injector провайдеры |
-| Совместная игра | FriendTunnel, дополнительный поиск в LAN и диагностика UPnP |
+| Совместная игра | Burrow Link, дополнительный поиск в LAN и диагностика UPnP |
 | Надёжность | Атомарная запись, восстановление операций, проверка архивов и путей, контрольные суммы релизов |
 | Языки | Русский и английский |
 
@@ -30,18 +36,18 @@ FriendLauncher (FMCL) — приватный настольный лаунчер
 
 ## Установка
 
-Скачайте последний пакет и `SHA256SUMS.txt` со страницы [GitHub Releases](https://github.com/malyarq/fmcl/releases/latest).
+Скачайте последний пакет и `SHA256SUMS.txt` со страницы [GitHub Releases](https://github.com/malyarq/burrow/releases/latest).
 
 | Платформа | Файл |
 | --- | --- |
-| Windows | `FriendLauncher-Windows-<version>-Setup.exe` |
-| macOS | `FriendLauncher-Mac-<version>-Installer.dmg` |
-| Linux | `FriendLauncher-Linux-<version>.AppImage` |
+| Windows | `Burrow-Windows-<version>-Setup.exe` |
+| macOS | `Burrow-Mac-<version>-Installer.dmg` |
+| Linux | `Burrow-Linux-<version>.AppImage` |
 
 > [!WARNING]
 > Windows-пакеты и macOS DMG пока не подписаны издателем. Локальная macOS-сборка получает только ad-hoc подпись, чтобы приложение запускалось после настройки Electron fuses; личность издателя она не подтверждает. Скачивайте файлы только из этого репозитория и до запуска сверяйте SHA-256. Операционная система может показать предупреждение о неизвестном разработчике.
 
-Проверка контрольной суммы, первый запуск, FriendTunnel, обновления и резервные копии описаны в [руководстве пользователя](docs/ru/user-guide.md).
+Проверка контрольной суммы, первый запуск, Burrow Link, обновления и резервные копии описаны в [руководстве пользователя](docs/ru/user-guide.md).
 
 ## Разработка
 
@@ -80,4 +86,4 @@ npm run build -- --publish never
 
 Текущий набор функций доведён до инженерной готовности. Для уверенной публичной альфы ещё нужны проверки чистой установки на каждой целевой ОС. Подпись пакетов, вход Microsoft и проверка продукта внешними пользователями — отдельные условия. Краткое направление описано в [продуктовом ограничителе](docs/ru/roadmap.md).
 
-FriendLauncher не связан с Mojang или Microsoft и не предоставляет право владения Minecraft. Проект распространяется по [лицензии MIT](LICENSE).
+Burrow не связан с Mojang или Microsoft и не предоставляет право владения Minecraft. Проект распространяется по [лицензии MIT](LICENSE).

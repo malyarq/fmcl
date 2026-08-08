@@ -16,7 +16,7 @@ describe('operation recovery', () => {
   afterEach(() => { for (const dir of tempDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
 
   it('removes proven pre-publish residue but retains an ambiguous published path', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-recovery-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-recovery-'));
     tempDirs.push(rootPath);
     const journal = new OperationJournal(rootPath);
     const stagedId = '11111111-1111-4111-8111-111111111111';
@@ -37,7 +37,7 @@ describe('operation recovery', () => {
   });
 
   it('retains a legacy published import without an exact canonical command as recovery-required', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-import-recovery-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-import-recovery-'));
     tempDirs.push(rootPath);
     const journal = new OperationJournal(rootPath);
     const operationId = '33333333-3333-4333-8333-333333333333';
@@ -64,7 +64,7 @@ describe('operation recovery', () => {
   });
 
   it('rejects an unconsumed public archive capability from a restart journal', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-import-reference-recovery-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-import-reference-recovery-'));
     tempDirs.push(rootPath);
     const operationId = '34343434-3434-4434-8434-343434343434';
     writeRawJournal(rootPath, {
@@ -81,7 +81,7 @@ describe('operation recovery', () => {
   });
 
   it('retains a legacy published provider install without a canonical command as recovery-required', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-provider-recovery-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-provider-recovery-'));
     tempDirs.push(rootPath);
     const journal = new OperationJournal(rootPath);
     const operationId = '44444444-4444-4444-8444-444444444444';
@@ -109,7 +109,7 @@ describe('operation recovery', () => {
   });
 
   it('retains a published manifest export without a canonical command as recovery-required', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-manifest-export-recovery-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-manifest-export-recovery-'));
     tempDirs.push(rootPath);
     const operationId = '45454545-4545-4545-8454-454545454545';
     const instancePath = path.join(rootPath, 'modpacks', 'export-me');
@@ -138,7 +138,7 @@ describe('operation recovery', () => {
   });
 
   it('retains a legacy pre-commit delete quarantine without an exact canonical command', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-delete-recovery-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-delete-recovery-'));
     tempDirs.push(rootPath);
     const journal = new OperationJournal(rootPath);
     const operationId = '55555555-5555-4555-8555-555555555555';
@@ -161,8 +161,8 @@ describe('operation recovery', () => {
   });
 
   it('fails closed without cleaning a foreign root when a journal record changes its root paths', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-journal-root-a-'));
-    const foreignRootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-journal-root-b-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-journal-root-a-'));
+    const foreignRootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-journal-root-b-'));
     tempDirs.push(rootPath, foreignRootPath);
     const operationId = '66666666-6666-4666-8666-666666666666';
     const foreignResidue = path.join(foreignRootPath, '.fmcl-operations', 'staging', operationId, 'preserve.txt');
@@ -182,8 +182,8 @@ describe('operation recovery', () => {
   });
 
   it('fails closed before archive recovery can follow tampered workspace paths', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-journal-archive-a-'));
-    const foreignRootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-journal-archive-b-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-journal-archive-a-'));
+    const foreignRootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-journal-archive-b-'));
     tempDirs.push(rootPath, foreignRootPath);
     const operationId = '77777777-7777-4777-8777-777777777777';
     const outputPath = path.join(rootPath, 'exports', 'export-me.zip');
@@ -206,8 +206,8 @@ describe('operation recovery', () => {
   });
 
   it('does not replay a self-consistent tampered archive output path after restart', async () => {
-    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-journal-output-a-'));
-    const foreignRootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-operation-journal-output-b-'));
+    const rootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-journal-output-a-'));
+    const foreignRootPath = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-operation-journal-output-b-'));
     tempDirs.push(rootPath, foreignRootPath);
     const operationId = '88888888-8888-4888-8888-888888888888';
     const foreignOutputPath = path.join(foreignRootPath, 'exports', 'victim.zip');

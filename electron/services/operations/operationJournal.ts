@@ -317,7 +317,8 @@ function isNonNegativeInteger(value: unknown): boolean { return Number.isSafeInt
 function isIdentifier(value: unknown): boolean { return typeof value === 'string' && /^[a-zA-Z0-9._-]{1,160}$/.test(value); }
 function isShareCode(value: unknown): boolean {
   if (typeof value !== 'string' || value.length < 4 || value.length > 32_768) return false;
-  const payload = value.startsWith('fmcl://share/v1/') ? value.slice('fmcl://share/v1/'.length) : value;
+  const prefix = ['burrow://share/v1/', 'fmcl://share/v1/'].find((candidate) => value.startsWith(candidate));
+  const payload = prefix ? value.slice(prefix.length) : value;
   return /^[A-Za-z0-9+/=_-]+$/.test(payload);
 }
 function isErrorCode(value: unknown): boolean { return typeof value === 'string' && /^[A-Z0-9_]{1,64}$/.test(value); }

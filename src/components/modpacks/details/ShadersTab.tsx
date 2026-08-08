@@ -112,11 +112,11 @@ export function ShadersTab({ instanceId, runtimeSummary, onUpdate, onAddShader }
         ? getModpackShaderCapabilityDescription(runtimeSummary, t)
         : (
             t('modpacks.shader_capability_missing_runtime_desc')
-            || 'FMCL could not verify this modpack runtime yet, so shader compatibility is still unverified.'
+            || 'Burrow could not verify this modpack runtime yet, so shader compatibility is still unverified.'
         );
     const shaderCapabilityHint =
         t('modpacks.shader_capability_active_hint')
-        || 'An active shader file only means FMCL stored the selection. It is not proof that the pack will render correctly.';
+        || 'An active shader file only means Burrow stored the selection. It is not proof that the pack will render correctly.';
 
     return (
         <div className="space-y-4">

@@ -22,7 +22,7 @@ type ManifestProviderPort = Pick<ModPlatformService, 'getCurseForgeClient' | 'ge
 export class ManifestContentInstaller {
   constructor(
     private readonly contentStore: ManifestContentStore,
-    private readonly temporaryRoot = path.join(os.tmpdir(), 'fmcl-downloads'),
+    private readonly temporaryRoot = path.join(os.tmpdir(), 'burrow-downloads'),
   ) {}
 
   public async install(
@@ -98,7 +98,7 @@ export class ManifestContentInstaller {
     const extension = path.extname(fileName).slice(0, 16);
     const temporaryPath = resolvePathWithinRoot(
       this.temporaryRoot,
-      assertChildName(`fmcl-${randomUUID()}${extension}`, 'Temporary mod file name'),
+      assertChildName(`burrow-${randomUUID()}${extension}`, 'Temporary mod file name'),
       'Temporary mod file path',
     );
 

@@ -22,7 +22,7 @@ const provider = {
 };
 
 function createPaths() {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-authlib-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-authlib-'));
   roots.push(root);
   return {
     sourceInjectorPath: path.join(root, 'source.jar'),

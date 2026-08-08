@@ -15,7 +15,7 @@ function isTrusted(
 }
 
 /**
- * Electron grants several web permissions by default. FMCL only needs sanitized
+ * Electron grants several web permissions by default. Burrow only needs sanitized
  * clipboard writes, and only from its own guarded renderer windows.
  */
 export function registerTrustedRendererPermissions(

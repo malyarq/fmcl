@@ -21,7 +21,7 @@ describe('Updater', () => {
   });
 
   it('rejects manifest paths that escape the modpack root', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-updater-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-updater-'));
     tempDirs.push(root);
     const body = Buffer.from('owned', 'utf8');
     const fetchMock = vi.fn().mockResolvedValue(manifestResponse({
@@ -42,7 +42,7 @@ describe('Updater', () => {
   });
 
   it('downloads atomically and verifies declared size and SHA-1', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-updater-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-updater-'));
     tempDirs.push(root);
     const body = Buffer.from('verified content', 'utf8');
     const hash = crypto.createHash('sha1').update(body).digest('hex');
@@ -64,7 +64,7 @@ describe('Updater', () => {
   });
 
   it('removes partial files when integrity verification fails', async () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-updater-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-updater-'));
     tempDirs.push(root);
     const body = Buffer.from('tampered', 'utf8');
     const fetchMock = vi.fn()

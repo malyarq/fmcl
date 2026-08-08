@@ -6,7 +6,7 @@ import { StatisticsService } from '../statisticsService';
 import { AtomicJsonStore } from '../../storage/atomicJsonStore';
 
 function createTempDir(): string {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-statistics-service-'));
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-statistics-service-'));
 }
 
 describe('StatisticsService analytics', () => {

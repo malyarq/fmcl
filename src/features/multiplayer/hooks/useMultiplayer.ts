@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
-  FriendTunnelSnapshot,
+  BurrowLinkSnapshot,
   LanDiscoverEvent,
   LanDiscoverySnapshot,
   PortMappingSnapshot,
@@ -14,13 +14,13 @@ import {
   clearLegacySessionTruth, loadHostPort, loadJoinCode, loadMode, saveHostPort, saveJoinCode, saveMode, type Mode,
 } from '../services/multiplayerPersistence';
 import {
-  createFriendTunnelInvite,
-  normalizeFriendTunnelInvite,
-} from '../services/friendTunnelInvite';
+  createBurrowLinkInvite,
+  normalizeBurrowLinkInvite,
+} from '../services/burrowLinkInvite';
 
 type NetworkMode = 'hyperswarm' | 'xmcl_lan' | 'xmcl_upnp_host';
 
-const TUNNEL_IDLE: FriendTunnelSnapshot = { revision: 0, state: 'idle', role: null, peerCount: 0 };
+const TUNNEL_IDLE: BurrowLinkSnapshot = { revision: 0, state: 'idle', role: null, peerCount: 0 };
 const LAN_IDLE: LanDiscoverySnapshot = { revision: 0, state: 'idle', family: null, discoveredCount: 0 };
 const UPNP_IDLE: PortMappingSnapshot = { revision: 0, state: 'idle', mappings: [] };
 
@@ -75,7 +75,7 @@ export function useMultiplayer() {
   const diagnostic = activeSnapshot.diagnostic;
   const roomCode = tunnel.state === 'active' && tunnel.role === 'host' ? tunnel.roomCode || '' : '';
   const mappedPort = tunnel.state === 'active' && tunnel.role === 'join' ? tunnel.localPort || null : null;
-  const invitation = roomCode ? createFriendTunnelInvite(roomCode) : '';
+  const invitation = roomCode ? createBurrowLinkInvite(roomCode) : '';
   const directAddress = mappedPort ? `localhost:${mappedPort}` : '';
 
   useEffect(() => {
@@ -86,7 +86,7 @@ export function useMultiplayer() {
     const session = `${tunnel.role}:${tunnel.roomCode ?? ''}`;
     if (connectedSession.current === session) return;
     connectedSession.current = session;
-    void analyticsClient.capture('friend_tunnel_peer_connected', { role: tunnel.role });
+    void analyticsClient.capture('burrow_link_peer_connected', { role: tunnel.role });
   }, [tunnel]);
 
   const persistServer = async (host: string, serverPort: number) => await commands.patchConfig({ server: { host, port: serverPort } });
@@ -104,34 +104,34 @@ export function useMultiplayer() {
     if (networkMode === 'hyperswarm') {
       try {
         const result = await networkIPC.tunnel.host({ port: hostPort });
-        if (result.state === 'active') void analyticsClient.capture('friend_tunnel_started', { role: 'host' });
-        else void analyticsClient.capture('friend_tunnel_failed', { role: 'host', failure_stage: 'start' });
+        if (result.state === 'active') void analyticsClient.capture('burrow_link_started', { role: 'host' });
+        else void analyticsClient.capture('burrow_link_failed', { role: 'host', failure_stage: 'start' });
       } catch (error) {
-        void analyticsClient.capture('friend_tunnel_failed', { role: 'host', failure_stage: 'start' });
+        void analyticsClient.capture('burrow_link_failed', { role: 'host', failure_stage: 'start' });
         throw error;
       }
     }
     else if (networkMode === 'xmcl_lan') {
       await networkIPC.lan.start({ family: 'udp4' });
-      await networkIPC.lan.broadcast({ motd: instance?.name || 'FriendLauncher', port: hostPort });
+      await networkIPC.lan.broadcast({ motd: instance?.name || 'Burrow', port: hostPort });
     } else await networkIPC.upnp.mapTcp({ publicPort: hostPort, privatePort: hostPort });
   });
 
   const join = async () => await run(async () => {
     if (networkMode === 'hyperswarm') {
-      const normalizedCode = normalizeFriendTunnelInvite(joinCode);
+      const normalizedCode = normalizeBurrowLinkInvite(joinCode);
       if (!normalizedCode) throw new Error(t('multiplayer.room_code_invalid'));
       try {
         const result = await networkIPC.tunnel.join({ roomCode: normalizedCode });
         if (result.state === 'active' && result.localPort) {
           setJoinCode(normalizedCode);
           await persistServer('localhost', result.localPort);
-          void analyticsClient.capture('friend_tunnel_started', { role: 'join' });
+          void analyticsClient.capture('burrow_link_started', { role: 'join' });
         } else {
-          void analyticsClient.capture('friend_tunnel_failed', { role: 'join', failure_stage: 'start' });
+          void analyticsClient.capture('burrow_link_failed', { role: 'join', failure_stage: 'start' });
         }
       } catch (error) {
-        void analyticsClient.capture('friend_tunnel_failed', { role: 'join', failure_stage: 'start' });
+        void analyticsClient.capture('burrow_link_failed', { role: 'join', failure_stage: 'start' });
         throw error;
       }
     } else if (networkMode === 'xmcl_lan') {

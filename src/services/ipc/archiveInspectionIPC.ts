@@ -1,7 +1,7 @@
-import type { ArchiveInspectionResponse, FriendLauncherApi } from '@shared/contracts';
+import type { ArchiveInspectionResponse, BurrowApi } from '@shared/contracts';
 import { toIpcError } from './ipcError';
 
-type ArchiveInspectionApi = FriendLauncherApi['archiveInspection'];
+type ArchiveInspectionApi = BurrowApi['archiveInspection'];
 
 function api(): ArchiveInspectionApi {
   const archiveInspection = typeof window !== 'undefined' ? window.api?.archiveInspection : undefined;

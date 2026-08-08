@@ -1,9 +1,10 @@
 // @see - https://www.electron.build/configuration/configuration
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  // Kept stable so Burrow upgrades existing FriendLauncher installations in place.
   "appId": "com.friendlauncher.app",
   "asar": true,
-  "productName": "FriendLauncher",
+  "productName": "Burrow",
   "compression": "maximum",
   "electronFuses": {
     "runAsNode": false,
@@ -68,7 +69,7 @@
     "oneClick": true,
     "deleteAppDataOnUninstall": false,
     "differentialPackage": true,
-    "shortcutName": "FriendLauncher",
+    "shortcutName": "Burrow",
   },
   "linux": {
     "target": [
@@ -82,7 +83,7 @@
   "publish": {
     "provider": "github",
     "owner": "malyarq",
-    "repo": "fmcl",
+    "repo": "burrow",
     "releaseType": "release"
   }
 }

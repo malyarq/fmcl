@@ -206,7 +206,7 @@ describe('theme runtime contract', () => {
     expect(latestSettings?.themeRuntimeState.customizationScopes).toContain('accent');
   });
 
-  it('binds date and number formatting to the active FMCL language locale', async () => {
+  it('binds date and number formatting to the active Burrow language locale', async () => {
     render(
       React.createElement(
         SettingsProvider,

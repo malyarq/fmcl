@@ -320,7 +320,7 @@ function currentNpmVersion(): string {
 async function assertProductionPreview(page: Page): Promise<{ commit: string; node: string; npm: string; vite: string }> {
   expect(test.info().project.name).toBe('performance-production');
   expect(test.info().project.use.baseURL).toBe('http://127.0.0.1:4174');
-  const proofResponse = await page.request.get('/fmcl-production-preview.json');
+  const proofResponse = await page.request.get('/burrow-production-preview.json');
   expect(proofResponse.ok()).toBe(true);
   const proof = await proofResponse.json() as { commit?: string; mode?: string; profiling?: boolean };
   expect(proof).toEqual({ commit: currentCommit(), mode: 'production', profiling: true });

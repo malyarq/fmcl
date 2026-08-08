@@ -70,7 +70,7 @@ Examples:
   }
 }
 
-const testUserDataPath = mkdtempSync(join(tmpdir(), 'fmcl-full-install-'));
+const testUserDataPath = mkdtempSync(join(tmpdir(), 'burrow-full-install-'));
 const testConfigPath = join(testUserDataPath, 'full-test-config.json');
 const testConfig = {
   enabled: true,
@@ -152,8 +152,8 @@ buildProcess.on('exit', (buildCode) => {
     env: {
       ...process.env,
       NODE_ENV: 'test',
-      FMCL_TEST_USER_DATA: testUserDataPath,
-      FMCL_FULL_TEST_CONFIG: testConfigPath,
+      BURROW_TEST_USER_DATA: testUserDataPath,
+      BURROW_FULL_TEST_CONFIG: testConfigPath,
     },
     stdio: 'inherit',
     shell: false,

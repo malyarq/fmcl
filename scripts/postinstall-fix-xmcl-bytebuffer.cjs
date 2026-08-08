@@ -62,8 +62,8 @@ function patchBytebuffer() {
   }
 
   pkg.exports = exp;
-  const tempPath = `${pkgPath}.fmcl-patch-${process.pid}`;
-  const backupPath = `${pkgPath}.fmcl-backup-${process.pid}`;
+  const tempPath = `${pkgPath}.burrow-patch-${process.pid}`;
+  const backupPath = `${pkgPath}.burrow-backup-${process.pid}`;
   fs.writeFileSync(tempPath, JSON.stringify(pkg, null, 2) + '\n', 'utf-8');
   fs.renameSync(pkgPath, backupPath);
   try {

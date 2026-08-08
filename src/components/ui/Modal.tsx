@@ -233,7 +233,7 @@ export const Modal: React.FC<ModalProps> = ({
         <>
             <div
                 className={cn(
-                    'fixed inset-0 z-50 bg-background/36 backdrop-blur-[2px] pointer-events-auto',
+                    'fixed inset-0 z-[200] bg-background/36 backdrop-blur-[2px] pointer-events-auto',
                     animationClasses.overlay,
                     overlayClassName
                 )}
@@ -243,7 +243,7 @@ export const Modal: React.FC<ModalProps> = ({
             />
             <div
                 className={cn(
-                    'fixed inset-0 z-[51] flex items-center justify-center p-2 sm:p-4 md:p-8 pointer-events-none',
+                    'fixed inset-0 z-[201] flex items-center justify-center p-2 sm:p-4 md:p-6 pointer-events-none',
                     animationClasses.frame
                 )}
                 style={{ isolation: 'isolate' }}
@@ -251,8 +251,8 @@ export const Modal: React.FC<ModalProps> = ({
                 <div
                     ref={dialogRef}
                     className={cn(
-                        'surface-panel pointer-events-auto flex w-full max-w-lg flex-col overflow-hidden rounded-[28px] border-border/70 bg-card/78 backdrop-blur-2xl',
-                        'max-h-[95vh] sm:max-h-[90vh] md:max-h-[85vh]',
+                        'surface-panel pointer-events-auto flex w-full max-w-lg flex-col overflow-hidden rounded-[28px] border-border/70 bg-card',
+                        'max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] md:max-h-[calc(100dvh-3rem)]',
                         animationClasses.dialog,
                         className
                     )}
@@ -265,7 +265,7 @@ export const Modal: React.FC<ModalProps> = ({
                     style={{ isolation: 'isolate' }}
                 >
                     {!hideHeader && (
-                        <div className="flex items-center justify-between border-b border-border/70 bg-card/72 px-4 py-3 sm:px-6 sm:py-4">
+                        <div className="flex items-center justify-between border-b border-border/70 bg-card px-4 py-3 sm:px-6 sm:py-4">
                             <h3
                                 id={titleId}
                                 className="truncate pr-2 text-base font-bold text-foreground sm:text-lg"

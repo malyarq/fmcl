@@ -60,7 +60,7 @@ describe('Node 24 renderer quality baseline collector', () => {
   });
 
   it('measures every manifest chunk by stable logical path without generated hash identity', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-quality-baseline-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-quality-baseline-'));
     roots.push(root);
     const outputDir = path.join(root, 'dist');
     writeFixture(root, 'dist/assets/index-A1B2C3.js', 'console.log("index")');
@@ -89,7 +89,7 @@ describe('Node 24 renderer quality baseline collector', () => {
   });
 
   it('fails before writing for an absent manifest, non-Node-24 environment, or malformed baseline', () => {
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-quality-baseline-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-quality-baseline-'));
     roots.push(root);
     const baselinePath = path.join(root, 'quality', 'baselines', 'node24-vite.json');
 

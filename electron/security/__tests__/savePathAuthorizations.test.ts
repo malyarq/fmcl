@@ -11,7 +11,7 @@ describe('save path authorizations', () => {
   afterEach(() => clearSavePathAuthorizationsForTests());
 
   it('allows a native-dialog path exactly once', () => {
-    const filePath = path.join(os.tmpdir(), 'fmcl-export.log');
+    const filePath = path.join(os.tmpdir(), 'burrow-export.log');
     authorizeSavePath(7, filePath);
 
     expect(consumeAuthorizedSavePath(7, filePath)).toBe(path.normalize(filePath));
@@ -19,14 +19,14 @@ describe('save path authorizations', () => {
   });
 
   it('does not authorize neighboring paths', () => {
-    const filePath = path.join(os.tmpdir(), 'fmcl-export.log');
+    const filePath = path.join(os.tmpdir(), 'burrow-export.log');
     authorizeSavePath(7, filePath);
 
     expect(() => consumeAuthorizedSavePath(7, path.join(os.tmpdir(), 'other.log'))).toThrow('not authorized');
   });
 
   it('cannot be consumed by a different renderer', () => {
-    const filePath = path.join(os.tmpdir(), 'fmcl-export.log');
+    const filePath = path.join(os.tmpdir(), 'burrow-export.log');
     authorizeSavePath(7, filePath);
 
     expect(() => consumeAuthorizedSavePath(8, filePath)).toThrow('not authorized');
@@ -35,7 +35,7 @@ describe('save path authorizations', () => {
 
   it('expires a native-dialog authorization before it can be consumed', () => {
     vi.useFakeTimers();
-    const filePath = path.join(os.tmpdir(), 'fmcl-expired-export.log');
+    const filePath = path.join(os.tmpdir(), 'burrow-expired-export.log');
     authorizeSavePath(7, filePath);
 
     vi.advanceTimersByTime(5 * 60 * 1_000);

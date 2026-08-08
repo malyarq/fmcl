@@ -22,7 +22,7 @@ export function PrivacyFeedbackCard() {
       const readiness = await systemReadinessIPC.check().catch(() => null);
       const result = await externalLinksIPC.open({
         url: buildGitHubIssueUrl(buildSafeIssueBody({ analyticsEnabled: enabled, language, platform, readiness })),
-        context: 'FMCL bug report',
+        context: 'Burrow bug report',
       });
       if (result.status === 'opened') {
         void capture('feedback_opened', { source: 'launcher_settings' });

@@ -1,7 +1,9 @@
 import pkg from '../../../package.json';
 
-export const ANALYTICS_CONSENT_KEY = 'fmcl_analytics_consent';
-export const ANALYTICS_INSTALL_ID_KEY = 'fmcl_analytics_install_id';
+export const ANALYTICS_CONSENT_KEY = 'burrow_analytics_consent';
+export const ANALYTICS_INSTALL_ID_KEY = 'burrow_analytics_install_id';
+const LEGACY_ANALYTICS_CONSENT_KEY = 'fmcl_analytics_consent';
+const LEGACY_ANALYTICS_INSTALL_ID_KEY = 'fmcl_analytics_install_id';
 export const DEFAULT_POSTHOG_HOST = 'https://eu.i.posthog.com';
 
 type AnalyticsPlatform = 'windows' | 'macos' | 'linux' | 'other';
@@ -27,15 +29,15 @@ export type AnalyticsEventMap = {
   };
   onboarding_shown: Record<string, never>;
   onboarding_action: {
-    action: 'play_now' | 'friend_tunnel' | 'modpacks' | 'settings' | 'tour_started' | 'tour_completed' | 'tour_skipped';
+    action: 'play_now' | 'burrow_link' | 'modpacks' | 'settings' | 'tour_started' | 'tour_completed' | 'tour_skipped';
   };
-  friend_tunnel_started: {
+  burrow_link_started: {
     role: 'host' | 'join';
   };
-  friend_tunnel_peer_connected: {
+  burrow_link_peer_connected: {
     role: 'host' | 'join';
   };
-  friend_tunnel_failed: {
+  burrow_link_failed: {
     role: 'host' | 'join';
     failure_stage: 'start';
   };
@@ -109,13 +111,25 @@ export function normalizePostHogHost(candidate: string | undefined): string | nu
 }
 
 export function hasAnalyticsConsent(storage: AnalyticsStorage | null = browserStorage()): boolean {
-  return storage?.getItem(ANALYTICS_CONSENT_KEY) === 'granted';
+  if (!storage) return false;
+  const current = storage.getItem(ANALYTICS_CONSENT_KEY);
+  if (current !== null) return current === 'granted';
+  const legacy = storage.getItem(LEGACY_ANALYTICS_CONSENT_KEY);
+  if (legacy !== null) {
+    storage.setItem(ANALYTICS_CONSENT_KEY, legacy);
+    storage.removeItem(LEGACY_ANALYTICS_CONSENT_KEY);
+  }
+  return legacy === 'granted';
 }
 
 export function persistAnalyticsConsent(enabled: boolean, storage: AnalyticsStorage | null = browserStorage()): void {
   if (!storage) return;
   storage.setItem(ANALYTICS_CONSENT_KEY, enabled ? 'granted' : 'denied');
-  if (!enabled) storage.removeItem(ANALYTICS_INSTALL_ID_KEY);
+  storage.removeItem(LEGACY_ANALYTICS_CONSENT_KEY);
+  if (!enabled) {
+    storage.removeItem(ANALYTICS_INSTALL_ID_KEY);
+    storage.removeItem(LEGACY_ANALYTICS_INSTALL_ID_KEY);
+  }
 }
 
 export function createAnalyticsClient(options: AnalyticsClientOptions = {}): AnalyticsClient {
@@ -130,6 +144,13 @@ export function createAnalyticsClient(options: AnalyticsClientOptions = {}): Ana
   function getInstallId(): string {
     const existing = storage?.getItem(ANALYTICS_INSTALL_ID_KEY);
     if (existing) return existing;
+
+    const legacy = storage?.getItem(LEGACY_ANALYTICS_INSTALL_ID_KEY);
+    if (legacy) {
+      storage?.setItem(ANALYTICS_INSTALL_ID_KEY, legacy);
+      storage?.removeItem(LEGACY_ANALYTICS_INSTALL_ID_KEY);
+      return legacy;
+    }
 
     const created = randomId();
     storage?.setItem(ANALYTICS_INSTALL_ID_KEY, created);
@@ -171,6 +192,7 @@ export function createAnalyticsClient(options: AnalyticsClientOptions = {}): Ana
     },
     clearInstallId(): void {
       storage?.removeItem(ANALYTICS_INSTALL_ID_KEY);
+      storage?.removeItem(LEGACY_ANALYTICS_INSTALL_ID_KEY);
     },
   };
 }

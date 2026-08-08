@@ -1,9 +1,9 @@
-import type { FriendLauncherApi } from '@shared/contracts';
+import type { BurrowApi } from '@shared/contracts';
 import type { InstanceModRegistrationRequest } from '@shared/contracts/instanceMods';
 import type { ModEntry } from '@shared/types/mods';
 import { toIpcError } from './ipcError';
 
-type InstanceModsApi = NonNullable<FriendLauncherApi['instanceMods']>;
+type InstanceModsApi = NonNullable<BurrowApi['instanceMods']>;
 
 function api(): InstanceModsApi {
   const instanceMods = typeof window !== 'undefined' ? window.api?.instanceMods : undefined;

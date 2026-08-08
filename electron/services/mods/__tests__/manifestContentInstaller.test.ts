@@ -57,9 +57,9 @@ describe('ManifestContentInstaller', () => {
   });
 
   it('links a cached provider file without downloading it', async () => {
-    const rootPath = createDirectory('fmcl-manifest-root-');
-    const cachePath = createDirectory('fmcl-manifest-cache-');
-    const temporaryRoot = createDirectory('fmcl-manifest-temp-');
+    const rootPath = createDirectory('burrow-manifest-root-');
+    const cachePath = createDirectory('burrow-manifest-cache-');
+    const temporaryRoot = createDirectory('burrow-manifest-temp-');
     directories.push(rootPath, cachePath, temporaryRoot);
     createStagedInstance(rootPath);
     const cachedFile = path.join(cachePath, 'sha1');
@@ -92,9 +92,9 @@ describe('ManifestContentInstaller', () => {
   });
 
   it('downloads a cache miss, imports it, links it and removes the temporary file', async () => {
-    const rootPath = createDirectory('fmcl-manifest-root-');
-    const cachePath = createDirectory('fmcl-manifest-cache-');
-    const temporaryRoot = createDirectory('fmcl-manifest-temp-');
+    const rootPath = createDirectory('burrow-manifest-root-');
+    const cachePath = createDirectory('burrow-manifest-cache-');
+    const temporaryRoot = createDirectory('burrow-manifest-temp-');
     directories.push(rootPath, cachePath, temporaryRoot);
     createStagedInstance(rootPath);
     const contentStore = {
@@ -128,9 +128,9 @@ describe('ManifestContentInstaller', () => {
   });
 
   it('returns a typed failure and writes nothing for unresolved or path-shaped provider files', async () => {
-    const rootPath = createDirectory('fmcl-manifest-root-');
-    const cachePath = createDirectory('fmcl-manifest-cache-');
-    const temporaryRoot = createDirectory('fmcl-manifest-temp-');
+    const rootPath = createDirectory('burrow-manifest-root-');
+    const cachePath = createDirectory('burrow-manifest-cache-');
+    const temporaryRoot = createDirectory('burrow-manifest-temp-');
     directories.push(rootPath, cachePath, temporaryRoot);
     createStagedInstance(rootPath);
     const contentStore = {
@@ -159,9 +159,9 @@ describe('ManifestContentInstaller', () => {
   });
 
   it('installs a CurseForge manifest entry through its numeric provider IDs', async () => {
-    const rootPath = createDirectory('fmcl-manifest-root-');
-    const cachePath = createDirectory('fmcl-manifest-cache-');
-    const temporaryRoot = createDirectory('fmcl-manifest-temp-');
+    const rootPath = createDirectory('burrow-manifest-root-');
+    const cachePath = createDirectory('burrow-manifest-cache-');
+    const temporaryRoot = createDirectory('burrow-manifest-temp-');
     directories.push(rootPath, cachePath, temporaryRoot);
     createStagedInstance(rootPath);
     const contentStore = {
@@ -192,9 +192,9 @@ describe('ManifestContentInstaller', () => {
   });
 
   it('accepts the exact StagingWorkspace root shape used by share imports', async () => {
-    const launcherRoot = createDirectory('fmcl-share-root-');
-    const cachePath = createDirectory('fmcl-manifest-cache-');
-    const temporaryRoot = createDirectory('fmcl-manifest-temp-');
+    const launcherRoot = createDirectory('burrow-share-root-');
+    const cachePath = createDirectory('burrow-manifest-cache-');
+    const temporaryRoot = createDirectory('burrow-manifest-temp-');
     directories.push(launcherRoot, cachePath, temporaryRoot);
     const workspace = new StagingWorkspace(launcherRoot, 'share-operation');
     fs.mkdirSync(workspace.stagedModpack('share-pack'), { recursive: true });

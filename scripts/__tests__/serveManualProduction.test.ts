@@ -81,7 +81,7 @@ describe('production manual preview', () => {
     expect(plan.build).toMatchObject({
       command: '/node24/bin/node',
       args: expect.arrayContaining(['build', '--manifest']),
-      env: expect.objectContaining({ NODE_ENV: 'production', FMCL_RENDERER_ONLY: '1', FMCL_MANUAL_PROFILING: '1' }),
+      env: expect.objectContaining({ NODE_ENV: 'production', BURROW_RENDERER_ONLY: '1', BURROW_MANUAL_PROFILING: '1' }),
     });
     expect(plan.preview).toMatchObject({
       command: '/node24/bin/node',
@@ -102,7 +102,7 @@ describe('production manual preview', () => {
     expect(() => server.createProductionPreviewPlan(options)).toThrow(/NODE_ENV=production/i);
     expect(() => server.createProductionPreviewPlan({ ...options, environment: { NODE_ENV: 'production' }, processInfo: processFixture('20.19.0') })).toThrow(/Node.js 24/i);
 
-    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'fmcl-production-preview-'));
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'burrow-production-preview-'));
     roots.push(root);
     const outputDir = path.join(root, 'dist');
     fs.mkdirSync(path.join(outputDir, '.vite'), { recursive: true });

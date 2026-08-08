@@ -43,7 +43,7 @@ export function resolveLauncherRootPath(rootPath?: string) {
 export function resolveApprovedLauncherRootPath(rootPath?: string) {
   const safeRootPath = assertAbsolutePath(rootPath?.trim() || getDefaultRootPath(), 'Launcher root path');
   if (!hasLauncherRootMarkers(safeRootPath)) {
-    throw new Error('Launcher root path must be the default path or a directory initialized by FriendLauncher');
+    throw new Error('Launcher root path must be the default path or a directory initialized by Burrow');
   }
   return safeRootPath;
 }

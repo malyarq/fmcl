@@ -6,6 +6,19 @@ Do not copy long Tailwind class lists from this page into new components. Reuse 
 
 ## Foundations
 
+### Brand identity
+
+The public product name is **Burrow** and the multiplayer feature is **Burrow Link**. The English tagline is **Play local. Bring a friend.** The product mark is a compact voxel hillside opened around a warm torch-lit cave. The cave remains the focal point; grass, dirt, stone, and the small ore detail establish the Minecraft-launcher context without adding characters or a competing tool motif.
+
+| Role | Value |
+| --- | --- |
+| Graphite | `#151816` |
+| Burrow mint | `#73C6A1` |
+| Warm white | `#F5F2E9` |
+| Torch amber | `#FFB45C` |
+
+`docs/assets/brand/burrow-app-icon.png` is the canonical artwork. It generates `public/launcher-mark.png`, `public/icon.png`, `public/icon-macos.png`, and `public/icon.ico`; do not crop the cave, flatten its directional lighting, recolor the terrain, or place the mark inside another brand frame. The master has a transparent background and safe space on every side, including below the foreground blocks. Keep the voxel silhouette and alpha edge clean: no grey bands, generated backdrop, or rounded-square mask. `docs/assets/brand/burrow-social-preview.svg` and `.png` are repository/social artwork. The primary lockup may be horizontal or vertical, but the wordmark must remain visually separate from the detailed icon. User-selected accents may customize controls, but they do not recolor the product mark or wordmark.
+
 ### Semantic colors
 
 Tailwind names map to runtime CSS variables:

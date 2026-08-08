@@ -30,7 +30,7 @@ describe('ErrorBoundary recovery surface', () => {
     error.stack = [
       'TypeError: Cannot read properties of undefined (reading "map")',
       '    at CrashOnRender (http://localhost:5173/src/components/CrashOnRender.tsx:7:11)',
-      '    at renderWithHooks (/Users/test/fmcl/node_modules/react-dom/cjs/react-dom-client.development.js:123:10)',
+      '    at renderWithHooks (/Users/test/burrow/node_modules/react-dom/cjs/react-dom-client.development.js:123:10)',
     ].join('\n')
 
     render(
@@ -42,7 +42,7 @@ describe('ErrorBoundary recovery surface', () => {
     expect(await screen.findByRole('heading', { name: 'Что-то пошло не так' })).toBeTruthy()
     expect(
       screen.getByText(
-        'FMCL столкнулся с проблемой и закрыл этот экран. Перезапустите лаунчер, чтобы вернуться в стабильную сессию.',
+        'Burrow столкнулся с проблемой и закрыл этот экран. Перезапустите лаунчер, чтобы вернуться в стабильную сессию.',
       ),
     ).toBeTruthy()
     expect(screen.queryByText(/Cannot read properties/i)).toBeNull()
@@ -89,7 +89,7 @@ describe('ErrorBoundary recovery surface', () => {
     expect(await screen.findByRole('heading', { name: 'Something Went Wrong' })).toBeTruthy()
     expect(
       screen.getByText(
-        'FMCL closed this screen after an unexpected problem. Recover it in place to keep your current route.',
+        'Burrow closed this screen after an unexpected problem. Recover it in place to keep your current route.',
       ),
     ).toBeTruthy()
     expect(screen.queryByText(/\$\{file\.jarVersion\}/)).toBeNull()
@@ -109,7 +109,7 @@ describe('ErrorBoundary recovery surface', () => {
 
     const alert = await screen.findByTestId('fatal-recovery-error')
     expect(alert.getAttribute('role')).toBe('alert')
-    expect(alert.textContent).toContain('FMCL could not recover this screen')
+    expect(alert.textContent).toContain('Burrow could not recover this screen')
     expect(alert.textContent).not.toContain('/Users/private')
     expect(screen.getByRole('button', { name: 'Recover screen' })).toBeTruthy()
   })

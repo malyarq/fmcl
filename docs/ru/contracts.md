@@ -24,7 +24,7 @@ TypeScript contracts и runtime validation определяют payload shape. �
 1. Опишите typed request/result в `shared/contracts/*` или общем доменном типе.
 2. При необходимости добавьте канал в `shared/contracts/ipcChannels.ts`.
 3. Откройте узкую capability через domain preload bridge.
-4. Добавьте её в `FriendLauncherApi`, если она относится к `window.api`.
+4. Добавьте её в `BurrowApi`, если она относится к `window.api`.
 5. Провалидируйте в main process каждое значение, которым управляет renderer.
 6. Зарегистрируйте тонкий handler, передающий работу domain service.
 7. Добавьте или обновите renderer wrapper в `src/services/ipc/*`.

@@ -1,4 +1,4 @@
-export const BRAND_WORDMARK = 'FriendLauncher'
+export const BRAND_WORDMARK = 'Burrow'
 
 export function getBundledAssetPath(fileName: string, baseUrl = import.meta.env.BASE_URL) {
   const normalizedBase = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`
@@ -6,7 +6,7 @@ export function getBundledAssetPath(fileName: string, baseUrl = import.meta.env.
 }
 
 export const APP_ICON_PATH = getBundledAssetPath('icon.ico')
-export const LAUNCHER_MARK_PATH = getBundledAssetPath('launcher-mark.svg')
+export const LAUNCHER_MARK_PATH = getBundledAssetPath('launcher-mark.png')
 
 function createSvgDataUri(svg: string) {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
@@ -38,20 +38,20 @@ export const BRAND_ASSETS: Record<BrandAssetRole, BrandAssetDefinition> = {
   'app-icon': {
     role: 'app-icon',
     path: APP_ICON_PATH,
-    label: 'FriendLauncher app icon',
-    alt: 'FriendLauncher app icon',
+    label: 'Burrow app icon',
+    alt: 'Burrow app icon',
   },
   'product-mark': {
     role: 'product-mark',
     path: LAUNCHER_MARK_PATH,
-    label: 'FriendLauncher mark',
-    alt: 'FriendLauncher mark',
+    label: 'Burrow mark',
+    alt: 'Burrow mark',
   },
   'media-fallback': {
     role: 'media-fallback',
     path: MEDIA_FALLBACK_PATH,
-    label: 'FriendLauncher media fallback art',
-    alt: 'FriendLauncher media fallback art',
+    label: 'Burrow media fallback art',
+    alt: 'Burrow media fallback art',
   },
 }
 

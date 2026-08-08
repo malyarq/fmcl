@@ -250,7 +250,7 @@ export function getModpackShaderCapabilityDescription(
     return translateWithFallback(
       t,
       'modpacks.shader_capability_unsupported_desc',
-      '{{warning}} Current runtime: {{runtime}}. FMCL cannot claim shader support here yet.',
+      '{{warning}} Current runtime: {{runtime}}. Burrow cannot claim shader support here yet.',
     )
       .replace('{{warning}}', warning)
       .replace('{{runtime}}', runtimeLabel);
@@ -261,13 +261,13 @@ export function getModpackShaderCapabilityDescription(
       return translateWithFallback(
         t,
         'modpacks.shader_capability_supported_desc',
-        'FMCL sees shader runtime support configured for {{runtime}}. Individual shader packs can still be incompatible.',
+        'Burrow sees shader runtime support configured for {{runtime}}. Individual shader packs can still be incompatible.',
       ).replace('{{runtime}}', runtimeLabel);
     case 'shader_runtime_not_configured':
       return translateWithFallback(
         t,
         'modpacks.shader_capability_needs_setup_desc',
-        'FMCL can read this modpack runtime ({{runtime}}), but it does not see shader support configured there yet.',
+        'Burrow can read this modpack runtime ({{runtime}}), but it does not see shader support configured there yet.',
       ).replace('{{runtime}}', runtimeLabel);
     case 'runtime_source_unverified': {
       const sourceLabel = getModpackRuntimeSourceLabel(summary.source, t);
@@ -275,7 +275,7 @@ export function getModpackShaderCapabilityDescription(
       return translateWithFallback(
         t,
         'modpacks.shader_capability_unverified_desc',
-        'FMCL is only seeing {{source}} for {{runtime}}, so shader compatibility is still unverified.',
+        'Burrow is only seeing {{source}} for {{runtime}}, so shader compatibility is still unverified.',
       )
         .replace('{{source}}', sourceLabel)
         .replace('{{runtime}}', runtimeLabel);
@@ -284,7 +284,7 @@ export function getModpackShaderCapabilityDescription(
       return translateWithFallback(
         t,
         'modpacks.shader_capability_missing_runtime_desc',
-        'FMCL could not verify this modpack runtime yet, so shader compatibility is still unverified.',
+        'Burrow could not verify this modpack runtime yet, so shader compatibility is still unverified.',
       );
   }
 }
@@ -317,26 +317,26 @@ export function getModpackRuntimeSourceDescription(
       return translateWithFallback(
         t,
         'modpacks.runtime_summary_config_desc',
-        "FMCL is reading runtime details from this modpack's saved configuration.",
+        "Burrow is reading runtime details from this modpack's saved configuration.",
       );
     case 'metadata':
       return translateWithFallback(
         t,
         'modpacks.runtime_summary_metadata_desc',
-        'FMCL is still reading runtime details from pack metadata. Saved modpack settings can still replace this.',
+        'Burrow is still reading runtime details from pack metadata. Saved modpack settings can still replace this.',
       );
     case 'fallback':
       return translateWithFallback(
         t,
         'modpacks.runtime_summary_fallback_desc',
-        'FMCL is still reading runtime details from launcher fallback data. Saved modpack settings can still replace this.',
+        'Burrow is still reading runtime details from launcher fallback data. Saved modpack settings can still replace this.',
       );
     case 'unknown':
     default:
       return translateWithFallback(
         t,
         'modpacks.runtime_summary_unknown_desc',
-        'FMCL has not confirmed runtime details for this modpack yet.',
+        'Burrow has not confirmed runtime details for this modpack yet.',
       );
   }
 }

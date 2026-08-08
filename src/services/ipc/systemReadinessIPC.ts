@@ -1,6 +1,6 @@
-import type { FriendLauncherApi } from '@shared/contracts';
+import type { BurrowApi } from '@shared/contracts';
 
-type SystemReadinessApi = FriendLauncherApi['systemReadiness'];
+type SystemReadinessApi = BurrowApi['systemReadiness'];
 
 export const systemReadinessIPC = {
   isAvailable: () => typeof window !== 'undefined' && Boolean(window.api?.systemReadiness),

@@ -123,14 +123,16 @@ jobs:
           set -euo pipefail
           mkdir -p "$PREVIOUS_DIR"
           case "${{ runner.os }}" in
-            Linux) ARTIFACT_NAME="FriendLauncher-Linux-$PREVIOUS_VERSION.AppImage" ;;
-            Windows) ARTIFACT_NAME="FriendLauncher-Windows-$PREVIOUS_VERSION-Setup.exe" ;;
-            macOS) ARTIFACT_NAME="FriendLauncher-Mac-$PREVIOUS_VERSION-Installer.dmg" ;;
+            Linux) ARTIFACT_PATTERN="*-Linux-$PREVIOUS_VERSION.AppImage" ;;
+            Windows) ARTIFACT_PATTERN="*-Windows-$PREVIOUS_VERSION-Setup.exe" ;;
+            macOS) ARTIFACT_PATTERN="*-Mac-$PREVIOUS_VERSION-Installer.dmg" ;;
             *) echo 'unsupported release runner' >&2; exit 1 ;;
           esac
-          gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT_NAME" --dir "$PREVIOUS_DIR"
-          test -f "$PREVIOUS_DIR/$ARTIFACT_NAME"
-          printf 'path=%s\n' "$PREVIOUS_DIR/$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+          gh release download "$PREVIOUS_TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARTIFACT_PATTERN" --dir "$PREVIOUS_DIR"
+          ARTIFACT_PATH="$(find "$PREVIOUS_DIR" -maxdepth 1 -type f -name "$ARTIFACT_PATTERN" -print)"
+          test -n "$ARTIFACT_PATH"
+          test "$(printf '%s\n' "$ARTIFACT_PATH" | wc -l | tr -d ' ')" = 1
+          printf 'path=%s\n' "$ARTIFACT_PATH" >> "$GITHUB_OUTPUT"
 
       - name: Require privacy-reviewed analytics configuration
         shell: bash

@@ -14,6 +14,7 @@ import { ApplicationLifecycle } from './applicationLifecycle';
 import { acquireApplicationInstance, registerApplicationInstanceHandoff } from './singleInstance';
 import { registerConsoleWindowHandlers } from './consoleWindowHandlers';
 import { runConfiguredFullTest } from './runConfiguredFullTest';
+import { resolveCompatibleUserDataPath } from './userDataCompatibility';
 
 function configureAppRoot() {
   const __filename = fileURLToPath(import.meta.url);
@@ -25,18 +26,30 @@ function configureAppRoot() {
   process.env.APP_ROOT = path.join(__dirname, '..');
 }
 
-function configureIsolatedTestUserData(): void {
-  const testUserDataPath = process.env['FMCL_TEST_USER_DATA'];
-  if (!testUserDataPath) return;
+function configureIsolatedTestUserData(): boolean {
+  const testUserDataPath = process.env['BURROW_TEST_USER_DATA'];
+  if (!testUserDataPath) return false;
 
   if (process.env['NODE_ENV'] !== 'test' || !path.isAbsolute(testUserDataPath)) {
-    throw new Error('FMCL_TEST_USER_DATA requires NODE_ENV=test and an absolute path');
+    throw new Error('BURROW_TEST_USER_DATA requires NODE_ENV=test and an absolute path');
   }
 
   fs.mkdirSync(testUserDataPath, { recursive: true });
   app.setPath('appData', path.join(testUserDataPath, 'app-data'));
   fs.mkdirSync(app.getPath('appData'), { recursive: true });
   app.setPath('userData', testUserDataPath);
+  return true;
+}
+
+function configureUserDataCompatibility(): void {
+  const currentUserDataPath = app.getPath('userData');
+  const compatibleUserDataPath = resolveCompatibleUserDataPath({
+    appDataPath: app.getPath('appData'),
+    currentUserDataPath,
+  });
+  if (compatibleUserDataPath !== currentUserDataPath) {
+    app.setPath('userData', compatibleUserDataPath);
+  }
 }
 
 function resolveRuntimePaths() {
@@ -93,11 +106,11 @@ function applyNativeAppIcon(vitePublicPath: string): string {
 }
 
 export function bootstrapMain() {
-  // Set app name BEFORE any calls to app.getPath('userData')
-  // This ensures the userData folder uses the correct name
-  app.setName('.fmcl');
+  // New installations use the Burrow directory. Existing installations keep
+  // the legacy profile path so upgrades never strand user data.
+  app.setName('Burrow');
   app.setAppUserModelId('com.friendlauncher.app');
-  configureIsolatedTestUserData();
+  if (!configureIsolatedTestUserData()) configureUserDataCompatibility();
 
   configureAppRoot();
   const paths = resolveRuntimePaths();

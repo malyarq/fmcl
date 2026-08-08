@@ -41,7 +41,7 @@ function createPlatformService(): ModPlatformService {
     {} as InstanceApplication,
     {
       resolveRoot: async () => ({} as LauncherRoot),
-      getModpackDir: (_rootPath, instanceId) => `/tmp/fmcl-platform-test/modpacks/${instanceId}`,
+      getModpackDir: (_rootPath, instanceId) => `/tmp/burrow-platform-test/modpacks/${instanceId}`,
     },
   );
 }
@@ -64,7 +64,7 @@ describe('ModPlatformService alphabetical modpack pagination', () => {
       versionId: 'version',
       instanceId: 'missing',
       contentType: 'mod',
-    }, '/tmp/fmcl-platform-test')).rejects.toThrow('Canonical instance does not exist: missing');
+    }, '/tmp/burrow-platform-test')).rejects.toThrow('Canonical instance does not exist: missing');
 
     expect(application.read).toHaveBeenCalledWith(root);
     expect(content.getModpackDir).not.toHaveBeenCalled();
@@ -80,7 +80,7 @@ describe('ModPlatformService alphabetical modpack pagination', () => {
     } as unknown as InstanceApplication;
     const content = {
       resolveRoot: vi.fn(async () => root),
-      getModpackDir: vi.fn(() => '/tmp/fmcl-platform-test/modpacks/alpha'),
+      getModpackDir: vi.fn(() => '/tmp/burrow-platform-test/modpacks/alpha'),
     };
     const service = new ModPlatformService(application, content);
     vi.spyOn(service.getModrinthClient(), 'getProjectVersion').mockResolvedValueOnce({
@@ -98,9 +98,9 @@ describe('ModPlatformService alphabetical modpack pagination', () => {
       versionId: 'version',
       instanceId: 'alpha',
       contentType: 'mod',
-    }, '/tmp/fmcl-platform-test')).rejects.toThrow(/provider filename/i);
+    }, '/tmp/burrow-platform-test')).rejects.toThrow(/provider filename/i);
 
-    expect(content.getModpackDir).toHaveBeenCalledWith('/tmp/fmcl-platform-test', 'alpha');
+    expect(content.getModpackDir).toHaveBeenCalledWith('/tmp/burrow-platform-test', 'alpha');
   });
 
   it('fetches enough Modrinth pages to serve later alphabetical pages correctly', async () => {

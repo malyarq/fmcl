@@ -1,16 +1,16 @@
 name: Bug report
-description: Report a reproducible FriendLauncher problem that is not security-sensitive
+description: Report a reproducible Burrow problem that is not security-sensitive
 title: "[Bug]: "
 body:
   - type: markdown
     attributes:
       value: |
-        Do not report vulnerabilities, credentials, private server addresses, or exploit details here. Use [private vulnerability reporting](https://github.com/malyarq/fmcl/security/advisories/new).
+        Do not report vulnerabilities, credentials, private server addresses, or exploit details here. Use [private vulnerability reporting](https://github.com/malyarq/burrow/security/advisories/new).
 
   - type: input
     id: version
     attributes:
-      label: FriendLauncher version
+      label: Burrow version
       description: Use the exact version from the application or release filename.
       placeholder: v0.8.0
     validations:

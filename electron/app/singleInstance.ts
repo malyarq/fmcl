@@ -26,7 +26,9 @@ export function isNewerApplicationVersion(current: string, incoming: string): bo
 
 function isTrustedLauncherExecutable(executablePath: string): boolean {
   if (!path.isAbsolute(executablePath) || executablePath.includes('\0')) return false;
-  return /^FriendLauncher(?:-[A-Za-z0-9._-]+)?(?:\.exe|\.AppImage)?$/i.test(path.basename(executablePath));
+  // Accept the former executable name so the first Burrow upgrade can hand
+  // over from an already-running FriendLauncher process.
+  return /^(?:Burrow|FriendLauncher)(?:-[A-Za-z0-9._-]+)?(?:\.exe|\.AppImage)?$/i.test(path.basename(executablePath));
 }
 
 export function resolveIncomingUpgrade(currentVersion: string, additionalData: unknown): ApplicationInstanceData | undefined {

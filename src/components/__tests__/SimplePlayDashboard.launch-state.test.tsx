@@ -30,7 +30,7 @@ vi.mock('../../contexts/SettingsContext', () => ({
         'ui_mode.simple': 'Classic',
         'general.settings': 'Settings',
         'dashboard.welcome': 'Welcome',
-        'dashboard.welcome_title': 'Welcome to FriendLauncher!',
+        'dashboard.welcome_title': 'Welcome to Burrow!',
         'dashboard.welcome_desc': 'Simple Play mode is the fastest way to launch Minecraft.',
         'dashboard.dismiss': 'Dismiss',
         'dashboard.quick_actions': 'Quick actions',
@@ -233,7 +233,7 @@ describe('SimplePlayDashboard launch-state seam', () => {
     expect(screen.queryByText('0%')).toBeNull();
   });
 
-  it('keeps the classic surface oriented around pack context with only the restrained app icon', async () => {
+  it('keeps the classic surface oriented around pack context with a coherent brand lockup', async () => {
     const { container } = renderDashboard({}, {
       version: '1.12.2',
       loaderType: 'vanilla',
@@ -244,7 +244,7 @@ describe('SimplePlayDashboard launch-state seam', () => {
     expect(heroImage.getAttribute('data-brand-role')).toBe('app-icon');
     expect(heroImage.getAttribute('src')).toBe(APP_ICON_PATH);
     expect(heroImage.closest('.logo-container')).toBeTruthy();
-    expect(container.querySelector('[data-brand-wordmark]')).toBeNull();
+    expect(container.querySelector('[data-brand-wordmark]')?.textContent).toBe('Burrow');
     expect(screen.getByText('Classic Pack')).toBeTruthy();
     expect(screen.queryByText('1.12.2')).toBeNull();
     expect(screen.getAllByText(/Fabric/).length).toBeGreaterThan(0);

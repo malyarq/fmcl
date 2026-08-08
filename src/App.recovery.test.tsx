@@ -33,7 +33,7 @@ vi.mock('./contexts/SettingsContext', async (importOriginal) => {
       'error.feature_recovery_summary': 'Recover this screen in place.',
       'error.recover_screen': 'Recover screen',
       'error.recovering': 'Recovering…',
-      'error.recover_failed': 'FMCL could not recover this screen. Your current route is unchanged.',
+      'error.recover_failed': 'Burrow could not recover this screen. Your current route is unchanged.',
       'error.copy_details': 'Copy details',
       'error.details_copied': 'Details copied',
       'error.technical_details': 'Technical details',

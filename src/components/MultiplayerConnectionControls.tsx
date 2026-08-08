@@ -4,7 +4,7 @@ import { useMultiplayer } from '../features/multiplayer/hooks/useMultiplayer';
 import { cn } from '../utils/cn';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
-import { formatFriendTunnelCode, normalizeFriendTunnelInvite } from '../features/multiplayer/services/friendTunnelInvite';
+import { formatBurrowLinkCode, normalizeBurrowLinkInvite } from '../features/multiplayer/services/burrowLinkInvite';
 
 export function MultiplayerConnectionControls({ multiplayer }: { multiplayer: ReturnType<typeof useMultiplayer> }) {
   const { t, getAccentStyles } = useSettings();
@@ -21,7 +21,7 @@ export function MultiplayerConnectionControls({ multiplayer }: { multiplayer: Re
     if (!Number.isInteger(parsed)) return t('validation.port_invalid');
     return parsed < 1 || parsed > 65_535 ? t('validation.port_range') : null;
   };
-  const validateCode = (value: string) => normalizeFriendTunnelInvite(value) ? null : t('multiplayer.room_code_invalid');
+  const validateCode = (value: string) => normalizeBurrowLinkInvite(value) ? null : t('multiplayer.room_code_invalid');
   const status = multiplayer.diagnostic ? t(`multiplayer.diagnostic.${multiplayer.diagnostic.code}`) || multiplayer.diagnostic.message : multiplayer.status;
   const liveStatus = status || (active ? t(isTunnel ? 'multiplayer.room_active' : isLan ? 'multiplayer.lan_broadcast_active' : 'multiplayer.upnp_mapping_active') : '');
 
@@ -33,7 +33,7 @@ export function MultiplayerConnectionControls({ multiplayer }: { multiplayer: Re
     {active && isTunnel && multiplayer.roomCode && <div className={cn('multiplayer-room-code space-y-3', getAccentStyles('soft-bg').className, getAccentStyles('soft-border').className)}>
       <div>
         <span className="mb-2 block text-xs font-bold uppercase">{t('multiplayer.room_active')}</span>
-        <span className="block break-all font-mono text-xs">{formatFriendTunnelCode(multiplayer.roomCode)}</span>
+        <span className="block break-all font-mono text-xs">{formatBurrowLinkCode(multiplayer.roomCode)}</span>
       </div>
       <p className="text-xs text-secondary">{t('multiplayer.invite_help')}</p>
       <Button type="button" variant="secondary" className="w-full" onClick={() => multiplayer.copyToClipboard(multiplayer.invitation)}>{t('multiplayer.copy_invite')}</Button>
